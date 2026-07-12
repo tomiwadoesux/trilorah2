@@ -1,0 +1,52 @@
+{
+  "name": "ai-preacher-assistant",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Trilorah — church presentation software with an agentic sermon engine. Beautiful, effortless, intelligent.",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "electron .",
+    "bible:build": "node scripts/build-bible-db.mjs",
+    "bible:index": "node scripts/build-bible-index.mjs",
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
+  },
+  "dependencies": {
+    "@deepgram/sdk": "4.11.3",
+    "@supabase/supabase-js": "2.103.3",
+    "better-sqlite3": "12.5.0",
+    "dotenv": "17.2.3",
+    "electron-store": "11.0.2",
+    "obs-websocket-js": "5.0.7",
+    "pdfkit": "0.18.0",
+    "qrcode": "1.5.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tesseract.js": "7.0.0",
+    "whisper-node": "1.1.1",
+    "ws": "8.19.0",
+    "zustand": "5.0.9"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "3.7.0",
+    "@tailwindcss/vite": "4.1.18",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "24.10.4",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-react": "5.1.2",
+    "electron": "39.2.7",
+    "electron-builder": "26.0.12",
+    "tailwindcss": "4.1.18",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vite-plugin-electron": "0.29.0",
+    "vitest": "^3.2.4"
+  }
+}
