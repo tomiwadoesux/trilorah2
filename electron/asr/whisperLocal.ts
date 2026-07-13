@@ -16,14 +16,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { app } from 'electron'
+import { getSetting } from '../data/settings'
 
 const SAMPLE_RATE = 16000
 const CHUNK_SECONDS = 5
-const MODEL_CANDIDATES = [
-  'ggml-small.en.bin',
-  'ggml-base.en.bin',
-  'ggml-tiny.en.bin'
-]
+/** .en models are English-only; the multilingual ones serve every other
+ *  language, so non-English setups should download ggml-small.bin etc. */
+const EN_MODEL_CANDIDATES = ['ggml-small.en.bin', 'ggml-base.en.bin', 'ggml-tiny.en.bin']
+const MULTILINGUAL_MODEL_CANDIDATES = ['ggml-small.bin', 'ggml-base.bin', 'ggml-tiny.bin']
 
 let micProcess: ChildProcess | null = null
 let stopped = true
@@ -36,7 +36,14 @@ export function whisperModelDir(): string {
 
 export function findWhisperModel(): string | null {
   const dir = whisperModelDir()
-  for (const name of MODEL_CANDIDATES) {
+  const lang = (getSetting('asrLanguage') || 'en-US').split('-')[0]
+  // Non-English languages need a multilingual model; English prefers the
+  // smaller/faster .en models but can use a multilingual one too.
+  const candidates =
+    lang === 'en'
+      ? [...EN_MODEL_CANDIDATES, ...MULTILINGUAL_MODEL_CANDIDATES]
+      : MULTILINGUAL_MODEL_CANDIDATES
+  for (const name of candidates) {
     const p = path.join(dir, name)
     if (fs.existsSync(p)) return p
   }
@@ -130,7 +137,10 @@ async function transcribeChunk(
     const whisper = mod.whisper ?? mod.default?.whisper ?? mod.default ?? mod
     const result = await whisper(wavPath, {
       modelPath,
-      whisperOptions: { language: 'en', word_timestamps: false }
+      whisperOptions: {
+        language: (getSetting('asrLanguage') || 'en-US').split('-')[0],
+        word_timestamps: false
+      }
     })
     const text = Array.isArray(result)
       ? result.map((r: any) => r.speech ?? r.text ?? '').join(' ').trim()

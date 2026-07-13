@@ -19,46 +19,9 @@
  *   instead of the screen.
  */
 
+import { DEFAULT_COMMANDS, type CommandPhraseConfig } from './commandConfig'
+
 export type IntentState = 'idle' | 'intent' | 'reference' | 'reading' | 'commentary'
-
-const INTENT_PHRASES = [
-  'turn with me to',
-  'turn to',
-  'turn in your bibles',
-  'open your bibles',
-  'open your bible',
-  'if you have your bible',
-  'go with me to',
-  'come with me to',
-  "let's read",
-  'let us read',
-  'i want to read',
-  'reading from',
-  'look at',
-  'looking at'
-]
-
-const NARRATIVE_MARKERS = [
-  'there was a',
-  'there was once',
-  'let me tell you',
-  'i remember',
-  'years ago',
-  'a story',
-  'the story of',
-  'one day',
-  'imagine'
-]
-
-const DEFER_PHRASES = [
-  "we'll come back to",
-  'we will come back to',
-  "we'll get to",
-  "we'll look at that later",
-  'come back to that',
-  'hold that thought',
-  'later on'
-]
 
 const INTENT_HOLD_MS = 20_000
 const NARRATIVE_HOLD_MS = 30_000
@@ -80,6 +43,14 @@ export interface IntentEngineCallbacks {
   onDefer?: () => void
 }
 
+export interface IntentEngineOptions {
+  /** Phrase lists (intentPhrases / narrativeMarkers / deferPhrases). */
+  config?: Pick<CommandPhraseConfig, 'intentPhrases' | 'narrativeMarkers' | 'deferPhrases'>
+  /** Chinese etc.: match phrases without word boundaries. */
+  substringMode?: boolean
+  now?: () => number
+}
+
 export class IntentEngine {
   private state: IntentState = 'idle'
   private stateAt = 0
@@ -89,10 +60,30 @@ export class IntentEngine {
   private recentWords: string[] = []
   private cb: IntentEngineCallbacks
   private now: () => number
+  private intentPhrases: string[]
+  private narrativeMarkers: string[]
+  private deferPhrases: string[]
+  private substringMode: boolean
 
-  constructor(cb: IntentEngineCallbacks = {}, now: () => number = Date.now) {
+  constructor(cb: IntentEngineCallbacks = {}, opts: IntentEngineOptions = {}) {
     this.cb = cb
-    this.now = now
+    this.now = opts.now ?? Date.now
+    const config = opts.config ?? DEFAULT_COMMANDS
+    this.intentPhrases = config.intentPhrases
+    this.narrativeMarkers = config.narrativeMarkers
+    this.deferPhrases = config.deferPhrases
+    this.substringMode = opts.substringMode ?? false
+  }
+
+  /** Swap phrase lists live (language/config change). */
+  setConfig(
+    config: Pick<CommandPhraseConfig, 'intentPhrases' | 'narrativeMarkers' | 'deferPhrases'>,
+    substringMode = false
+  ): void {
+    this.intentPhrases = config.intentPhrases
+    this.narrativeMarkers = config.narrativeMarkers
+    this.deferPhrases = config.deferPhrases
+    this.substringMode = substringMode
   }
 
   getState(): IntentState {
@@ -110,11 +101,13 @@ export class IntentEngine {
     return this.state === 'intent' || this.state === 'reference' || this.state === 'reading'
   }
 
-  /** Arm the grace window with the verse's opening words. */
+  /** Arm the grace window with the verse's opening words.
+   *  Unicode-aware so non-English verse text ("Porque de tal manera amó
+   *  Dios…") arms correctly. */
   armGraceWindow(ref: string, verseText: string): void {
     const words = verseText
       .toLowerCase()
-      .replace(/[^a-z\s]/g, '')
+      .replace(/[^\p{L}\s]/gu, '')
       .split(/\s+/)
       .filter((w) => w.length > 2)
       .slice(0, 6)
@@ -127,21 +120,29 @@ export class IntentEngine {
     this.armed = null
   }
 
+  /** Case/punctuation-insensitive phrase containment (substring for CJK). */
+  private matches(t: string, raw: string, phrase: string): boolean {
+    if (this.substringMode && raw.includes(phrase)) return true
+    const p = phrase.toLowerCase().replace(/[^\p{L}\p{N}\s']/gu, ' ').replace(/\s+/g, ' ').trim()
+    return t.includes(' ' + p + ' ') || t.includes(' ' + p)
+  }
+
   process(text: string): void {
     const now = this.now()
-    const t = ' ' + text.toLowerCase().replace(/[^a-z0-9\s']/g, ' ').replace(/\s+/g, ' ').trim() + ' '
+    const raw = text.toLowerCase()
+    const t = ' ' + raw.replace(/[^\p{L}\p{N}\s']/gu, ' ').replace(/\s+/g, ' ').trim() + ' '
 
-    for (const p of DEFER_PHRASES) {
-      if (t.includes(p)) {
+    for (const p of this.deferPhrases) {
+      if (this.matches(t, raw, p)) {
         this.deferUntil = now + 8000
         this.cb.onDefer?.()
         break
       }
     }
 
-    if (INTENT_PHRASES.some((p) => t.includes(' ' + p + ' ') || t.includes(' ' + p))) {
+    if (this.intentPhrases.some((p) => this.matches(t, raw, p))) {
       this.setState('intent', now)
-    } else if (NARRATIVE_MARKERS.some((p) => t.includes(p))) {
+    } else if (this.narrativeMarkers.some((p) => this.matches(t, raw, p))) {
       this.narrativeUntil = now + NARRATIVE_HOLD_MS
       if (this.state !== 'reading') this.setState('commentary', now)
     } else if (this.state === 'intent' && now - this.stateAt > INTENT_HOLD_MS) {

@@ -242,26 +242,41 @@ export class ScriptureSession {
     return false
   }
 
+  /* Navigation phrases are configurable post-recovery: main.ts merges
+     defaults + language pack + the user's voice-commands.json and injects
+     them here. The literals below remain the fallback. */
+  nextCommands: string[] | null = null
+  previousCommands: string[] | null = null
+
+  configureCommands(nav: { navNext?: string[]; navPrevious?: string[] }) {
+    if (nav.navNext?.length) this.nextCommands = nav.navNext
+    if (nav.navPrevious?.length) this.previousCommands = nav.navPrevious
+  }
+
   isNextCommand(text: string): boolean {
-    return [
-      'next verse',
-      'next',
-      'continue',
-      'go on',
-      'keep going',
-      'move on'
-    ].some((cmd) => text.includes(cmd))
+    return (
+      this.nextCommands ?? [
+        'next verse',
+        'next',
+        'continue',
+        'go on',
+        'keep going',
+        'move on'
+      ]
+    ).some((cmd) => text.includes(cmd))
   }
 
   isPreviousCommand(text: string): boolean {
-    return [
-      'previous verse',
-      'previous',
-      'go back',
-      'back',
-      'last verse',
-      'before'
-    ].some((cmd) => text.includes(cmd))
+    return (
+      this.previousCommands ?? [
+        'previous verse',
+        'previous',
+        'go back',
+        'back',
+        'last verse',
+        'before'
+      ]
+    ).some((cmd) => text.includes(cmd))
   }
 
   /* ---------------- CORRECTIONS (added post-recovery) ---------------- */

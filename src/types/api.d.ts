@@ -437,6 +437,9 @@ interface WindowApi {
   setDisplayVersion?(version: string): Promise<void>;
   getSeasonalTheme?(): Promise<string>;
   getNotesProviderStatus?(): Promise<{ id: string; status: string }>;
+  getAvailableLanguages?(): Promise<Array<{ code: string; label: string }>>;
+  getVoiceCommandConfig?(): Promise<{ merged: any; user: any; filePath: string }>;
+  saveVoiceCommandConfig?(userConfig: any): Promise<{ success: boolean }>;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;
   onVersionChanged?(callback: (version: string) => void): Unsubscribe;
   onQueueUpdated?(callback: (queue: VerseQueueItem[]) => void): Unsubscribe;

@@ -12,7 +12,7 @@ function makeEngine() {
       onReadingStarted: (ref) => readings.push(ref),
       onDefer: () => defers++
     },
-    () => now
+    { now: () => now }
   )
   return {
     engine,

@@ -1,5 +1,7 @@
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk'
 import { spawn, type ChildProcess } from 'node:child_process'
+// post-recovery: ASR language is a setting (multilingual support)
+import { getSetting } from '../data/settings'
 
 let deepgramConnection: any = null
 let micProcess: ChildProcess | null = null
@@ -22,7 +24,7 @@ export function startDeepgram(
   const deepgram = createClient(apiKey)
   deepgramConnection = deepgram.listen.live({
     model: 'nova-2',
-    language: 'en-US',
+    language: getSetting('asrLanguage') || 'en-US',
     smart_format: true,
     interim_results: true,
     punctuate: true,

@@ -25,7 +25,7 @@ function makeEngine() {
     onPrayerChange: (p) => prayerStates.push(p),
     onCommand: (e) => events.push(e)
   }
-  return new VoiceCommandEngine(cb, () => now)
+  return new VoiceCommandEngine(cb, { now: () => now })
 }
 
 beforeEach(() => {

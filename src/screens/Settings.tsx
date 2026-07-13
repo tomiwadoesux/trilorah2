@@ -112,6 +112,173 @@ function SelectSetting({
   );
 }
 
+/** 0-1 setting edited as a percentage. */
+function PercentSetting({ label, settingKey }: { label: string; settingKey: string }) {
+  const settings = useAppStore((s) => s.settings);
+  const initial = settings?.[settingKey];
+  return (
+    <Row label={label}>
+      <input
+        defaultValue={typeof initial === 'number' ? String(Math.round(initial * 100)) : ''}
+        inputMode="numeric"
+        onBlur={(e) => {
+          const n = Number.parseFloat(e.target.value);
+          if (!Number.isNaN(n) && n > 0 && n <= 100) save(settingKey, n / 100);
+        }}
+        className="w-24 text-sm"
+      />
+      <span className="text-xs text-neutral-400">% precision (lower bound)</span>
+    </Row>
+  );
+}
+
+const ASR_LANGUAGE_SUGGESTIONS = [
+  'en-US', 'en-GB', 'es', 'es-419', 'fr', 'fr-CA', 'pt', 'pt-BR', 'hi', 'zh-CN', 'de', 'ko', 'ru', 'nl', 'it', 'ja',
+];
+
+function LanguageSettings() {
+  const [languages, setLanguages] = useState<Array<{ code: string; label: string }>>([]);
+  useEffect(() => {
+    void window.api?.getAvailableLanguages?.().then(setLanguages).catch(() => undefined);
+  }, []);
+  const settings = useAppStore((s) => s.settings);
+  const engineLang = typeof settings?.engineLanguage === 'string' ? settings.engineLanguage : 'en';
+  return (
+    <>
+      <Row label="engine language">
+        <select value={engineLang} onChange={(e) => save('engineLanguage', e.target.value)} className="text-sm">
+          {(languages.length > 0 ? languages : [{ code: 'en', label: 'English' }]).map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.label} ({l.code})
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-neutral-400">book names, numbers & commands — english always stays on underneath</span>
+      </Row>
+      <Row label="asr language">
+        <input
+          defaultValue={typeof settings?.asrLanguage === 'string' ? settings.asrLanguage : 'en-US'}
+          list="asr-languages"
+          onBlur={(e) => e.target.value && save('asrLanguage', e.target.value)}
+          className="w-32 text-sm"
+        />
+        <datalist id="asr-languages">
+          {ASR_LANGUAGE_SUGGESTIONS.map((l) => (
+            <option key={l} value={l} />
+          ))}
+        </datalist>
+        <span className="text-xs text-neutral-400">what the transcriber listens in (deepgram code / whisper language)</span>
+      </Row>
+    </>
+  );
+}
+
+/** Editable phrase categories from voice-commands.json (user layer). */
+const PHRASE_CATEGORIES: Array<{ key: string; label: string }> = [
+  { key: 'prayerStart', label: 'prayer start' },
+  { key: 'prayerEnd', label: 'prayer end' },
+  { key: 'dismiss', label: 'take it down' },
+  { key: 'hold', label: 'leave it up' },
+  { key: 'iSaidTriggers', label: 'correction lead-ins' },
+  { key: 'navNext', label: 'next verse' },
+  { key: 'navPrevious', label: 'previous verse' },
+  { key: 'intentPhrases', label: 'opening-bible intent' },
+  { key: 'narrativeMarkers', label: 'story markers' },
+  { key: 'deferPhrases', label: 'come-back-later' },
+  { key: 'chapterWords', label: '"chapter" words' },
+  { key: 'verseWords', label: '"verse" words' },
+];
+
+function VoiceCommandEditor() {
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
+  const [merged, setMerged] = useState<Record<string, unknown> | null>(null);
+  const [filePath, setFilePath] = useState('');
+  const [category, setCategory] = useState('prayerStart');
+  const [draft, setDraft] = useState('');
+  const [note, setNote] = useState<string | null>(null);
+
+  const load = () => {
+    void window.api?.getVoiceCommandConfig?.()
+      .then((res) => {
+        setUser(res.user ?? {});
+        setMerged(res.merged ?? {});
+        setFilePath(res.filePath ?? '');
+      })
+      .catch(() => undefined);
+  };
+  useEffect(load, []);
+
+  if (!user || !merged) {
+    return <p className="pl-50 text-xs text-neutral-400">loading phrases…</p>;
+  }
+
+  const userList = Array.isArray(user[category]) ? (user[category] as string[]) : [];
+  const mergedList = Array.isArray(merged[category]) ? (merged[category] as string[]) : [];
+
+  const persist = (next: Record<string, unknown>) => {
+    setUser(next);
+    setNote('saving…');
+    void window.api?.saveVoiceCommandConfig?.(next)
+      .then(() => {
+        setNote('saved — live immediately');
+        load();
+      })
+      .catch(() => setNote('could not save'));
+  };
+
+  const addPhrase = () => {
+    const phrase = draft.trim().toLowerCase();
+    if (!phrase) return;
+    persist({ ...user, [category]: [...userList, phrase] });
+    setDraft('');
+  };
+
+  return (
+    <div className="space-y-3 pl-50">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <select value={category} onChange={(e) => setCategory(e.target.value)} className="text-sm">
+          {PHRASE_CATEGORIES.map((c) => (
+            <option key={c.key} value={c.key}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-neutral-400">{mergedList.length} active phrases (built-in + language pack + yours)</span>
+      </div>
+      <ul className="space-y-1">
+        {userList.map((p, i) => (
+          <li key={`${p}-${i}`} className="flex items-baseline gap-x-4 text-sm">
+            <span>“{p}”</span>
+            <TextButton
+              label="REMOVE"
+              onClick={() => persist({ ...user, [category]: userList.filter((_, k) => k !== i) })}
+            />
+          </li>
+        ))}
+        {userList.length === 0 && (
+          <li className="text-xs italic text-neutral-400">no custom phrases yet — the built-ins are active</li>
+        )}
+      </ul>
+      <div className="flex flex-wrap items-baseline gap-x-4">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addPhrase()}
+          placeholder="add a phrase your preacher actually says…"
+          className="w-full max-w-md text-sm"
+        />
+        <TextButton label="ADD" primary onClick={addPhrase} />
+        {note && <span className="text-xs text-neutral-400">{note}</span>}
+      </div>
+      {filePath && (
+        <p className="text-xs text-neutral-400">
+          full config (incl. translation names) lives at {filePath}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="space-y-4 border-t border-hairline pt-8 first:border-t-0 first:pt-0">
@@ -188,15 +355,38 @@ export function Settings() {
         <ToggleSetting label="false-positive filter" settingKey="falsePositiveFilterEnabled" />
       </Section>
 
+      <Section title="language">
+        <LanguageSettings />
+      </Section>
+
       <Section title="display">
         <SelectSetting
-          label="default version"
-          settingKey="defaultVersion"
+          label="display version"
+          settingKey="displayVersion"
           options={versions.length > 0 ? versions : ['KJV']}
           fallback="KJV"
         />
         <NumberSetting label="auto display timeout" settingKey="autoDisplayTimeout" suffix="seconds" />
-        <ToggleSetting label="seasonal theming" settingKey="seasonalThemingEnabled" />
+        <ToggleSetting label="seasonal theming" settingKey="seasonalEnabled" />
+        <ToggleSetting label="grace window" settingKey="graceWindowEnabled" />
+      </Section>
+
+      <Section title="trust & auto mode">
+        <PercentSetting label="auto-mode trust" settingKey="autoModeMinTrust" />
+        <NumberSetting label="min detections" settingKey="autoModeMinSamples" suffix="verified verses" />
+        <NumberSetting label="min services" settingKey="autoModeMinServices" suffix="services" />
+        <NumberSetting label="mature below" settingKey="matureMaxCorrections" suffix="corrections / service" />
+        <NumberSetting label="mature streak" settingKey="matureStreak" suffix="quiet services in a row" />
+        <NumberSetting label="reopen at" settingKey="reopenCorrections" suffix="corrections in one service" />
+        <p className="pl-50 text-xs leading-relaxed text-neutral-400">
+          auto mode unlocks when a preacher's verified precision (wilson lower bound)
+          clears the trust gate with enough volume — changes apply live
+        </p>
+      </Section>
+
+      <Section title="voice commands">
+        <ToggleSetting label="voice commands" settingKey="voiceCommandsEnabled" />
+        <VoiceCommandEditor />
       </Section>
 
       <Section title="obs studio">

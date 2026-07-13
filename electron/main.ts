@@ -22,11 +22,22 @@ import {
   connectML,
   disconnectML,
   sendTranscript,
-  setBareBookGate
+  setBareBookGate,
+  setResolverLanguage,
+  makePackNumberParser
 } from './engine/referenceResolver'
+import { getLanguagePack, availableLanguages } from './engine/lang'
+import {
+  DEFAULT_COMMANDS,
+  mergeCommandConfigs,
+  loadUserCommandConfig,
+  saveUserCommandConfig,
+  userCommandFilePath,
+  type CommandPhraseConfig
+} from './engine/commandConfig'
 import { resolveASRProvider, type ASRProvider } from './asr/provider'
 // (startDeepgram/stopDeepgram now flow through the provider abstraction)
-import { VoiceCommandEngine } from './engine/voiceCommands'
+import { VoiceCommandEngine, type VoiceCommandCallbacks } from './engine/voiceCommands'
 import { IntentEngine } from './engine/intentEngine'
 import { CorrectionLedger } from './preachers/correctionLedger'
 import { seasonalBoost, seasonalThemeId } from './engine/seasonalPriors'
@@ -175,6 +186,139 @@ let activeASR: ASRProvider | null = null
 
 function activePreacherId(): string {
   return getSetting('activePreacherId') || ''
+}
+
+/** The active merged phrase config (defaults + language pack + user file). */
+let activeCommandConfig: CommandPhraseConfig = DEFAULT_COMMANDS
+
+/**
+ * (Re)build everything language- or phrase-dependent. Called at startup
+ * and whenever engineLanguage / thresholds / voice-commands.json change —
+ * the whole engine is reconfigurable live, no restart.
+ */
+function applyLanguageAndConfig(): void {
+  const langCode = getSetting('engineLanguage') || 'en'
+  const pack = getLanguagePack(langCode)
+  const substring = pack?.matchMode === 'substring'
+
+  // 1. Resolver hears the new language (English always stays underneath).
+  setResolverLanguage(pack)
+
+  // 2. Merged phrase config: defaults ∪ pack ∪ user file.
+  let config = mergeCommandConfigs(DEFAULT_COMMANDS, pack?.commands ?? {})
+  config = mergeCommandConfigs(config, loadUserCommandConfig(app.getPath('userData')))
+  activeCommandConfig = config
+
+  // 3. Engines pick up the config.
+  voiceCommands = new VoiceCommandEngine(voiceCallbacks, {
+    config,
+    numberParser: makePackNumberParser(pack),
+    substringMode: substring
+  })
+  intentEngine.setConfig(config, substring)
+  session.configureCommands(config)
+
+  // 4. Ledger gates from settings.
+  ledger?.setThresholds({
+    autoModeMinTrust: getSetting('autoModeMinTrust'),
+    autoModeMinSamples: getSetting('autoModeMinSamples'),
+    autoModeMinServices: getSetting('autoModeMinServices'),
+    matureMaxCorrections: getSetting('matureMaxCorrections'),
+    matureStreak: getSetting('matureStreak'),
+    reopenCorrections: getSetting('reopenCorrections')
+  })
+
+  console.log(
+    `🌍 Engine language: ${pack ? `${pack.label} + English` : 'English'} · ` +
+      `${config.versionPhrases.length} version phrases · auto-mode gate ${Math.round(getSetting('autoModeMinTrust') * 100)}%`
+  )
+}
+
+/** Settings keys that require an engine reconfiguration when they change. */
+const RECONFIGURE_KEYS = new Set([
+  'engineLanguage',
+  'autoModeMinTrust',
+  'autoModeMinSamples',
+  'autoModeMinServices',
+  'matureMaxCorrections',
+  'matureStreak',
+  'reopenCorrections'
+])
+
+/** Callbacks the voice-command engine drives — extracted so the engine can
+ *  be rebuilt on language/config changes without re-stating the wiring. */
+const voiceCallbacks: VoiceCommandCallbacks = {
+  getDisplayedRef: () => lastDisplayedRef,
+  getAvailableVersions: () => {
+    if (!db) return ['KJV']
+    try {
+      return (db.prepare('SELECT DISTINCT Version FROM bible').all() as { Version: string }[]).map(
+        (r) => r.Version
+      )
+    } catch {
+      return ['KJV']
+    }
+  },
+  onVersionSwitch: (version) => {
+    setSetting('displayVersion', version)
+    reEmitCurrentVerseInVersion(version)
+  },
+  onVerseCorrection: (verse) => {
+    const pid = activePreacherId()
+    const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
+    const heard = lastDisplayedRef
+      ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${lastDisplayedRef.verse}`
+      : ''
+    const corrected = lastDisplayedRef
+      ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${verse}`
+      : String(verse)
+    if (pid && ledger) {
+      if (lastReviewItemId && lastDisplayedRef) {
+        ledger.resolveReviewItem(pid, lastReviewItemId, 'amended', {
+          book: lastDisplayedRef.book,
+          chapter: lastDisplayedRef.chapter,
+          verse
+        })
+        lastReviewItemId = null
+      } else {
+        ledger.recordDetection(pid, false)
+        ledger.recordCorrection(pid, heard, corrected, 'voice')
+      }
+    }
+    if (session.applyVerseCorrection(verse) && wasLive) {
+      pushPreviewToLive('correction')
+    }
+  },
+  onChapterCorrection: (chapter) => {
+    const pid = activePreacherId()
+    const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
+    if (pid && ledger && lastDisplayedRef) {
+      ledger.recordDetection(pid, false)
+      ledger.recordCorrection(
+        pid,
+        `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}`,
+        `${lastDisplayedRef.book} ${chapter}`,
+        'voice'
+      )
+    }
+    if (session.applyChapterCorrection(chapter) && wasLive) {
+      pushPreviewToLive('correction')
+    }
+  },
+  onDismiss: () => {
+    emitVerseAutoDismiss()
+    intentEngine.onDisplayCleared()
+  },
+  onHold: () => {
+    if (currentPreviewData?.text) {
+      displayTimingManager.onVerseDisplayed(currentPreviewData.text)
+    }
+  },
+  onPrayerChange: (inPrayer) => {
+    emitPrayerMode(inPrayer)
+    if (inPrayer) emitVerseAutoDismiss()
+  },
+  onCommand: (event) => emitVoiceCommand(event)
 }
 
 /** Preview → live, from the operator button, auto mode, or grace window. */
@@ -671,6 +815,20 @@ ipcMain.handle('set-display-version', (_event, version: string) => {
 
 ipcMain.handle('get-seasonal-theme', () => seasonalThemeId(new Date()))
 
+ipcMain.handle('get-available-languages', () => availableLanguages())
+
+ipcMain.handle('get-voice-command-config', () => ({
+  merged: activeCommandConfig,
+  user: loadUserCommandConfig(app.getPath('userData')),
+  filePath: userCommandFilePath(app.getPath('userData'))
+}))
+
+ipcMain.handle('save-voice-command-config', (_event, userConfig) => {
+  saveUserCommandConfig(app.getPath('userData'), userConfig ?? {})
+  if (ledger) applyLanguageAndConfig()
+  return { success: true }
+})
+
 ipcMain.handle('get-notes-provider-status', async () => {
   const provider = resolveNotesProvider(getSetting('notesProvider'))
   return { id: provider.id, status: await provider.status() }
@@ -990,6 +1148,10 @@ ipcMain.handle('get-settings', () => getAllSettings())
 ipcMain.handle('get-setting', (_event, key) => getSetting(key))
 ipcMain.handle('set-setting', (_event, { key, value }) => {
   setSetting(key, value)
+  // Language / trust-gate changes reconfigure the live engines instantly.
+  if (RECONFIGURE_KEYS.has(key) && ledger) {
+    applyLanguageAndConfig()
+  }
   return true
 })
 
@@ -1502,79 +1664,7 @@ app.whenReady().then(() => {
   /* -------- agentic layer init (added post-recovery) -------- */
   setBareBookGate(() => intentEngine.allowBareBook())
   ledger = new CorrectionLedger(path.join(app.getPath('userData'), 'preacher-ledgers'))
-  voiceCommands = new VoiceCommandEngine({
-    getDisplayedRef: () => lastDisplayedRef,
-    getAvailableVersions: () => {
-      if (!db) return ['KJV']
-      try {
-        return (db.prepare('SELECT DISTINCT Version FROM bible').all() as { Version: string }[]).map(
-          (r) => r.Version
-        )
-      } catch {
-        return ['KJV']
-      }
-    },
-    onVersionSwitch: (version) => {
-      setSetting('displayVersion', version)
-      reEmitCurrentVerseInVersion(version)
-    },
-    onVerseCorrection: (verse) => {
-      const pid = activePreacherId()
-      const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
-      const heard = lastDisplayedRef
-        ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${lastDisplayedRef.verse}`
-        : ''
-      const corrected = lastDisplayedRef
-        ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${verse}`
-        : String(verse)
-      if (pid && ledger) {
-        if (lastReviewItemId && lastDisplayedRef) {
-          ledger.resolveReviewItem(pid, lastReviewItemId, 'amended', {
-            book: lastDisplayedRef.book,
-            chapter: lastDisplayedRef.chapter,
-            verse
-          })
-          lastReviewItemId = null
-        } else {
-          ledger.recordDetection(pid, false)
-          ledger.recordCorrection(pid, heard, corrected, 'voice')
-        }
-      }
-      if (session.applyVerseCorrection(verse) && wasLive) {
-        pushPreviewToLive('correction')
-      }
-    },
-    onChapterCorrection: (chapter) => {
-      const pid = activePreacherId()
-      const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
-      if (pid && ledger && lastDisplayedRef) {
-        ledger.recordDetection(pid, false)
-        ledger.recordCorrection(
-          pid,
-          `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}`,
-          `${lastDisplayedRef.book} ${chapter}`,
-          'voice'
-        )
-      }
-      if (session.applyChapterCorrection(chapter) && wasLive) {
-        pushPreviewToLive('correction')
-      }
-    },
-    onDismiss: () => {
-      emitVerseAutoDismiss()
-      intentEngine.onDisplayCleared()
-    },
-    onHold: () => {
-      if (currentPreviewData?.text) {
-        displayTimingManager.onVerseDisplayed(currentPreviewData.text)
-      }
-    },
-    onPrayerChange: (inPrayer) => {
-      emitPrayerMode(inPrayer)
-      if (inPrayer) emitVerseAutoDismiss()
-    },
-    onCommand: (event) => emitVoiceCommand(event)
-  })
+  applyLanguageAndConfig()
   console.log('🗣️ Voice commands + intent engine + correction ledger ready')
   const quoteMatcher = getQuoteMatcher()
   quoteMatcher.loadIndex()

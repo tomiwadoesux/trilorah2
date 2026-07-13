@@ -24,7 +24,14 @@ const DB_PATH = path.join(ROOT, 'bible.db')
 
 const SOURCES = [
   { version: 'KJV', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_kjv.json' },
-  { version: 'BBE', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_bbe.json' }
+  { version: 'BBE', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_bbe.json' },
+  // Multilingual, public-domain:
+  { version: 'RVR', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json' }, // Reina-Valera (Spanish)
+  { version: 'APEE', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/fr_apee.json' }, // Bible de l'Épée (French)
+  { version: 'AA', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/pt_aa.json' }, // Almeida Atualizada (Portuguese)
+  { version: 'CUV', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/zh_cuv.json' } // Chinese Union Version
+  // Hindi: no public-domain JSON in this source yet — add
+  // { version: 'XXX', url: '...' } here when a licensed/PD source is chosen.
 ]
 
 async function fetchJson(url) {

@@ -68,7 +68,19 @@ export const defaults = {
   displayVersion: 'KJV',
   seasonalEnabled: true,
   graceWindowEnabled: true,
-  voiceCommandsEnabled: true
+  voiceCommandsEnabled: true,
+  // Language: what the ASR listens in (BCP-47 for Deepgram) and which
+  // language pack the reference resolver / voice commands use.
+  asrLanguage: 'en-US',
+  engineLanguage: 'en' as 'en' | 'es' | 'fr' | 'pt' | 'hi' | 'zh',
+  // Trust meter & auto-mode gate — fully tunable per church.
+  autoModeMinTrust: 0.9,
+  autoModeMinSamples: 100,
+  autoModeMinServices: 5,
+  // Training thermostat.
+  matureMaxCorrections: 2,
+  matureStreak: 3,
+  reopenCorrections: 4
 }
 
 export type Settings = typeof defaults

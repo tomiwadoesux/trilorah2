@@ -6,10 +6,12 @@
  *
  *  - a phonetic ALIAS TABLE ("rome and" → Romans) applied before detection
  *  - a TRUST METER: Wilson lower bound on detection precision. Auto mode
- *    unlocks at ≥95% lower bound with ≥100 samples over ≥5 services —
- *    a lucky 20/20 does not unlock it.
- *  - a training THERMOSTAT: <2 corrections/service for 3 straight services
- *    → profile "mature" (stop prompting); accuracy dip → quietly reopen.
+ *    unlocks at the configured gate (default ≥90% lower bound, ≥100
+ *    samples, ≥5 services — a lucky 20/20 does not unlock it). All gates
+ *    are tunable via LedgerThresholds / the app settings.
+ *  - a training THERMOSTAT: fewer than `matureMaxCorrections` per service
+ *    for `matureStreak` services → "mature" (stop prompting); an accuracy
+ *    dip quietly reopens training.
  *
  * Pure logic + injected storage dir so it unit-tests without Electron.
  */
@@ -42,12 +44,27 @@ export interface LedgerData {
   reopenedAt?: number
 }
 
-const AUTO_MODE_MIN_TRUST = 0.95
-const AUTO_MODE_MIN_SAMPLES = 100
-const AUTO_MODE_MIN_SERVICES = 5
-const MATURE_MAX_CORRECTIONS = 2
-const MATURE_STREAK = 3
-const REOPEN_CORRECTIONS = 4
+/** All gates are tunable — churches differ. These are the defaults. */
+export interface LedgerThresholds {
+  /** Wilson lower bound on precision required for auto mode. */
+  autoModeMinTrust: number
+  autoModeMinSamples: number
+  autoModeMinServices: number
+  /** Corrections/service below this, for `matureStreak` services → mature. */
+  matureMaxCorrections: number
+  matureStreak: number
+  /** Corrections in one service at/above this reopen training. */
+  reopenCorrections: number
+}
+
+export const DEFAULT_THRESHOLDS: LedgerThresholds = {
+  autoModeMinTrust: 0.9,
+  autoModeMinSamples: 100,
+  autoModeMinServices: 5,
+  matureMaxCorrections: 2,
+  matureStreak: 3,
+  reopenCorrections: 4
+}
 
 /** Wilson score interval lower bound (z = 1.96, 95%). */
 export function wilsonLowerBound(successes: number, n: number): number {
@@ -80,10 +97,21 @@ export class CorrectionLedger {
   private reviewItems: ReviewItem[] = []
   private nextReviewId = 1
   private now: () => number
+  private t: LedgerThresholds
 
-  constructor(storageDir: string, now: () => number = Date.now) {
+  constructor(
+    storageDir: string,
+    now: () => number = Date.now,
+    thresholds: Partial<LedgerThresholds> = {}
+  ) {
     this.dir = storageDir
     this.now = now
+    this.t = { ...DEFAULT_THRESHOLDS, ...thresholds }
+  }
+
+  /** Live-update the gates (e.g. when settings change). */
+  setThresholds(thresholds: Partial<LedgerThresholds>): void {
+    this.t = { ...this.t, ...thresholds }
   }
 
   /* ---------------- persistence ---------------- */
@@ -139,7 +167,7 @@ export class CorrectionLedger {
     const svc = this.serviceRecord(preacherId)
     svc.corrections += 1
     // A dip in accuracy quietly reopens training.
-    if (data.mature && svc.corrections >= REOPEN_CORRECTIONS) {
+    if (data.mature && svc.corrections >= this.t.reopenCorrections) {
       data.mature = false
       data.reopenedAt = this.now()
       console.log(`🎓 Training reopened for ${data.name || preacherId} (accuracy dip)`)
@@ -182,11 +210,11 @@ export class CorrectionLedger {
       data.services.push(svc)
       this.currentService.delete(preacherId)
     }
-    const recent = data.services.slice(-MATURE_STREAK)
+    const recent = data.services.slice(-this.t.matureStreak)
     if (
       !data.mature &&
-      recent.length === MATURE_STREAK &&
-      recent.every((s) => s.corrections < MATURE_MAX_CORRECTIONS)
+      recent.length === this.t.matureStreak &&
+      recent.every((s) => s.corrections < this.t.matureMaxCorrections)
     ) {
       data.mature = true
       console.log(`🎓 Profile mature: ${data.name || preacherId} — training prompts off`)
@@ -210,9 +238,9 @@ export class CorrectionLedger {
       precision: detections > 0 ? confirmed / detections : 0,
       trustLowerBound,
       autoModeEligible:
-        trustLowerBound >= AUTO_MODE_MIN_TRUST &&
-        detections >= AUTO_MODE_MIN_SAMPLES &&
-        services >= AUTO_MODE_MIN_SERVICES,
+        trustLowerBound >= this.t.autoModeMinTrust &&
+        detections >= this.t.autoModeMinSamples &&
+        services >= this.t.autoModeMinServices,
       mature: data.mature,
       correctionsLastService: lastService?.corrections ?? 0
     }

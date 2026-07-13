@@ -8,6 +8,10 @@
  *   "let us pray" … "amen"              → suppress displays during prayer
  *   "take that down" / "leave it up"    → display control
  *
+ * EVERY phrase is configuration, not code: built-in defaults + the active
+ * language pack + the user's voice-commands.json are unioned into the
+ * CommandPhraseConfig this engine runs on (see commandConfig.ts).
+ *
  * Corrections are HIGH-PRIORITY interrupts: they bypass the session's
  * command debounce and verse lockout (a correction usually arrives seconds
  * after the wrong verse went up — exactly when lockouts would eat it).
@@ -15,7 +19,9 @@
  */
 
 import type { VoiceCommandEvent } from '../../shared/types'
-import { parseNumberToken, parseSpokenNumber } from './referenceResolver'
+import { normalizeWords } from './referenceResolver'
+import { parseSpokenNumber } from './referenceResolver'
+import { DEFAULT_COMMANDS, type CommandPhraseConfig } from './commandConfig'
 
 export interface DisplayedRef {
   book: string
@@ -23,6 +29,11 @@ export interface DisplayedRef {
   verse: number
   displayedAt: number
 }
+
+export type SpokenNumberParser = (
+  words: string[],
+  i: number
+) => { value: number; consumed: number } | null
 
 export interface VoiceCommandCallbacks {
   /** The verse currently (or very recently) on screen, if any. */
@@ -39,23 +50,14 @@ export interface VoiceCommandCallbacks {
   onCommand: (event: VoiceCommandEvent) => void
 }
 
-/** Spoken names → version codes. Only versions present in the DB fire. */
-export const VERSION_PHRASES: Array<{ phrases: string[]; code: string }> = [
-  { phrases: ['new king james version', 'new king james'], code: 'NKJV' },
-  { phrases: ['king james version', 'king james', 'authorized version'], code: 'KJV' },
-  { phrases: ['new international version', 'n i v'], code: 'NIV' },
-  { phrases: ['english standard version', 'e s v'], code: 'ESV' },
-  { phrases: ['new living translation', 'n l t'], code: 'NLT' },
-  { phrases: ['new american standard bible', 'new american standard'], code: 'NASB' },
-  { phrases: ['amplified bible', 'the amplified', 'amplified version'], code: 'AMP' },
-  { phrases: ['message translation', 'the message bible'], code: 'MSG' },
-  { phrases: ['world english bible'], code: 'WEB' },
-  { phrases: ['american standard version'], code: 'ASV' },
-  { phrases: ['revised standard version'], code: 'RSV' },
-  { phrases: ['bible in basic english', 'basic english bible', 'basic english version'], code: 'BBE' },
-  { phrases: ['new revised standard version'], code: 'NRSV' },
-  { phrases: ['christian standard bible'], code: 'CSB' }
-]
+export interface VoiceCommandOptions {
+  config?: CommandPhraseConfig
+  /** Language-aware number parser (defaults to the English one). */
+  numberParser?: SpokenNumberParser
+  /** Chinese etc.: match phrases without word boundaries. */
+  substringMode?: boolean
+  now?: () => number
+}
 
 /** How long after a verse leaves the screen its context still counts. */
 const CONTEXT_WINDOW_MS = 60_000
@@ -64,31 +66,51 @@ const COMMAND_DEDUP_MS = 3000
 export class VoiceCommandEngine {
   private cb: VoiceCommandCallbacks
   private now: () => number
+  private config: CommandPhraseConfig
+  private parseNum: SpokenNumberParser
+  private substringMode: boolean
   private inPrayer = false
   private lastFired: Record<string, number> = {}
 
-  constructor(cb: VoiceCommandCallbacks, now: () => number = Date.now) {
+  constructor(cb: VoiceCommandCallbacks, opts: VoiceCommandOptions = {}) {
     this.cb = cb
-    this.now = now
+    this.now = opts.now ?? Date.now
+    this.config = opts.config ?? DEFAULT_COMMANDS
+    this.parseNum = opts.numberParser ?? parseSpokenNumber
+    this.substringMode = opts.substringMode ?? false
   }
 
   isInPrayer(): boolean {
     return this.inPrayer
   }
 
+  /** Case/punctuation-insensitive phrase containment. */
+  private hasPhrase(padded: string, raw: string, phrase: string): boolean {
+    if (this.substringMode && raw.includes(phrase)) return true
+    const p = ' ' + normalizeWords(phrase).join(' ') + ' '
+    return padded.includes(p)
+  }
+
+  private hasAny(padded: string, raw: string, phrases: string[]): boolean {
+    return phrases.some((p) => this.hasPhrase(padded, raw, p))
+  }
+
   /** Feed final ASR chunks. Returns true if a command consumed the text. */
   process(text: string): boolean {
-    const t = ' ' + text.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim() + ' '
+    const words = normalizeWords(text)
+    const padded = ' ' + words.join(' ') + ' '
+    const raw = text.toLowerCase()
     const now = this.now()
+    const c = this.config
 
     // ---- prayer mode ----
-    if (!this.inPrayer && /\b(let us pray|let's pray|bow your heads|every head bowed)\b/.test(t)) {
+    if (!this.inPrayer && this.hasAny(padded, raw, c.prayerStart)) {
       this.inPrayer = true
       this.fire({ kind: 'prayer-start', utterance: text, ts: now })
       this.cb.onPrayerChange(true)
       return true
     }
-    if (this.inPrayer && /\bamen\b/.test(t)) {
+    if (this.inPrayer && this.hasAny(padded, raw, c.prayerEnd)) {
       this.inPrayer = false
       this.fire({ kind: 'prayer-end', utterance: text, ts: now })
       this.cb.onPrayerChange(false)
@@ -102,8 +124,8 @@ export class VoiceCommandEngine {
     const hasContext =
       displayed !== null && now - displayed.displayedAt < CONTEXT_WINDOW_MS
     if (hasContext) {
-      for (const { phrases, code } of VERSION_PHRASES) {
-        if (phrases.some((p) => t.includes(' ' + p + ' '))) {
+      for (const { phrases, code } of c.versionPhrases) {
+        if (this.hasAny(padded, raw, phrases)) {
           if (this.dedup('version:' + code, now)) return false
           const available = this.cb.getAvailableVersions()
           if (!available.includes(code)) {
@@ -121,33 +143,48 @@ export class VoiceCommandEngine {
 
     // ---- corrections (bypass lockouts downstream) ----
     if (hasContext) {
-      // "I said verse thirty four" / "I said thirty four"
-      let m = t.match(/\bi said,? (?:verse )?([a-z0-9 -]{1,24}?)(?: not | i said | that's |\s*$)/)
-      if (m) {
-        const n = parseNumberToken(m[1].replace(/-/g, ' ').trim())
-        if (n !== null && n !== displayed!.verse) {
-          if (this.dedup('correct:' + n, now)) return false
-          console.log(`🗣️ Correction: "${text.trim()}" → verse ${n}`)
-          this.fire({ kind: 'correction-verse', utterance: text, value: n, ts: now })
-          this.cb.onVerseCorrection(n)
+      const verseWordSet = new Set(c.verseWords)
+      const chapterWordSet = new Set(c.chapterWords)
+
+      // "<trigger> [verse] N" — token-parsed, language-aware numbers.
+      const trig = this.findTrigger(words, c.iSaidTriggers)
+      if (trig !== null) {
+        let i = trig
+        // "i said chapter five"
+        if (chapterWordSet.has(words[i])) {
+          const n = this.parseNum(words, i + 1)
+          if (n && n.value !== displayed!.chapter) {
+            if (this.dedup('correct-ch:' + n.value, now)) return false
+            this.fire({ kind: 'correction-chapter', utterance: text, value: n.value, ts: now })
+            this.cb.onChapterCorrection(n.value)
+            return true
+          }
+        }
+        if (verseWordSet.has(words[i])) i++
+        const n = this.parseNum(words, i)
+        if (n && n.value !== displayed!.verse) {
+          if (this.dedup('correct:' + n.value, now)) return false
+          console.log(`🗣️ Correction: "${text.trim()}" → verse ${n.value}`)
+          this.fire({ kind: 'correction-verse', utterance: text, value: n.value, ts: now })
+          this.cb.onVerseCorrection(n.value)
           return true
         }
       }
+
       // "not verse twenty four, verse thirty four" / "not twenty four, thirty four"
       // Token-parsed (not regex) — number words contain spaces, and a lazy
       // regex splits "twenty four verse thirty four" at the wrong seam.
       {
-        const words = t.trim().replace(/-/g, ' ').split(' ')
         const notIdx = words.indexOf('not')
         if (notIdx >= 0) {
           let i = notIdx + 1
-          if (words[i] === 'verse') i++
-          const first = parseSpokenNumber(words, i)
+          if (verseWordSet.has(words[i])) i++
+          const first = this.parseNum(words, i)
           if (first) {
             let j = i + first.consumed
             if (words[j] === 'but') j++
-            if (words[j] === 'verse') j++
-            const second = parseSpokenNumber(words, j)
+            if (verseWordSet.has(words[j])) j++
+            const second = this.parseNum(words, j)
             if (
               second &&
               j + second.consumed >= words.length && // correction ends the utterance
@@ -162,26 +199,15 @@ export class VoiceCommandEngine {
           }
         }
       }
-      // "I said chapter five"
-      m = t.match(/\bi said,? chapter ([a-z0-9 -]{1,24}?)\s*$/)
-      if (m) {
-        const n = parseNumberToken(m[1].replace(/-/g, ' ').trim())
-        if (n !== null && n !== displayed!.chapter) {
-          if (this.dedup('correct-ch:' + n, now)) return false
-          this.fire({ kind: 'correction-chapter', utterance: text, value: n, ts: now })
-          this.cb.onChapterCorrection(n)
-          return true
-        }
-      }
 
       // ---- display control ----
-      if (/\b(take (that|it) down|clear the screen|take it off)\b/.test(t)) {
+      if (this.hasAny(padded, raw, c.dismiss)) {
         if (this.dedup('dismiss', now)) return false
         this.fire({ kind: 'display-dismiss', utterance: text, ts: now })
         this.cb.onDismiss()
         return true
       }
-      if (/\b(leave (that|it) up|keep (that|it) up|keep it there)\b/.test(t)) {
+      if (this.hasAny(padded, raw, c.hold)) {
         if (this.dedup('hold', now)) return false
         this.fire({ kind: 'display-hold', utterance: text, ts: now })
         this.cb.onHold()
@@ -190,6 +216,21 @@ export class VoiceCommandEngine {
     }
 
     return false
+  }
+
+  /** Index just AFTER the first matching trigger phrase, or null. */
+  private findTrigger(words: string[], triggers: string[]): number | null {
+    for (const trigger of triggers) {
+      const tw = normalizeWords(trigger)
+      if (tw.length === 0) continue
+      outer: for (let i = 0; i + tw.length <= words.length; i++) {
+        for (let k = 0; k < tw.length; k++) {
+          if (words[i + k] !== tw[k]) continue outer
+        }
+        return i + tw.length
+      }
+    }
+    return null
   }
 
   private dedup(key: string, now: number): boolean {

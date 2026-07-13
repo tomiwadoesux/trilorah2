@@ -235,5 +235,11 @@ contextBridge.exposeInMainWorld('api', {
     const subscription = (_event: IpcRendererEvent, s: string) => callback(s)
     ipcRenderer.on('on-asr-status', subscription)
     return () => ipcRenderer.removeListener('on-asr-status', subscription)
-  }
+  },
+
+  // Multilingual + configurable phrases
+  getAvailableLanguages: () => ipcRenderer.invoke('get-available-languages'),
+  getVoiceCommandConfig: () => ipcRenderer.invoke('get-voice-command-config'),
+  saveVoiceCommandConfig: (userConfig: any) =>
+    ipcRenderer.invoke('save-voice-command-config', userConfig)
 })

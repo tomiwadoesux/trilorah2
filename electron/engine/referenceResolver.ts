@@ -1,15 +1,19 @@
 /**
  * Spoken scripture-reference resolver — in-process TypeScript rewrite of the
- * lost Python ml/ WebSocket resolver.
+ * lost Python ml/ WebSocket resolver, now MULTILINGUAL.
  *
  * Responsibilities (per the original spec):
  *  - state machine that buffers spoken numbers across ASR chunks
  *    ("John ... three ... sixteen")
  *  - alias resolution ("first corinthians", "1st cor", "psalm")
  *  - normalization of ordinals, number words, and filler
- *    ("the third chapter of John and verse five")
  *  - book-name stripping before number extraction
  *    (prevents "1 John 3:16" from reading the "1" as a chapter)
+ *
+ * Language packs (electron/engine/lang/) extend every table with native
+ * book names, number words, and chapter/verse keywords — English always
+ * stays active underneath so bilingual preachers can code-switch.
+ * Chinese uses a dedicated substring path (no word boundaries).
  *
  * It exposes the exact surface main.ts used for the Python client
  * (connectML / sendTranscript / disconnectML) so the fan-out wiring is
@@ -17,6 +21,7 @@
  */
 
 import { bookIdMap } from '../data/books'
+import { chineseNumberValue, type LanguagePack } from './lang'
 
 export interface ResolvedReference {
   type: 'verse'
@@ -37,19 +42,15 @@ type VerseCallback = (data: ResolvedReference) => void
 export type BareBookGate = () => boolean
 
 /* ------------------------------------------------------------------ */
-/* Number-word parsing                                                 */
+/* English number tables (base layer for every language)               */
 /* ------------------------------------------------------------------ */
 
-const ONES: Record<string, number> = {
+const EN_NUMBER_WORDS: Record<string, number> = {
   zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
   eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
   fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
-  nineteen: 19
-}
-
-const TENS: Record<string, number> = {
-  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
-  eighty: 80, ninety: 90
+  nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
+  seventy: 70, eighty: 80, ninety: 90, hundred: 100
 }
 
 const ORDINALS: Record<string, number> = {
@@ -57,12 +58,15 @@ const ORDINALS: Record<string, number> = {
   eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12
 }
 
-/** Parse a number starting at words[i].
- *  Handles digits ("23"), number words ("twenty three"),
- *  "a hundred (and) nineteen", and returns how many words were consumed. */
-export function parseSpokenNumber(
+/** Table-driven spoken-number parser.
+ *  Handles digits ("23"), atomic words ("dieciséis"), tens+unit
+ *  ("twenty three", "treinta y cuatro"), and hundreds
+ *  ("one hundred and nineteen", "cento e dezenove"). */
+function parseNumberWithTable(
   words: string[],
-  i: number
+  i: number,
+  table: Record<string, number>,
+  connectors: Set<string>
 ): { value: number; consumed: number } | null {
   const w = words[i]
   if (w === undefined) return null
@@ -71,49 +75,129 @@ export function parseSpokenNumber(
     return { value: parseInt(w, 10), consumed: 1 }
   }
 
-  let value = 0
+  let total = 0
   let consumed = 0
   let j = i
 
-  // "(a|one) hundred (and)? ..."
-  if ((words[j] === 'a' || words[j] === 'one') && words[j + 1] === 'hundred') {
-    value = 100
+  // hundreds: "[unit] hundred" | "a hundred" | bare hundred-word
+  const v0 = table[words[j]]
+  if (v0 !== undefined && v0 > 0 && v0 < 10 && table[words[j + 1]] === 100) {
+    total = v0 * 100
     consumed = 2
     j += 2
-  } else if (words[j] === 'hundred') {
-    value = 100
+  } else if (words[j] === 'a' && table[words[j + 1]] === 100) {
+    total = 100
+    consumed = 2
+    j += 2
+  } else if (table[words[j]] === 100) {
+    total = 100
     consumed = 1
     j += 1
-  } else if (ONES[words[j]] !== undefined && words[j + 1] === 'hundred') {
-    value = ONES[words[j]] * 100
-    consumed = 2
-    j += 2
   }
 
-  if (consumed > 0 && words[j] === 'and') {
+  if (consumed > 0 && connectors.has(words[j])) {
     consumed += 1
     j += 1
   }
 
-  if (words[j] !== undefined && TENS[words[j]] !== undefined) {
-    value += TENS[words[j]]
+  const v = table[words[j]]
+  if (v !== undefined && v >= 20 && v < 100 && v % 10 === 0) {
+    // tens, optionally followed by (connector +) unit: "treinta y cuatro"
+    total += v
     consumed += 1
     j += 1
-    if (words[j] !== undefined && ONES[words[j]] !== undefined && ONES[words[j]] < 10) {
-      value += ONES[words[j]]
-      consumed += 1
+    let k = j
+    let extra = 0
+    if (connectors.has(words[k]) && table[words[k + 1]] !== undefined) {
+      k += 1
+      extra = 1
     }
-    return { value, consumed }
+    const u = table[words[k]]
+    if (u !== undefined && u > 0 && u < 10) {
+      total += u
+      consumed += 1 + extra
+    }
+    return { value: total, consumed }
   }
 
-  if (words[j] !== undefined && ONES[words[j]] !== undefined) {
-    value += ONES[words[j]]
+  if (v !== undefined && v < 100) {
+    total += v
     consumed += 1
-    return { value, consumed }
+    return { value: total, consumed }
   }
 
-  if (consumed > 0) return { value, consumed }
+  if (consumed > 0) return { value: total, consumed }
   return null
+}
+
+/** English-table parser — kept as the stable exported surface. */
+export function parseSpokenNumber(
+  words: string[],
+  i: number
+): { value: number; consumed: number } | null {
+  return parseNumberWithTable(words, i, EN_NUMBER_WORDS, new Set(['and']))
+}
+
+/** Language-aware parser factory (English base + pack words/connectors). */
+export function makePackNumberParser(
+  pack: LanguagePack | null
+): (words: string[], i: number) => { value: number; consumed: number } | null {
+  if (!pack) return parseSpokenNumber
+  const table = { ...EN_NUMBER_WORDS, ...pack.numberWords }
+  const connectors = new Set(['and', ...pack.numberConnectors])
+  const compounds = [...pack.numberCompounds].sort((a, b) => b.length - a.length)
+  return (words, i) => {
+    // The voice-command engine hands us raw normalized words — merge the
+    // pack's number compounds locally before parsing.
+    const merged = mergeCompounds(words, compounds)
+    // Re-locate index i after merging (compounds only ever shrink AFTER i
+    // when they start at/after i; conservative approach: if lengths differ,
+    // parse on the merged array at the recomputed position).
+    if (merged.length === words.length) {
+      return parseNumberWithTable(words, i, table, connectors)
+    }
+    let pos = 0
+    let consumedRaw = 0
+    for (const token of merged) {
+      const span = token.length > 0 ? countSpan(words, consumedRaw, token, compounds) : 1
+      if (consumedRaw >= i) break
+      consumedRaw += span
+      pos++
+    }
+    const result = parseNumberWithTable(merged, pos, table, connectors)
+    if (!result) return null
+    // Map consumed merged-tokens back to raw-word count.
+    let rawCount = 0
+    let scan = i
+    for (let k = 0; k < result.consumed; k++) {
+      const span = countSpan(words, scan, merged[pos + k], compounds)
+      rawCount += span
+      scan += span
+    }
+    return { value: result.value, consumed: rawCount }
+  }
+}
+
+/** How many raw words the (possibly merged) token spans at position `at`. */
+function countSpan(
+  words: string[],
+  at: number,
+  token: string,
+  compounds: string[][]
+): number {
+  for (const seq of compounds) {
+    if (seq.join('') === token) {
+      let ok = true
+      for (let k = 0; k < seq.length; k++) {
+        if (words[at + k] !== seq[k]) {
+          ok = false
+          break
+        }
+      }
+      if (ok) return seq.length
+    }
+  }
+  return 1
 }
 
 /** Parse a single free-standing token that might be a number ("34", "thirty"). */
@@ -126,7 +210,7 @@ export function parseNumberToken(text: string): number | null {
 }
 
 /* ------------------------------------------------------------------ */
-/* Book alias table                                                    */
+/* English book alias table (base layer)                               */
 /* ------------------------------------------------------------------ */
 
 const NUMBER_PREFIX: Record<string, string> = {
@@ -183,7 +267,7 @@ interface BookAlias {
   canonical: string
 }
 
-function buildAliasTable(): BookAlias[] {
+function buildAliasTable(pack: LanguagePack | null): BookAlias[] {
   const aliases: BookAlias[] = []
   const add = (alias: string, canonical: string) => {
     const words = normalizeWords(alias)
@@ -208,25 +292,72 @@ function buildAliasTable(): BookAlias[] {
     }
   }
 
+  // Language pack aliases layer on top of English (code-switch friendly).
+  if (pack && pack.matchMode === 'words') {
+    for (const [canonical, list] of Object.entries(pack.bookAliases)) {
+      for (const alias of list) add(alias, canonical)
+    }
+  }
+
   // Longest alias first so "1 john" wins over "john", "song of songs" over "song"
   aliases.sort((a, b) => b.words.length - a.words.length)
   return aliases
 }
 
-const ALIAS_TABLE = buildAliasTable()
-
 /* ------------------------------------------------------------------ */
 /* Normalization                                                       */
 /* ------------------------------------------------------------------ */
 
-/** Lowercase, expand "3:16" → "3 16", strip punctuation, split. */
+/** Fold Latin diacritics only (é→e) — leaves Devanagari/CJK untouched. */
+function foldLatin(text: string): string {
+  return text.replace(/[À-ÖØ-öø-ž]/g, (ch) =>
+    ch.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  )
+}
+
+/** Lowercase, fold Latin diacritics, expand "3:16" → "3 16", strip
+ *  punctuation (Unicode-aware — keeps letters, digits, AND combining
+ *  marks: Devanagari vowel signs are \p{M}, stripping them would mangle
+ *  Hindi; Latin accents were already folded away above). */
 export function normalizeWords(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/(\d+):(\d+)/g, '$1 $2')
-    .replace(/[^a-z0-9\s]/g, ' ')
+  return foldLatin(text.toLowerCase())
+    .replace(/(\d+)[:：](\d+)/g, '$1 $2')
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
     .split(/\s+/)
     .filter((w) => w.length > 0)
+}
+
+/** Merge multi-word number compounds into joined atomic tokens
+ *  (French "quatre vingt dix neuf" → "quatrevingtdixneuf"). */
+function mergeCompounds(words: string[], compounds: string[][]): string[] {
+  if (compounds.length === 0) return words
+  const out: string[] = []
+  let i = 0
+  while (i < words.length) {
+    let merged = false
+    for (const seq of compounds) {
+      if (seq.length > 1 && i + seq.length <= words.length) {
+        let ok = true
+        for (let k = 0; k < seq.length; k++) {
+          if (words[i + k] !== seq[k]) {
+            ok = false
+            break
+          }
+        }
+        if (ok) {
+          out.push(seq.join(''))
+          i += seq.length
+          merged = true
+          break
+        }
+      }
+    }
+    if (!merged) {
+      out.push(words[i])
+      i++
+    }
+  }
+  return out
 }
 
 interface BookMatch {
@@ -235,51 +366,38 @@ interface BookMatch {
   end: number // exclusive
 }
 
-/** Find book-name matches in the word stream (longest alias wins, no overlap). */
-function findBookMatches(words: string[]): BookMatch[] {
-  const matches: BookMatch[] = []
-  const taken = new Array<boolean>(words.length).fill(false)
-  for (const alias of ALIAS_TABLE) {
-    const n = alias.words.length
-    for (let i = 0; i + n <= words.length; i++) {
-      let ok = true
-      for (let k = 0; k < n; k++) {
-        if (taken[i + k] || words[i + k] !== alias.words[k]) {
-          ok = false
-          break
-        }
-      }
-      // Guard: a bare ordinal word ("first") followed by a stem was already
-      // handled by the alias itself; nothing extra needed here.
-      if (ok) {
-        for (let k = 0; k < n; k++) taken[i + k] = true
-        matches.push({ canonical: alias.canonical, start: i, end: i + n })
-      }
-    }
-  }
-  matches.sort((a, b) => a.start - b.start)
-  return matches
-}
-
 /* ------------------------------------------------------------------ */
 /* The resolver state machine                                          */
 /* ------------------------------------------------------------------ */
 
 const PENDING_TTL_MS = 8000
 const DEDUP_WINDOW_MS = 4000
-const FILLER = new Set(['uh', 'um', 'ah', 'the', 'now', 'so', 'okay', 'well'])
+const EN_FILLER = ['uh', 'um', 'ah', 'the', 'now', 'so', 'okay', 'well']
 
 export interface ResolverOptions {
   /** Consulted before emitting a bare book mention. Default: allow. */
   bareBookGate?: BareBookGate
   /** Injectable clock for tests. */
   now?: () => number
+  /** Active language pack (English base always stays on). */
+  pack?: LanguagePack | null
 }
 
 export class SpokenReferenceResolver {
   private onDetection: VerseCallback
   private bareBookGate: BareBookGate
   private now: () => number
+
+  private aliasTable: BookAlias[]
+  private numberTable: Record<string, number>
+  private compounds: string[][]
+  private connectors: Set<string>
+  private chapterWords: Set<string>
+  private verseWords: Set<string>
+  private rangeWords: Set<string>
+  private fillers: Set<string>
+  private substringPack: LanguagePack | null
+  private substringAliases: Array<{ alias: string; canonical: string }> = []
 
   private pendingBook: string | null = null
   private pendingChapter: number | null = null
@@ -292,6 +410,24 @@ export class SpokenReferenceResolver {
     this.onDetection = onDetection
     this.bareBookGate = opts.bareBookGate ?? (() => true)
     this.now = opts.now ?? Date.now
+    const pack = opts.pack ?? null
+
+    this.aliasTable = buildAliasTable(pack)
+    this.numberTable = { ...EN_NUMBER_WORDS, ...(pack?.numberWords ?? {}) }
+    this.compounds = [...(pack?.numberCompounds ?? [])].sort(
+      (a, b) => b.length - a.length
+    )
+    this.connectors = new Set(['and', ...(pack?.numberConnectors ?? [])])
+    this.chapterWords = new Set(['chapter', ...(pack?.chapterWords ?? [])])
+    this.verseWords = new Set(['verse', 'verses', ...(pack?.verseWords ?? [])])
+    this.rangeWords = new Set(['to', 'through', 'thru', ...(pack?.rangeWords ?? [])])
+    this.fillers = new Set([...EN_FILLER, ...(pack?.fillers ?? [])])
+    this.substringPack = pack?.matchMode === 'substring' ? pack : null
+    if (this.substringPack) {
+      this.substringAliases = Object.entries(this.substringPack.bookAliases)
+        .flatMap(([canonical, list]) => list.map((alias) => ({ alias, canonical })))
+        .sort((a, b) => b.alias.length - a.alias.length)
+    }
   }
 
   reset(): void {
@@ -307,9 +443,15 @@ export class SpokenReferenceResolver {
       this.reset()
     }
 
-    const rawWords = normalizeWords(text)
+    // Chinese path first (no word boundaries); the word path still runs
+    // afterward so English code-switching keeps working.
+    if (this.substringPack) {
+      this.processSubstring(text, now)
+    }
+
+    const rawWords = mergeCompounds(normalizeWords(text), this.compounds)
     if (rawWords.length === 0) return
-    const books = findBookMatches(rawWords)
+    const books = this.findBookMatches(rawWords)
 
     // Strip book-name words BEFORE number extraction, so "1 John 3 16"
     // never reads the leading "1" as a number.
@@ -319,7 +461,7 @@ export class SpokenReferenceResolver {
     while (wi < rawWords.length) {
       const b = books[bi]
       if (b && wi === b.start) {
-        stripped.push({ word: ' BOOK', bookBoundary: b })
+        stripped.push({ word: ' BOOK', bookBoundary: b })
         wi = b.end
         bi++
       } else {
@@ -331,13 +473,79 @@ export class SpokenReferenceResolver {
     this.walk(stripped, isFinal, now)
   }
 
+  /** Find book-name matches in the word stream (longest alias wins, no overlap). */
+  private findBookMatches(words: string[]): BookMatch[] {
+    const matches: BookMatch[] = []
+    const taken = new Array<boolean>(words.length).fill(false)
+    for (const alias of this.aliasTable) {
+      const n = alias.words.length
+      for (let i = 0; i + n <= words.length; i++) {
+        let ok = true
+        for (let k = 0; k < n; k++) {
+          if (taken[i + k] || words[i + k] !== alias.words[k]) {
+            ok = false
+            break
+          }
+        }
+        if (ok) {
+          for (let k = 0; k < n; k++) taken[i + k] = true
+          matches.push({ canonical: alias.canonical, start: i, end: i + n })
+        }
+      }
+    }
+    matches.sort((a, b) => a.start - b.start)
+    return matches
+  }
+
+  private parseNum(
+    words: string[],
+    i: number
+  ): { value: number; consumed: number } | null {
+    return parseNumberWithTable(words, i, this.numberTable, this.connectors)
+  }
+
+  /* ------------- Chinese substring path ("约翰福音3章16节") ------------- */
+
+  private processSubstring(text: string, now: number): void {
+    const NUM = '[0-9〇零一二三四五六七八九十百]+'
+    for (const { alias, canonical } of this.substringAliases) {
+      let from = 0
+      while (true) {
+        const idx = text.indexOf(alias, from)
+        if (idx === -1) break
+        from = idx + alias.length
+        const rest = text.slice(idx + alias.length)
+        // "3章16节" | "三章十六节" | "23篇" (Psalms) | "3:16"
+        let m = rest.match(
+          new RegExp(
+            `^\\s*第?(${NUM})[章篇][\\s,，]*(?:第?(${NUM})[节節])?(?:[到至](${NUM})[节節]?)?`
+          )
+        )
+        if (!m) {
+          m = rest.match(/^\s*([0-9]+)[:：]([0-9]+)(?:[-到至]([0-9]+))?/)
+        }
+        if (m) {
+          const chapter = chineseNumberValue(m[1])
+          const verse = m[2] !== undefined ? chineseNumberValue(m[2]) : null
+          const rangeEnd = m[3] !== undefined ? chineseNumberValue(m[3]) : null
+          if (chapter !== null) {
+            this.emit(canonical, chapter, verse, rangeEnd, verse !== null ? 0.95 : 0.9, now)
+          }
+        } else if (this.bareBookGate()) {
+          this.emit(canonical, null, null, null, 0.9, now)
+        }
+      }
+    }
+  }
+
+  /* ---------------------- word-mode walk ---------------------- */
+
   private walk(
     tokens: { word: string; bookBoundary: BookMatch | null }[],
     isFinal: boolean,
     now: number
   ): void {
     let i = 0
-    let sawExplicitKeyword = false
 
     while (i < tokens.length) {
       const t = tokens[i]
@@ -365,18 +573,21 @@ export class SpokenReferenceResolver {
         continue
       }
 
-      if (t.word === 'chapter') {
-        sawExplicitKeyword = true
-        const num = parseSpokenNumber(tokens.map((x) => x.word), i + 1)
+      if (this.chapterWords.has(t.word)) {
+        const num = this.parseNum(tokens.map((x) => x.word), i + 1)
         if (num && this.pendingBook) {
           this.pendingChapter = num.value
           this.pendingAt = now
           i += 1 + num.consumed
           // "chapter three verse sixteen" | "chapter three and verse sixteen"
           let j = i
-          while (j < tokens.length && (tokens[j].word === 'and' || FILLER.has(tokens[j].word))) j++
-          if (tokens[j]?.word === 'verse' || tokens[j]?.word === 'verses') {
-            const v = parseSpokenNumber(tokens.map((x) => x.word), j + 1)
+          while (
+            j < tokens.length &&
+            (this.connectors.has(tokens[j].word) || this.fillers.has(tokens[j].word))
+          )
+            j++
+          if (tokens[j] && this.verseWords.has(tokens[j].word)) {
+            const v = this.parseNum(tokens.map((x) => x.word), j + 1)
             if (v) {
               const range = this.readRange(tokens, j + 1 + v.consumed)
               this.emit(this.pendingBook, num.value, v.value, range, 0.95, now)
@@ -393,7 +604,7 @@ export class SpokenReferenceResolver {
         const prev = tokens[i - 1]?.word
         if (prev && ORDINALS[prev] !== undefined) {
           let j = i + 1
-          while (j < tokens.length && tokens[j].word === 'of') j++
+          while (j < tokens.length && (tokens[j].word === 'of' || this.fillers.has(tokens[j].word))) j++
           if (tokens[j]?.bookBoundary) {
             const book = tokens[j].bookBoundary!.canonical
             this.pendingBook = book
@@ -408,9 +619,8 @@ export class SpokenReferenceResolver {
         continue
       }
 
-      if (t.word === 'verse' || t.word === 'verses') {
-        sawExplicitKeyword = true
-        const num = parseSpokenNumber(tokens.map((x) => x.word), i + 1)
+      if (this.verseWords.has(t.word)) {
+        const num = this.parseNum(tokens.map((x) => x.word), i + 1)
         if (num) {
           const rangeEnd = this.readRange(tokens, i + 1 + num.consumed)
           if (this.pendingBook && this.pendingChapter) {
@@ -436,11 +646,11 @@ export class SpokenReferenceResolver {
 
       // Number continuation after a pending book: "John ... three ... sixteen"
       if (this.pendingBook) {
-        const num = parseSpokenNumber(tokens.map((x) => x.word), i)
+        const num = this.parseNum(tokens.map((x) => x.word), i)
         if (num) {
           if (this.pendingChapter === null) {
             // Two consecutive numbers = chapter + verse ("three sixteen")
-            const second = parseSpokenNumber(tokens.map((x) => x.word), i + num.consumed)
+            const second = this.parseNum(tokens.map((x) => x.word), i + num.consumed)
             if (second) {
               this.emit(this.pendingBook, num.value, second.value, null, 0.88, now)
               i += num.consumed + second.consumed
@@ -461,9 +671,6 @@ export class SpokenReferenceResolver {
         }
       }
 
-      if (!FILLER.has(t.word) && !sawExplicitKeyword && !this.pendingBook) {
-        // plain speech, nothing pending — fall through
-      }
       i++
     }
   }
@@ -476,19 +683,23 @@ export class SpokenReferenceResolver {
     const words = tokens.map((x) => x.word)
     let i = start
     let explicit = false
-    while (i < tokens.length && FILLER.has(words[i])) i++
-    if (words[i] === 'chapter') {
+    while (i < tokens.length && this.fillers.has(words[i])) i++
+    if (this.chapterWords.has(words[i])) {
       explicit = true
       i++
     }
-    const chap = parseSpokenNumber(words, i)
+    const chap = this.parseNum(words, i)
     if (!chap) return null
     i += chap.consumed
     let j = i
-    while (j < tokens.length && (words[j] === 'and' || FILLER.has(words[j]))) j++
-    if (words[j] === 'verse' || words[j] === 'verses') {
+    while (
+      j < tokens.length &&
+      (this.connectors.has(words[j]) || this.fillers.has(words[j]))
+    )
+      j++
+    if (this.verseWords.has(words[j])) {
       explicit = true
-      const v = parseSpokenNumber(words, j + 1)
+      const v = this.parseNum(words, j + 1)
       if (v) {
         const rangeEnd = this.readRange(tokens, j + 1 + v.consumed)
         return {
@@ -500,7 +711,7 @@ export class SpokenReferenceResolver {
         }
       }
     }
-    const v2 = parseSpokenNumber(words, i)
+    const v2 = this.parseNum(words, i)
     if (v2) {
       const rangeEnd = this.readRange(tokens, i + v2.consumed)
       return {
@@ -514,14 +725,14 @@ export class SpokenReferenceResolver {
     return { chapter: chap.value, verse: null, rangeEnd: null, consumed: i - start, explicit }
   }
 
-  /** "to five" / "through five" / "thru 5" immediately after a verse number. */
+  /** "to five" / "through five" / "al cinco" immediately after a verse number. */
   private readRange(
     tokens: { word: string; bookBoundary: BookMatch | null }[],
     at: number
   ): number | null {
     const words = tokens.map((x) => x.word)
-    if (words[at] === 'to' || words[at] === 'through' || words[at] === 'thru') {
-      const n = parseSpokenNumber(words, at + 1)
+    if (this.rangeWords.has(words[at])) {
+      const n = this.parseNum(words, at + 1)
       if (n) return n.value
     }
     return null
@@ -564,15 +775,33 @@ export class SpokenReferenceResolver {
 /* ------------------------------------------------------------------ */
 
 let resolver: SpokenReferenceResolver | null = null
+let onVerseCb: ((data: any) => void) | null = null
 let gate: BareBookGate = () => true
+let activePack: LanguagePack | null = null
 
 /** Lets main.ts wire the intent engine in after construction. */
 export function setBareBookGate(g: BareBookGate): void {
   gate = g
 }
 
+/** Switch the resolver's language pack live (null = English only). */
+export function setResolverLanguage(pack: LanguagePack | null): void {
+  activePack = pack
+  if (onVerseCb) {
+    resolver = new SpokenReferenceResolver(onVerseCb, {
+      bareBookGate: () => gate(),
+      pack: activePack
+    })
+    console.log(`🌍 Resolver language: ${pack ? `${pack.label} (${pack.code}) + English` : 'English'}`)
+  }
+}
+
 export function connectML(onVerse: (data: any) => void): void {
-  resolver = new SpokenReferenceResolver(onVerse, { bareBookGate: () => gate() })
+  onVerseCb = onVerse
+  resolver = new SpokenReferenceResolver(onVerse, {
+    bareBookGate: () => gate(),
+    pack: activePack
+  })
   console.log('🧠 In-process reference resolver ready (Python ML replaced)')
 }
 
@@ -583,4 +812,5 @@ export function sendTranscript(text: string, isFinal = false): void {
 
 export function disconnectML(): void {
   resolver = null
+  onVerseCb = null
 }
