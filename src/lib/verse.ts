@@ -1,0 +1,77 @@
+/** Helpers for turning engine verse detections into readable text. */
+
+export function formatRef(d: VerseDetection): string {
+  const base = `${d.book} ${d.chapter}`;
+  if (d.verse == null) return base;
+  const range = d.endVerse && d.endVerse !== d.verse ? `–${d.endVerse}` : '';
+  return `${base}:${d.verse}${range}`;
+}
+
+export function sameRef(a: VerseDetection, b: VerseDetection): boolean {
+  return (
+    a.book === b.book &&
+    a.chapter === b.chapter &&
+    a.verse === b.verse &&
+    (a.endVerse ?? null) === (b.endVerse ?? null)
+  );
+}
+
+/**
+ * Fetch the full text for a detection via searchVerse.
+ * Ranges are joined verse-by-verse (bounded, so a mis-detected "1–150"
+ * cannot flood the display). Returns null when the engine is absent or
+ * the reference is chapter-only.
+ */
+export async function fetchVerseText(d: VerseDetection): Promise<string | null> {
+  const api = window.api;
+  if (!api || d.verse == null) return null;
+  const start = d.verse;
+  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 11) : start;
+  const parts: string[] = [];
+  for (let v = start; v <= end; v++) {
+    try {
+      const res = await api.searchVerse(d.book, d.chapter, v, d.version);
+      if (res?.success && res.data?.text) parts.push(res.data.text);
+      else break;
+    } catch {
+      break;
+    }
+  }
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
+export function describeVoiceCommand(e: VoiceCommandEvent): string {
+  switch (e.kind) {
+    case 'version-switch':
+      return `switched to ${e.value ?? 'version'}`;
+    case 'correction-verse':
+      return `corrected verse to ${e.value ?? '?'}`;
+    case 'correction-chapter':
+      return `corrected chapter to ${e.value ?? '?'}`;
+    case 'navigate-next':
+      return 'next verse';
+    case 'navigate-previous':
+      return 'previous verse';
+    case 'display-dismiss':
+      return 'dismissed display';
+    case 'display-hold':
+      return 'holding display';
+    case 'prayer-start':
+      return 'prayer began — display suppressed';
+    case 'prayer-end':
+      return 'prayer ended — display restored';
+    default:
+      return e.value != null ? `${e.kind} → ${e.value}` : e.kind;
+  }
+}
+
+export function clockTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/** Render a 0..1 fraction (or an already-percent number) as "94%". */
+export function pct(v: number | null | undefined): string {
+  if (v == null || Number.isNaN(v)) return '—';
+  const n = v <= 1 ? v * 100 : v;
+  return `${Math.round(n)}%`;
+}

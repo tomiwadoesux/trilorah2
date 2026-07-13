@@ -1,0 +1,91 @@
+/*
+ * Projector / stream output surface.
+ * Transparent page; white serif scripture with a soft shadow for legibility
+ * over whatever the projection or stream background is.
+ */
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+#output-root {
+  position: fixed;
+  inset: 0;
+}
+
+.output-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 7vw;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+
+.output-stage.visible {
+  opacity: 1;
+}
+
+.output-verse {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 4.5vw, 6vw);
+  line-height: 1.4;
+  color: #ffffff;
+  text-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.6),
+    0 0 3px rgba(0, 0, 0, 0.5);
+  max-width: 62ch;
+}
+
+.output-ref {
+  margin-top: 4vh;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.08em;
+  font-size: clamp(1.1rem, 1.8vw, 2.4vw);
+  color: #ffffff;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.output-version {
+  margin-left: 0.9em;
+  font-variant-caps: normal;
+  font-family: system-ui, sans-serif;
+  font-size: 0.55em;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.output-preview-mark {
+  position: absolute;
+  top: 4vh;
+  right: 4vw;
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Barely-there hint when opened in a plain browser (no engine). */
+.output-disconnected {
+  position: absolute;
+  bottom: 3vh;
+  width: 100%;
+  text-align: center;
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(127, 127, 127, 0.4);
+}

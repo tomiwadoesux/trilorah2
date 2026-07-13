@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — the entire palette.
+ * Near-white paper, near-black ink, one muted accent for live/active
+ * states, hairline separators. Nothing else.
+ */
+@theme {
+  --color-paper: #fafaf8;
+  --color-ink: #141414;
+  --color-accent: #2f5d3a;
+  --color-hairline: #e5e3de;
+
+  --font-scripture: Georgia, "Times New Roman", serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-paper);
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family:
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Quiet, consistent form fields: a hairline underneath, nothing more. */
+  input,
+  select,
+  textarea {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--color-hairline);
+    border-radius: 0;
+    padding: 0.25rem 0;
+    font: inherit;
+    color: inherit;
+    outline: none;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-bottom-color: var(--color-ink);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in srgb, var(--color-ink) 30%, transparent);
+  }
+
+  button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+}
