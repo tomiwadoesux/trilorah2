@@ -1,0 +1,120 @@
+{
+  "worship": {
+    "enter": [
+      "let's worship",
+      "let us worship",
+      "stand with me as we worship",
+      "lift your hands",
+      "as we enter into worship",
+      "praise team",
+      "let's sing",
+      "let us sing",
+      "sing it with me",
+      "come on church let's praise"
+    ],
+    "exit": [
+      "you may be seated",
+      "you can be seated",
+      "please be seated",
+      "take your seats",
+      "amen you may sit"
+    ]
+  },
+  "announcements": {
+    "enter": [
+      "a few announcements",
+      "quick announcements",
+      "before we continue a few things",
+      "coming up this week",
+      "mark your calendars",
+      "on the calendar",
+      "this coming week",
+      "our announcements"
+    ],
+    "exit": [
+      "that's all the announcements",
+      "those are the announcements",
+      "now let's continue"
+    ]
+  },
+  "offering": {
+    "enter": [
+      "time of giving",
+      "tithes and offerings",
+      "tithe and offering",
+      "as we give",
+      "prepare your offering",
+      "giving time",
+      "you can give online",
+      "receive the offering",
+      "bring your tithes"
+    ],
+    "exit": [
+      "thank you for giving",
+      "thank you for your generosity"
+    ]
+  },
+  "sermon": {
+    "enter": [
+      "open your bibles",
+      "turn with me to",
+      "turn in your bibles",
+      "the word of the lord",
+      "today's message",
+      "my message today",
+      "i want to preach",
+      "the title of my message",
+      "let's go to the word",
+      "if you have your bible",
+      "receive the word"
+    ],
+    "exit": [
+      "in closing",
+      "as i close",
+      "let me close with this",
+      "finally brothers and sisters"
+    ]
+  },
+  "altar-call": {
+    "enter": [
+      "every head bowed",
+      "with every eye closed",
+      "if you're here today and",
+      "come to the altar",
+      "come down to the front",
+      "give your life to christ",
+      "accept jesus today",
+      "raise your hand if",
+      "altar call"
+    ],
+    "exit": [
+      "welcome to the family of god",
+      "you may return to your seats"
+    ]
+  },
+  "closing": {
+    "enter": [
+      "before we go",
+      "as we close",
+      "closing prayer",
+      "benediction",
+      "the lord bless you and keep you",
+      "go in peace",
+      "have a blessed week",
+      "see you next sunday",
+      "until next week"
+    ]
+  },
+  "prayer": {
+    "enter": [
+      "let us pray",
+      "let's pray together",
+      "join me in prayer",
+      "bow your heads with me",
+      "father we come before you"
+    ],
+    "exit": [
+      "amen"
+    ]
+  }
+}

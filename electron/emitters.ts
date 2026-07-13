@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron'
-import type { SegmentType, VerseDetection } from '../shared/types'
+import type { SegmentType, VerseDetection, VoiceCommandEvent } from '../shared/types'
 
 let lastRef = ''
 let lastTime = 0
@@ -74,4 +74,34 @@ export function emitVerseAutoDismiss(): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-verse-auto-dismiss')
   })
+}
+
+/* ---------------- added post-recovery (agentic feature set) ---------------- */
+
+function broadcast(channel: string, payload?: unknown): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.webContents.send(channel, payload)
+  })
+}
+
+export function emitVoiceCommand(event: VoiceCommandEvent): void {
+  broadcast('on-voice-command', event)
+}
+
+export function emitVersionChanged(version: string): void {
+  broadcast('on-version-changed', version)
+}
+
+export function emitQueueUpdated(
+  queue: Array<{ ref: string; reason: string; ts: number }>
+): void {
+  broadcast('on-queue-updated', queue)
+}
+
+export function emitPrayerMode(inPrayer: boolean): void {
+  broadcast('on-prayer-mode', inPrayer)
+}
+
+export function emitIntentState(state: string): void {
+  broadcast('on-intent-state', state)
 }

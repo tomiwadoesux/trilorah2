@@ -433,7 +433,10 @@ interface WindowApi {
   getReviewItems?(): Promise<ReviewItem[]>;
   resolveReviewItem?(id: string, resolution: ReviewResolution, amendedTo?: VerseRef): Promise<void>;
   getVerseQueue?(): Promise<VerseQueueItem[]>;
+  showQueuedVerse?(ref: string): Promise<{ success: boolean }>;
   setDisplayVersion?(version: string): Promise<void>;
+  getSeasonalTheme?(): Promise<string>;
+  getNotesProviderStatus?(): Promise<{ id: string; status: string }>;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;
   onVersionChanged?(callback: (version: string) => void): Unsubscribe;
   onQueueUpdated?(callback: (queue: VerseQueueItem[]) => void): Unsubscribe;

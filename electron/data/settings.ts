@@ -61,7 +61,14 @@ export const defaults = {
   adaptToAudienceCorrections: true,
   useIncrementalNotes: true,
   deepgramKeyMasked: false,
-  hfTokenMasked: false
+  hfTokenMasked: false,
+  // --- added post-recovery (agentic feature set, 2026-07) ---
+  asrProvider: 'deepgram' as 'deepgram' | 'whisper-local',
+  notesProvider: 'cloud' as 'cloud' | 'local',
+  displayVersion: 'KJV',
+  seasonalEnabled: true,
+  graceWindowEnabled: true,
+  voiceCommandsEnabled: true
 }
 
 export type Settings = typeof defaults

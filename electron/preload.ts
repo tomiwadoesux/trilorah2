@@ -182,5 +182,58 @@ contextBridge.exposeInMainWorld('api', {
   cloudFetchAudienceSessions: () => ipcRenderer.invoke('cloud-fetch-audience-sessions'),
   cloudRunRetentionCleanup: () => ipcRenderer.invoke('cloud-run-retention-cleanup'),
   cloudVerifyPassword: (password: string) => ipcRenderer.invoke('cloud-verify-password', password),
-  cloudSignOutAllDevices: () => ipcRenderer.invoke('cloud-sign-out-all-devices')
+  cloudSignOutAllDevices: () => ipcRenderer.invoke('cloud-sign-out-all-devices'),
+
+  /* -------- agentic layer (added post-recovery) -------- */
+
+  // Per-preacher trust meter / auto-mode stats
+  getPreacherStats: (preacherId?: string) =>
+    ipcRenderer.invoke('get-preacher-stats', preacherId),
+  // End-of-service review ritual
+  getReviewItems: () => ipcRenderer.invoke('get-review-items'),
+  resolveReviewItem: (
+    id: string,
+    resolution: 'confirmed' | 'rejected' | 'amended',
+    amendedTo?: { book: string; chapter: number; verse: number | null }
+  ) => ipcRenderer.invoke('resolve-review-item', { id, resolution, amendedTo }),
+  // Mentioned-but-not-displayed queue
+  getVerseQueue: () => ipcRenderer.invoke('get-verse-queue'),
+  showQueuedVerse: (ref: string) => ipcRenderer.invoke('show-queued-verse', ref),
+  // Translation control (also reachable by the preacher's voice)
+  setDisplayVersion: (version: string) =>
+    ipcRenderer.invoke('set-display-version', version),
+  getSeasonalTheme: () => ipcRenderer.invoke('get-seasonal-theme'),
+  getNotesProviderStatus: () => ipcRenderer.invoke('get-notes-provider-status'),
+
+  onVoiceCommand: (callback: (event: any) => void) => {
+    const subscription = (_event: IpcRendererEvent, data: any) => callback(data)
+    ipcRenderer.on('on-voice-command', subscription)
+    return () => ipcRenderer.removeListener('on-voice-command', subscription)
+  },
+  onVersionChanged: (callback: (version: string) => void) => {
+    const subscription = (_event: IpcRendererEvent, v: string) => callback(v)
+    ipcRenderer.on('on-version-changed', subscription)
+    return () => ipcRenderer.removeListener('on-version-changed', subscription)
+  },
+  onQueueUpdated: (callback: (queue: any[]) => void) => {
+    const subscription = (_event: IpcRendererEvent, q: any[]) => callback(q)
+    ipcRenderer.on('on-queue-updated', subscription)
+    return () => ipcRenderer.removeListener('on-queue-updated', subscription)
+  },
+  onPrayerMode: (callback: (inPrayer: boolean) => void) => {
+    const subscription = (_event: IpcRendererEvent, p: boolean) => callback(p)
+    ipcRenderer.on('on-prayer-mode', subscription)
+    return () => ipcRenderer.removeListener('on-prayer-mode', subscription)
+  },
+  onIntentState: (callback: (state: string) => void) => {
+    const subscription = (_event: IpcRendererEvent, s: string) => callback(s)
+    ipcRenderer.on('on-intent-state', subscription)
+    return () => ipcRenderer.removeListener('on-intent-state', subscription)
+  },
+  // The engine always emitted this; the original preload never exposed it.
+  onAsrStatus: (callback: (status: string) => void) => {
+    const subscription = (_event: IpcRendererEvent, s: string) => callback(s)
+    ipcRenderer.on('on-asr-status', subscription)
+    return () => ipcRenderer.removeListener('on-asr-status', subscription)
+  }
 })

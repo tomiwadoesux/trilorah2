@@ -10,10 +10,27 @@ import {
   emitASRStatus,
   emitSegmentChanged,
   emitMediaSuggestion,
-  emitVerseAutoDismiss
+  emitVerseAutoDismiss,
+  emitVoiceCommand,
+  emitVersionChanged,
+  emitQueueUpdated,
+  emitPrayerMode,
+  emitIntentState
 } from './emitters'
-import { connectML, disconnectML, sendTranscript } from './engine/mlClient'
-import { startDeepgram, stopDeepgram } from './asr/deepgram'
+// In-process TS resolver — drop-in replacement for the lost Python ml/ service
+import {
+  connectML,
+  disconnectML,
+  sendTranscript,
+  setBareBookGate
+} from './engine/referenceResolver'
+import { resolveASRProvider, type ASRProvider } from './asr/provider'
+// (startDeepgram/stopDeepgram now flow through the provider abstraction)
+import { VoiceCommandEngine } from './engine/voiceCommands'
+import { IntentEngine } from './engine/intentEngine'
+import { CorrectionLedger } from './preachers/correctionLedger'
+import { seasonalBoost, seasonalThemeId } from './engine/seasonalPriors'
+import { resolveNotesProvider } from './llm/notesProvider'
 import { ScriptureSession } from './engine/scriptureSession'
 import { getAllSettings, getSetting, setSetting } from './data/settings'
 import { TransitionDetector } from './engine/transitionDetector'
@@ -135,8 +152,92 @@ const postServiceSummary = new PostServiceSummary()
 
 let currentPreviewData: any = null
 
+/* ---------------- agentic layer state (added post-recovery) ---------------- */
+
+let ledger: CorrectionLedger | null = null
+let voiceCommands: VoiceCommandEngine | null = null
+const intentEngine = new IntentEngine({
+  onStateChange: (state) => emitIntentState(state),
+  onReadingStarted: () => {
+    // The telepathic moment: the preacher started reading the armed verse.
+    // Auto mode pushes it live; otherwise the state change is the UI hint.
+    const preacherId = getSetting('activePreacherId')
+    if (preacherId && ledger?.stats(preacherId).autoModeEligible) {
+      pushPreviewToLive('auto (reading started)')
+    }
+  },
+  onDefer: () => console.log('🗂️ Defer window open — next detection goes to the queue')
+})
+let lastDisplayedRef: { book: string; chapter: number; verse: number; displayedAt: number } | null = null
+let lastReviewItemId: string | null = null
+const verseQueue: Array<{ ref: string; reason: string; ts: number }> = []
+let activeASR: ASRProvider | null = null
+
+function activePreacherId(): string {
+  return getSetting('activePreacherId') || ''
+}
+
+/** Preview → live, from the operator button, auto mode, or grace window. */
+function pushPreviewToLive(via: string): void {
+  if (!currentPreviewData) return
+  console.log(
+    `🔴 Pushing to LIVE (${via}):`,
+    `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
+  )
+  emitVerseDetected({ ...currentPreviewData, isPreview: false })
+  displayTimingManager.onVerseDisplayed(currentPreviewData.text)
+  intentEngine.disarmGraceWindow()
+  // Every live verse becomes a review item; unresolved ones auto-confirm at
+  // end-of-service (silence = the operator saw it and left it up).
+  if (ledger) {
+    const item = ledger.addReviewItem({
+      ts: Date.now(),
+      kind: 'detection',
+      heard: recentTranscriptBuffer.slice(-12).join(' '),
+      proposed: {
+        book: currentPreviewData.book,
+        chapter: currentPreviewData.chapter,
+        verse: currentPreviewData.verse
+      }
+    })
+    lastReviewItemId = item.id
+  }
+}
+
+/** Re-render the current verse in a different translation (voice or UI). */
+function reEmitCurrentVerseInVersion(version: string): void {
+  if (!currentPreviewData || !db) return
+  const bookId = bookIdMap[currentPreviewData.book]
+  if (bookId === undefined) return
+  try {
+    const verses: { verse: number; text: string }[] = []
+    const start = currentPreviewData.verse
+    const end = currentPreviewData.endVerse ?? currentPreviewData.verse
+    for (let v = start; v <= end; v++) {
+      const row = db
+        .prepare(
+          `SELECT verse as text FROM bible
+           WHERE Book = ? AND Chapter = ? AND Versecount = ? AND Version = ?`
+        )
+        .get(bookId, currentPreviewData.chapter, v, version) as { text: string } | undefined
+      verses.push({ verse: v, text: row?.text || `Verse ${v} not found` })
+    }
+    currentPreviewData = {
+      ...currentPreviewData,
+      text: verses.map((v) => v.text).join(' '),
+      verses,
+      version
+    }
+    emitVerseDetected(currentPreviewData)
+    emitVersionChanged(version)
+  } catch (e) {
+    console.error('❌ Version re-emit failed:', e)
+  }
+}
+
 const session = new ScriptureSession((display: any) => {
   const bookId = bookIdMap[display.book]
+  const displayVersion = getSetting('displayVersion') || 'KJV'
   const verses: { verse: number; text: string }[] = []
   if (db && bookId !== undefined) {
     try {
@@ -146,7 +247,7 @@ const session = new ScriptureSession((display: any) => {
             `SELECT verse as text FROM bible
              WHERE Book = ? AND Chapter = ? AND Versecount = ? AND Version = ?`
           )
-          .get(bookId, display.chapter, v, 'KJV') as { text: string } | undefined
+          .get(bookId, display.chapter, v, displayVersion) as { text: string } | undefined
         verses.push({
           verse: v,
           text: row?.text || `Verse ${v} not found`
@@ -165,6 +266,7 @@ const session = new ScriptureSession((display: any) => {
     verses,
     isRange: display.verseEnd !== display.verseStart,
     isPreview: display.isPreview,
+    version: displayVersion,
     // Pass range metadata
     rangeEnd: display.rangeEnd,
     chunkSize: display.chunkSize
@@ -185,15 +287,34 @@ const session = new ScriptureSession((display: any) => {
     displayTimingManager.onVerseDisplayed(detection.text)
   }
   session.setCurrentVerseText(detection.text)
+  // --- agentic layer (added post-recovery) ---
+  lastDisplayedRef = {
+    book: detection.book,
+    chapter: detection.chapter,
+    verse: detection.verse,
+    displayedAt: Date.now()
+  }
+  intentEngine.onReferenceDetected()
+  if (detection.isPreview && detection.text) {
+    const preacherId = activePreacherId()
+    const autoEligible = preacherId ? ledger?.stats(preacherId).autoModeEligible : false
+    if (getSetting('graceWindowEnabled')) {
+      // Hold as preview; goes live the moment the preacher starts reading.
+      intentEngine.armGraceWindow(refStr, detection.text)
+    } else if (autoEligible) {
+      pushPreviewToLive('auto mode')
+    }
+  }
 })
 
 let isListening = false
 
 function startASR(deviceLabel?: string) {
   if (isListening) return
-  console.log('🎤 Starting Deepgram ASR...', deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
+  activeASR = resolveASRProvider(getSetting('asrProvider'))
+  console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
   emitASRStatus('Connecting...')
-  startDeepgram(
+  activeASR.start(
     // onText callback
     (text, isFinal) => {
       console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${text}`)
@@ -206,6 +327,13 @@ function startASR(deviceLabel?: string) {
       recentTranscriptBuffer.push(...words)
       if (recentTranscriptBuffer.length > 30) {
         recentTranscriptBuffer = recentTranscriptBuffer.slice(-30)
+      }
+      // Intent engine sees everything — it tracks what the preacher is DOING.
+      intentEngine.process(text)
+      // Natural voice commands consume their chunk entirely (a version
+      // switch must not also get parsed for verse references).
+      if (isFinal && voiceCommands && getSetting('voiceCommandsEnabled')) {
+        if (voiceCommands.process(text)) return
       }
       session.processTranscript(text)
       if (transitionDetector && getSetting('agentEnabled')) {
@@ -238,7 +366,7 @@ function startASR(deviceLabel?: string) {
     },
     // onError callback
     (error) => {
-      console.error('❌ Deepgram error:', error)
+      console.error('❌ ASR error:', error)
       emitASRStatus('Error: ' + error.message)
     },
     deviceLabel
@@ -249,13 +377,44 @@ function startASR(deviceLabel?: string) {
 
 function stopASR() {
   if (!isListening) return
-  stopDeepgram()
+  ;(activeASR ?? resolveASRProvider(getSetting('asrProvider'))).stop()
+  activeASR = null
   isListening = false
   emitASRStatus('Stopped')
 }
 
 function handleMLVerseDetection(data: any) {
   console.log('🔍 Raw ML data:', JSON.stringify(data))
+  // --- agentic layer (added post-recovery) ---
+  if (voiceCommands?.isInPrayer()) {
+    console.log('🙏 Prayer mode — detection suppressed')
+    return
+  }
+  // Learned per-preacher alias: "rome and" → Romans
+  if (data.book && bookIdMap[data.book] === undefined && ledger) {
+    const alias = ledger.resolveAlias(activePreacherId(), data.book)
+    if (alias) {
+      // Stored value may be a full ref ("Romans 8:1") or a bare book name.
+      const bookOnly = alias.replace(/\s+\d+(?::\d+)?$/, '')
+      console.log(`🔤 Alias resolved: "${data.book}" → ${bookOnly}`)
+      data = { ...data, book: bookOnly }
+    }
+  }
+  // Seasonal prior: in-season chapters get a small confidence boost
+  if (getSetting('seasonalEnabled') && typeof data.confidence === 'number') {
+    const boost = seasonalBoost(data.book, data.chapter ?? null, new Date())
+    if (boost > 1) {
+      data = { ...data, confidence: Math.min(1, data.confidence * boost) }
+    }
+  }
+  // "We'll come back to that" — queue instead of display
+  if (intentEngine.shouldDefer() && data.chapter) {
+    const ref = `${data.book} ${data.chapter}:${data.verse || 1}`
+    verseQueue.push({ ref, reason: 'deferred by preacher', ts: Date.now() })
+    emitQueueUpdated(verseQueue)
+    console.log(`🗂️ Queued (deferred): ${ref}`)
+    return
+  }
   const refString = `${data.book} ${data.chapter}:${data.verse || 1}`
   if (!shouldEmit(refString)) {
     console.log('⏭️ Skipping duplicate:', refString)
@@ -311,6 +470,7 @@ function handleASRText(text: string) {
     return
   }
   sendTranscript(text, true)
+  if (voiceCommands?.isInPrayer()) return // 🙏 no quote detection during prayer
   const quoteMatcher = getQuoteMatcher()
   const quoteResults = quoteMatcher.tryDetectQuotes()
   if (quoteResults.length > 0) {
@@ -462,13 +622,58 @@ ipcMain.on('stop-listening', () => {
 })
 
 ipcMain.on('push-to-live', () => {
-  if (currentPreviewData) {
-    console.log(
-      '🔴 Pushing to LIVE:',
-      `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
-    )
-    emitVerseDetected({ ...currentPreviewData, isPreview: false })
+  pushPreviewToLive('operator')
+})
+
+/* -------- agentic layer IPC (added post-recovery) -------- */
+
+ipcMain.handle('get-preacher-stats', (_event, preacherId?: string) => {
+  if (!ledger) return []
+  const ids = preacherId ? [preacherId] : ledger.listPreacherIds()
+  const active = activePreacherId()
+  if (active && !ids.includes(active)) ids.push(active)
+  return ids.map((id) => {
+    const profile = loadProfile(id)
+    const stats = ledger!.stats(id)
+    return { ...stats, name: stats.name || profile?.name || id }
+  })
+})
+
+ipcMain.handle('get-review-items', () => {
+  return ledger?.getReviewItems() ?? []
+})
+
+ipcMain.handle(
+  'resolve-review-item',
+  (_event, { id, resolution, amendedTo }) => {
+    ledger?.resolveReviewItem(activePreacherId() || null, id, resolution, amendedTo)
+    return { success: true }
   }
+)
+
+ipcMain.handle('get-verse-queue', () => verseQueue)
+
+ipcMain.handle('show-queued-verse', (_event, ref: string) => {
+  const idx = verseQueue.findIndex((q) => q.ref === ref)
+  if (idx >= 0) verseQueue.splice(idx, 1)
+  emitQueueUpdated(verseQueue)
+  // Route through the resolver like spoken text — same display path.
+  sendTranscript(ref, true)
+  return { success: true }
+})
+
+ipcMain.handle('set-display-version', (_event, version: string) => {
+  setSetting('displayVersion', version)
+  console.log(`📖 Display translation → ${version}`)
+  reEmitCurrentVerseInVersion(version)
+  return { success: true }
+})
+
+ipcMain.handle('get-seasonal-theme', () => seasonalThemeId(new Date()))
+
+ipcMain.handle('get-notes-provider-status', async () => {
+  const provider = resolveNotesProvider(getSetting('notesProvider'))
+  return { id: provider.id, status: await provider.status() }
 })
 
 ipcMain.handle('get-chapter', (_event, { bookId, chapter, version }) => {
@@ -751,7 +956,10 @@ ipcMain.handle('save-service-summary', async () => {
 
 ipcMain.handle('generate-sermon-notes', async () => {
   const transcript = serviceAgent ? serviceAgent.getSermonText() : ''
-  return generateSermonNotes(transcript)
+  // Honors the notesProvider setting (cloud | local); local falls back to
+  // cloud until the on-device model integration graduates.
+  const provider = resolveNotesProvider(getSetting('notesProvider'))
+  return provider.generate(transcript)
 })
 
 ipcMain.handle('export-sermon-notes-pdf', async (_event, notes) => {
@@ -846,6 +1054,19 @@ ipcMain.handle(
         opts?.preacherName || preacherId,
         opts?.sermonTitle
       )
+      // Trust meter bookkeeping: unresolved review items auto-confirm
+      // (the operator watched all service; silence = consent), then the
+      // service record closes and feeds the training thermostat.
+      if (ledger) {
+        for (const item of ledger.getReviewItems()) {
+          ledger.resolveReviewItem(preacherId, item.id, 'confirmed')
+        }
+        ledger.endService(preacherId)
+        ledger.clearReview()
+        console.log(
+          `🎓 Trust meter: ${(ledger.stats(preacherId).trustLowerBound * 100).toFixed(1)}% (auto mode ${ledger.stats(preacherId).autoModeEligible ? 'ELIGIBLE' : 'not yet'})`
+        )
+      }
       console.log(`🏁 Service ended — profile updated for ${profile.name}`)
       return {
         success: true,
@@ -1278,6 +1499,83 @@ app.whenReady().then(() => {
   console.log('🧠 Connecting to ML resolver...')
   connectML(handleMLVerseDetection)
   initAliasLogger()
+  /* -------- agentic layer init (added post-recovery) -------- */
+  setBareBookGate(() => intentEngine.allowBareBook())
+  ledger = new CorrectionLedger(path.join(app.getPath('userData'), 'preacher-ledgers'))
+  voiceCommands = new VoiceCommandEngine({
+    getDisplayedRef: () => lastDisplayedRef,
+    getAvailableVersions: () => {
+      if (!db) return ['KJV']
+      try {
+        return (db.prepare('SELECT DISTINCT Version FROM bible').all() as { Version: string }[]).map(
+          (r) => r.Version
+        )
+      } catch {
+        return ['KJV']
+      }
+    },
+    onVersionSwitch: (version) => {
+      setSetting('displayVersion', version)
+      reEmitCurrentVerseInVersion(version)
+    },
+    onVerseCorrection: (verse) => {
+      const pid = activePreacherId()
+      const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
+      const heard = lastDisplayedRef
+        ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${lastDisplayedRef.verse}`
+        : ''
+      const corrected = lastDisplayedRef
+        ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${verse}`
+        : String(verse)
+      if (pid && ledger) {
+        if (lastReviewItemId && lastDisplayedRef) {
+          ledger.resolveReviewItem(pid, lastReviewItemId, 'amended', {
+            book: lastDisplayedRef.book,
+            chapter: lastDisplayedRef.chapter,
+            verse
+          })
+          lastReviewItemId = null
+        } else {
+          ledger.recordDetection(pid, false)
+          ledger.recordCorrection(pid, heard, corrected, 'voice')
+        }
+      }
+      if (session.applyVerseCorrection(verse) && wasLive) {
+        pushPreviewToLive('correction')
+      }
+    },
+    onChapterCorrection: (chapter) => {
+      const pid = activePreacherId()
+      const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
+      if (pid && ledger && lastDisplayedRef) {
+        ledger.recordDetection(pid, false)
+        ledger.recordCorrection(
+          pid,
+          `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}`,
+          `${lastDisplayedRef.book} ${chapter}`,
+          'voice'
+        )
+      }
+      if (session.applyChapterCorrection(chapter) && wasLive) {
+        pushPreviewToLive('correction')
+      }
+    },
+    onDismiss: () => {
+      emitVerseAutoDismiss()
+      intentEngine.onDisplayCleared()
+    },
+    onHold: () => {
+      if (currentPreviewData?.text) {
+        displayTimingManager.onVerseDisplayed(currentPreviewData.text)
+      }
+    },
+    onPrayerChange: (inPrayer) => {
+      emitPrayerMode(inPrayer)
+      if (inPrayer) emitVerseAutoDismiss()
+    },
+    onCommand: (event) => emitVoiceCommand(event)
+  })
+  console.log('🗣️ Voice commands + intent engine + correction ledger ready')
   const quoteMatcher = getQuoteMatcher()
   quoteMatcher.loadIndex()
   displayTimingManager.setAutoDisplayTimeout(getSetting('autoDisplayTimeout'))

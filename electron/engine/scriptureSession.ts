@@ -264,6 +264,40 @@ export class ScriptureSession {
     ].some((cmd) => text.includes(cmd))
   }
 
+  /* ---------------- CORRECTIONS (added post-recovery) ---------------- */
+
+  /**
+   * Preacher correction ("I said verse thirty-four"): a HIGH-PRIORITY
+   * interrupt. Deliberately bypasses COMMAND_DEBOUNCE_MS and any lockout —
+   * corrections arrive seconds after the wrong verse displays, exactly when
+   * debounce windows would swallow them.
+   */
+  applyVerseCorrection(verse: number): boolean {
+    if (!this.book || !this.chapter) return false
+    console.log(`✏️ Correction applied: ${this.book} ${this.chapter}:${verse}`)
+    this.clearTimers()
+    this.exitReadingMode()
+    this.startVerse = verse
+    this.endVerse = verse
+    this.currentVerse = verse
+    this.emitSingleVerse(verse)
+    return true
+  }
+
+  /** Chapter correction ("I said chapter five") — keeps the book, resets to the corrected chapter. */
+  applyChapterCorrection(chapter: number): boolean {
+    if (!this.book) return false
+    console.log(`✏️ Correction applied: ${this.book} chapter ${chapter}`)
+    this.clearTimers()
+    this.exitReadingMode()
+    this.chapter = chapter
+    this.startVerse = 1
+    this.endVerse = 1
+    this.currentVerse = 1
+    this.emitSingleVerse(1)
+    return true
+  }
+
   /* ---------------- ADVANCE/BACK LOGIC ---------------- */
 
   advance() {

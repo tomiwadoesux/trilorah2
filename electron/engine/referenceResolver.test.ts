@@ -1,0 +1,178 @@
+import { describe, it, expect } from 'vitest'
+import {
+  SpokenReferenceResolver,
+  parseSpokenNumber,
+  parseNumberToken,
+  normalizeWords,
+  type ResolvedReference
+} from './referenceResolver'
+
+function collect(opts: { gate?: () => boolean } = {}) {
+  const detections: ResolvedReference[] = []
+  let t = 1_000_000
+  const resolver = new SpokenReferenceResolver((d) => detections.push(d), {
+    bareBookGate: opts.gate ?? (() => true),
+    now: () => t
+  })
+  return {
+    detections,
+    feed: (text: string, isFinal = true) => resolver.process(text, isFinal),
+    tick: (ms: number) => {
+      t += ms
+    }
+  }
+}
+
+describe('parseSpokenNumber', () => {
+  it('parses digits, words, tens, and hundreds', () => {
+    expect(parseSpokenNumber(['16'], 0)).toEqual({ value: 16, consumed: 1 })
+    expect(parseSpokenNumber(['three'], 0)).toEqual({ value: 3, consumed: 1 })
+    expect(parseSpokenNumber(['twenty', 'three'], 0)).toEqual({ value: 23, consumed: 2 })
+    expect(parseSpokenNumber(['ninety'], 0)).toEqual({ value: 90, consumed: 1 })
+    expect(parseSpokenNumber(['one', 'hundred', 'and', 'nineteen'], 0)).toEqual({
+      value: 119,
+      consumed: 4
+    })
+  })
+  it('parseNumberToken handles full-string numbers only', () => {
+    expect(parseNumberToken('thirty four')).toBe(34)
+    expect(parseNumberToken('34')).toBe(34)
+    expect(parseNumberToken('thirty four please')).toBeNull()
+  })
+})
+
+describe('normalizeWords', () => {
+  it('expands colon references', () => {
+    expect(normalizeWords('John 3:16')).toEqual(['john', '3', '16'])
+  })
+})
+
+describe('SpokenReferenceResolver', () => {
+  it('resolves "John chapter three verse sixteen" with high confidence', () => {
+    const { detections, feed } = collect()
+    feed('turn with me to john chapter three verse sixteen')
+    const full = detections.find((d) => d.verse === 16)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('John')
+    expect(full!.chapter).toBe(3)
+    expect(full!.confidence).toBeGreaterThanOrEqual(0.95)
+  })
+
+  it('resolves "john three sixteen" (bare numbers)', () => {
+    const { detections, feed } = collect()
+    feed('john three sixteen')
+    const full = detections.find((d) => d.verse === 16)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('John')
+    expect(full!.chapter).toBe(3)
+  })
+
+  it('resolves ASR-style "john 3:16"', () => {
+    const { detections, feed } = collect()
+    feed('john 3:16')
+    expect(detections.some((d) => d.book === 'John' && d.chapter === 3 && d.verse === 16)).toBe(true)
+  })
+
+  it('buffers numbers across chunks: "john" … "three" … "sixteen"', () => {
+    const { detections, feed, tick } = collect()
+    feed('turn to the book of john')
+    tick(1500)
+    feed('chapter three')
+    tick(1500)
+    feed('verse sixteen')
+    const full = detections.find((d) => d.verse === 16)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('John')
+    expect(full!.chapter).toBe(3)
+  })
+
+  it('does NOT read the "1" of "1 John" as a chapter (book-name stripping)', () => {
+    const { detections, feed } = collect()
+    feed('first john three sixteen')
+    const full = detections.find((d) => d.verse !== null)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('1 John')
+    expect(full!.chapter).toBe(3)
+    expect(full!.verse).toBe(16)
+  })
+
+  it('resolves aliases: "first corinthians thirteen four"', () => {
+    const { detections, feed } = collect()
+    feed('first corinthians thirteen four')
+    const full = detections.find((d) => d.verse !== null)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('1 Corinthians')
+    expect(full!.chapter).toBe(13)
+    expect(full!.verse).toBe(4)
+  })
+
+  it('handles "psalm one hundred and nineteen verse eleven"', () => {
+    const { detections, feed } = collect()
+    feed('psalm one hundred and nineteen verse eleven')
+    const full = detections.find((d) => d.verse === 11)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('Psalms')
+    expect(full!.chapter).toBe(119)
+  })
+
+  it('handles ranges: "romans eight verses one to four"', () => {
+    const { detections, feed } = collect()
+    feed('romans chapter eight verses one to four')
+    const full = detections.find((d) => d.verse === 1)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('Romans')
+    expect(full!.rangeEnd).toBe(4)
+  })
+
+  it('handles "the third chapter of john"', () => {
+    const { detections, feed } = collect()
+    feed('the third chapter of john')
+    const chap = detections.find((d) => d.chapter === 3)
+    expect(chap).toBeDefined()
+    expect(chap!.book).toBe('John')
+    expect(chap!.verse).toBeNull()
+  })
+
+  it('suppresses bare book mentions when the gate says no (narrative mode)', () => {
+    const { detections, feed } = collect({ gate: () => false })
+    feed('when paul wrote to the romans he was in prison')
+    expect(detections.filter((d) => d.book === 'Romans' && d.chapter === null)).toHaveLength(0)
+  })
+
+  it('still allows explicit references through a closed gate', () => {
+    const { detections, feed } = collect({ gate: () => false })
+    feed('romans chapter five verse eight')
+    const full = detections.find((d) => d.verse === 8)
+    expect(full).toBeDefined()
+    expect(full!.book).toBe('Romans')
+    expect(full!.chapter).toBe(5)
+  })
+
+  it('dedupes identical detections within the window', () => {
+    const { detections, feed, tick } = collect()
+    feed('john three sixteen')
+    tick(1000)
+    feed('john three sixteen')
+    expect(detections.filter((d) => d.verse === 16)).toHaveLength(1)
+    tick(5000)
+    feed('john three sixteen')
+    expect(detections.filter((d) => d.verse === 16)).toHaveLength(2)
+  })
+
+  it('expires pending book state after the TTL', () => {
+    const { detections, feed, tick } = collect()
+    feed('turn to john')
+    tick(10_000)
+    feed('three sixteen')
+    // "three sixteen" with no live pending book must not invent John 3:16
+    expect(detections.filter((d) => d.verse === 16)).toHaveLength(0)
+  })
+
+  it('emits bare "verse N" updates without book context', () => {
+    const { detections, feed } = collect()
+    feed('verse twenty four')
+    const bare = detections.find((d) => d.verse === 24)
+    expect(bare).toBeDefined()
+    expect(bare!.book).toBe('')
+  })
+})

@@ -16,7 +16,7 @@ web/.next/
 
 # data artifacts (rebuilt by scripts)
 bible.db
-data/bible_index.json
+electron/data/bible_index.json
 data/models/
 
 # machine noise

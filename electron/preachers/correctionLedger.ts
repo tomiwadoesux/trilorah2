@@ -1,0 +1,287 @@
+/**
+ * Correction ledger — per-preacher learning without ML infrastructure.
+ *
+ * Every correction (operator review or the preacher's own "I said verse
+ * thirty-four") becomes a training pair. From these the ledger builds:
+ *
+ *  - a phonetic ALIAS TABLE ("rome and" → Romans) applied before detection
+ *  - a TRUST METER: Wilson lower bound on detection precision. Auto mode
+ *    unlocks at ≥95% lower bound with ≥100 samples over ≥5 services —
+ *    a lucky 20/20 does not unlock it.
+ *  - a training THERMOSTAT: <2 corrections/service for 3 straight services
+ *    → profile "mature" (stop prompting); accuracy dip → quietly reopen.
+ *
+ * Pure logic + injected storage dir so it unit-tests without Electron.
+ */
+
+import fs from 'node:fs'
+import path from 'node:path'
+import type { PreacherStats, ReviewItem } from '../../shared/types'
+
+export interface CorrectionSample {
+  heard: string
+  correctedTo: string
+  source: 'operator' | 'voice' | 'system'
+  ts: number
+}
+
+export interface ServiceRecord {
+  date: string
+  detections: number
+  confirmed: number
+  corrections: number
+}
+
+export interface LedgerData {
+  preacherId: string
+  name: string
+  samples: CorrectionSample[]
+  services: ServiceRecord[]
+  aliases: Record<string, string>
+  mature: boolean
+  reopenedAt?: number
+}
+
+const AUTO_MODE_MIN_TRUST = 0.95
+const AUTO_MODE_MIN_SAMPLES = 100
+const AUTO_MODE_MIN_SERVICES = 5
+const MATURE_MAX_CORRECTIONS = 2
+const MATURE_STREAK = 3
+const REOPEN_CORRECTIONS = 4
+
+/** Wilson score interval lower bound (z = 1.96, 95%). */
+export function wilsonLowerBound(successes: number, n: number): number {
+  if (n === 0) return 0
+  const z = 1.96
+  const p = successes / n
+  const denom = 1 + (z * z) / n
+  const centre = p + (z * z) / (2 * n)
+  const margin = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n)
+  return Math.max(0, (centre - margin) / denom)
+}
+
+/** Fold a heard string to a loose phonetic key so near-misses still match:
+ *  lowercase, strip non-letters, collapse doubles, drop trailing s,
+ *  then drop interior vowels ("rome and" → "rmnd"). */
+export function phoneticKey(text: string): string {
+  const cleaned = text
+    .toLowerCase()
+    .replace(/[^a-z]/g, '')
+    .replace(/(.)\1+/g, '$1')
+    .replace(/s$/, '')
+  if (cleaned.length <= 2) return cleaned
+  return cleaned[0] + cleaned.slice(1).replace(/[aeiou]/g, '')
+}
+
+export class CorrectionLedger {
+  private dir: string
+  private cache = new Map<string, LedgerData>()
+  private currentService = new Map<string, ServiceRecord>()
+  private reviewItems: ReviewItem[] = []
+  private nextReviewId = 1
+  private now: () => number
+
+  constructor(storageDir: string, now: () => number = Date.now) {
+    this.dir = storageDir
+    this.now = now
+  }
+
+  /* ---------------- persistence ---------------- */
+
+  private filePath(preacherId: string): string {
+    const safe = preacherId.replace(/[^a-zA-Z0-9_-]/g, '_')
+    return path.join(this.dir, `${safe}.json`)
+  }
+
+  load(preacherId: string, name = ''): LedgerData {
+    const cached = this.cache.get(preacherId)
+    if (cached) return cached
+    let data: LedgerData
+    try {
+      data = JSON.parse(fs.readFileSync(this.filePath(preacherId), 'utf-8'))
+    } catch {
+      data = {
+        preacherId,
+        name,
+        samples: [],
+        services: [],
+        aliases: {},
+        mature: false
+      }
+    }
+    if (name && !data.name) data.name = name
+    this.cache.set(preacherId, data)
+    return data
+  }
+
+  save(preacherId: string): void {
+    const data = this.cache.get(preacherId)
+    if (!data) return
+    fs.mkdirSync(this.dir, { recursive: true })
+    fs.writeFileSync(this.filePath(preacherId), JSON.stringify(data, null, 2))
+  }
+
+  /* ---------------- alias learning & lookup ---------------- */
+
+  /** Record a correction; the (heard → corrected) pair joins the alias table. */
+  recordCorrection(
+    preacherId: string,
+    heard: string,
+    correctedTo: string,
+    source: CorrectionSample['source']
+  ): void {
+    const data = this.load(preacherId)
+    data.samples.push({ heard, correctedTo, source, ts: this.now() })
+    const key = phoneticKey(heard)
+    if (key.length >= 2) {
+      data.aliases[key] = correctedTo
+    }
+    const svc = this.serviceRecord(preacherId)
+    svc.corrections += 1
+    // A dip in accuracy quietly reopens training.
+    if (data.mature && svc.corrections >= REOPEN_CORRECTIONS) {
+      data.mature = false
+      data.reopenedAt = this.now()
+      console.log(`🎓 Training reopened for ${data.name || preacherId} (accuracy dip)`)
+    }
+    this.save(preacherId)
+  }
+
+  /** Resolve a possibly-misheard book name via the learned alias table.
+   *  Prefix-tolerant: ASR often glues filler onto the mishearing
+   *  ("rome and" → key "rmnd") while the clean form folds shorter
+   *  ("romans" → "rmn"), so either direction may extend the other. */
+  resolveAlias(preacherId: string, heard: string): string | null {
+    const data = this.load(preacherId)
+    const key = phoneticKey(heard)
+    if (key.length < 2) return null
+    const exact = data.aliases[key]
+    if (exact) return exact
+    for (const [stored, canonical] of Object.entries(data.aliases)) {
+      const shorter = Math.min(stored.length, key.length)
+      if (shorter >= 3 && (stored.startsWith(key) || key.startsWith(stored))) {
+        return canonical
+      }
+    }
+    return null
+  }
+
+  /* ---------------- trust & auto mode ---------------- */
+
+  recordDetection(preacherId: string, confirmed: boolean): void {
+    const svc = this.serviceRecord(preacherId)
+    svc.detections += 1
+    if (confirmed) svc.confirmed += 1
+  }
+
+  /** Close out the running service; feeds the thermostat. */
+  endService(preacherId: string): void {
+    const data = this.load(preacherId)
+    const svc = this.currentService.get(preacherId)
+    if (svc && svc.detections > 0) {
+      data.services.push(svc)
+      this.currentService.delete(preacherId)
+    }
+    const recent = data.services.slice(-MATURE_STREAK)
+    if (
+      !data.mature &&
+      recent.length === MATURE_STREAK &&
+      recent.every((s) => s.corrections < MATURE_MAX_CORRECTIONS)
+    ) {
+      data.mature = true
+      console.log(`🎓 Profile mature: ${data.name || preacherId} — training prompts off`)
+    }
+    this.save(preacherId)
+  }
+
+  stats(preacherId: string): PreacherStats {
+    const data = this.load(preacherId)
+    const all = [...data.services, ...(this.currentService.has(preacherId) ? [this.currentService.get(preacherId)!] : [])]
+    const detections = all.reduce((n, s) => n + s.detections, 0)
+    const confirmed = all.reduce((n, s) => n + s.confirmed, 0)
+    const trustLowerBound = wilsonLowerBound(confirmed, detections)
+    const services = all.length
+    const lastService = all[all.length - 1]
+    return {
+      id: preacherId,
+      name: data.name,
+      samples: detections,
+      services,
+      precision: detections > 0 ? confirmed / detections : 0,
+      trustLowerBound,
+      autoModeEligible:
+        trustLowerBound >= AUTO_MODE_MIN_TRUST &&
+        detections >= AUTO_MODE_MIN_SAMPLES &&
+        services >= AUTO_MODE_MIN_SERVICES,
+      mature: data.mature,
+      correctionsLastService: lastService?.corrections ?? 0
+    }
+  }
+
+  listPreacherIds(): string[] {
+    try {
+      return fs
+        .readdirSync(this.dir)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => f.replace(/\.json$/, ''))
+    } catch {
+      return []
+    }
+  }
+
+  /* ---------------- end-of-service review ---------------- */
+
+  addReviewItem(item: Omit<ReviewItem, 'id'>): ReviewItem {
+    const full: ReviewItem = { ...item, id: String(this.nextReviewId++) }
+    this.reviewItems.push(full)
+    return full
+  }
+
+  getReviewItems(): ReviewItem[] {
+    return this.reviewItems.filter((r) => !r.resolution)
+  }
+
+  resolveReviewItem(
+    preacherId: string | null,
+    id: string,
+    resolution: NonNullable<ReviewItem['resolution']>,
+    amendedTo?: ReviewItem['amendedTo']
+  ): void {
+    const item = this.reviewItems.find((r) => r.id === id)
+    if (!item) return
+    item.resolution = resolution
+    if (amendedTo) item.amendedTo = amendedTo
+    if (!preacherId) return
+    if (resolution === 'confirmed') {
+      this.recordDetection(preacherId, true)
+    } else if (resolution === 'rejected') {
+      this.recordDetection(preacherId, false)
+    } else if (resolution === 'amended' && amendedTo) {
+      this.recordDetection(preacherId, false)
+      this.recordCorrection(
+        preacherId,
+        item.heard,
+        `${amendedTo.book} ${amendedTo.chapter}:${amendedTo.verse ?? 1}`,
+        'operator'
+      )
+    }
+  }
+
+  clearReview(): void {
+    this.reviewItems = []
+  }
+
+  private serviceRecord(preacherId: string): ServiceRecord {
+    let svc = this.currentService.get(preacherId)
+    if (!svc) {
+      svc = {
+        date: new Date(this.now()).toISOString().slice(0, 10),
+        detections: 0,
+        confirmed: 0,
+        corrections: 0
+      }
+      this.currentService.set(preacherId, svc)
+    }
+    return svc
+  }
+}
