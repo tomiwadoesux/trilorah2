@@ -2,13 +2,13 @@
 
 /*
  * Design tokens — the entire palette.
- * Near-white paper, near-black ink, one muted accent for live/active
- * states, hairline separators. Nothing else.
+ * Near-white paper, near-black ink, a pure-black accent for live/active
+ * states (per product owner), hairline separators. Nothing else.
  */
 @theme {
   --color-paper: #fafaf8;
   --color-ink: #141414;
-  --color-accent: #2f5d3a;
+  --color-accent: #000000;
   --color-hairline: #e5e3de;
 
   --font-scripture: Georgia, "Times New Roman", serif;

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, systemPreferences } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
@@ -15,8 +15,10 @@ import {
   emitVersionChanged,
   emitQueueUpdated,
   emitPrayerMode,
-  emitIntentState
+  emitIntentState,
+  emitAudioLevel
 } from './emitters'
+import { feedAudioChunk } from './asr/audioBus'
 // In-process TS resolver — drop-in replacement for the lost Python ml/ service
 import {
   connectML,
@@ -829,6 +831,45 @@ ipcMain.handle('save-voice-command-config', (_event, userConfig) => {
   return { success: true }
 })
 
+/* -------- window-mic capture (no SoX dependency) -------- */
+
+ipcMain.on('audio-chunk', (_event, chunk: ArrayBuffer) => {
+  feedAudioChunk(Buffer.from(chunk))
+})
+
+ipcMain.on('audio-level', (_event, level: number) => {
+  emitAudioLevel(level)
+})
+
+ipcMain.handle('request-mic-permission', async () => {
+  if (process.platform !== 'darwin') return { granted: true }
+  try {
+    const status = systemPreferences.getMediaAccessStatus('microphone')
+    if (status === 'granted') return { granted: true }
+    const granted = await systemPreferences.askForMediaAccess('microphone')
+    return { granted }
+  } catch (e: any) {
+    return { granted: false, error: e?.message }
+  }
+})
+
+/* -------- media display on the output windows -------- */
+
+ipcMain.handle('show-media', (_event, imagePath: string) => {
+  console.log(`🖼️ Showing media on output: ${path.basename(imagePath)}`)
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.webContents.send('on-show-media', imagePath)
+  })
+  return { success: true }
+})
+
+ipcMain.handle('clear-media', () => {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.webContents.send('on-show-clean-background')
+  })
+  return { success: true }
+})
+
 ipcMain.handle('get-notes-provider-status', async () => {
   const provider = resolveNotesProvider(getSetting('notesProvider'))
   return { id: provider.id, status: await provider.status() }
@@ -1146,11 +1187,28 @@ ipcMain.handle('export-sermon-notes-md', async (_event, notes) => {
 
 ipcMain.handle('get-settings', () => getAllSettings())
 ipcMain.handle('get-setting', (_event, key) => getSetting(key))
+const THEME_KEYS = new Set([
+  'scriptureFontPreset',
+  'defaultFontSize',
+  'defaultFontFamily',
+  'defaultFontWeight',
+  'defaultTextColor',
+  'overlayOpacity',
+  'defaultBackgroundUrl',
+  'colorMode'
+])
+
 ipcMain.handle('set-setting', (_event, { key, value }) => {
   setSetting(key, value)
   // Language / trust-gate changes reconfigure the live engines instantly.
   if (RECONFIGURE_KEYS.has(key) && ledger) {
     applyLanguageAndConfig()
+  }
+  // Theme changes repaint every output window live.
+  if (THEME_KEYS.has(key)) {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) win.webContents.send('on-theme-changed')
+    })
   }
   return true
 })

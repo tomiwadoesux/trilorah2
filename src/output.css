@@ -34,11 +34,13 @@ body {
   opacity: 1;
 }
 
+/* Theme variables come from the Themes tab (set inline by output.tsx). */
 .output-verse {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2rem, 4.5vw, 6vw);
+  font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
+  font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--verse-scale, 1));
+  font-weight: var(--verse-weight, 400);
   line-height: 1.4;
-  color: #ffffff;
+  color: var(--verse-color, #ffffff);
   text-shadow:
     0 2px 14px rgba(0, 0, 0, 0.6),
     0 0 3px rgba(0, 0, 0, 0.5);
@@ -47,12 +49,42 @@ body {
 
 .output-ref {
   margin-top: 4vh;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
   font-variant-caps: small-caps;
   letter-spacing: 0.08em;
-  font-size: clamp(1.1rem, 1.8vw, 2.4vw);
-  color: #ffffff;
+  font-size: calc(clamp(1.1rem, 1.8vw, 2.4vw) * var(--verse-scale, 1));
+  color: var(--verse-color, #ffffff);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Optional themed background (only when a background URL is set). */
+.output-background {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.output-dim {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+}
+
+/* Full-bleed presentation slide / media image. */
+.output-media {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000000;
+}
+
+.output-media img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .output-version {

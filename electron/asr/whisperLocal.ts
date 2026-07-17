@@ -17,6 +17,10 @@ import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { app } from 'electron'
 import { getSetting } from '../data/settings'
+import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
+import { emitMicRequest, emitMicStop } from '../emitters'
+
+let usingWindowMic = false
 
 const SAMPLE_RATE = 16000
 const CHUNK_SECONDS = 5
@@ -89,6 +93,26 @@ export function startWhisperLocal(
   stopped = false
   pending = Buffer.alloc(0)
 
+  const accumulate = (chunk: Buffer) => {
+    if (stopped) return
+    pending = Buffer.concat([pending, chunk])
+    const target = SAMPLE_RATE * 2 * CHUNK_SECONDS
+    if (pending.length >= target && !transcribing) {
+      const slice = pending
+      pending = Buffer.alloc(0)
+      void transcribeChunk(slice, modelPath, onText, onError)
+    }
+  }
+
+  // No SoX → capture the mic in the app window (getUserMedia → IPC).
+  if (!soxAvailable()) {
+    console.log('🎙️ SoX not found — capturing microphone via the app window')
+    usingWindowMic = true
+    setAudioSink(accumulate)
+    emitMicRequest({ sampleRate: SAMPLE_RATE, deviceLabel })
+    return
+  }
+
   const spawnEnv = { ...process.env }
   if (deviceLabel && deviceLabel !== 'default') {
     spawnEnv.AUDIODEV = deviceLabel
@@ -99,16 +123,7 @@ export function startWhisperLocal(
     ['-q', '-t', 'raw', '-e', 'signed-integer', '-b', '16', '-c', '1', '-r', SAMPLE_RATE.toString(), '-'],
     { stdio: ['ignore', 'pipe', 'pipe'], env: spawnEnv }
   )
-  micProcess.stdout?.on('data', (chunk: Buffer) => {
-    if (stopped) return
-    pending = Buffer.concat([pending, chunk])
-    const target = SAMPLE_RATE * 2 * CHUNK_SECONDS
-    if (pending.length >= target && !transcribing) {
-      const slice = pending
-      pending = Buffer.alloc(0)
-      void transcribeChunk(slice, modelPath, onText, onError)
-    }
-  })
+  micProcess.stdout?.on('data', accumulate)
   micProcess.stderr?.on('data', (data: Buffer) => {
     const msg = data.toString()
     if (msg.toLowerCase().includes('fail') || msg.toLowerCase().includes('error')) {
@@ -167,6 +182,11 @@ export function stopWhisperLocal(): void {
   if (micProcess) {
     micProcess.kill()
     micProcess = null
+  }
+  if (usingWindowMic) {
+    clearAudioSink()
+    emitMicStop()
+    usingWindowMic = false
   }
   pending = Buffer.alloc(0)
   console.log('🎤 Local Whisper ASR stopped')

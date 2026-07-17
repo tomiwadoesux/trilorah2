@@ -241,5 +241,34 @@ contextBridge.exposeInMainWorld('api', {
   getAvailableLanguages: () => ipcRenderer.invoke('get-available-languages'),
   getVoiceCommandConfig: () => ipcRenderer.invoke('get-voice-command-config'),
   saveVoiceCommandConfig: (userConfig: any) =>
-    ipcRenderer.invoke('save-voice-command-config', userConfig)
+    ipcRenderer.invoke('save-voice-command-config', userConfig),
+
+  // Window-mic capture (used when SoX isn't installed)
+  requestMicPermission: () => ipcRenderer.invoke('request-mic-permission'),
+  sendAudioChunk: (chunk: ArrayBuffer) => ipcRenderer.send('audio-chunk', chunk),
+  sendAudioLevel: (level: number) => ipcRenderer.send('audio-level', level),
+  onMicRequest: (callback: (req: { sampleRate: number; deviceLabel?: string }) => void) => {
+    const subscription = (_event: IpcRendererEvent, req: any) => callback(req)
+    ipcRenderer.on('on-mic-request', subscription)
+    return () => ipcRenderer.removeListener('on-mic-request', subscription)
+  },
+  onMicStop: (callback: () => void) => {
+    const subscription = () => callback()
+    ipcRenderer.on('on-mic-stop', subscription)
+    return () => ipcRenderer.removeListener('on-mic-stop', subscription)
+  },
+
+  // Media display on outputs + theme repaint
+  showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),
+  clearMedia: () => ipcRenderer.invoke('clear-media'),
+  onShowMedia: (callback: (imagePath: string) => void) => {
+    const subscription = (_event: IpcRendererEvent, p: string) => callback(p)
+    ipcRenderer.on('on-show-media', subscription)
+    return () => ipcRenderer.removeListener('on-show-media', subscription)
+  },
+  onThemeChanged: (callback: () => void) => {
+    const subscription = () => callback()
+    ipcRenderer.on('on-theme-changed', subscription)
+    return () => ipcRenderer.removeListener('on-theme-changed', subscription)
+  }
 })

@@ -2,9 +2,13 @@ import { useEffect } from 'react';
 import { useAppStore, TABS } from './stores/appStore';
 import { useLiveStore } from './stores/liveStore';
 import { fetchVerseText, sameRef, pct } from './lib/verse';
+import { startMicCapture, stopMicCapture } from './lib/micCapture';
 import { hasEngine } from './components/ui';
 import { Live } from './screens/Live';
 import { Bible } from './screens/Bible';
+import { Songs } from './screens/Songs';
+import { Presentations } from './screens/Presentations';
+import { Themes } from './screens/Themes';
 import { Schedule } from './screens/Schedule';
 import { Preachers } from './screens/Preachers';
 import { Notes } from './screens/Notes';
@@ -59,6 +63,14 @@ function useEngineWiring() {
       api.onMediaSuggestion(() => {
         /* Media suggestions have no surface in this minimal UI yet. */
       }),
+      // Window-mic capture: the engine asks us for audio when SoX is absent.
+      api.onMicRequest?.((req) => {
+        void startMicCapture(req.sampleRate, req.deviceLabel).catch((e) => {
+          console.error('mic capture failed:', e);
+          app().setAsrStatus('error');
+        });
+      }),
+      api.onMicStop?.(() => stopMicCapture()),
       // Upcoming surface — may be absent from today's preload.
       api.onAsrStatus?.((status) => app().setAsrStatus(status)),
       api.onVoiceCommand?.((event) => live().pushVoiceCommand(event)),
@@ -94,11 +106,18 @@ function useEngineWiring() {
   }, []);
 }
 
+/** dB (-60..0) → a quiet five-step text meter. */
+function levelBars(db: number): string {
+  const steps = Math.max(0, Math.min(5, Math.round((db + 60) / 12)));
+  return '▁▂▃▅▇'.slice(0, Math.max(1, steps)).padEnd(5, '·');
+}
+
 function StatusLine() {
   const asrStatus = useAppStore((s) => s.asrStatus);
   const segment = useAppStore((s) => s.segment);
   const preacherName = useAppStore((s) => s.activePreacherName);
   const trust = useAppStore((s) => s.trustLowerBound);
+  const audioLevel = useAppStore((s) => s.audioLevel);
 
   const listening = asrStatus === 'listening';
 
@@ -108,6 +127,9 @@ function StatusLine() {
         <span aria-hidden="true">● </span>
         {asrStatus}
       </span>
+      {listening && audioLevel != null && (
+        <span className="font-mono"> {levelBars(audioLevel)}</span>
+      )}
       {segment && <span> · {segment.type}</span>}
       {preacherName && <span> · {preacherName}</span>}
       {trust != null && <span> · trust {pct(trust)}</span>}
@@ -153,6 +175,9 @@ export default function App() {
       <main className="mx-auto max-w-4xl px-6 pb-24 pt-12">
         {tab === 'live' && <Live />}
         {tab === 'bible' && <Bible />}
+        {tab === 'songs' && <Songs />}
+        {tab === 'presentations' && <Presentations />}
+        {tab === 'themes' && <Themes />}
         {tab === 'schedule' && <Schedule />}
         {tab === 'preachers' && <Preachers />}
         {tab === 'notes' && <Notes />}

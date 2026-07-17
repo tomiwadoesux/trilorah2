@@ -440,6 +440,17 @@ interface WindowApi {
   getAvailableLanguages?(): Promise<Array<{ code: string; label: string }>>;
   getVoiceCommandConfig?(): Promise<{ merged: any; user: any; filePath: string }>;
   saveVoiceCommandConfig?(userConfig: any): Promise<{ success: boolean }>;
+  // Window-mic capture (SoX-free audio path)
+  requestMicPermission?(): Promise<{ granted: boolean; error?: string }>;
+  sendAudioChunk?(chunk: ArrayBuffer): void;
+  sendAudioLevel?(level: number): void;
+  onMicRequest?(callback: (req: { sampleRate: number; deviceLabel?: string }) => void): Unsubscribe;
+  onMicStop?(callback: () => void): Unsubscribe;
+  // Media on outputs + themes
+  showMedia?(imagePath: string): Promise<{ success: boolean }>;
+  clearMedia?(): Promise<{ success: boolean }>;
+  onShowMedia?(callback: (imagePath: string) => void): Unsubscribe;
+  onThemeChanged?(callback: () => void): Unsubscribe;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;
   onVersionChanged?(callback: (version: string) => void): Unsubscribe;
   onQueueUpdated?(callback: (queue: VerseQueueItem[]) => void): Unsubscribe;

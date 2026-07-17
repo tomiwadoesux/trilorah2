@@ -105,3 +105,20 @@ export function emitPrayerMode(inPrayer: boolean): void {
 export function emitIntentState(state: string): void {
   broadcast('on-intent-state', state)
 }
+
+/** Ask the app window to start capturing the microphone (getUserMedia)
+ *  and stream PCM chunks back — used when SoX isn't installed. */
+export function emitMicRequest(request: {
+  sampleRate: number
+  deviceLabel?: string
+}): void {
+  broadcast('on-mic-request', request)
+}
+
+export function emitMicStop(): void {
+  broadcast('on-mic-stop')
+}
+
+export function emitAudioLevel(level: number): void {
+  broadcast('on-audio-level', level)
+}
