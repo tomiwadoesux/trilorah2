@@ -44,3 +44,4 @@ This tree was reconstructed 2026-07-12 from the surviving **unminified**
 `dist-electron/main.js` bundle — original names, comments, and logs
 preserved — then extended with the agentic feature set. The lost Python
 `ml/` resolver was rewritten in TypeScript (`electron/engine/referenceResolver.ts`).
+# trilorah2
