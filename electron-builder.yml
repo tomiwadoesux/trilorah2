@@ -1,0 +1,42 @@
+appId: com.trilorah.app
+productName: Trilorah
+
+directories:
+  output: release
+  buildResources: build
+
+# App payload: built renderer + built main/preload. Production node_modules
+# are collected automatically by electron-builder from package.json deps.
+files:
+  - dist/**
+  - dist-electron/**
+  - "!dist-electron/node_modules"
+  - "!**/.DS_Store"
+
+# Native module — must live outside app.asar to be require()-able.
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+
+# Runtime data shipped next to the app (resolved via process.resourcesPath).
+extraResources:
+  - from: bible.db
+    to: bible.db
+  - from: electron/data/bible_index.json
+    to: bible_index.json
+  - from: electron/agent/transition-phrases.json
+    to: transition-phrases.json
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  # Unsigned for now (church pilot: right-click → Open). electron-builder
+  # falls back to ad-hoc signing, which arm64 macOS requires to launch.
+  identity: null
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+
+dmg:
+  sign: false

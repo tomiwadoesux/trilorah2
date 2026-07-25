@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { TextButton, SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import {
+  Button,
+  EmptyState,
+  EngineNote,
+  Panel,
+  PanelHeader,
+  SectionLabel,
+  TextButton,
+  hasEngine,
+} from '../components/ui';
 
 const SEGMENT_TYPES = [
   'pre-service',
@@ -123,131 +132,151 @@ export function Schedule() {
   };
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-5">
-        <SectionLabel>service order</SectionLabel>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Schedule</h2>
+        <p className="text-sm text-neutral-500">
+          The order of service guides the engine's segment awareness — edit it here, import it from
+          a photo, or let history suggest one.
+        </p>
         {!hasEngine() && <EngineNote />}
-        <SegmentTypeDatalist />
-        {entries.length === 0 ? (
-          <p className="text-sm italic text-neutral-400">no segments yet — add one below</p>
-        ) : (
-          <ol className="space-y-3">
-            {entries.map((entry, i) => (
-              <li key={i} className="flex flex-wrap items-baseline gap-x-5 gap-y-2 border-b border-hairline pb-3">
-                <span className="w-6 text-xs text-neutral-400">{i + 1}</span>
-                <input
-                  list="segment-types"
-                  value={entry.type}
-                  onChange={(e) => update(i, { type: e.target.value })}
-                  placeholder="type"
-                  className="w-36 text-sm"
-                />
-                <input
-                  value={entry.title ?? ''}
-                  onChange={(e) => update(i, { title: e.target.value })}
-                  placeholder="title (optional)"
-                  className="w-56 text-sm"
-                />
-                <input
-                  value={entry.time ?? ''}
-                  onChange={(e) => update(i, { time: e.target.value })}
-                  placeholder="time"
-                  className="w-20 text-sm"
-                />
-                <span className="flex items-baseline gap-x-4">
-                  <TextButton label="↑" onClick={() => move(i, -1)} disabled={i === 0} title="move up" />
-                  <TextButton label="↓" onClick={() => move(i, 1)} disabled={i === entries.length - 1} title="move down" />
-                  <TextButton label="REMOVE" onClick={() => remove(i)} />
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-        <div className="flex flex-wrap items-baseline gap-x-10">
-          <TextButton label="ADD SEGMENT" onClick={add} />
-          <TextButton label="APPLY" primary onClick={() => apply()} disabled={!hasEngine()} />
-        </div>
-        {note && <p className="text-sm text-neutral-500">{note}</p>}
-      </section>
+      </div>
 
-      <section className="space-y-4 border-t border-hairline pt-10">
-        <SectionLabel>import from photo</SectionLabel>
-        <p className="text-sm text-neutral-500">
-          Photograph the printed order of service. Only the schedule is kept; the image is discarded.
-        </p>
-        <TextButton label="IMPORT FROM PHOTO" onClick={() => void importFromPhoto()} disabled={!hasEngine()} />
-        {importPreview && (
-          <div className="space-y-3">
-            {importPreview.success && importPreview.entries && importPreview.entries.length > 0 ? (
-              <>
-                <p className="text-sm text-neutral-500">found {importPreview.entries.length} segments:</p>
-                <ol className="space-y-1">
-                  {importPreview.entries.map((e, i) => (
-                    <li key={i} className="text-sm">
-                      {i + 1}. {e.type}
-                      {e.title ? ` — ${e.title}` : ''}
-                      {e.time ? ` · ${e.time}` : ''}
-                    </li>
-                  ))}
-                </ol>
-                {importPreview.unmatchedLines && importPreview.unmatchedLines.length > 0 && (
-                  <p className="text-sm italic text-neutral-400">
-                    unmatched: {importPreview.unmatchedLines.join(' · ')}
-                  </p>
-                )}
-                <div className="flex gap-x-10">
-                  <TextButton
-                    label="CONFIRM & APPLY"
-                    primary
-                    onClick={() => {
-                      const imported = importPreview.entries ?? [];
-                      setEntries(imported.map((e) => ({ ...e })));
-                      apply(imported);
-                      setImportPreview(null);
-                    }}
-                  />
-                  <TextButton label="DISCARD" onClick={() => setImportPreview(null)} />
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-neutral-500">
-                {importPreview.error ?? 'could not read a schedule from that image'}
-              </p>
-            )}
+      <SegmentTypeDatalist />
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <Panel pad={false} className="self-start">
+          <div className="border-b border-hairline px-4 py-3">
+            <SectionLabel>service order</SectionLabel>
           </div>
-        )}
-      </section>
-
-      <section className="space-y-4 border-t border-hairline pt-10">
-        <SectionLabel>suggest from history</SectionLabel>
-        <p className="text-sm text-neutral-500">
-          Builds an order from how your last services actually ran.
-        </p>
-        <TextButton label="SUGGEST FROM HISTORY" onClick={() => void suggestFromHistory()} disabled={!hasEngine()} />
-        {suggestion && (
-          <div className="space-y-3">
-            <p className="text-sm text-neutral-500">
-              based on {suggestion.basedOnServices} services · confidence {Math.round(suggestion.confidence * 100)}%
-              {suggestion.modalMatch ? '' : ' · loose match'}
-            </p>
-            <ol className="space-y-1">
-              {suggestion.segments.map((seg, i) => (
-                <li key={i} className="text-sm">
-                  {i + 1}. {seg.type}
-                  <span className="pl-3 text-neutral-400">
-                    ~{seg.avgDurationMinutes} min · seen {seg.occurrenceCount}×
+          {entries.length === 0 ? (
+            <div className="px-4 py-4">
+              <EmptyState>no segments yet — add one below</EmptyState>
+            </div>
+          ) : (
+            <ol className="divide-y divide-hairline">
+              {entries.map((entry, i) => (
+                <li key={i} className="flex flex-wrap items-baseline gap-x-5 gap-y-2 px-4 py-3">
+                  <span className="w-6 text-xs tabular-nums text-neutral-400">{i + 1}</span>
+                  <input
+                    list="segment-types"
+                    value={entry.type}
+                    onChange={(e) => update(i, { type: e.target.value })}
+                    placeholder="type"
+                    className="w-36 text-sm"
+                  />
+                  <input
+                    value={entry.title ?? ''}
+                    onChange={(e) => update(i, { title: e.target.value })}
+                    placeholder="title (optional)"
+                    className="w-56 text-sm"
+                  />
+                  <input
+                    value={entry.time ?? ''}
+                    onChange={(e) => update(i, { time: e.target.value })}
+                    placeholder="time"
+                    className="w-20 text-sm"
+                  />
+                  <span className="ml-auto flex items-baseline gap-x-4">
+                    <TextButton label="↑" onClick={() => move(i, -1)} disabled={i === 0} title="move up" />
+                    <TextButton label="↓" onClick={() => move(i, 1)} disabled={i === entries.length - 1} title="move down" />
+                    <TextButton label="REMOVE" onClick={() => remove(i)} />
                   </span>
                 </li>
               ))}
             </ol>
-            <div className="flex gap-x-10">
-              <TextButton label="APPLY SUGGESTION" primary onClick={() => void applySuggestion()} />
-              <TextButton label="DISCARD" onClick={() => setSuggestion(null)} />
-            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-hairline px-4 py-3">
+            <Button label="Add segment" onClick={add} />
+            <Button label="Apply" variant="solid" onClick={() => apply()} disabled={!hasEngine()} />
+            {note && <p className="text-sm text-neutral-500">{note}</p>}
           </div>
-        )}
-        {suggestionNote && <p className="text-sm text-neutral-500">{suggestionNote}</p>}
-      </section>
+        </Panel>
+
+        <div className="space-y-6">
+          <Panel className="self-start">
+            <PanelHeader>import from photo</PanelHeader>
+            <p className="text-sm text-neutral-500">
+              Photograph the printed order of service. Only the schedule is kept; the image is discarded.
+            </p>
+            <div className="mt-3">
+              <Button label="Import from photo" onClick={() => void importFromPhoto()} disabled={!hasEngine()} />
+            </div>
+            {importPreview && (
+              <div className="mt-4 space-y-3 border-t border-hairline pt-3">
+                {importPreview.success && importPreview.entries && importPreview.entries.length > 0 ? (
+                  <>
+                    <p className="text-sm text-neutral-500">found {importPreview.entries.length} segments:</p>
+                    <ol className="space-y-1">
+                      {importPreview.entries.map((e, i) => (
+                        <li key={i} className="text-sm">
+                          {i + 1}. {e.type}
+                          {e.title ? ` — ${e.title}` : ''}
+                          {e.time ? ` · ${e.time}` : ''}
+                        </li>
+                      ))}
+                    </ol>
+                    {importPreview.unmatchedLines && importPreview.unmatchedLines.length > 0 && (
+                      <p className="text-sm italic text-neutral-400">
+                        unmatched: {importPreview.unmatchedLines.join(' · ')}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-x-4">
+                      <Button
+                        label="Confirm & apply"
+                        onClick={() => {
+                          const imported = importPreview.entries ?? [];
+                          setEntries(imported.map((e) => ({ ...e })));
+                          apply(imported);
+                          setImportPreview(null);
+                        }}
+                      />
+                      <TextButton label="DISCARD" onClick={() => setImportPreview(null)} />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-neutral-500">
+                    {importPreview.error ?? 'could not read a schedule from that image'}
+                  </p>
+                )}
+              </div>
+            )}
+          </Panel>
+
+          <Panel className="self-start">
+            <PanelHeader>suggest from history</PanelHeader>
+            <p className="text-sm text-neutral-500">
+              Builds an order from how your last services actually ran.
+            </p>
+            <div className="mt-3">
+              <Button label="Suggest from history" onClick={() => void suggestFromHistory()} disabled={!hasEngine()} />
+            </div>
+            {suggestion && (
+              <div className="mt-4 space-y-3 border-t border-hairline pt-3">
+                <p className="text-sm text-neutral-500">
+                  based on {suggestion.basedOnServices} services · confidence {Math.round(suggestion.confidence * 100)}%
+                  {suggestion.modalMatch ? '' : ' · loose match'}
+                </p>
+                <ol className="space-y-1">
+                  {suggestion.segments.map((seg, i) => (
+                    <li key={i} className="text-sm">
+                      {i + 1}. {seg.type}
+                      <span className="pl-3 text-neutral-400">
+                        ~{seg.avgDurationMinutes} min · seen {seg.occurrenceCount}×
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex items-center gap-x-4">
+                  <Button label="Apply suggestion" onClick={() => void applySuggestion()} />
+                  <TextButton label="DISCARD" onClick={() => setSuggestion(null)} />
+                </div>
+              </div>
+            )}
+            {suggestionNote && <p className="mt-3 text-sm text-neutral-500">{suggestionNote}</p>}
+          </Panel>
+        </div>
+      </div>
     </div>
   );
 }

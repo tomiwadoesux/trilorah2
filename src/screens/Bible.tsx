@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TextButton, SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import { Button, EngineNote, Panel, PanelHeader, Pill, TextButton, hasEngine } from '../components/ui';
 import { BOOKS, bookIdFromName } from '../lib/books';
 import { useLiveStore } from '../stores/liveStore';
 
@@ -90,77 +90,98 @@ export function Bible() {
   };
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-4">
-        <SectionLabel>look up</SectionLabel>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Bible</h2>
+        <p className="text-sm text-neutral-500">
+          Look up any passage, read it here, and send it to preview when it's needed.
+        </p>
+        {!hasEngine() && <EngineNote what="engine not connected — no Bible database" />}
+      </div>
+
+      <Panel>
+        <PanelHeader right={<Pill>{version}</Pill>}>look up</PanelHeader>
         <form
-          className="flex flex-wrap items-baseline gap-x-6 gap-y-3"
+          className="flex flex-wrap items-end gap-x-6 gap-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             void lookup();
           }}
         >
-          <input
-            list="bible-books"
-            value={book}
-            onChange={(e) => setBook(e.target.value)}
-            placeholder="book"
-            className="w-44 text-sm"
-          />
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">book</span>
+            <input
+              list="bible-books"
+              value={book}
+              onChange={(e) => setBook(e.target.value)}
+              placeholder="book"
+              className="block w-44 text-sm"
+            />
+          </label>
           <datalist id="bible-books">
             {BOOKS.map((b) => (
               <option key={b} value={b} />
             ))}
           </datalist>
-          <input
-            value={chapter}
-            onChange={(e) => setChapter(e.target.value)}
-            placeholder="chapter"
-            inputMode="numeric"
-            className="w-16 text-sm"
-          />
-          <input
-            value={verse}
-            onChange={(e) => setVerse(e.target.value)}
-            placeholder="verse"
-            inputMode="numeric"
-            className="w-16 text-sm"
-          />
-          <select value={version} onChange={(e) => setVersion(e.target.value)} className="text-sm">
-            {(versions.length > 0 ? versions : [version]).map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <TextButton label="LOOK UP" primary onClick={() => void lookup()} disabled={!hasEngine()} />
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">chapter</span>
+            <input
+              value={chapter}
+              onChange={(e) => setChapter(e.target.value)}
+              placeholder="chapter"
+              inputMode="numeric"
+              className="block w-16 text-sm"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">verse</span>
+            <input
+              value={verse}
+              onChange={(e) => setVerse(e.target.value)}
+              placeholder="verse"
+              inputMode="numeric"
+              className="block w-16 text-sm"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">version</span>
+            <select value={version} onChange={(e) => setVersion(e.target.value)} className="block text-sm">
+              {(versions.length > 0 ? versions : [version]).map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button label="Look up" variant="solid" onClick={() => void lookup()} disabled={!hasEngine()} />
         </form>
-        <div className="flex flex-wrap items-baseline gap-x-10">
-          <TextButton label="SEND TO PREVIEW" onClick={sendToPreview} disabled={!hasEngine()} />
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 border-t border-hairline pt-3">
+          <Button label="Send to preview" onClick={sendToPreview} disabled={!hasEngine()} />
           <TextButton label="SET AS DISPLAY VERSION" onClick={() => void setAsDisplayVersion()} disabled={!hasEngine()} />
         </div>
-        {error && <p className="text-sm text-neutral-500">{error}</p>}
-        {note && <p className="text-sm text-neutral-500">{note}</p>}
-        {!hasEngine() && <EngineNote what="engine not connected — no Bible database" />}
-      </section>
+        {error && <p className="mt-3 text-sm text-neutral-500">{error}</p>}
+        {note && <p className="mt-3 text-sm text-neutral-500">{note}</p>}
+      </Panel>
 
       {loaded && (
-        <article className="space-y-6">
-          <header className="flex items-baseline gap-x-4">
-            <h2 className="font-scripture text-3xl">
+        <Panel pad={false}>
+          <div className="flex items-baseline justify-between gap-x-4 border-b border-hairline px-6 py-4">
+            <h3 className="font-scripture text-3xl">
               {loaded.book} {loaded.chapter}
-            </h2>
-            <span className="text-xs uppercase tracking-widest text-neutral-400">{loaded.version}</span>
-          </header>
-          <div className="max-w-2xl font-scripture text-lg leading-loose">
-            {loaded.verses.map((v) => (
-              <span key={v.id} className={v.id === targetVerse ? 'font-semibold' : undefined}>
-                <sup className="pr-1 text-xs text-neutral-400">{v.id}</sup>
-                {v.text}{' '}
-              </span>
-            ))}
+            </h3>
+            <Pill>{loaded.version}</Pill>
           </div>
-        </article>
+          <article className="px-6 py-6">
+            <div className="max-w-2xl font-scripture text-lg leading-loose">
+              {loaded.verses.map((v) => (
+                <span key={v.id} className={v.id === targetVerse ? 'font-semibold' : undefined}>
+                  <sup className="pr-1 text-xs text-neutral-400">{v.id}</sup>
+                  {v.text}{' '}
+                </span>
+              ))}
+            </div>
+          </article>
+        </Panel>
       )}
     </div>
   );

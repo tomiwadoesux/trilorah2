@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { TextButton, SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import {
+  Button,
+  EmptyState,
+  EngineNote,
+  Panel,
+  Pill,
+  SectionLabel,
+  TextButton,
+  hasEngine,
+} from '../components/ui';
 
 /**
  * Presentations: import a PPTX (converted to slide images by the engine,
@@ -85,53 +94,71 @@ export function Presentations() {
   if (!hasEngine()) {
     return (
       <div className="space-y-6">
-        <SectionLabel>presentations</SectionLabel>
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold tracking-tight">Presentations</h2>
+          <p className="text-sm text-neutral-500">
+            Import a PPTX, browse its slides, and push any slide straight to the output windows.
+          </p>
+        </div>
         <EngineNote what="engine not connected — presentation import runs in the Electron main process" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-10">
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-baseline gap-x-6">
-          <TextButton label="IMPORT PPTX" primary onClick={() => void importPptx()} />
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Presentations</h2>
+        <p className="text-sm text-neutral-500">
+          Import a PPTX, browse its slides, and push any slide straight to the output windows.
+        </p>
+      </div>
+
+      <Panel>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button label="Import PPTX" variant="solid" onClick={() => void importPptx()} />
           {showing && <TextButton label="CLEAR OUTPUT" onClick={clear} />}
           {note && <span className="text-sm text-neutral-500">{note}</span>}
         </div>
-        <p className="text-xs text-neutral-400">
+        <p className="mt-3 text-xs text-neutral-400">
           pptx → slide images (needs libreoffice for conversion) · slides are ocr'd so the agent can
           suggest them during announcements
         </p>
-      </section>
+      </Panel>
 
-      <section className="space-y-6">
-        <SectionLabel>library</SectionLabel>
+      <Panel pad={false}>
+        <div className="border-b border-hairline px-4 py-3">
+          <SectionLabel>library</SectionLabel>
+        </div>
         {items.length === 0 && (
-          <p className="text-sm italic text-neutral-400">nothing imported yet</p>
+          <div className="px-4 py-4">
+            <EmptyState>nothing imported yet</EmptyState>
+          </div>
         )}
         {items.map((p) => (
-          <div key={p.id} className="space-y-4 border-t border-hairline pt-4 first:border-t-0 first:pt-0">
-            <div className="flex flex-wrap items-baseline gap-x-6">
+          <div key={p.id} className="border-b border-hairline last:border-b-0">
+            <div className="flex flex-wrap items-baseline gap-x-4 px-4 py-3">
               <button
                 type="button"
                 onClick={() => openPresentation(p)}
-                className="text-sm underline-offset-4 hover:underline"
+                className={`text-sm underline-offset-4 hover:underline ${openId === p.id ? 'font-semibold' : ''}`}
               >
                 {p.title}
               </button>
-              <span className="text-xs text-neutral-400">{p.slides.length} slides</span>
-              <TextButton
-                label="REMOVE"
-                onClick={() => {
-                  void window.api?.deletePresentation({ id: p.id, slides: p.slides }).catch(() => undefined);
-                  persist(items.filter((x) => x.id !== p.id));
-                  if (openId === p.id) setOpenId(null);
-                }}
-              />
+              <Pill>{p.slides.length} slides</Pill>
+              <span className="ml-auto">
+                <TextButton
+                  label="REMOVE"
+                  onClick={() => {
+                    void window.api?.deletePresentation({ id: p.id, slides: p.slides }).catch(() => undefined);
+                    persist(items.filter((x) => x.id !== p.id));
+                    if (openId === p.id) setOpenId(null);
+                  }}
+                />
+              </span>
             </div>
             {openId === p.id && (
-              <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5">
+              <div className="grid grid-cols-3 gap-4 border-t border-hairline bg-paper px-4 py-4 sm:grid-cols-4 md:grid-cols-5">
                 {p.slides.map((slide, i) => (
                   <button
                     key={slide}
@@ -144,15 +171,19 @@ export function Presentations() {
                       <img
                         src={thumbs[slide]}
                         alt={`slide ${i + 1}`}
-                        className={`w-full border ${showing === slide ? 'border-ink' : 'border-hairline'} group-hover:border-neutral-400`}
+                        className={`w-full rounded-sm border ${showing === slide ? 'border-ink' : 'border-hairline'} group-hover:border-neutral-400`}
                       />
                     ) : (
-                      <div className="flex aspect-video w-full items-center justify-center border border-hairline text-xs text-neutral-400">
+                      <div className="flex aspect-video w-full items-center justify-center rounded-sm border border-hairline bg-surface text-xs text-neutral-400">
                         {i + 1}
                       </div>
                     )}
-                    <span className="block text-[10px] uppercase tracking-widest text-neutral-400">
-                      {showing === slide ? 'LIVE' : `slide ${i + 1}`}
+                    <span
+                      className={`block text-[10px] uppercase tracking-widest ${
+                        showing === slide ? 'font-bold text-accent' : 'text-neutral-400'
+                      }`}
+                    >
+                      {showing === slide ? '● live' : `slide ${i + 1}`}
                     </span>
                   </button>
                 ))}
@@ -160,7 +191,7 @@ export function Presentations() {
             )}
           </div>
         ))}
-      </section>
+      </Panel>
     </div>
   );
 }

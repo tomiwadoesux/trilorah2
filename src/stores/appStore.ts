@@ -39,6 +39,10 @@ interface AppState {
   intentState: IntentState;
   /** Rounded dB level while listening, null when idle/unknown. */
   audioLevel: number | null;
+  /** Epoch ms when the operator pressed START LISTENING; null when stopped. */
+  listeningSince: number | null;
+  /** Guided onboarding tour — active step index, null when closed. */
+  tourStep: number | null;
 
   setTab: (tab: TabId) => void;
   setSettings: (settings: AppSettings | null) => void;
@@ -50,6 +54,8 @@ interface AppState {
   setPrayerMode: (active: boolean) => void;
   setIntentState: (state: IntentState) => void;
   setAudioLevel: (level: number | null) => void;
+  setListeningSince: (ts: number | null) => void;
+  setTourStep: (step: number | null) => void;
 }
 
 export const useAppStore = create<AppState>()((set) => ({
@@ -63,6 +69,8 @@ export const useAppStore = create<AppState>()((set) => ({
   prayerMode: false,
   intentState: 'idle',
   audioLevel: null,
+  listeningSince: null,
+  tourStep: null,
 
   setTab: (tab) => set({ tab }),
   setSettings: (settings) => set({ settings }),
@@ -76,4 +84,6 @@ export const useAppStore = create<AppState>()((set) => ({
   setPrayerMode: (prayerMode) => set({ prayerMode }),
   setIntentState: (intentState) => set({ intentState }),
   setAudioLevel: (audioLevel) => set({ audioLevel }),
+  setListeningSince: (listeningSince) => set({ listeningSince }),
+  setTourStep: (tourStep) => set({ tourStep }),
 }));

@@ -32,6 +32,8 @@ interface LiveState {
   notesSnapshot: NotesSnapshot | null;
   /** Full notes produced by GENERATE NOTES (shared with the Notes screen). */
   generatedNotes: SermonNotes | null;
+  /** Operator practice mode — a scripted sermon replayed through the engine. */
+  practice: { step: number; total: number; coach: string } | null;
 
   appendTranscript: (text: string) => void;
   setPreview: (preview: DisplayedVerse | null) => void;
@@ -43,6 +45,7 @@ interface LiveState {
   pushVoiceCommand: (event: VoiceCommandEvent) => void;
   setNotesSnapshot: (snapshot: NotesSnapshot | null) => void;
   setGeneratedNotes: (notes: SermonNotes | null) => void;
+  setPractice: (practice: { step: number; total: number; coach: string } | null) => void;
 }
 
 export const useLiveStore = create<LiveState>()((set) => ({
@@ -55,6 +58,7 @@ export const useLiveStore = create<LiveState>()((set) => ({
   voiceLog: [],
   notesSnapshot: null,
   generatedNotes: null,
+  practice: null,
 
   appendTranscript: (text) =>
     set((s) => {
@@ -78,4 +82,5 @@ export const useLiveStore = create<LiveState>()((set) => ({
     set((s) => ({ voiceLog: [event, ...s.voiceLog].slice(0, VOICE_LOG_CAP) })),
   setNotesSnapshot: (notesSnapshot) => set({ notesSnapshot }),
   setGeneratedNotes: (generatedNotes) => set({ generatedNotes }),
+  setPractice: (practice) => set({ practice }),
 }));

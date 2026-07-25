@@ -3,7 +3,8 @@ import { useAppStore, TABS } from './stores/appStore';
 import { useLiveStore } from './stores/liveStore';
 import { fetchVerseText, sameRef, pct } from './lib/verse';
 import { startMicCapture, stopMicCapture } from './lib/micCapture';
-import { hasEngine } from './components/ui';
+import { LevelMeter, hasEngine } from './components/ui';
+import { Tour } from './components/Tour';
 import { Live } from './screens/Live';
 import { Bible } from './screens/Bible';
 import { Songs } from './screens/Songs';
@@ -57,8 +58,34 @@ function useEngineWiring() {
         if (app().audioLevel !== rounded) app().setAudioLevel(rounded);
       }),
       api.onNotesUpdated((snapshot) => live().setNotesSnapshot(snapshot)),
+      // Stream Deck / Companion commands arriving over ws://localhost:8081.
       api.onExternalCommand((cmd) => {
-        if (cmd.command === 'clear-screen') live().setLive(null);
+        switch (cmd.command) {
+          case 'clear-screen':
+            live().setLive(null);
+            break;
+          case 'start-listening': {
+            const device = app().settings?.micDeviceLabel;
+            api.startListening(typeof device === 'string' && device ? device : undefined);
+            app().setAsrStatus('listening');
+            app().setListeningSince(Date.now());
+            break;
+          }
+          case 'stop-listening':
+            api.stopListening();
+            app().setAsrStatus('stopped');
+            app().setListeningSince(null);
+            break;
+          case 'push-preview': {
+            api.pushToLive();
+            const p = live().preview;
+            if (p) {
+              live().setLive(p);
+              live().setPreview(null);
+            }
+            break;
+          }
+        }
       }),
       api.onMediaSuggestion(() => {
         /* Media suggestions have no surface in this minimal UI yet. */
@@ -83,6 +110,8 @@ function useEngineWiring() {
     // Initial state.
     void api.getSettings().then((settings) => {
       app().setSettings(settings);
+      // First launch on this machine → open the guided tour.
+      if (settings.onboardingDone !== true) app().setTourStep(0);
       const preacherId = typeof settings.activePreacherId === 'string' ? settings.activePreacherId : '';
       if (settings.defaultVersion && live().displayVersion == null) {
         live().setDisplayVersion(settings.defaultVersion);
@@ -106,13 +135,7 @@ function useEngineWiring() {
   }, []);
 }
 
-/** dB (-60..0) → a quiet five-step text meter. */
-function levelBars(db: number): string {
-  const steps = Math.max(0, Math.min(5, Math.round((db + 60) / 12)));
-  return '▁▂▃▅▇'.slice(0, Math.max(1, steps)).padEnd(5, '·');
-}
-
-function StatusLine() {
+function StatusCluster() {
   const asrStatus = useAppStore((s) => s.asrStatus);
   const segment = useAppStore((s) => s.segment);
   const preacherName = useAppStore((s) => s.activePreacherName);
@@ -122,17 +145,17 @@ function StatusLine() {
   const listening = asrStatus === 'listening';
 
   return (
-    <div className="text-xs uppercase tracking-widest text-neutral-400">
-      <span className={listening ? 'text-accent' : ''}>
-        <span aria-hidden="true">● </span>
+    <div className="flex items-center gap-x-4 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+      <span className={`flex items-center gap-x-1.5 ${listening ? 'text-accent' : ''}`}>
+        <span aria-hidden="true" className={listening ? 'animate-pulse-quiet' : ''}>
+          ●
+        </span>
         {asrStatus}
       </span>
-      {listening && audioLevel != null && (
-        <span className="font-mono"> {levelBars(audioLevel)}</span>
-      )}
-      {segment && <span> · {segment.type}</span>}
-      {preacherName && <span> · {preacherName}</span>}
-      {trust != null && <span> · trust {pct(trust)}</span>}
+      {listening && <LevelMeter db={audioLevel} />}
+      {segment && <span>{segment.type}</span>}
+      {preacherName && <span className="text-ink">{preacherName}</span>}
+      {trust != null && <span>trust {pct(trust)}</span>}
     </div>
   );
 }
@@ -141,49 +164,70 @@ export default function App() {
   useEngineWiring();
   const tab = useAppStore((s) => s.tab);
   const setTab = useAppStore((s) => s.setTab);
+  const setTourStep = useAppStore((s) => s.setTourStep);
 
   return (
-    <div className="min-h-screen">
-      <header className="mx-auto max-w-4xl px-6 pt-10">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-3">
-          <nav className="flex flex-wrap items-baseline gap-x-2 gap-y-2">
-            {TABS.map((t, i) => (
-              <span key={t.id} className="flex items-baseline gap-x-2">
-                {i > 0 && <span className="text-neutral-300">·</span>}
+    <div className="flex h-screen flex-col overflow-hidden">
+      <header className="shrink-0 border-b border-hairline bg-surface">
+        <div className="flex items-center justify-between gap-x-6 px-4 py-2">
+          <div className="flex items-center gap-x-6">
+            <span className="select-none text-sm font-bold tracking-[0.3em]">TRILORAH</span>
+            <nav data-tour="tabs" className="flex items-center gap-x-1">
+              {TABS.map((t) => (
                 <button
+                  key={t.id}
                   type="button"
                   onClick={() => setTab(t.id)}
-                  className={`text-xs uppercase tracking-widest underline-offset-4 hover:underline ${
-                    tab === t.id ? 'font-semibold text-accent' : 'text-ink'
+                  className={`rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
+                    tab === t.id ? 'bg-accent text-white' : 'text-neutral-500 hover:text-ink'
                   }`}
                 >
                   {t.label}
                 </button>
-              </span>
-            ))}
-          </nav>
-          <StatusLine />
+              ))}
+            </nav>
+          </div>
+          <div className="flex items-center gap-x-5">
+            <StatusCluster />
+            <button
+              type="button"
+              onClick={() => setTourStep(0)}
+              title="Replay the guided tour"
+              className="rounded border border-hairline px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-500 transition-colors hover:border-ink hover:text-ink"
+            >
+              How to use
+            </button>
+          </div>
         </div>
-        <div className="mt-6 border-b border-hairline" />
         {!hasEngine() && (
-          <p className="mt-4 text-sm italic text-neutral-400">
+          <p className="border-t border-hairline px-4 py-1.5 text-xs italic text-neutral-400">
             engine not connected — running outside Electron; controls are inert
           </p>
         )}
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 pb-24 pt-12">
-        {tab === 'live' && <Live />}
-        {tab === 'bible' && <Bible />}
-        {tab === 'songs' && <Songs />}
-        {tab === 'presentations' && <Presentations />}
-        {tab === 'themes' && <Themes />}
-        {tab === 'schedule' && <Schedule />}
-        {tab === 'preachers' && <Preachers />}
-        {tab === 'notes' && <Notes />}
-        {tab === 'settings' && <Settings />}
-        {tab === 'cloud' && <Cloud />}
-      </main>
+      {tab === 'live' ? (
+        // The control surface owns the whole viewport below the header.
+        <main className="min-h-0 flex-1">
+          <Live />
+        </main>
+      ) : (
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-5xl px-6 pb-24 pt-10">
+            {tab === 'bible' && <Bible />}
+            {tab === 'songs' && <Songs />}
+            {tab === 'presentations' && <Presentations />}
+            {tab === 'themes' && <Themes />}
+            {tab === 'schedule' && <Schedule />}
+            {tab === 'preachers' && <Preachers />}
+            {tab === 'notes' && <Notes />}
+            {tab === 'settings' && <Settings />}
+            {tab === 'cloud' && <Cloud />}
+          </div>
+        </main>
+      )}
+
+      <Tour />
     </div>
   );
 }

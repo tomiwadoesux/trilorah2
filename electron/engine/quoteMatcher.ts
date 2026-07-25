@@ -321,9 +321,15 @@ export class QuoteMatcher {
    */
   loadIndex(): boolean {
     try {
-      const dataDir = path.join(process.cwd(), 'electron', 'data')
-      const versesPath = path.join(dataDir, 'bible_index.json')
-      if (!fs.existsSync(versesPath)) {
+      const candidates = [
+        path.join(process.cwd(), 'electron', 'data', 'bible_index.json')
+      ]
+      if (process.resourcesPath) {
+        // Packaged: bible_index.json ships via electron-builder extraResources
+        candidates.unshift(path.join(process.resourcesPath, 'bible_index.json'))
+      }
+      const versesPath = candidates.find((p) => fs.existsSync(p))
+      if (!versesPath) {
         console.error(
           '❌ bible_index.json not found. Run build scripts first.'
         )

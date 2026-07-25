@@ -141,7 +141,11 @@ protocol.registerSchemesAsPrivileged([
   }
 ])
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local') })
+// Dev-only: packaged apps have no .env.local — keys live in electron-store
+// settings (see data/settings.ts, which syncs env → store on first run).
+if (!app.isPackaged) {
+  dotenv.config({ path: path.join(process.cwd(), '.env.local') })
+}
 
 function getMimeType(filePath: string): string {
   const extension = path.extname(filePath).toLowerCase()
@@ -868,6 +872,29 @@ ipcMain.handle('clear-media', () => {
     if (!win.isDestroyed()) win.webContents.send('on-show-clean-background')
   })
   return { success: true }
+})
+
+// Companion QR — rendered as media on every open output so congregants can
+// scan straight from the projector. URL comes from Settings (web url + slug).
+ipcMain.handle('show-qr', async () => {
+  try {
+    const base = String(getSetting('publicWebUrl') ?? '').replace(/\/+$/, '')
+    const slug = String(getSetting('accountSlug') ?? '')
+    if (!base || !slug) {
+      return { success: false, error: 'set public web url and account slug in Settings first' }
+    }
+    const url = `${base}/live/${slug}`
+    const { toFile } = await import('qrcode')
+    const file = path.join(app.getPath('temp'), 'trilorah-companion-qr.png')
+    await toFile(file, url, { width: 800, margin: 2 })
+    console.log(`📱 Companion QR on outputs → ${url}`)
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) win.webContents.send('on-show-media', file)
+    })
+    return { success: true, url }
+  } catch (e: any) {
+    return { success: false, error: e?.message }
+  }
 })
 
 ipcMain.handle('get-notes-provider-status', async () => {

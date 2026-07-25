@@ -9,6 +9,10 @@ export function findDatabase(): string | null {
     path.join(process.cwd(), 'bible.db'),
     path.join(__dirname, '..', 'bible.db')
   ]
+  if (app.isPackaged) {
+    // Packaged: bible.db ships via electron-builder extraResources
+    paths.unshift(path.join(process.resourcesPath, 'bible.db'))
+  }
   for (const p of paths) {
     if (fs.existsSync(p)) {
       console.log('✅ Database found:', p)

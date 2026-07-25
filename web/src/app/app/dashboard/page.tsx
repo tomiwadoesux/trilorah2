@@ -122,24 +122,37 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-gray-500 mb-3">
-          Recent services
-        </h2>
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-[10px] uppercase tracking-widest text-gray-500">
+            Recent services
+          </h2>
+          <Link
+            href="/app/services"
+            className="text-[11px] text-gray-500 hover:text-brand"
+          >
+            View all →
+          </Link>
+        </div>
         {services && services.length > 0 ? (
           <ul className="space-y-2">
             {services.map((s) => (
-              <li key={s.id} className="rounded-lg bg-white/[0.03] border border-white/10 p-4">
-                <div className="flex items-baseline justify-between">
-                  <p className="text-sm font-medium text-white">
-                    {s.sermon_title || "Untitled service"}
+              <li key={s.id}>
+                <Link
+                  href={`/app/services/${s.id}`}
+                  className="block rounded-lg bg-white/[0.03] border border-white/10 p-4 hover:border-white/20 transition-colors"
+                >
+                  <div className="flex items-baseline justify-between">
+                    <p className="text-sm font-medium text-white">
+                      {s.sermon_title || "Untitled service"}
+                    </p>
+                    <time className="text-[11px] text-gray-500 tabular-nums">
+                      {new Date(s.started_at).toLocaleString()}
+                    </time>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {s.ended_at ? "Ended" : "In progress"}
                   </p>
-                  <time className="text-[11px] text-gray-500 tabular-nums">
-                    {new Date(s.started_at).toLocaleString()}
-                  </time>
-                </div>
-                <p className="text-[11px] text-gray-500 mt-1">
-                  {s.ended_at ? "Ended" : "In progress"}
-                </p>
+                </Link>
               </li>
             ))}
           </ul>

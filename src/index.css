@@ -3,13 +3,18 @@
 /*
  * Design tokens — the entire palette.
  * Near-white paper, near-black ink, a pure-black accent for live/active
- * states (per product owner), hairline separators. Nothing else.
+ * states (per product owner), hairline separators, and a white "surface"
+ * for panels so the control surface reads as physical cards on paper.
+ * Nothing else.
  */
 @theme {
   --color-paper: #fafaf8;
   --color-ink: #141414;
   --color-accent: #000000;
   --color-hairline: #e5e3de;
+  --color-surface: #ffffff;
+  /* The projector canvas — always black, like the room it lights. */
+  --color-canvas: #0a0a0a;
 
   --font-scripture: Georgia, "Times New Roman", serif;
 }
@@ -68,5 +73,37 @@
 
   button:disabled {
     cursor: default;
+  }
+
+  /* Quiet scrollbars — hairline thumbs, no chrome. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-hairline);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--color-ink) 25%, transparent);
+  }
+}
+
+@layer utilities {
+  /* Soft pulse for the listening dot and LIVE badge. */
+  @keyframes pulse-quiet {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+  .animate-pulse-quiet {
+    animation: pulse-quiet 2s ease-in-out infinite;
   }
 }

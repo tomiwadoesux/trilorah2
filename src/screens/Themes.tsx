@@ -1,5 +1,5 @@
 import { useAppStore } from '../stores/appStore';
-import { SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import { EngineNote, Panel, PanelHeader, SectionLabel, hasEngine } from '../components/ui';
 
 /**
  * Display themes for the output windows: scripture font, size, weight,
@@ -23,7 +23,9 @@ const FONT_PRESETS: Array<{ id: string; label: string; family: string }> = [
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
-      <span className="w-44 shrink-0 text-xs uppercase tracking-widest text-neutral-400">{label}</span>
+      <span className="w-40 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -36,7 +38,12 @@ export function Themes() {
   if (!hasEngine()) {
     return (
       <div className="space-y-6">
-        <SectionLabel>themes</SectionLabel>
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold tracking-tight">Themes</h2>
+          <p className="text-sm text-neutral-500">
+            Shape how scripture looks on the output — font, size, color, and background.
+          </p>
+        </div>
         <EngineNote what="engine not connected — theme settings live in the Electron main process" />
       </div>
     );
@@ -51,80 +58,92 @@ export function Themes() {
   const family = FONT_PRESETS.find((f) => f.id === preset)?.family ?? FONT_PRESETS[0].family;
 
   return (
-    <div key={loaded ? 'loaded' : 'loading'} className="space-y-10">
-      <section className="space-y-4">
-        <SectionLabel>scripture display</SectionLabel>
-        <div className="space-y-3">
-          <Row label="font">
-            <select value={preset} onChange={(e) => save('scriptureFontPreset', e.target.value)} className="text-sm">
-              {FONT_PRESETS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </Row>
-          <Row label="size">
-            <input
-              type="range"
-              min="0.6"
-              max="1.8"
-              step="0.05"
-              defaultValue={String(scale)}
-              onChange={(e) => save('defaultFontSize', Number.parseFloat(e.target.value))}
-              className="w-64"
-            />
-            <span className="text-xs text-neutral-400">{Math.round(scale * 100)}%</span>
-          </Row>
-          <Row label="weight">
-            <select value={String(weight)} onChange={(e) => save('defaultFontWeight', Number(e.target.value))} className="text-sm">
-              {[300, 400, 500, 600, 700].map((w) => (
-                <option key={w} value={String(w)}>
-                  {w}
-                </option>
-              ))}
-            </select>
-          </Row>
-          <Row label="text color">
-            <input
-              type="color"
-              value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'}
-              onChange={(e) => save('defaultTextColor', e.target.value)}
-              className="h-6 w-10 cursor-pointer border-none p-0"
-            />
-            <span className="text-xs text-neutral-400">{color}</span>
-          </Row>
-        </div>
-      </section>
+    <div key={loaded ? 'loaded' : 'loading'} className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Themes</h2>
+        <p className="text-sm text-neutral-500">
+          Shape how scripture looks on the output — every change saves instantly and repaints the
+          live screen.
+        </p>
+      </div>
 
-      <section className="space-y-4 border-t border-hairline pt-8">
-        <SectionLabel>background</SectionLabel>
-        <div className="space-y-3">
-          <Row label="image url">
-            <input
-              defaultValue={backgroundUrl}
-              placeholder="https://… or file:///… (empty = transparent for obs/vmix)"
-              onBlur={(e) => save('defaultBackgroundUrl', e.target.value.trim())}
-              className="w-full max-w-md text-sm"
-            />
-          </Row>
-          <Row label="dim overlay">
-            <input
-              type="range"
-              min="0"
-              max="0.9"
-              step="0.05"
-              defaultValue={String(overlay)}
-              onChange={(e) => save('overlayOpacity', Number.parseFloat(e.target.value))}
-              className="w-64"
-            />
-            <span className="text-xs text-neutral-400">{Math.round(overlay * 100)}%</span>
-          </Row>
-        </div>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel className="self-start">
+          <PanelHeader>scripture display</PanelHeader>
+          <div className="space-y-4">
+            <Row label="font">
+              <select value={preset} onChange={(e) => save('scriptureFontPreset', e.target.value)} className="text-sm">
+                {FONT_PRESETS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label="size">
+              <input
+                type="range"
+                min="0.6"
+                max="1.8"
+                step="0.05"
+                defaultValue={String(scale)}
+                onChange={(e) => save('defaultFontSize', Number.parseFloat(e.target.value))}
+                className="w-56"
+              />
+              <span className="text-xs tabular-nums text-neutral-400">{Math.round(scale * 100)}%</span>
+            </Row>
+            <Row label="weight">
+              <select value={String(weight)} onChange={(e) => save('defaultFontWeight', Number(e.target.value))} className="text-sm">
+                {[300, 400, 500, 600, 700].map((w) => (
+                  <option key={w} value={String(w)}>
+                    {w}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label="text color">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'}
+                onChange={(e) => save('defaultTextColor', e.target.value)}
+                className="h-6 w-10 cursor-pointer border-none p-0"
+              />
+              <span className="text-xs text-neutral-400">{color}</span>
+            </Row>
+          </div>
+        </Panel>
 
-      <section className="space-y-4 border-t border-hairline pt-8">
-        <SectionLabel>preview</SectionLabel>
+        <Panel className="self-start">
+          <PanelHeader>background</PanelHeader>
+          <div className="space-y-4">
+            <Row label="image url">
+              <input
+                defaultValue={backgroundUrl}
+                placeholder="https://… or file:///… (empty = transparent for obs/vmix)"
+                onBlur={(e) => save('defaultBackgroundUrl', e.target.value.trim())}
+                className="min-w-0 flex-1 text-sm"
+              />
+            </Row>
+            <Row label="dim overlay">
+              <input
+                type="range"
+                min="0"
+                max="0.9"
+                step="0.05"
+                defaultValue={String(overlay)}
+                onChange={(e) => save('overlayOpacity', Number.parseFloat(e.target.value))}
+                className="w-56"
+              />
+              <span className="text-xs tabular-nums text-neutral-400">{Math.round(overlay * 100)}%</span>
+            </Row>
+          </div>
+        </Panel>
+      </div>
+
+      <Panel pad={false}>
+        <div className="border-b border-hairline px-4 py-3">
+          <SectionLabel>preview</SectionLabel>
+        </div>
         <div
           className="relative flex min-h-64 flex-col items-center justify-center overflow-hidden px-10 py-12 text-center"
           style={{
@@ -153,10 +172,10 @@ export function Themes() {
             John 3:16
           </p>
         </div>
-        <p className="text-xs text-neutral-400">
+        <p className="border-t border-hairline px-4 py-3 text-xs text-neutral-400">
           changes apply to the live output instantly — open output from the live tab to see it full-screen
         </p>
-      </section>
+      </Panel>
     </div>
   );
 }

@@ -40,15 +40,16 @@ export class TransitionDetector {
 
   loadPhrases() {
     try {
-      const phrasesPath = path.join(__dirname, 'transition-phrases.json')
-      const altPath = path.join(
-        process.cwd(),
-        'electron',
-        'agent',
-        'transition-phrases.json'
-      )
-      const resolvedPath = fs.existsSync(phrasesPath) ? phrasesPath : altPath
-      if (fs.existsSync(resolvedPath)) {
+      const candidates = [
+        path.join(__dirname, 'transition-phrases.json'),
+        path.join(process.cwd(), 'electron', 'agent', 'transition-phrases.json')
+      ]
+      if (process.resourcesPath) {
+        // Packaged: ships via electron-builder extraResources
+        candidates.unshift(path.join(process.resourcesPath, 'transition-phrases.json'))
+      }
+      const resolvedPath = candidates.find((p) => fs.existsSync(p))
+      if (resolvedPath) {
         this.phrases = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'))
         console.log(
           `✅ TransitionDetector loaded ${Object.keys(this.phrases).length} segment types`

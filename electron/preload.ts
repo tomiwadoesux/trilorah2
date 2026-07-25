@@ -261,6 +261,7 @@ contextBridge.exposeInMainWorld('api', {
   // Media display on outputs + theme repaint
   showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),
   clearMedia: () => ipcRenderer.invoke('clear-media'),
+  showQr: () => ipcRenderer.invoke('show-qr'),
   onShowMedia: (callback: (imagePath: string) => void) => {
     const subscription = (_event: IpcRendererEvent, p: string) => callback(p)
     ipcRenderer.on('on-show-media', subscription)

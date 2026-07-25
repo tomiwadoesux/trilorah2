@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TextButton, SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import {
+  Button,
+  EmptyState,
+  EngineNote,
+  Field,
+  Panel,
+  PanelHeader,
+  Pill,
+  TextButton,
+  hasEngine,
+} from '../components/ui';
 
 /** Pull something readable out of a cloud row without knowing its schema. */
 function describeRow(row: Record<string, unknown>): string {
@@ -84,7 +94,12 @@ export function Cloud() {
   if (!hasEngine()) {
     return (
       <div className="space-y-6">
-        <SectionLabel>cloud</SectionLabel>
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold tracking-tight">Cloud</h2>
+          <p className="text-sm text-neutral-500">
+            Stream verses, transcript, and notes to a public page the congregation can follow.
+          </p>
+        </div>
         <EngineNote />
       </div>
     );
@@ -99,23 +114,27 @@ export function Cloud() {
         : 'signed out';
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-3">
-        <SectionLabel>status</SectionLabel>
-        <p className="text-sm">
-          {statusText}
-          {status?.activeServiceId && (
-            <span className="pl-3 text-xs uppercase tracking-widest text-accent">service live</span>
-          )}
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Cloud</h2>
+        <p className="text-sm text-neutral-500">
+          Stream verses, transcript, and notes to a public page the congregation can follow.
         </p>
-        {note && <p className="text-sm text-neutral-500">{note}</p>}
-      </section>
+      </div>
+
+      <Panel dataTour="cloud-status">
+        <PanelHeader right={status?.activeServiceId ? <Pill active>service live</Pill> : undefined}>
+          status
+        </PanelHeader>
+        <p className="text-sm">{statusText}</p>
+        {note && <p className="mt-2 text-sm text-neutral-500">{note}</p>}
+      </Panel>
 
       {status?.configured && !status.signedIn && (
-        <section className="space-y-4">
-          <SectionLabel>{mode === 'sign-in' ? 'sign in' : 'create account'}</SectionLabel>
+        <Panel className="max-w-md">
+          <PanelHeader>{mode === 'sign-in' ? 'sign in' : 'create account'}</PanelHeader>
           <form
-            className="max-w-md space-y-3"
+            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
               void run(
@@ -127,34 +146,40 @@ export function Cloud() {
               );
             }}
           >
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email"
-              className="w-full text-sm"
-              autoComplete="username"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="password"
-              className="w-full text-sm"
-              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-            />
-            {mode === 'sign-up' && (
+            <Field label="email">
               <input
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                placeholder="church / account name"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email"
                 className="w-full text-sm"
+                autoComplete="username"
               />
+            </Field>
+            <Field label="password">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="password"
+                className="w-full text-sm"
+                autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+              />
+            </Field>
+            {mode === 'sign-up' && (
+              <Field label="church / account name">
+                <input
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="church / account name"
+                  className="w-full text-sm"
+                />
+              </Field>
             )}
-            <div className="flex items-baseline gap-x-10 pt-2">
-              <TextButton
-                label={mode === 'sign-in' ? 'SIGN IN' : 'SIGN UP'}
-                primary
+            <div className="flex items-center gap-x-4 pt-1">
+              <Button
+                label={mode === 'sign-in' ? 'Sign in' : 'Sign up'}
+                variant="solid"
                 disabled={busy || !email.trim() || !password}
                 onClick={() =>
                   void run(
@@ -172,28 +197,31 @@ export function Cloud() {
               />
             </div>
           </form>
-        </section>
+        </Panel>
       )}
 
       {status?.signedIn && status.hasAccount === false && (
-        <section className="space-y-4">
-          <SectionLabel>church setup</SectionLabel>
-          <div className="max-w-md space-y-3">
-            <input
-              value={churchName}
-              onChange={(e) => setChurchName(e.target.value)}
-              placeholder="church name"
-              className="w-full text-sm"
-            />
-            <input
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="slug (yourchurch)"
-              className="w-full text-sm"
-            />
-            <TextButton
-              label="COMPLETE SETUP"
-              primary
+        <Panel className="max-w-md">
+          <PanelHeader>church setup</PanelHeader>
+          <div className="space-y-4">
+            <Field label="church name">
+              <input
+                value={churchName}
+                onChange={(e) => setChurchName(e.target.value)}
+                placeholder="church name"
+                className="w-full text-sm"
+              />
+            </Field>
+            <Field label="slug">
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="slug (yourchurch)"
+                className="w-full text-sm"
+              />
+            </Field>
+            <Button
+              label="Complete setup"
               disabled={busy || !churchName.trim() || !slug.trim()}
               onClick={() =>
                 void run(
@@ -203,97 +231,101 @@ export function Cloud() {
               }
             />
           </div>
-        </section>
+        </Panel>
       )}
 
       {status?.signedIn && (
         <>
-          <section className="space-y-4">
-            <SectionLabel>this service</SectionLabel>
-            <div className="flex flex-wrap items-baseline gap-x-10">
-              {status.activeServiceId ? (
-                <TextButton
-                  label="END CLOUD SERVICE"
-                  onClick={() => void run(() => window.api?.cloudEndService() ?? Promise.resolve(undefined), 'cloud service ended')}
-                  disabled={busy}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Panel className="self-start">
+              <PanelHeader>this service</PanelHeader>
+              <div className="flex flex-wrap items-center gap-x-4">
+                {status.activeServiceId ? (
+                  <Button
+                    label="End cloud service"
+                    onClick={() => void run(() => window.api?.cloudEndService() ?? Promise.resolve(undefined), 'cloud service ended')}
+                    disabled={busy}
+                  />
+                ) : (
+                  <Button
+                    label="Start cloud service"
+                    variant="solid"
+                    onClick={() => void run(() => window.api?.cloudStartService({}) ?? Promise.resolve(undefined), 'cloud service started')}
+                    disabled={busy}
+                  />
+                )}
+              </div>
+              <p className="mt-3 text-sm text-neutral-500">
+                While a cloud service is live, pushed verses, the transcript, and notes stream to your
+                public page for the congregation to follow along.
+              </p>
+            </Panel>
+
+            <Panel className="self-start">
+              <PanelHeader>link another device</PanelHeader>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <Button label="Generate link code" onClick={() => void generateLink()} disabled={busy} />
+                {linkCode && <span className="font-scripture text-2xl tracking-widest">{linkCode}</span>}
+              </div>
+              <form
+                className="mt-4 flex items-center gap-x-4 border-t border-hairline pt-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (redeemCode.trim()) {
+                    void run(() => window.api?.cloudRedeemLinkCode(redeemCode.trim()) ?? Promise.resolve(undefined), 'device linked');
+                  }
+                }}
+              >
+                <input
+                  value={redeemCode}
+                  onChange={(e) => setRedeemCode(e.target.value)}
+                  placeholder="enter a code from another device"
+                  className="w-full min-w-0 text-sm"
                 />
+                <TextButton
+                  label="REDEEM"
+                  onClick={() => void run(() => window.api?.cloudRedeemLinkCode(redeemCode.trim()) ?? Promise.resolve(undefined), 'device linked')}
+                  disabled={busy || !redeemCode.trim()}
+                />
+              </form>
+            </Panel>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Panel className="self-start">
+              <PanelHeader>recent services</PanelHeader>
+              {services.length === 0 ? (
+                <EmptyState>none yet</EmptyState>
               ) : (
-                <TextButton
-                  label="START CLOUD SERVICE"
-                  primary
-                  onClick={() => void run(() => window.api?.cloudStartService({}) ?? Promise.resolve(undefined), 'cloud service started')}
-                  disabled={busy}
-                />
+                <ul className="space-y-1.5">
+                  {services.slice(0, 10).map((row, i) => (
+                    <li key={i} className="text-sm">{describeRow(row)}</li>
+                  ))}
+                </ul>
               )}
-            </div>
-            <p className="max-w-2xl text-sm text-neutral-500">
-              While a cloud service is live, pushed verses, the transcript, and notes stream to your
-              public page for the congregation to follow along.
-            </p>
-          </section>
+            </Panel>
 
-          <section className="space-y-4">
-            <SectionLabel>link another device</SectionLabel>
-            <div className="flex flex-wrap items-baseline gap-x-10 gap-y-3">
-              <TextButton label="GENERATE LINK CODE" onClick={() => void generateLink()} disabled={busy} />
-              {linkCode && <span className="font-scripture text-2xl tracking-widest">{linkCode}</span>}
-            </div>
-            <form
-              className="flex items-baseline gap-x-6"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (redeemCode.trim()) {
-                  void run(() => window.api?.cloudRedeemLinkCode(redeemCode.trim()) ?? Promise.resolve(undefined), 'device linked');
-                }
-              }}
-            >
-              <input
-                value={redeemCode}
-                onChange={(e) => setRedeemCode(e.target.value)}
-                placeholder="enter a code from another device"
-                className="w-72 text-sm"
-              />
-              <TextButton
-                label="REDEEM"
-                onClick={() => void run(() => window.api?.cloudRedeemLinkCode(redeemCode.trim()) ?? Promise.resolve(undefined), 'device linked')}
-                disabled={busy || !redeemCode.trim()}
-              />
-            </form>
-          </section>
+            <Panel className="self-start">
+              <PanelHeader>recent notes</PanelHeader>
+              {notesList.length === 0 ? (
+                <EmptyState>none yet</EmptyState>
+              ) : (
+                <ul className="space-y-1.5">
+                  {notesList.slice(0, 10).map((row, i) => (
+                    <li key={i} className="text-sm">{describeRow(row)}</li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </div>
 
-          <section className="space-y-3">
-            <SectionLabel>recent services</SectionLabel>
-            {services.length === 0 ? (
-              <p className="text-sm italic text-neutral-400">none yet</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {services.slice(0, 10).map((row, i) => (
-                  <li key={i} className="text-sm">{describeRow(row)}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="space-y-3">
-            <SectionLabel>recent notes</SectionLabel>
-            {notesList.length === 0 ? (
-              <p className="text-sm italic text-neutral-400">none yet</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {notesList.slice(0, 10).map((row, i) => (
-                  <li key={i} className="text-sm">{describeRow(row)}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="border-t border-hairline pt-8">
+          <div className="border-t border-hairline pt-6">
             <TextButton
               label="SIGN OUT"
               onClick={() => void run(() => window.api?.cloudSignOut() ?? Promise.resolve(undefined), 'signed out')}
               disabled={busy}
             />
-          </section>
+          </div>
         </>
       )}
     </div>

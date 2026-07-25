@@ -279,9 +279,53 @@ function VoiceCommandEditor() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** Default microphone for services — same device list the Live bar uses. */
+function MicDevicePicker() {
+  const settings = useAppStore((s) => s.settings);
+  const saved = typeof settings?.micDeviceLabel === 'string' ? settings.micDeviceLabel : '';
+  const [labels, setLabels] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      navigator.mediaDevices
+        ?.enumerateDevices?.()
+        .then((devices) => {
+          if (cancelled) return;
+          setLabels(devices.filter((d) => d.kind === 'audioinput' && d.label).map((d) => d.label));
+        })
+        .catch(() => undefined);
+    };
+    load();
+    navigator.mediaDevices?.addEventListener?.('devicechange', load);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices?.removeEventListener?.('devicechange', load);
+    };
+  }, []);
+
   return (
-    <section className="space-y-4 border-t border-hairline pt-8 first:border-t-0 first:pt-0">
+    <Row label="microphone">
+      <select value={saved} onChange={(e) => save('micDeviceLabel', e.target.value)} className="max-w-md text-sm">
+        <option value="">default microphone</option>
+        {labels.map((label) => (
+          <option key={label} value={label}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <span className="text-xs text-neutral-400">
+        {labels.length === 0
+          ? 'device names appear after the first START LISTENING grants mic access'
+          : 'used for every service until changed — pick the soundboard feed, not the laptop mic'}
+      </span>
+    </Row>
+  );
+}
+
+function Section({ title, children, dataTour }: { title: string; children: ReactNode; dataTour?: string }) {
+  return (
+    <section data-tour={dataTour} className="space-y-4 border-t border-hairline pt-8 first:border-t-0 first:pt-0">
       <SectionLabel>{title}</SectionLabel>
       <div className="space-y-3">{children}</div>
     </section>
@@ -293,6 +337,7 @@ export function Settings() {
   const loaded = settings != null;
   const [versions, setVersions] = useState<string[]>([]);
   const [obsNote, setObsNote] = useState<string | null>(null);
+  const [obsScenes, setObsScenes] = useState<string[]>([]);
   const [vmixNote, setVmixNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -306,11 +351,34 @@ export function Settings() {
       if (res?.success) {
         const status = await window.api?.obsStatus();
         setObsNote(status?.connected ? 'connected' : status?.error ?? 'connected (status unknown)');
+        const scenes = Array.isArray(status?.scenes)
+          ? (status.scenes as unknown[])
+              .map((s) =>
+                typeof s === 'string'
+                  ? s
+                  : s != null && typeof s === 'object' && 'sceneName' in s
+                    ? String((s as { sceneName: unknown }).sceneName)
+                    : '',
+              )
+              .filter(Boolean)
+          : [];
+        setObsScenes(scenes);
       } else {
         setObsNote(res?.error ?? 'could not connect');
+        setObsScenes([]);
       }
     } catch {
       setObsNote('could not connect');
+      setObsScenes([]);
+    }
+  };
+
+  const setObsScene = async (scene: string) => {
+    try {
+      const res = await window.api?.obsSetScene(scene);
+      setObsNote(res?.success ? `switched to “${scene}”` : res?.error ?? 'could not switch scene');
+    } catch {
+      setObsNote('could not switch scene');
     }
   };
 
@@ -341,10 +409,14 @@ export function Settings() {
     <div key={loaded ? 'loaded' : 'loading'} className="space-y-10">
       {!loaded && <p className="text-sm italic text-neutral-400">loading settings…</p>}
 
-      <Section title="transcription">
+      <Section title="transcription" dataTour="settings-keys">
         <TextSetting label="deepgram key" settingKey="deepgramApiKey" masked wide />
         <TextSetting label="hugging face token" settingKey="hfToken" masked wide />
         <SelectSetting label="asr provider" settingKey="asrProvider" options={['deepgram', 'whisper-local']} fallback="deepgram" />
+      </Section>
+
+      <Section title="audio input">
+        <MicDevicePicker />
       </Section>
 
       <Section title="intelligence">
@@ -398,6 +470,14 @@ export function Settings() {
           <TextButton label="CONNECT" primary onClick={() => void connectObs()} />
           {obsNote && <span className="text-sm text-neutral-500">{obsNote}</span>}
         </div>
+        {obsScenes.length > 0 && (
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2 pl-50">
+            <span className="text-xs uppercase tracking-widest text-neutral-400">scenes</span>
+            {obsScenes.map((scene) => (
+              <TextButton key={scene} label={scene.toUpperCase()} onClick={() => void setObsScene(scene)} />
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section title="vmix">
@@ -414,6 +494,16 @@ export function Settings() {
         <TextSetting label="church name" settingKey="churchName" wide />
         <TextSetting label="public web url" settingKey="publicWebUrl" wide />
         <TextSetting label="account slug" settingKey="accountSlug" />
+      </Section>
+
+      <Section title="external control">
+        <p className="text-sm leading-relaxed text-neutral-500">
+          Stream Deck / Bitfocus Companion can reach the app at{' '}
+          <span className="font-mono text-ink">ws://localhost:8081</span> — send JSON like{' '}
+          <span className="font-mono">{'{"action":"START_LISTENING"}'}</span>. Commands:{' '}
+          <span className="font-mono">START_LISTENING</span>, <span className="font-mono">STOP_LISTENING</span>,{' '}
+          <span className="font-mono">CLEAR_SCREEN</span>, <span className="font-mono">PUSH_PREVIEW</span>.
+        </p>
       </Section>
 
       <Section title="giving">

@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { TextButton, SectionLabel } from '../components/ui';
+import {
+  Button,
+  EmptyState,
+  Field,
+  Panel,
+  PanelHeader,
+  Pill,
+  SectionLabel,
+  TextButton,
+} from '../components/ui';
 
 /**
  * Songs: a simple lyrics library (stored locally) + "set as current song",
@@ -65,65 +74,97 @@ export function Songs() {
   };
 
   return (
-    <div className="space-y-10">
-      <section className="space-y-4">
-        <SectionLabel>{editingId ? 'edit song' : 'add song'}</SectionLabel>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="song title"
-          className="w-full max-w-md text-sm"
-        />
-        <textarea
-          value={lyrics}
-          onChange={(e) => setLyrics(e.target.value)}
-          placeholder={'lyrics — one line per sung line\nblank line between stanzas'}
-          rows={8}
-          className="w-full max-w-xl text-sm leading-relaxed"
-        />
-        <div className="flex items-baseline gap-x-6">
-          <TextButton label={editingId ? 'SAVE CHANGES' : 'ADD TO LIBRARY'} primary onClick={saveSong} />
-          {editingId && (
-            <TextButton
-              label="CANCEL"
-              onClick={() => {
-                setEditingId(null);
-                setTitle('');
-                setLyrics('');
-              }}
-            />
-          )}
-        </div>
-      </section>
-
-      <section className="space-y-4 border-t border-hairline pt-8">
-        <SectionLabel>library</SectionLabel>
-        {songs.length === 0 && <p className="text-sm italic text-neutral-400">no songs yet</p>}
-        <ul className="space-y-2">
-          {songs.map((song) => (
-            <li key={song.id} className="flex flex-wrap items-baseline gap-x-6">
-              <span className={`text-sm ${currentId === song.id ? 'font-semibold text-accent' : ''}`}>
-                {song.title}
-                {currentId === song.id && ' · current'}
-              </span>
-              <TextButton label="SET AS CURRENT" primary onClick={() => setCurrent(song)} />
-              <TextButton
-                label="EDIT"
-                onClick={() => {
-                  setEditingId(song.id);
-                  setTitle(song.title);
-                  setLyrics(song.lyrics);
-                }}
-              />
-              <TextButton label="REMOVE" onClick={() => persist(songs.filter((s) => s.id !== song.id))} />
-            </li>
-          ))}
-        </ul>
-        <p className="text-xs text-neutral-400">
-          "set as current" tells the worship agent which song is live — the engine keeps the output
-          clean between verses during worship
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Songs</h2>
+        <p className="text-sm text-neutral-500">
+          Keep the worship set's lyrics here — the current song tells the engine when to hold a
+          clean background.
         </p>
-      </section>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Panel pad={false} className="self-start">
+          <div className="border-b border-hairline px-4 py-3">
+            <SectionLabel>library</SectionLabel>
+          </div>
+          {songs.length === 0 ? (
+            <div className="px-4 py-4">
+              <EmptyState>no songs yet — add the first one on the right</EmptyState>
+            </div>
+          ) : (
+            <ul className="divide-y divide-hairline">
+              {songs.map((song) => (
+                <li
+                  key={song.id}
+                  className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-l-2 px-4 py-3 ${
+                    currentId === song.id ? 'border-accent bg-paper' : 'border-transparent'
+                  }`}
+                >
+                  <span className="flex min-w-0 items-baseline gap-x-3">
+                    <span className={`truncate text-sm ${currentId === song.id ? 'font-semibold' : ''}`}>
+                      {song.title}
+                    </span>
+                    {currentId === song.id && <Pill active>current</Pill>}
+                  </span>
+                  <span className="flex items-center gap-x-4">
+                    <Button label="Set as current" onClick={() => setCurrent(song)} />
+                    <TextButton
+                      label="EDIT"
+                      onClick={() => {
+                        setEditingId(song.id);
+                        setTitle(song.title);
+                        setLyrics(song.lyrics);
+                      }}
+                    />
+                    <TextButton label="REMOVE" onClick={() => persist(songs.filter((s) => s.id !== song.id))} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="border-t border-hairline px-4 py-3 text-xs text-neutral-400">
+            "set as current" tells the worship agent which song is live — the engine keeps the
+            output clean between verses during worship
+          </p>
+        </Panel>
+
+        <Panel className="self-start">
+          <PanelHeader>{editingId ? 'edit song' : 'add song'}</PanelHeader>
+          <div className="space-y-4">
+            <Field label="title">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="song title"
+                className="w-full text-sm"
+              />
+            </Field>
+            <Field label="lyrics" hint="one line per sung line · blank line between stanzas">
+              <textarea
+                value={lyrics}
+                onChange={(e) => setLyrics(e.target.value)}
+                placeholder={'lyrics — one line per sung line\nblank line between stanzas'}
+                rows={8}
+                className="w-full text-sm leading-relaxed"
+              />
+            </Field>
+            <div className="flex items-center gap-x-4">
+              <Button label={editingId ? 'Save changes' : 'Add to library'} variant="solid" onClick={saveSong} />
+              {editingId && (
+                <TextButton
+                  label="CANCEL"
+                  onClick={() => {
+                    setEditingId(null);
+                    setTitle('');
+                    setLyrics('');
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }

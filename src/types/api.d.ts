@@ -449,6 +449,8 @@ interface WindowApi {
   // Media on outputs + themes
   showMedia?(imagePath: string): Promise<{ success: boolean }>;
   clearMedia?(): Promise<{ success: boolean }>;
+  /** Render the companion QR (publicWebUrl + accountSlug) on every open output. */
+  showQr?(): Promise<{ success: boolean; url?: string; error?: string }>;
   onShowMedia?(callback: (imagePath: string) => void): Unsubscribe;
   onThemeChanged?(callback: () => void): Unsubscribe;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;

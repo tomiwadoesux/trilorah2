@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { useLiveStore } from '../stores/liveStore';
-import { TextButton, SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import {
+  Button,
+  EmptyState,
+  EngineNote,
+  Panel,
+  PanelHeader,
+  SectionLabel,
+  hasEngine,
+} from '../components/ui';
 
 /** Convert the live incremental snapshot into the exportable notes shape. */
 function snapshotToNotes(snapshot: NotesSnapshot): SermonNotes {
@@ -71,7 +79,7 @@ function NotesDocument({ notes }: { notes: SermonNotes }) {
   return (
     <article className="max-w-2xl space-y-8">
       <header className="space-y-2">
-        {notes.title && <h2 className="font-scripture text-3xl">{notes.title}</h2>}
+        {notes.title && <h3 className="font-scripture text-3xl">{notes.title}</h3>}
         {notes.theme && <p className="text-sm uppercase tracking-widest text-neutral-400">{notes.theme}</p>}
       </header>
       {notes.points && notes.points.length > 0 && (
@@ -159,30 +167,42 @@ export function Notes() {
   };
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-4">
-        <SectionLabel>live outline</SectionLabel>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold tracking-tight">Notes</h2>
+        <p className="text-sm text-neutral-500">
+          The engine outlines the sermon as it's preached — polish it into shareable notes when the
+          service ends.
+        </p>
+        {!hasEngine() && <EngineNote />}
+      </div>
+
+      <Panel>
+        <PanelHeader>live outline</PanelHeader>
         {notesSnapshot ? (
           <LiveOutline snapshot={notesSnapshot} />
         ) : hasEngine() ? (
-          <p className="text-sm italic text-neutral-400">
-            the engine builds this outline while the sermon is preached
-          </p>
+          <EmptyState>the engine builds this outline while the sermon is preached</EmptyState>
         ) : (
           <EngineNote />
         )}
-      </section>
+      </Panel>
 
-      <section className="space-y-5 border-t border-hairline pt-10">
-        <div className="flex flex-wrap items-baseline gap-x-10">
-          <TextButton label="GENERATE NOTES" primary onClick={() => void generate()} disabled={!hasEngine() || busy} />
-          <TextButton label="EXPORT PDF" onClick={() => void exportAs('pdf')} disabled={!hasEngine() || !exportable} />
-          <TextButton label="EXPORT MARKDOWN" onClick={() => void exportAs('md')} disabled={!hasEngine() || !exportable} />
+      <Panel>
+        <PanelHeader>sermon notes</PanelHeader>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button label="Generate notes" variant="solid" onClick={() => void generate()} disabled={!hasEngine() || busy} />
+          <Button label="Export PDF" onClick={() => void exportAs('pdf')} disabled={!hasEngine() || !exportable} />
+          <Button label="Export Markdown" onClick={() => void exportAs('md')} disabled={!hasEngine() || !exportable} />
         </div>
-        {busy && <p className="text-sm italic text-neutral-400">generating…</p>}
-        {note && <p className="text-sm text-neutral-500">{note}</p>}
-        {generatedNotes && <NotesDocument notes={generatedNotes} />}
-      </section>
+        {busy && <p className="mt-3 text-sm italic text-neutral-400">generating…</p>}
+        {note && <p className="mt-3 text-sm text-neutral-500">{note}</p>}
+        {generatedNotes && (
+          <div className="mt-6 border-t border-hairline pt-6">
+            <NotesDocument notes={generatedNotes} />
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }
