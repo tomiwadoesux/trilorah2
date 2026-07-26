@@ -50,6 +50,8 @@ export const defaults = {
   publicWebUrl: 'http://localhost:3003',
   accountSlug: '',
   defaultBackgroundUrl: '',
+  backgroundFit: 'cover' as 'cover' | 'contain' | 'fill',
+  backgroundPosition: 'center' as 'center' | 'top' | 'bottom',
   qrCompanionCaption: 'Scan to follow live verses, transcript, and notes',
   churchName: '',
   churchLogoUrl: '',
@@ -63,7 +65,10 @@ export const defaults = {
   deepgramKeyMasked: false,
   hfTokenMasked: false,
   // --- added post-recovery (agentic feature set, 2026-07) ---
-  asrProvider: 'deepgram' as 'deepgram' | 'whisper-local',
+  // whisper-local is the default: free, on-device, no account or key needed.
+  // Deepgram stays available as the low-latency cloud option for churches
+  // that bring their own key.
+  asrProvider: 'whisper-local' as 'deepgram' | 'whisper-local',
   notesProvider: 'cloud' as 'cloud' | 'local',
   displayVersion: 'KJV',
   seasonalEnabled: true,
@@ -104,6 +109,18 @@ export function migrateServiceSchedule(s: StoreModule<Settings>): void {
   }
 }
 
+/**
+ * Keys typed into Settings live in electron-store, but the ASR/LLM modules
+ * read process.env — in a packaged app there is no .env.local, so without
+ * this mirror a key entered in the UI silently never reached the engine.
+ */
+function mirrorKeysToEnv(s: StoreModule<Settings>): void {
+  const dg = s.get('deepgramApiKey')
+  if (dg) process.env.DEEPGRAM_API_KEY = dg
+  const hf = s.get('hfToken')
+  if (hf) process.env.HF_API_TOKEN = hf
+}
+
 export function getStore(): StoreModule<Settings> {
   if (!store) {
     store = new Store({ defaults })
@@ -114,6 +131,7 @@ export function getStore(): StoreModule<Settings> {
     if (!store.get('hfToken') && process.env.HF_API_TOKEN) {
       store.set('hfToken', process.env.HF_API_TOKEN)
     }
+    mirrorKeysToEnv(store)
   }
   return store
 }
@@ -130,5 +148,7 @@ export function setSetting<K extends keyof Settings>(
   key: K,
   value: Settings[K]
 ): void {
-  getStore().set(key, value)
+  const s = getStore()
+  s.set(key, value)
+  if (key === 'deepgramApiKey' || key === 'hfToken') mirrorKeysToEnv(s)
 }

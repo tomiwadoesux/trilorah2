@@ -13,9 +13,10 @@ files:
   - "!dist-electron/node_modules"
   - "!**/.DS_Store"
 
-# Native module — must live outside app.asar to be require()-able.
+# Native modules — must live outside app.asar to be require()-able.
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/whisper-node/**"
 
 # Runtime data shipped next to the app (resolved via process.resourcesPath).
 extraResources:
@@ -40,3 +41,17 @@ mac:
 
 dmg:
   sign: false
+
+# Church computers are overwhelmingly Windows — ship an installer for them.
+# Build with: npx electron-builder --win (native modules must be rebuilt for
+# win32; building on a Windows machine or CI is the reliable path).
+win:
+  icon: build/icon-1024.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: true
+  allowElevation: true
+  deleteAppDataOnUninstall: false

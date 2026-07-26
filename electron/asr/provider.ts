@@ -19,7 +19,8 @@ export interface ASRProvider {
   start: (
     onText: (text: string, isFinal: boolean) => void,
     onError?: (error: Error) => void,
-    deviceLabel?: string
+    deviceLabel?: string,
+    onStatus?: (message: string) => void
   ) => void
   stop: () => void
 }
@@ -37,15 +38,13 @@ const whisperProvider: ASRProvider = {
 }
 
 export function resolveASRProvider(requested: string | undefined): ASRProvider {
-  if (requested === 'whisper-local') return whisperProvider
-  if (requested === 'deepgram' || requested === undefined || requested === '') {
+  if (requested === 'deepgram') {
     if (process.env.DEEPGRAM_API_KEY) return deepgramProvider
-    if (findWhisperModel()) {
-      console.log('🎤 No Deepgram key — falling back to local Whisper')
-      return whisperProvider
-    }
-    return deepgramProvider // will surface its own missing-key error
+    console.log('🎤 Deepgram selected but no key — using local Whisper')
+    return whisperProvider
   }
-  console.warn(`⚠️ Unknown asrProvider "${requested}" — using Deepgram`)
-  return deepgramProvider
+  if (requested !== 'whisper-local' && requested !== undefined && requested !== '') {
+    console.warn(`⚠️ Unknown asrProvider "${requested}" — using local Whisper`)
+  }
+  return whisperProvider
 }

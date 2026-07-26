@@ -36,4 +36,4 @@ export function setDb(handle: Database.Database | null): void {
 
 // Book tables moved to ./books (pure data, importable without Electron);
 // re-exported here so recovered call sites keep working unchanged.
-export { bookIdMap, bookNames } from './books'
+export { bookIdMap, bookNames, resolveBookId, canonicalBookName } from './books'

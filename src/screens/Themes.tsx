@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { EngineNote, Panel, PanelHeader, SectionLabel, hasEngine } from '../components/ui';
+import { Button, EngineNote, Panel, PanelHeader, SectionLabel, TextButton, hasEngine } from '../components/ui';
 
 /**
  * Display themes for the output windows: scripture font, size, weight,
@@ -34,6 +35,22 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export function Themes() {
   const settings = useAppStore((s) => s.settings);
   const loaded = settings != null;
+  const [bgNote, setBgNote] = useState<string | null>(null);
+
+  const chooseImage = async () => {
+    setBgNote(null);
+    try {
+      const res = await window.api?.pickBackgroundImage?.();
+      if (res?.success && res.url) {
+        useAppStore.getState().patchSetting('defaultBackgroundUrl', res.url);
+        setBgNote('background updated');
+      } else if (res && !res.canceled) {
+        setBgNote(res.error ?? 'could not use that image');
+      }
+    } catch {
+      setBgNote('could not open the image picker');
+    }
+  };
 
   if (!hasEngine()) {
     return (
@@ -55,6 +72,9 @@ export function Themes() {
   const color = typeof settings?.defaultTextColor === 'string' ? settings.defaultTextColor : '#ffffff';
   const overlay = typeof settings?.overlayOpacity === 'number' ? settings.overlayOpacity : 0.3;
   const backgroundUrl = typeof settings?.defaultBackgroundUrl === 'string' ? settings.defaultBackgroundUrl : '';
+  const bgFit = typeof settings?.backgroundFit === 'string' ? settings.backgroundFit : 'cover';
+  const bgPosition = typeof settings?.backgroundPosition === 'string' ? settings.backgroundPosition : 'center';
+  const bgSizeCss = bgFit === 'fill' ? '100% 100%' : bgFit;
   const family = FONT_PRESETS.find((f) => f.id === preset)?.family ?? FONT_PRESETS[0].family;
 
   return (
@@ -116,13 +136,37 @@ export function Themes() {
         <Panel className="self-start">
           <PanelHeader>background</PanelHeader>
           <div className="space-y-4">
-            <Row label="image url">
+            <Row label="image">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
+                <Button label="Choose image…" variant="solid" onClick={() => void chooseImage()} />
+                {backgroundUrl && (
+                  <TextButton label="REMOVE" onClick={() => { save('defaultBackgroundUrl', ''); setBgNote('background removed'); }} />
+                )}
+                {bgNote && <span className="text-xs text-neutral-400">{bgNote}</span>}
+              </div>
+            </Row>
+            <Row label="or image url">
               <input
+                key={backgroundUrl}
                 defaultValue={backgroundUrl}
                 placeholder="https://… or file:///… (empty = transparent for obs/vmix)"
                 onBlur={(e) => save('defaultBackgroundUrl', e.target.value.trim())}
                 className="min-w-0 flex-1 text-sm"
               />
+            </Row>
+            <Row label="image fit">
+              <select value={bgFit} onChange={(e) => save('backgroundFit', e.target.value)} className="text-sm">
+                <option value="cover">fill the screen (crop edges)</option>
+                <option value="contain">fit inside (no cropping)</option>
+                <option value="fill">stretch to screen</option>
+              </select>
+            </Row>
+            <Row label="image position">
+              <select value={bgPosition} onChange={(e) => save('backgroundPosition', e.target.value)} className="text-sm">
+                <option value="center">center</option>
+                <option value="top">top</option>
+                <option value="bottom">bottom</option>
+              </select>
             </Row>
             <Row label="dim overlay">
               <input
@@ -147,7 +191,9 @@ export function Themes() {
         <div
           className="relative flex min-h-64 flex-col items-center justify-center overflow-hidden px-10 py-12 text-center"
           style={{
-            background: backgroundUrl ? `#000 url(${backgroundUrl}) center / cover` : '#1a1a1a',
+            background: backgroundUrl
+              ? `#000 url(${backgroundUrl}) ${bgPosition} / ${bgSizeCss} no-repeat`
+              : '#1a1a1a',
           }}
         >
           {backgroundUrl && (

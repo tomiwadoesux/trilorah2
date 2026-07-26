@@ -55,7 +55,7 @@ const STEPS: TourStep[] = [
     tab: 'live',
     target: 'preview',
     title: 'Preview — your checkpoint',
-    body: 'Detected verses land here first, not on the screen. If it\'s right, hit PUSH TO LIVE. If not, DISMISS it. As trust in a preacher grows, verses can start going live automatically.',
+    body: 'Detected verses land here first — the congregation never sees anything until you press PUSH TO LIVE. Not right? DISMISS it. Once a preacher earns enough trust you can let verses go live automatically.',
   },
   {
     tab: 'live',
@@ -90,8 +90,8 @@ const STEPS: TourStep[] = [
   {
     tab: 'settings',
     target: 'settings-keys',
-    title: 'Keys and connections',
-    body: 'Transcription needs a Deepgram key (or local Whisper). Further down: your default microphone, OBS Studio and vMix connections, and the Stream Deck control address.',
+    title: 'Transcription — free out of the box',
+    body: 'Trilorah listens with a free speech engine that runs on this computer — no account, no key. The model downloads itself the first time you press Start Listening. Churches that want faster cloud transcription can switch to Deepgram here.',
   },
   {
     tab: 'cloud',
@@ -107,7 +107,7 @@ const STEPS: TourStep[] = [
   },
 ];
 
-const CARD_W = 380;
+const CARD_W = 340;
 
 export function Tour() {
   const step = useAppStore((s) => s.tourStep);
@@ -145,19 +145,42 @@ export function Tour() {
       find();
     };
     window.addEventListener('resize', onResize);
+    // The app stays interactive during the tour — panels can grow or move
+    // under the operator's clicks, so keep the spotlight glued to its target.
+    const follow = window.setInterval(() => {
+      const el = document.querySelector(`[data-tour="${target}"]`);
+      if (el instanceof HTMLElement) setRect(el.getBoundingClientRect());
+    }, 400);
     return () => {
       cancelled = true;
       window.removeEventListener('resize', onResize);
+      window.clearInterval(follow);
     };
   }, [step, current, tab, target, setTab]);
-
-  if (step == null || current == null) return null;
 
   const close = () => {
     setStep(null);
     patchSetting('onboardingDone', true);
     void window.api?.setSetting('onboardingDone', true).catch(() => undefined);
   };
+
+  // Keyboard: → / Enter next, ← back, Esc closes.
+  useEffect(() => {
+    if (step == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        if (step < STEPS.length - 1) setStep(step + 1);
+        else close();
+      } else if (e.key === 'ArrowLeft' && step > 0) setStep(step - 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  if (step == null || current == null) return null;
 
   const practiceAndClose = () => {
     close();
@@ -173,42 +196,64 @@ export function Tour() {
     ? {
         width: CARD_W,
         left: Math.min(Math.max(16, rect.left), Math.max(16, window.innerWidth - CARD_W - 16)),
-        ...(window.innerHeight - rect.bottom > 260
-          ? { top: rect.bottom + 14 }
-          : { top: Math.max(16, rect.top - 14), transform: 'translateY(-100%)' }),
+        ...(window.innerHeight - rect.bottom > 240
+          ? { top: rect.bottom + 16 }
+          : { top: Math.max(16, rect.top - 16), transform: 'translateY(-100%)' }),
       }
     : { width: CARD_W, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
 
   return (
-    <div className="fixed inset-0 z-40">
+    // pointer-events-none: the dim and spotlight never swallow clicks — the
+    // operator can actually press the button being described. Only the card
+    // itself is interactive.
+    <div className="pointer-events-none fixed inset-0 z-40">
       {spotlit ? (
         <div
-          className="pointer-events-none fixed rounded-lg transition-all duration-300"
+          className="fixed rounded-lg transition-all duration-300 ease-out"
           style={{
-            top: rect.top - 6,
-            left: rect.left - 6,
-            width: rect.width + 12,
-            height: rect.height + 12,
-            boxShadow: '0 0 0 9999px rgba(20, 20, 20, 0.55)',
+            top: rect.top - 8,
+            left: rect.left - 8,
+            width: rect.width + 16,
+            height: rect.height + 16,
+            boxShadow: '0 0 0 9999px rgba(12, 12, 12, 0.6), 0 0 0 2px var(--color-accent, #16a34a)',
           }}
-        />
+        >
+          <span className="absolute -inset-1 animate-pulse-quiet rounded-lg border border-accent/50" />
+        </div>
       ) : (
-        <div className="fixed inset-0 bg-ink/55" />
+        <div className="fixed inset-0 bg-ink/60" />
       )}
 
-      <div className="fixed rounded-md border border-ink bg-surface p-5 shadow-xl" style={cardStyle}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
-          step {step + 1} of {STEPS.length}
-        </p>
-        <h3 className="mt-1 text-base font-semibold tracking-tight">{current.title}</h3>
+      <div
+        className="pointer-events-auto fixed rounded-lg border border-hairline bg-surface p-5 shadow-2xl transition-all duration-300 ease-out"
+        style={cardStyle}
+      >
+        <h3 className="text-base font-semibold tracking-tight">{current.title}</h3>
         <p className="mt-2 text-sm leading-relaxed text-neutral-600">{current.body}</p>
+        {spotlit && (
+          <p className="mt-2 text-[10px] uppercase tracking-widest text-accent">
+            the app is live — try the highlighted control
+          </p>
+        )}
         <div className="mt-4 flex items-center justify-between gap-x-4">
-          <TextButton label="SKIP TOUR" onClick={close} />
+          <div className="flex items-center gap-x-1.5" aria-label={`step ${step + 1} of ${STEPS.length}`}>
+            {STEPS.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setStep(i)}
+                aria-label={`go to step ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all duration-200 ${
+                  i === step ? 'w-5 bg-accent' : 'w-1.5 bg-neutral-300 hover:bg-neutral-400'
+                }`}
+              />
+            ))}
+          </div>
           <div className="flex items-center gap-x-3">
-            {step > 0 && <Button label="Back" onClick={() => setStep(step - 1)} />}
+            {step > 0 && <TextButton label="BACK" onClick={() => setStep(step - 1)} />}
             {last ? (
               <>
-                <Button label="Finish" onClick={close} />
+                <TextButton label="FINISH" onClick={close} />
                 <Button label="Start practice" variant="solid" onClick={practiceAndClose} />
               </>
             ) : (
@@ -216,6 +261,14 @@ export function Tour() {
             )}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={close}
+          aria-label="close tour"
+          className="absolute right-3 top-3 text-neutral-400 transition-colors hover:text-ink"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );

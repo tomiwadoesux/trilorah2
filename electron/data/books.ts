@@ -76,3 +76,28 @@ export const bookIdMap: Record<string, number> = {
 export const bookNames = Object.fromEntries(
   Object.entries(bookIdMap).map(([name, id]) => [id, name])
 ) as Record<number, string>
+
+const lowerBookIdMap: Record<string, number> = Object.fromEntries(
+  Object.entries(bookIdMap).map(([name, id]) => [name.toLowerCase(), id])
+)
+
+/**
+ * Case-insensitive book lookup with prefix fallback ("romans", "Rom", "1 cor").
+ * Returns the canonical 0-based id, or undefined. Every DB query should go
+ * through this rather than bookIdMap directly — typed and spoken references
+ * arrive in whatever casing the operator or ASR produced.
+ */
+export function resolveBookId(name: string): number | undefined {
+  if (!name) return undefined
+  const q = name.trim().toLowerCase().replace(/\s+/g, ' ').replace(/\.$/, '')
+  if (q in lowerBookIdMap) return lowerBookIdMap[q]
+  if (q.length < 2) return undefined
+  const hits = Object.keys(lowerBookIdMap).filter((b) => b.startsWith(q))
+  return hits.length === 1 ? lowerBookIdMap[hits[0]] : undefined
+}
+
+/** Canonical display name for whatever casing/abbreviation came in. */
+export function canonicalBookName(name: string): string | null {
+  const id = resolveBookId(name)
+  return id === undefined ? null : bookNames[id]
+}

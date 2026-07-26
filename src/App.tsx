@@ -94,12 +94,26 @@ function useEngineWiring() {
       api.onMicRequest?.((req) => {
         void startMicCapture(req.sampleRate, req.deviceLabel).catch((e) => {
           console.error('mic capture failed:', e);
-          app().setAsrStatus('error');
+          app().setAsrStatus('error', e instanceof Error ? e.message : 'microphone capture failed');
         });
       }),
       api.onMicStop?.(() => stopMicCapture()),
-      // Upcoming surface — may be absent from today's preload.
-      api.onAsrStatus?.((status) => app().setAsrStatus(status)),
+      // The engine emits human status lines ("Listening...", "Downloading
+      // speech model — 40%", "Error: …") — normalize for the state machine
+      // and keep the raw line as the visible detail.
+      api.onAsrStatus?.((status) => {
+        const raw = String(status);
+        const s = raw.toLowerCase();
+        const norm: ASRStatus = s.startsWith('listening')
+          ? 'listening'
+          : s.startsWith('error')
+            ? 'error'
+            : s.startsWith('stopped')
+              ? 'stopped'
+              : 'connecting';
+        const quiet = norm === 'listening' || norm === 'stopped';
+        app().setAsrStatus(norm, quiet ? null : raw);
+      }),
       api.onVoiceCommand?.((event) => live().pushVoiceCommand(event)),
       api.onVersionChanged?.((version) => live().setDisplayVersion(version)),
       api.onQueueUpdated?.((queue) => live().setQueue(queue)),

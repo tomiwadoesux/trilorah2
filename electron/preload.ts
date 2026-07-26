@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('api', {
   // Get available Bible versions
   getAvailableVersions: () => ipcRenderer.invoke('get-available-versions'),
 
+  // Bible database health (drives the missing-DB banner)
+  getDbStatus: () => ipcRenderer.invoke('get-db-status'),
+
   // Search for a specific verse
   searchVerse: (book: string, chapter: number, verse: number, version?: string) =>
     ipcRenderer.invoke('search-verse', { book, chapter, verse, version }),
@@ -257,6 +260,9 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('on-mic-stop', subscription)
     return () => ipcRenderer.removeListener('on-mic-stop', subscription)
   },
+
+  // Themes — native background image picker (copies into userData)
+  pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
 
   // Media display on outputs + theme repaint
   showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),

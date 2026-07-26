@@ -17,6 +17,7 @@ import {
 import { formatRef, describeVoiceCommand, clockTime, pct } from '../lib/verse';
 import { startPractice, stopPractice } from '../lib/practice';
 import { ScriptureSearch } from '../components/ScriptureSearch';
+import { listAudioInputs, onDeviceChange } from '../lib/audioDevices';
 
 const EMPHASIS_WINDOW_MS = 3000;
 
@@ -312,28 +313,40 @@ function PulpitLogPanel() {
 /* Bottom control strip                                                */
 /* ------------------------------------------------------------------ */
 
-/** Input device labels, refreshed on plug/unplug. Labels need mic permission. */
+/** Input device labels, refreshed on plug/unplug. Unlocks labels itself. */
 function useAudioInputs(): string[] {
   const [labels, setLabels] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      navigator.mediaDevices
-        ?.enumerateDevices?.()
-        .then((devices) => {
-          if (cancelled) return;
-          setLabels(devices.filter((d) => d.kind === 'audioinput' && d.label).map((d) => d.label));
-        })
-        .catch(() => undefined);
+      void listAudioInputs().then((inputs) => {
+        if (!cancelled) setLabels(inputs.map((d) => d.label));
+      });
     };
     load();
-    navigator.mediaDevices?.addEventListener?.('devicechange', load);
+    const unsub = onDeviceChange(load);
     return () => {
       cancelled = true;
-      navigator.mediaDevices?.removeEventListener?.('devicechange', load);
+      unsub();
     };
   }, []);
   return labels;
+}
+
+/** Red banner when the bible database is missing — otherwise verses render
+ *  as reference-only and nobody knows why. */
+function DbBanner() {
+  const [status, setStatus] = useState<{ connected: boolean; error?: string } | null>(null);
+  useEffect(() => {
+    void window.api?.getDbStatus?.().then(setStatus).catch(() => undefined);
+  }, []);
+  if (!status || status.connected) return null;
+  return (
+    <div className="shrink-0 bg-red-700 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white">
+      bible database not found — verses will show without text. reinstall the app or contact support.
+      {status.error ? ` (${status.error})` : ''}
+    </div>
+  );
 }
 
 function elapsed(since: number, now: number): string {
@@ -348,6 +361,7 @@ function elapsed(since: number, now: number): string {
 
 function BottomBar({ onEndService }: { onEndService: () => void }) {
   const asrStatus = useAppStore((s) => s.asrStatus);
+  const asrDetail = useAppStore((s) => s.asrDetail);
   const setAsrStatus = useAppStore((s) => s.setAsrStatus);
   const audioLevel = useAppStore((s) => s.audioLevel);
   const segment = useAppStore((s) => s.segment);
@@ -406,6 +420,11 @@ function BottomBar({ onEndService }: { onEndService: () => void }) {
           className="max-w-52 text-xs"
         >
           <option value="">default microphone</option>
+          {inputs.length === 0 && (
+            <option value="" disabled>
+              no inputs found — check cables & sound settings
+            </option>
+          )}
           {inputs.map((label) => (
             <option key={label} value={label}>
               {label}
@@ -415,6 +434,16 @@ function BottomBar({ onEndService }: { onEndService: () => void }) {
       </label>
 
       {listening && <LevelMeter db={audioLevel} />}
+      {asrDetail && (
+        <span
+          className={`max-w-72 truncate text-[10px] uppercase tracking-widest ${
+            asrStatus === 'error' ? 'text-red-500' : 'text-neutral-400'
+          }`}
+          title={asrDetail}
+        >
+          {asrDetail}
+        </span>
+      )}
       {listeningSince != null && (
         <span className="text-xs tabular-nums tracking-widest text-neutral-500">{elapsed(listeningSince, now)}</span>
       )}
@@ -646,6 +675,7 @@ export function Live() {
 
   return (
     <div className="flex h-full flex-col">
+      <DbBanner />
       <PracticeBanner />
       <div className="grid min-h-0 flex-1 grid-cols-[230px_minmax(0,1fr)_360px] gap-3 p-3">
         <ServiceOrderPanel />

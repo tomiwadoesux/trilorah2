@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Pill, SectionLabel, TextButton, hasEngine } from './ui';
-import { bookIdFromName } from '../lib/books';
+import { bookIdFromName, completeBookName } from '../lib/books';
 import { useLiveStore } from '../stores/liveStore';
 
 /**
@@ -29,6 +29,22 @@ function parseRef(input: string): ParsedRef | null {
   return { bookId: resolved.id, book: resolved.name, chapter, verse };
 }
 
+/** Split "rom 8 28" into the book fragment and the numeric tail. */
+function splitBookAndNumbers(input: string): { bookPart: string; rest: string } | null {
+  const m = input.match(/^(\s*\d?\s*[a-z][a-z\s]*?)([\s.:]+\d[\d\s.:-]*)?$/i);
+  if (!m) return null;
+  return { bookPart: m[1], rest: m[2] ?? '' };
+}
+
+/** The full book name Tab would complete to, or null when nothing to do. */
+function bookCompletion(input: string): string | null {
+  const parts = splitBookAndNumbers(input);
+  if (!parts || !parts.bookPart.trim()) return null;
+  const completed = completeBookName(parts.bookPart);
+  if (!completed) return null;
+  return completed.toLowerCase() === parts.bookPart.trim().toLowerCase() ? null : completed;
+}
+
 interface LoadedChapter {
   book: string;
   chapter: number;
@@ -48,6 +64,14 @@ export function ScriptureSearch() {
   const listRef = useRef<HTMLDivElement>(null);
 
   const parsed = parseRef(q);
+  const completion = bookCompletion(q);
+
+  const acceptCompletion = () => {
+    if (!completion) return;
+    const parts = splitBookAndNumbers(q);
+    const rest = parts?.rest ?? '';
+    setQ(`${completion}${rest || ' '}`);
+  };
 
   // Debounced chapter load while the operator types a reference.
   useEffect(() => {
@@ -156,13 +180,27 @@ export function ScriptureSearch() {
           }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') setOpen(false);
+            if (e.key === 'Tab' && completion) {
+              e.preventDefault();
+              acceptCompletion();
+            }
           }}
           onFocus={() => {
             if (loaded && parsed) setOpen(true);
           }}
-          placeholder="search scripture — john 3 16, 1 cor 13… or type anything for the engine"
+          placeholder="search scripture — joh 3 16 (tab completes the book)… or type anything for the engine"
           className="w-full text-sm"
         />
+        {completion && (
+          <button
+            type="button"
+            onClick={acceptCompletion}
+            className="shrink-0 rounded border border-hairline px-2 py-1 text-[10px] uppercase tracking-widest text-neutral-400 hover:border-ink hover:text-ink"
+            title="press Tab to complete"
+          >
+            ⇥ {completion}
+          </button>
+        )}
         <Button
           label={parsed ? 'Open' : 'Send'}
           onClick={() => send(parsed?.verse ?? null)}

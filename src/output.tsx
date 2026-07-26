@@ -27,6 +27,8 @@ interface Theme {
   color: string;
   backgroundUrl: string;
   overlayOpacity: number;
+  backgroundFit: string;
+  backgroundPosition: string;
 }
 
 const FONT_PRESETS: Record<string, string> = {
@@ -44,6 +46,8 @@ const DEFAULT_THEME: Theme = {
   color: '#ffffff',
   backgroundUrl: '',
   overlayOpacity: 0.3,
+  backgroundFit: 'cover',
+  backgroundPosition: 'center',
 };
 
 function themeFromSettings(s: Record<string, unknown>): Theme {
@@ -60,6 +64,9 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     backgroundUrl: typeof s.defaultBackgroundUrl === 'string' ? s.defaultBackgroundUrl : '',
     overlayOpacity:
       typeof s.overlayOpacity === 'number' ? Math.min(1, Math.max(0, s.overlayOpacity)) : 0.3,
+    backgroundFit: typeof s.backgroundFit === 'string' && s.backgroundFit ? s.backgroundFit : 'cover',
+    backgroundPosition:
+      typeof s.backgroundPosition === 'string' && s.backgroundPosition ? s.backgroundPosition : 'center',
   };
 }
 
@@ -92,7 +99,9 @@ function OutputSurface() {
     };
 
     const subs: ((() => void) | undefined)[] = [
-      api.onVersePreview((d) => display(d, true)),
+      // Previews stay in the operator's app — the congregation only ever
+      // sees a verse after Push to Live (or trusted auto mode) fires
+      // on-verse-detected. No preview subscription here on purpose.
       api.onVerseDetected((d) => display(d, false)),
       api.onVerseAutoDismiss(() => setVisible(false)),
       api.onShowCleanBackground(() => {
@@ -125,7 +134,14 @@ function OutputSurface() {
   return (
     <>
       {theme.backgroundUrl && (
-        <div className="output-background" style={{ backgroundImage: `url(${theme.backgroundUrl})` }}>
+        <div
+          className="output-background"
+          style={{
+            backgroundImage: `url(${theme.backgroundUrl})`,
+            backgroundSize: theme.backgroundFit === 'fill' ? '100% 100%' : theme.backgroundFit,
+            backgroundPosition: theme.backgroundPosition,
+          }}
+        >
           <div className="output-dim" style={{ opacity: theme.overlayOpacity }} />
         </div>
       )}

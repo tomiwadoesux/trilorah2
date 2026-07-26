@@ -321,6 +321,7 @@ interface WindowApi {
   /* Scripture ------------------------------------------------------ */
   getChapter(bookId: number, chapter: number, version?: string): Promise<ChapterResult>;
   getAvailableVersions(): Promise<string[]>;
+  getDbStatus?(): Promise<{ connected: boolean; verses?: number; error?: string }>;
   searchVerse(book: string, chapter: number, verse: number, version?: string): Promise<VerseSearchResult>;
 
   /* Engine events --------------------------------------------------- */
@@ -447,6 +448,7 @@ interface WindowApi {
   onMicRequest?(callback: (req: { sampleRate: number; deviceLabel?: string }) => void): Unsubscribe;
   onMicStop?(callback: () => void): Unsubscribe;
   // Media on outputs + themes
+  pickBackgroundImage?(): Promise<{ success: boolean; url?: string; canceled?: boolean; error?: string }>;
   showMedia?(imagePath: string): Promise<{ success: boolean }>;
   clearMedia?(): Promise<{ success: boolean }>;
   /** Render the companion QR (publicWebUrl + accountSlug) on every open output. */

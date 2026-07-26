@@ -14,11 +14,19 @@ let processor: ScriptProcessorNode | null = null;
 async function resolveDeviceId(deviceLabel?: string): Promise<string | undefined> {
   if (!deviceLabel || deviceLabel === 'default') return undefined;
   try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const wanted = deviceLabel.toLowerCase();
-    const match = devices.find(
-      (d) => d.kind === 'audioinput' && d.label.toLowerCase().includes(wanted),
+    const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(
+      (d) => d.kind === 'audioinput',
     );
+    const wanted = deviceLabel.toLowerCase();
+    // Exact label first — substring only as a fallback, so "USB Audio" can't
+    // hijack "USB Audio CODEC" when both are plugged in.
+    const match =
+      inputs.find((d) => d.label.toLowerCase() === wanted) ??
+      inputs.find((d) => d.label.toLowerCase().includes(wanted)) ??
+      inputs.find((d) => wanted.includes(d.label.toLowerCase()) && d.label.length > 3);
+    if (!match) {
+      console.warn(`mic "${deviceLabel}" not found — falling back to the system default input`);
+    }
     return match?.deviceId;
   } catch {
     return undefined;
@@ -34,15 +42,31 @@ export async function startMicCapture(sampleRate: number, deviceLabel?: string):
   }
 
   const deviceId = await resolveDeviceId(deviceLabel);
-  stream = await navigator.mediaDevices.getUserMedia({
+  const constraints = (id?: string): MediaStreamConstraints => ({
     audio: {
-      ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+      ...(id ? { deviceId: { exact: id } } : {}),
       echoCancellation: false,
       noiseSuppression: false,
       autoGainControl: true,
       channelCount: 1,
     },
   });
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints(deviceId));
+  } catch (e) {
+    if (deviceId) {
+      // Chosen device unplugged or busy — fall back to the default input
+      // rather than leaving the service with no ears at all.
+      console.warn('selected mic failed, retrying with the default input:', e);
+      stream = await navigator.mediaDevices.getUserMedia(constraints(undefined));
+    } else if (e instanceof DOMException && (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError')) {
+      throw new Error('no microphone found — plug in the soundboard/USB input and check the computer\'s sound settings');
+    } else if (e instanceof DOMException && e.name === 'NotAllowedError') {
+      throw new Error('microphone access blocked — allow it in the system privacy settings, then press Start Listening again');
+    } else {
+      throw e;
+    }
+  }
 
   ctx = new AudioContext({ sampleRate });
   const source = ctx.createMediaStreamSource(stream);

@@ -38,6 +38,69 @@ export function whisperModelDir(): string {
   return path.join(app.getPath('userData'), 'models')
 }
 
+/** Public whisper.cpp model weights — no account or token required. */
+const MODEL_BASE_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main'
+
+let downloading = false
+
+/**
+ * Download the right ggml model into <userData>/models when none exists,
+ * reporting progress through the callback (rendered in the ASR status pill).
+ * base.en (~142MB) for English setups, multilingual base otherwise.
+ */
+export async function ensureWhisperModel(
+  onProgress: (message: string) => void
+): Promise<string | null> {
+  const existing = findWhisperModel()
+  if (existing) return existing
+  if (downloading) return null
+  downloading = true
+  const lang = (getSetting('asrLanguage') || 'en-US').split('-')[0]
+  const name = lang === 'en' ? 'ggml-base.en.bin' : 'ggml-base.bin'
+  const dir = whisperModelDir()
+  const dest = path.join(dir, name)
+  const tmp = `${dest}.download`
+  try {
+    fs.mkdirSync(dir, { recursive: true })
+    onProgress('Downloading speech model (one time)…')
+    const res = await fetch(`${MODEL_BASE_URL}/${name}`)
+    if (!res.ok || !res.body) throw new Error(`model download failed (HTTP ${res.status})`)
+    const total = Number(res.headers.get('content-length')) || 0
+    const out = fs.createWriteStream(tmp)
+    let received = 0
+    let lastPct = -1
+    const reader = res.body.getReader()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      received += value.length
+      if (!out.write(Buffer.from(value))) {
+        await new Promise<void>((resolve) => out.once('drain', () => resolve()))
+      }
+      if (total > 0) {
+        const pct = Math.floor((received / total) * 100)
+        if (pct !== lastPct && pct % 5 === 0) {
+          lastPct = pct
+          onProgress(`Downloading speech model — ${pct}%`)
+        }
+      }
+    }
+    await new Promise<void>((resolve, reject) => {
+      out.end(() => resolve())
+      out.on('error', reject)
+    })
+    fs.renameSync(tmp, dest)
+    console.log(`✅ Whisper model downloaded: ${dest}`)
+    return dest
+  } catch (e) {
+    try { fs.unlinkSync(tmp) } catch { /* nothing partial to clean */ }
+    console.error('❌ Whisper model download failed:', e)
+    return null
+  } finally {
+    downloading = false
+  }
+}
+
 export function findWhisperModel(): string | null {
   const dir = whisperModelDir()
   const lang = (getSetting('asrLanguage') || 'en-US').split('-')[0]
@@ -76,17 +139,25 @@ function wavHeader(dataLength: number): Buffer {
 export function startWhisperLocal(
   onText: (text: string, isFinal: boolean) => void,
   onError?: (error: Error) => void,
-  deviceLabel?: string
+  deviceLabel?: string,
+  onStatus?: (message: string) => void
 ): void {
   const modelPath = findWhisperModel()
   if (!modelPath) {
-    const dir = whisperModelDir()
-    console.error(`❌ No whisper model found in ${dir}`)
-    onError?.(
-      new Error(
-        `Local ASR needs a whisper model. Download ggml-base.en.bin from huggingface.co/ggerganov/whisper.cpp and place it in ${dir}`
-      )
-    )
+    // First run: fetch the model, then start for real. The status callback
+    // keeps the operator informed instead of failing silently.
+    void ensureWhisperModel(onStatus ?? (() => undefined)).then((downloaded) => {
+      if (downloaded) {
+        startWhisperLocal(onText, onError, deviceLabel, onStatus)
+        onStatus?.('Listening...')
+      } else {
+        onError?.(
+          new Error(
+            'Could not download the speech model — check the internet connection and press Start Listening again.'
+          )
+        )
+      }
+    })
     return
   }
   console.log(`🎤 Starting local Whisper ASR (${path.basename(modelPath)})...`)

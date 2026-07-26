@@ -117,7 +117,7 @@ import {
   verifyPassword,
   signOutAllDevices
 } from './cloud/cloudSync'
-import { findDatabase, db, setDb, bookIdMap, bookNames } from './data/bibleDb'
+import { findDatabase, db, setDb, bookNames, resolveBookId } from './data/bibleDb'
 import type { ScheduleEntry } from '../shared/types'
 
 if (!process.versions.electron) {
@@ -357,7 +357,7 @@ function pushPreviewToLive(via: string): void {
 /** Re-render the current verse in a different translation (voice or UI). */
 function reEmitCurrentVerseInVersion(version: string): void {
   if (!currentPreviewData || !db) return
-  const bookId = bookIdMap[currentPreviewData.book]
+  const bookId = resolveBookId(currentPreviewData.book)
   if (bookId === undefined) return
   try {
     const verses: { verse: number; text: string }[] = []
@@ -386,7 +386,7 @@ function reEmitCurrentVerseInVersion(version: string): void {
 }
 
 const session = new ScriptureSession((display: any) => {
-  const bookId = bookIdMap[display.book]
+  const bookId = resolveBookId(display.book)
   const displayVersion = getSetting('displayVersion') || 'KJV'
   const verses: { verse: number; text: string }[] = []
   if (db && bookId !== undefined) {
@@ -519,7 +519,9 @@ function startASR(deviceLabel?: string) {
       console.error('❌ ASR error:', error)
       emitASRStatus('Error: ' + error.message)
     },
-    deviceLabel
+    deviceLabel,
+    // onStatus callback — model download progress etc.
+    (message) => emitASRStatus(message)
   )
   isListening = true
   emitASRStatus('Listening...')
@@ -541,7 +543,7 @@ function handleMLVerseDetection(data: any) {
     return
   }
   // Learned per-preacher alias: "rome and" → Romans
-  if (data.book && bookIdMap[data.book] === undefined && ledger) {
+  if (data.book && resolveBookId(data.book) === undefined && ledger) {
     const alias = ledger.resolveAlias(activePreacherId(), data.book)
     if (alias) {
       // Stored value may be a full ref ("Romans 8:1") or a bare book name.
@@ -598,7 +600,7 @@ function handleMLVerseDetection(data: any) {
 }
 
 function lookupVerseText(book: string, chapter: number, verse: number, version = 'KJV'): string {
-  const bookId = bookIdMap[book]
+  const bookId = resolveBookId(book)
   if (db && bookId !== undefined) {
     try {
       const row = db
@@ -645,18 +647,14 @@ function handleASRText(text: string) {
       verse: best.verse,
       rangeEnd: null
     })
+    // Runner-up quote candidates wait in the queue — never straight to live.
     for (const alt of quoteResults.slice(1, 6)) {
-      const altBook = alt.ref.split(' ').slice(0, -1).join(' ')
-      const altText = lookupVerseText(altBook, alt.chapter, alt.verse)
-      emitVerseDetected({
-        book: altBook,
-        chapter: alt.chapter,
-        verse: alt.verse,
-        text: altText,
-        isPreview: false
-        // Goes to pending queue
-      })
+      const ref = alt.ref
+      if (!verseQueue.some((q) => q.ref === ref)) {
+        verseQueue.push({ ref, reason: 'possible quote match', ts: Date.now() })
+      }
     }
+    if (quoteResults.length > 1) emitQueueUpdated(verseQueue)
   }
 }
 
@@ -902,6 +900,18 @@ ipcMain.handle('get-notes-provider-status', async () => {
   return { id: provider.id, status: await provider.status() }
 })
 
+// Bible database health — surfaced in the UI so a missing/broken DB is a
+// visible red banner instead of silent reference-only displays.
+ipcMain.handle('get-db-status', () => {
+  if (!db) return { connected: false }
+  try {
+    const count = (db.prepare('SELECT COUNT(*) as count FROM bible').get() as { count: number }).count
+    return { connected: true, verses: count }
+  } catch (e: any) {
+    return { connected: false, error: e?.message }
+  }
+})
+
 ipcMain.handle('get-chapter', (_event, { bookId, chapter, version }) => {
   if (!db) return { success: false, error: 'Database not connected' }
   const ver = version || 'KJV'
@@ -934,7 +944,7 @@ ipcMain.handle('get-chapter', (_event, { bookId, chapter, version }) => {
 
 ipcMain.handle('search-verse', (_event, { book, chapter, verse, version }) => {
   if (!db) return { success: false, error: 'Database not connected' }
-  const bookId = bookIdMap[book] ?? bookIdMap[book.toLowerCase()]
+  const bookId = resolveBookId(book)
   if (bookId === undefined) {
     return { success: false, error: 'Book not found' }
   }
@@ -955,6 +965,36 @@ ipcMain.handle('search-verse', (_event, { book, chapter, verse, version }) => {
   } catch (error) {
     console.error('SQL Error:', error)
     return { success: false, error: 'Database error' }
+  }
+})
+
+// Themes: native file picker for the output background. The image is copied
+// into userData so the theme survives the original file moving or a USB
+// stick being unplugged.
+ipcMain.handle('pick-background-image', async () => {
+  if (!mainWindow) return { success: false, error: 'No window' }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose Background Image',
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+    properties: ['openFile']
+  })
+  if (result.canceled || result.filePaths.length === 0) {
+    return { success: false, canceled: true }
+  }
+  try {
+    const src = result.filePaths[0]
+    const dir = path.join(app.getPath('userData'), 'backgrounds')
+    fs.mkdirSync(dir, { recursive: true })
+    const dest = path.join(dir, `bg-${Date.now()}${path.extname(src).toLowerCase()}`)
+    fs.copyFileSync(src, dest)
+    const url = `file://${dest.split(path.sep).join('/')}`
+    setSetting('defaultBackgroundUrl', url)
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) win.webContents.send('on-theme-changed')
+    })
+    return { success: true, url }
+  } catch (e: any) {
+    return { success: false, error: e?.message ?? 'could not copy image' }
   }
 })
 
@@ -1222,6 +1262,8 @@ const THEME_KEYS = new Set([
   'defaultTextColor',
   'overlayOpacity',
   'defaultBackgroundUrl',
+  'backgroundFit',
+  'backgroundPosition',
   'colorMode'
 ])
 
@@ -1853,9 +1895,9 @@ app.whenReady().then(() => {
   console.log('🚀 AI Preacher Assistant ready')
   console.log("💡 Click 'Start' to begin voice recognition")
   if (process.env.DEEPGRAM_API_KEY) {
-    console.log('✅ Deepgram API key configured')
+    console.log('✅ Deepgram API key configured (cloud ASR available)')
   } else {
-    console.warn('⚠️ DEEPGRAM_API_KEY not set - add to .env.local')
+    console.log('🎤 No Deepgram key — using free local Whisper transcription')
   }
 })
 

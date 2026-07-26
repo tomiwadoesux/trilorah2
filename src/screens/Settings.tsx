@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { TextButton, SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import { listAudioInputs, onDeviceChange } from '../lib/audioDevices';
 
 /** Persist one key, mirroring it into the renderer's settings cache. */
 function save(key: string, value: unknown) {
@@ -284,23 +285,22 @@ function MicDevicePicker() {
   const settings = useAppStore((s) => s.settings);
   const saved = typeof settings?.micDeviceLabel === 'string' ? settings.micDeviceLabel : '';
   const [labels, setLabels] = useState<string[]>([]);
+  const [loadedOnce, setLoadedOnce] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      navigator.mediaDevices
-        ?.enumerateDevices?.()
-        .then((devices) => {
-          if (cancelled) return;
-          setLabels(devices.filter((d) => d.kind === 'audioinput' && d.label).map((d) => d.label));
-        })
-        .catch(() => undefined);
+      void listAudioInputs().then((inputs) => {
+        if (cancelled) return;
+        setLabels(inputs.map((d) => d.label));
+        setLoadedOnce(true);
+      });
     };
     load();
-    navigator.mediaDevices?.addEventListener?.('devicechange', load);
+    const unsub = onDeviceChange(load);
     return () => {
       cancelled = true;
-      navigator.mediaDevices?.removeEventListener?.('devicechange', load);
+      unsub();
     };
   }, []);
 
@@ -316,7 +316,9 @@ function MicDevicePicker() {
       </select>
       <span className="text-xs text-neutral-400">
         {labels.length === 0
-          ? 'device names appear after the first START LISTENING grants mic access'
+          ? loadedOnce
+            ? 'no inputs found — plug in the soundboard/USB interface and check it shows in the computer\'s sound settings'
+            : 'looking for microphones…'
           : 'used for every service until changed — pick the soundboard feed, not the laptop mic'}
       </span>
     </Row>
@@ -410,9 +412,20 @@ export function Settings() {
       {!loaded && <p className="text-sm italic text-neutral-400">loading settings…</p>}
 
       <Section title="transcription" dataTour="settings-keys">
-        <TextSetting label="deepgram key" settingKey="deepgramApiKey" masked wide />
-        <TextSetting label="hugging face token" settingKey="hfToken" masked wide />
-        <SelectSetting label="asr provider" settingKey="asrProvider" options={['deepgram', 'whisper-local']} fallback="deepgram" />
+        <SelectSetting
+          label="speech engine"
+          settingKey="asrProvider"
+          options={['whisper-local', 'deepgram']}
+          fallback="whisper-local"
+        />
+        <p className="pl-50 text-xs leading-relaxed text-neutral-400">
+          whisper-local is the default: free, runs on this computer, no account or key needed
+          (the speech model downloads itself the first time you press start listening).
+          deepgram is the faster cloud option for churches that bring their own key.
+        </p>
+        {settings?.asrProvider === 'deepgram' && (
+          <TextSetting label="deepgram key" settingKey="deepgramApiKey" masked wide />
+        )}
       </Section>
 
       <Section title="audio input">
@@ -420,6 +433,11 @@ export function Settings() {
       </Section>
 
       <Section title="intelligence">
+        <TextSetting label="hugging face token" settingKey="hfToken" masked wide />
+        <p className="pl-50 text-xs leading-relaxed text-neutral-400">
+          powers the ai reasoning extras (smart disambiguation, notes) — usually pre-configured;
+          transcription and verse detection work without it
+        </p>
         <SelectSetting label="notes provider" settingKey="notesProvider" options={['cloud', 'local']} fallback="cloud" />
         <ToggleSetting label="agent enabled" settingKey="agentEnabled" />
         <ToggleSetting label="slow path" settingKey="slowPathEnabled" />

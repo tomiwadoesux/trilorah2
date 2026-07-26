@@ -30,6 +30,8 @@ interface AppState {
   /** Settings cache mirrored from the main-process store. */
   settings: AppSettings | null;
   asrStatus: ASRStatus;
+  /** Raw engine status line — download progress, error text. Null when quiet. */
+  asrDetail: string | null;
   segment: SegmentChange | null;
   activePreacherId: string | null;
   activePreacherName: string | null;
@@ -47,7 +49,7 @@ interface AppState {
   setTab: (tab: TabId) => void;
   setSettings: (settings: AppSettings | null) => void;
   patchSetting: (key: string, value: unknown) => void;
-  setAsrStatus: (status: ASRStatus) => void;
+  setAsrStatus: (status: ASRStatus, detail?: string | null) => void;
   setSegment: (segment: SegmentChange | null) => void;
   setActivePreacher: (id: string | null, name: string | null) => void;
   setTrustLowerBound: (trust: number | null) => void;
@@ -62,6 +64,7 @@ export const useAppStore = create<AppState>()((set) => ({
   tab: 'live',
   settings: null,
   asrStatus: 'idle',
+  asrDetail: null,
   segment: null,
   activePreacherId: null,
   activePreacherName: null,
@@ -76,7 +79,7 @@ export const useAppStore = create<AppState>()((set) => ({
   setSettings: (settings) => set({ settings }),
   patchSetting: (key, value) =>
     set((s) => ({ settings: { ...(s.settings ?? {}), [key]: value } })),
-  setAsrStatus: (asrStatus) => set({ asrStatus }),
+  setAsrStatus: (asrStatus, asrDetail = null) => set({ asrStatus, asrDetail }),
   setSegment: (segment) => set({ segment }),
   setActivePreacher: (activePreacherId, activePreacherName) =>
     set({ activePreacherId, activePreacherName }),
