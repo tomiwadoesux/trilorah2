@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { ColorTokens, Typography, SpacingRadius, Motion } from './entries/foundations';
 import { Buttons, Panels, Pills, Meters, FormsAndEmpty, OutputSurface } from './entries/primitives';
+import { TriButton, TriSlider, TriDashboardButton } from './entries/trilorah';
 
 /*
  * The gallery's table of contents.
@@ -26,6 +27,17 @@ export interface EntryGroup {
 
 export const REGISTRY: EntryGroup[] = [
   {
+    // Built from the Figma file. These supersede the greyscale baseline
+    // sheets further down, which document what ui.tsx ships today.
+    title: 'Trilorah',
+    total: 181,
+    entries: [
+      { id: 'C-01', title: 'Button', Component: TriButton },
+      { id: 'C-20', title: 'Slider', Component: TriSlider },
+      { id: 'D-111', title: 'Dashboard row', Component: TriDashboardButton },
+    ],
+  },
+  {
     title: 'Foundations',
     total: 15,
     entries: [
@@ -36,19 +48,18 @@ export const REGISTRY: EntryGroup[] = [
     ],
   },
   {
-    title: 'Primitives',
-    total: 71,
+    // The greyscale surface ui.tsx ships today — kept as a reference for
+    // what each component has to replace. Ids are tilde-prefixed so they
+    // do not collide with the real inventory ids above.
+    title: 'Baseline · ui.tsx',
+    total: 11,
     entries: [
-      { id: 'C-01', title: 'Button', Component: Buttons },
-      { id: 'C-19', title: 'Toggle, Field, Empty', Component: FormsAndEmpty },
-      { id: 'C-27', title: 'Panel', Component: Panels },
-      { id: 'C-43', title: 'Pill / Badge', Component: Pills },
+      { id: '~C-01', title: 'Button', Component: Buttons },
+      { id: '~C-19', title: 'Toggle, Field, Empty', Component: FormsAndEmpty },
+      { id: '~C-27', title: 'Panel', Component: Panels },
+      { id: '~C-43', title: 'Pill / Badge', Component: Pills },
+      { id: '~D-03', title: 'Meters', Component: Meters },
     ],
-  },
-  {
-    title: 'Domain',
-    total: 110,
-    entries: [{ id: 'D-03', title: 'Meters', Component: Meters }],
   },
   {
     title: 'Output',

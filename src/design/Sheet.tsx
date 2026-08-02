@@ -103,6 +103,19 @@ export function OnCanvas({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The app's own near-black ground. Trilorah's real components are designed
+ * against this, not against the gallery's paper — their gradients are
+ * semi-transparent, so what sits behind them changes how they read.
+ */
+export function Stage({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-md p-8 ${className}`} style={{ background: '#0e0f0f' }}>
+      {children}
+    </div>
+  );
+}
+
 /** A finding worth acting on — gaps the sheet exposes. */
 export function Note({ children }: { children: ReactNode }) {
   return (

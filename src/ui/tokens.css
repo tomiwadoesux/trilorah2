@@ -1,0 +1,142 @@
+/*
+ * Trilorah design tokens — extracted from Figma, Section 1 (38:236).
+ *
+ * The system is one gradient whose ALPHA carries state. Every surface in
+ * the design shares the same four colour stops at the same four positions;
+ * rest sits at 0.30 and hover/active at 0.65–0.70. Nothing else changes.
+ * That is why these are variables and not forty hand-written gradients.
+ */
+
+:root {
+  /* ---------------------------------------------------------------- */
+  /* Gradient stops — identical everywhere, only the hue set swaps     */
+  /* ---------------------------------------------------------------- */
+  --tri-teal-1: 7 39 28; /* #07271C */
+  --tri-teal-2: 29 50 47; /* #1D322F */
+  --tri-teal-3: 26 54 48; /* #1A3630 */
+  --tri-teal-4: 26 51 54; /* #1A3336 */
+
+  --tri-red-1: 92 16 16; /* #5C1010 */
+  --tri-red-2: 118 26 26; /* #761A1A */
+  --tri-red-3: 120 34 34; /* #782222 */
+  --tri-red-4: 75 18 18; /* #4B1212 */
+
+  /*
+   * Figma has a different angle on every component (49.5°, 47.8°, 42.6°,
+   * 54.6°, 33.4°, 28.1°) with identical stops — that is resize drift, not
+   * intent. Normalised to two: one for controls, a flatter one for wide
+   * surfaces where a steep angle would band.
+   */
+  --tri-angle: 48deg;
+  --tri-angle-wide: 33deg;
+
+  /* Alpha = state. The whole interaction model. */
+  --tri-alpha-rest: 0.3;
+  --tri-alpha-hover: 0.7;
+  --tri-alpha-active: 0.65;
+
+  /* ---------------------------------------------------------------- */
+  /* Ink                                                              */
+  /* ---------------------------------------------------------------- */
+  --tri-ink: #e5f3f2;
+  --tri-ink-muted: rgb(229 243 242 / 0.64);
+  --tri-ink-faint: rgb(229 243 242 / 0.12); /* control borders */
+  --tri-edge: #07271c; /* solid border on panels + track */
+
+  --tri-ink-danger: #eac7c6;
+  --tri-ink-danger-hover: #fec9c9;
+
+  --tri-text-shadow: 0 1px 3.2px rgb(0 0 0 / 0.48);
+
+  /* ---------------------------------------------------------------- */
+  /* Shape & type                                                     */
+  /* ---------------------------------------------------------------- */
+  --tri-radius-control: 6px;
+  --tri-radius-surface: 8px;
+
+  --tri-font: Roboto, system-ui, sans-serif;
+  --tri-size: 12px;
+  --tri-size-sm: 10px;
+  --tri-leading: 28px;
+  --tri-tracking: 0.24px;
+}
+
+/* ------------------------------------------------------------------ */
+/* The gradient surface                                                */
+/* ------------------------------------------------------------------ */
+
+.tri-surface {
+  --tri-alpha: var(--tri-alpha-rest);
+  --tri-1: var(--tri-teal-1);
+  --tri-2: var(--tri-teal-2);
+  --tri-3: var(--tri-teal-3);
+  --tri-4: var(--tri-teal-4);
+  background-image: linear-gradient(
+    var(--tri-angle),
+    rgb(var(--tri-1) / var(--tri-alpha)) 10.054%,
+    rgb(var(--tri-2) / var(--tri-alpha)) 36.448%,
+    rgb(var(--tri-3) / var(--tri-alpha)) 63.057%,
+    rgb(var(--tri-4) / var(--tri-alpha)) 89.946%
+  );
+}
+
+.tri-surface--danger {
+  --tri-1: var(--tri-red-1);
+  --tri-2: var(--tri-red-2);
+  --tri-3: var(--tri-red-3);
+  --tri-4: var(--tri-red-4);
+}
+
+.tri-surface--wide {
+  --tri-angle: var(--tri-angle-wide);
+}
+
+/* Opaque fill — the slider's filled track. */
+.tri-surface--solid {
+  --tri-alpha: 1;
+}
+
+/* Interactive surfaces brighten on hover; disabled ones never do. */
+.tri-interactive:hover:not(:disabled) {
+  --tri-alpha: var(--tri-alpha-hover);
+}
+.tri-interactive:disabled {
+  opacity: 0.4;
+}
+
+/*
+ * Ink tones. These live in CSS rather than inline styles so the danger
+ * tone can lift its text on hover (#EAC7C6 → #FEC9C9) alongside the
+ * gradient, the way the Figma variants do.
+ */
+.tri-tone {
+  color: var(--tri-ink);
+}
+.tri-tone-danger {
+  color: var(--tri-ink-danger);
+}
+.tri-tone-danger:hover:not(:disabled) {
+  color: var(--tri-ink-danger-hover);
+}
+
+/* Selected/active state for list surfaces. */
+.tri-surface[data-active='true'] {
+  --tri-alpha: var(--tri-alpha-active);
+}
+
+/* ------------------------------------------------------------------ */
+/* Type                                                                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Controls lowercase their labels ("the service", "delete account") but the
+ * dashboard rows keep sentence case ("Today's Flow") — so casing is opted
+ * into per component rather than baked in here.
+ */
+.tri-label {
+  font-family: var(--tri-font);
+  font-size: var(--tri-size);
+  line-height: var(--tri-leading);
+  letter-spacing: var(--tri-tracking);
+  text-shadow: var(--tri-text-shadow);
+}
