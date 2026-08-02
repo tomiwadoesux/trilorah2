@@ -6,6 +6,8 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "dev:sandbox": "SANDBOX=1 vite",
+    "design": "DESIGN_MODE=1 vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run",

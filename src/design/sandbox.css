@@ -1,0 +1,53 @@
+/*
+ * Sandbox-only token overrides.
+ *
+ * Nothing in this file ships to the app. F-02 (dark/booth mode) and F-05
+ * (density) are still undecided — this is where we look at them before
+ * committing them to src/index.css. Both hang off data attributes on <html>
+ * so the gallery toolbar can flip them live.
+ */
+
+/* ------------------------------------------------------------------ */
+/* F-02 — booth mode (PROVISIONAL)                                     */
+/* ------------------------------------------------------------------ */
+
+[data-theme='dark'] {
+  --color-paper: #0b0b0c;
+  --color-ink: #ededec;
+  --color-accent: #ffffff;
+  --color-hairline: #26262a;
+  --color-surface: #141416;
+  --color-canvas: #000000;
+}
+
+/*
+ * F-01 gap made visible: the accent flips from black to white between
+ * themes, so "the text that sits on accent" cannot be a hardcoded white.
+ * C-01 (Button) currently hardcodes `text-white` and therefore renders
+ * white-on-white in booth mode — see the note on the Buttons sheet.
+ */
+:root {
+  --color-on-accent: #ffffff;
+}
+[data-theme='dark'] {
+  --color-on-accent: #0b0b0c;
+}
+
+/* ------------------------------------------------------------------ */
+/* F-05 — density (PROVISIONAL)                                        */
+/* ------------------------------------------------------------------ */
+
+[data-density='compact'] {
+  font-size: 13px;
+}
+[data-density='comfortable'] {
+  font-size: 15px;
+}
+[data-density='touch'] {
+  font-size: 17px;
+}
+
+/* The gallery chrome itself must not resize with the specimens. */
+[data-gallery-chrome] {
+  font-size: 14px;
+}

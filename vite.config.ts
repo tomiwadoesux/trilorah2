@@ -55,6 +55,9 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         output: resolve(__dirname, 'output.html'),
+        // The design sandbox — createDesignWindow() loads dist/design.html
+        // in production, so it has to be emitted alongside the app.
+        design: resolve(__dirname, 'design.html'),
       },
     },
   },

@@ -1890,6 +1890,11 @@ app.whenReady().then(() => {
     console.log('🧠 Slow-path reasoning loop initialized')
   }
   createWindow()
+  // SANDBOX=1 opens the component gallery *beside* the running app, both
+  // served by the same Vite instance — edit a component once and watch it
+  // hot-reload in the sheet and on the real screen at the same time.
+  // (DESIGN_MODE=1 above is the other mode: gallery only, engine skipped.)
+  if (process.env.SANDBOX === '1') createDesignWindow()
   if (mainWindow) startWebSocketServer(mainWindow)
   initCloudSync()
   console.log('🚀 AI Preacher Assistant ready')
@@ -1918,6 +1923,7 @@ app.on('activate', () => {
       createDesignWindow()
     } else {
       createWindow()
+      if (process.env.SANDBOX === '1') createDesignWindow()
     }
   }
 })
