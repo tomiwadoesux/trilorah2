@@ -12,6 +12,7 @@ import {
   SectionLabel,
   TextButton,
   TrustBar,
+  Waveform,
   hasEngine,
 } from '../components/ui';
 import { formatRef, describeVoiceCommand, clockTime, pct } from '../lib/verse';
@@ -131,6 +132,50 @@ function PreviewPanel() {
   );
 }
 
+/**
+ * The transcript panel's resting state: the one control the operator reaches
+ * for first, where they are already looking.
+ *
+ * It lived only in the bottom bar before, which put the primary action of the
+ * screen in its quietest corner. Once listening, this becomes the sound-check
+ * surface — the waveform answers "is the mic actually hearing the room", which
+ * a status word cannot, and it sits directly above the text it will produce.
+ */
+function ListenPrompt() {
+  const asrStatus = useAppStore((s) => s.asrStatus);
+  const asrDetail = useAppStore((s) => s.asrDetail);
+  const setAsrStatus = useAppStore((s) => s.setAsrStatus);
+  const setListeningSince = useAppStore((s) => s.setListeningSince);
+  const audioLevel = useAppStore((s) => s.audioLevel);
+  const settings = useAppStore((s) => s.settings);
+  const savedDevice = typeof settings?.micDeviceLabel === 'string' ? settings.micDeviceLabel : '';
+  const listening = asrStatus === 'listening' || asrStatus === 'connecting';
+
+  const start = () => {
+    window.api?.startListening(savedDevice || undefined);
+    setAsrStatus('listening');
+    setListeningSince(Date.now());
+  };
+
+  if (listening) {
+    return (
+      <div className="flex h-full flex-col justify-center gap-3 py-6">
+        <Waveform db={audioLevel} />
+        <p className="text-center text-xs uppercase tracking-widest text-neutral-400">
+          {asrDetail || 'listening — waiting for the first words…'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 py-10">
+      <Button label="Start listening" variant="solid" big onClick={start} />
+      <p className="text-sm text-neutral-400">start listening and catches land here</p>
+    </div>
+  );
+}
+
 function TranscriptPanel() {
   const lines = useLiveStore((s) => s.lines);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -156,7 +201,7 @@ function TranscriptPanel() {
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {lines.length === 0 ? (
           hasEngine() ? (
-            <EmptyState>waiting for the first words…</EmptyState>
+            <ListenPrompt />
           ) : (
             <EngineNote />
           )
@@ -188,6 +233,18 @@ function OutputPanel() {
   const version = live?.detection.version ?? displayVersion ?? 'KJV';
   const [qrShown, setQrShown] = useState(false);
   const [qrNote, setQrNote] = useState<string | null>(null);
+  // Screen state mirrors main (electron/output/outputState.ts) so a Stream
+  // Deck press and this panel never disagree about whether we're black.
+  const [screen, setScreen] = useState<ScreenState>('live');
+  useEffect(() => {
+    const api = window.api;
+    if (!api?.onScreenState) return;
+    void api.getScreenState?.().then((s) => s && setScreen(s)).catch(() => undefined);
+    return api.onScreenState((s) => setScreen(s));
+  }, []);
+  const toggleScreen = (target: 'black' | 'logo') => {
+    void window.api?.setScreenState?.(screen === target ? 'live' : target).catch(() => undefined);
+  };
 
   const toggleQr = async () => {
     const api = window.api;
@@ -222,12 +279,39 @@ function OutputPanel() {
         </div>
         <div className="flex items-center gap-x-3">
           <Pill>{version}</Pill>
-          <TextButton label="CLEAR" onClick={() => setLive(null)} disabled={!live} />
+          <TextButton
+            label="CLEAR"
+            onClick={() => {
+              // Must reach the outputs, not just this panel: clear-media
+              // broadcasts on-show-clean-background to every output window.
+              void window.api?.clearMedia?.().catch(() => undefined);
+              setLive(null);
+            }}
+            disabled={!live}
+          />
+          <TextButton
+            label="BLACK"
+            primary={screen === 'black'}
+            onClick={() => toggleScreen('black')}
+            disabled={!hasEngine()}
+            title="Cut every output to black — press again to restore"
+          />
+          <TextButton
+            label="LOGO"
+            primary={screen === 'logo'}
+            onClick={() => toggleScreen('logo')}
+            disabled={!hasEngine()}
+            title="Church logo on every output — press again to restore"
+          />
         </div>
       </div>
       {/* The projector canvas — a faithful miniature of the audience screen. */}
       <div className="flex aspect-video flex-col items-center justify-center gap-y-3 bg-canvas px-6 text-center">
-        {live ? (
+        {screen !== 'live' ? (
+          <p className="text-xs uppercase tracking-widest text-neutral-500">
+            {screen === 'black' ? 'screen is black' : screen === 'logo' ? 'showing logo' : 'output clear'}
+          </p>
+        ) : live ? (
           <>
             <p className="font-scripture text-sm uppercase tracking-[0.2em] text-neutral-400">
               {formatRef(live.detection)} · {version}
@@ -250,6 +334,242 @@ function OutputPanel() {
           {qrNote && <span className="text-[10px] text-neutral-400">{qrNote}</span>}
         </span>
       </div>
+    </Panel>
+  );
+}
+
+/**
+ * Message alerts (BUILD-MAP 2.10): "parent of child 42 to the nursery".
+ * Rides over the verse on every output; auto-expires; one at a time.
+ */
+function AlertPanel() {
+  const settings = useAppStore((s) => s.settings);
+  const [text, setText] = useState('');
+  const [active, setActive] = useState<ScreenAlert | null>(null);
+  const [, setTick] = useState(0);
+  const presets = Array.isArray(settings?.alertPresets)
+    ? (settings.alertPresets as unknown[]).filter((p): p is string => typeof p === 'string')
+    : [];
+
+  useEffect(() => {
+    const api = window.api;
+    if (!api?.onAlert) return;
+    void api.getAlert?.().then((a) => setActive(a ?? null)).catch(() => undefined);
+    return api.onAlert((a) => setActive(a));
+  }, []);
+  // Countdown repaint while an alert is up.
+  useEffect(() => {
+    if (!active?.expiresAt) return;
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, [active]);
+
+  // A saved message may carry holes — '{child}', '{timer:countdown}'. We ask
+  // main what is still unfilled and prompt for exactly those before showing,
+  // rather than putting a literal brace on the projector.
+  const [pending, setPending] = useState<{ template: string; slots: AlertTokenSlot[] } | null>(null);
+  const [fills, setFills] = useState<Record<string, string>>({});
+
+  const show = async (message: string, values?: Record<string, string>) => {
+    const clean = message.trim();
+    if (!clean || !window.api?.showAlert) return;
+    if (!values && window.api.inspectAlert) {
+      const info = await window.api.inspectAlert(clean).catch(() => null);
+      const custom = (info?.slots ?? []).filter((s) => s.kind === 'custom');
+      if (info?.unfilled && custom.length > 0) {
+        setPending({ template: clean, slots: custom });
+        setFills(Object.fromEntries(custom.map((s) => [s.name, ''])));
+        return;
+      }
+    }
+    await window.api.showAlert(clean, values ? { values } : undefined).catch(() => undefined);
+    setText('');
+    setPending(null);
+  };
+  const remaining = active?.expiresAt ? Math.max(0, Math.ceil((active.expiresAt - Date.now()) / 1000)) : null;
+
+  return (
+    <Panel dataTour="alerts">
+      <PanelHeader
+        right={
+          active ? (
+            <span className="flex items-center gap-x-3">
+              <span className="text-[10px] tabular-nums uppercase tracking-widest text-accent">
+                on screen{remaining != null ? ` · ${remaining}s` : ''}
+              </span>
+              <TextButton label="DISMISS" onClick={() => void window.api?.dismissAlert?.()} />
+            </span>
+          ) : null
+        }
+      >
+        message alert
+      </PanelHeader>
+      <form
+        className="flex items-center gap-x-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void show(text);
+        }}
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="a short notice for every screen — enter to show"
+          maxLength={140}
+          className="w-full text-sm"
+          disabled={!hasEngine()}
+        />
+        <Button label="Show" variant="solid" onClick={() => void show(text)} disabled={!hasEngine() || !text.trim()} />
+      </form>
+      {pending && (
+        <form
+          className="mt-3 space-y-2 rounded border border-hairline p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void show(pending.template, fills);
+          }}
+        >
+          <p className="truncate text-xs text-neutral-500">{pending.template}</p>
+          {pending.slots.map((slot) => (
+            <label key={slot.name} className="flex items-center gap-x-3">
+              <span className="w-28 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+                {slot.name}
+              </span>
+              <input
+                autoFocus={slot === pending.slots[0]}
+                value={fills[slot.name] ?? ''}
+                onChange={(e) => setFills((f) => ({ ...f, [slot.name]: e.target.value }))}
+                className="w-full text-sm"
+              />
+            </label>
+          ))}
+          <div className="flex items-center gap-x-4">
+            <Button label="Show" variant="solid" onClick={() => void show(pending.template, fills)} />
+            <TextButton label="CANCEL" onClick={() => setPending(null)} />
+          </div>
+        </form>
+      )}
+      {presets.length > 0 && !pending && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+          {presets.map((p) => (
+            <TextButton key={p} label={p} onClick={() => void show(p)} disabled={!hasEngine()} />
+          ))}
+        </div>
+      )}
+      {active && <p className="mt-3 truncate text-sm text-neutral-500">“{active.text}”</p>}
+    </Panel>
+  );
+}
+
+/**
+ * Service timers (BUILD-MAP 2.16): the pre-service countdown, the offering
+ * clock, the sermon stopwatch on the preacher's monitor. The store lives in
+ * main and only emits on mutation, so the second-by-second repaint is ours.
+ */
+function TimersPanel() {
+  const [timers, setTimers] = useState<TimerSnapshot[]>([]);
+  const [, setTick] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [kind, setKind] = useState<TimerKind>('countdown');
+  const [name, setName] = useState('');
+  const [minutes, setMinutes] = useState('5');
+  const [target, setTarget] = useState('10:30');
+
+  const refresh = () => {
+    void window.api?.listTimers?.().then((t) => setTimers(t ?? [])).catch(() => undefined);
+  };
+  useEffect(() => {
+    refresh();
+    return window.api?.onTimers?.((t) => setTimers(t));
+  }, []);
+  // Only tick while something is actually running.
+  const anyRunning = timers.some((t) => t.state === 'running');
+  useEffect(() => {
+    if (!anyRunning) return;
+    const id = window.setInterval(() => {
+      setTick((n) => n + 1);
+      refresh();
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [anyRunning]);
+
+  const create = async () => {
+    const api = window.api;
+    if (!api?.createTimer) return;
+    const input =
+      kind === 'countdown'
+        ? { kind, name: name.trim(), durationSec: Math.max(1, Number.parseFloat(minutes) || 5) * 60 }
+        : kind === 'to-time'
+          ? { kind, name: name.trim(), targetTime: target }
+          : { kind, name: name.trim() };
+    await api.createTimer({ ...input, overrun: true }).catch(() => undefined);
+    setAdding(false);
+    setName('');
+    refresh();
+  };
+
+  return (
+    <Panel dataTour="timers">
+      <PanelHeader
+        right={<TextButton label={adding ? 'CANCEL' : 'ADD'} onClick={() => setAdding((a) => !a)} disabled={!hasEngine()} />}
+      >
+        timers
+      </PanelHeader>
+
+      {adding && (
+        <form
+          className="mb-3 flex flex-wrap items-end gap-x-4 gap-y-2 rounded border border-hairline p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void create();
+          }}
+        >
+          <select value={kind} onChange={(e) => setKind(e.target.value as TimerKind)} className="text-sm">
+            <option value="countdown">countdown</option>
+            <option value="to-time">counts to a time</option>
+            <option value="elapsed">stopwatch</option>
+          </select>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" className="w-36 text-sm" />
+          {kind === 'countdown' && (
+            <label className="flex items-baseline gap-x-2">
+              <input value={minutes} onChange={(e) => setMinutes(e.target.value)} inputMode="decimal" className="w-14 text-sm" />
+              <span className="text-[10px] uppercase tracking-widest text-neutral-400">min</span>
+            </label>
+          )}
+          {kind === 'to-time' && (
+            <input value={target} onChange={(e) => setTarget(e.target.value)} placeholder="10:30" className="w-20 text-sm" />
+          )}
+          <Button label="Create" variant="solid" onClick={() => void create()} />
+        </form>
+      )}
+
+      {timers.length === 0 ? (
+        <EmptyState>no timers — add a countdown for the pre-service screen</EmptyState>
+      ) : (
+        <ul className="divide-y divide-hairline">
+          {timers.map((t) => (
+            <li key={t.id} className="flex items-center gap-x-4 py-2">
+              <span className={`w-24 shrink-0 font-mono text-lg tabular-nums ${t.overrunning ? 'text-red-400' : ''}`}>
+                {t.display}
+              </span>
+              <span className="min-w-0 grow truncate text-sm text-neutral-400">{t.name}</span>
+              <TextButton
+                label={t.state === 'running' ? 'PAUSE' : 'START'}
+                primary={t.state === 'running'}
+                onClick={() =>
+                  void (t.state === 'running' ? window.api?.pauseTimer?.(t.id) : window.api?.startTimer?.(t.id))?.then(refresh)
+                }
+              />
+              <TextButton label="RESET" onClick={() => void window.api?.resetTimer?.(t.id)?.then(refresh)} />
+              <TextButton label="REMOVE" onClick={() => void window.api?.removeTimer?.(t.id)?.then(refresh)} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-3 text-xs leading-relaxed text-neutral-500">
+        Put a timer on the stage monitor in Settings, or drop one into a message with{' '}
+        <code>{'{timer:name}'}</code>.
+      </p>
     </Panel>
   );
 }
@@ -686,6 +1006,8 @@ export function Live() {
         </div>
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto">
           <OutputPanel />
+          <AlertPanel />
+          <TimersPanel />
           <QueuePanel />
           <PulpitLogPanel />
         </div>

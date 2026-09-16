@@ -35,8 +35,36 @@ import {
   loadUserCommandConfig,
   saveUserCommandConfig,
   userCommandFilePath,
+  loadPreacherCommandConfig,
+  savePreacherCommandConfig,
+  stripIgnoreTails,
   type CommandPhraseConfig
 } from './engine/commandConfig'
+// --- 2026-09 engine additions (IDEAS-BACKLOG.md / BUILD-MAP.md) ---
+import { buildCandidates, candidatesFromQuotes, type Candidate } from './engine/candidates'
+import { AutoModeController } from './engine/autoMode'
+import { CommandLog } from './preachers/commandLog'
+import { VocabularyStore, applyVocabulary, deepgramKeywords } from './preachers/vocabulary'
+import { exportFixturesFromLedger } from './preachers/evalExport'
+import { setDeepgramKeywords } from './asr/deepgram'
+import { PairingStore } from './integrations/pairing'
+import { PollEngine, VOTE_WEIGHT_IN_VENUE, VOTE_WEIGHT_REMOTE } from './companion/polls'
+import { ViewerStats, nullGeo } from './companion/viewerStats'
+import { parseCompanionMessage, shareLink, parseShareMode } from './companion/events'
+import { CommandRegistry } from './search/registry'
+import { SearchIndex } from './search/index'
+import { ALL_ENTRIES } from './search/entries'
+import { FolderIndex } from './library/folders'
+import { presetForReference } from './media/presetPicker'
+import { parseSong } from './songs/import'
+// --- 2026-09-08 EasyWorship parity pass (BUILD-MAP 2.10–2.13) ---
+import { AlertManager, type AlertTarget } from './alerts/alerts'
+// --- 2026-09-09 ProPresenter parity pass (BUILD-MAP 2.16–2.21) ---
+import { fillTokens, hasUnfilledTokens, parseTokens } from './alerts/tokens'
+import { TimerStore } from './engine/timers'
+import { ScreenStateMachine, roleFor, ROLE_TITLES, isScreenState } from './output/outputState'
+import { searchBible } from './data/bibleSearch'
+import { emitEngineEvent } from './emitters'
 import { resolveASRProvider, type ASRProvider } from './asr/provider'
 // (startDeepgram/stopDeepgram now flow through the provider abstraction)
 import { VoiceCommandEngine, type VoiceCommandCallbacks } from './engine/voiceCommands'
@@ -51,6 +79,7 @@ import { FalsePositiveFilter } from './engine/falsePositiveFilter'
 import { DisplayTimingManager } from './engine/displayTimingManager'
 import { processSlides } from './media/ocrProcessor'
 import { MediaMatcher } from './media/mediaMatcher'
+import { searchStock, downloadStock, stockProviders } from './media/stockImages'
 import { ServiceAgent } from './engine/serviceAgent'
 import { PostServiceSummary } from './notes/postServiceSummary'
 import {
@@ -80,7 +109,14 @@ import { exportSermonNotesPdf, exportSermonNotesMarkdown } from './notes/sermonN
 import { getQuoteMatcher } from './engine/quoteMatcher'
 import { initAliasLogger } from './data/aliasLogger'
 import { convertPptxToImages } from './media/pptxConverter'
-import { startWebSocketServer, stopWebSocketServer } from './integrations/websocketServer'
+import {
+  startWebSocketServer,
+  stopWebSocketServer,
+  broadcastState,
+  broadcastToClients,
+  connectedDevices,
+  type RemoteHandlers
+} from './integrations/websocketServer'
 import { getOBSClient, disposeOBSClient } from './integrations/obsClient'
 import { getVMixClient } from './integrations/vmixClient'
 import { importScheduleFromImage } from './media/ocrSchedule'
@@ -158,6 +194,12 @@ function getMimeType(filePath: string): string {
 
 const isDev = process.env.NODE_ENV === 'development'
 
+// TRI_DEBUG_PORT=9222 lets a script attach over CDP (screenshots, driving the
+// sandbox from the terminal). Dev-only affordance; nothing reads it in prod.
+if (process.env.TRI_DEBUG_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.TRI_DEBUG_PORT)
+}
+
 let transitionDetector: TransitionDetector | null = null
 const falsePositiveFilter = new FalsePositiveFilter()
 const displayTimingManager = new DisplayTimingManager()
@@ -173,13 +215,151 @@ let currentPreviewData: any = null
 
 let ledger: CorrectionLedger | null = null
 let voiceCommands: VoiceCommandEngine | null = null
+
+/* -------- 2026-09 engine additions: state -------- */
+let commandLog: CommandLog | null = null
+let vocabulary: VocabularyStore | null = null
+let pairing: PairingStore | null = null
+
+// Screen state + message alerts fan out to every open window: the outputs
+// repaint, the operator UI mirrors, paired remotes get a fresh state.
+function broadcastToWindows(channel: string, payload: unknown): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.webContents.send(channel, payload)
+  })
+}
+const screen = new ScreenStateMachine((state) => {
+  console.log(`🖥️ Screen → ${state}`)
+  broadcastToWindows('on-screen-state', state)
+  broadcastState()
+})
+const alerts = new AlertManager((alert) => {
+  console.log(alert ? `📣 Alert: ${alert.text}` : '📣 Alert cleared')
+  broadcastToWindows('on-alert', alert)
+  broadcastState()
+})
+
+// Service timers (BUILD-MAP 2.16). Definitions persist in settings so a
+// church's pre-service countdown survives a restart; the running state is
+// deliberately in-memory — a countdown left running overnight should be
+// stopped on Sunday morning, not resumed forty thousand seconds overrun.
+const timers = new TimerStore((snapshot) => {
+  broadcastToWindows('on-timers', snapshot)
+})
+
+function restoreTimers(): void {
+  const saved = getSetting('timers')
+  if (!Array.isArray(saved)) return
+  for (const t of saved) {
+    if (t && typeof t === 'object') timers.create(t as never)
+  }
+}
+
+function persistTimers(): void {
+  setSetting(
+    'timers',
+    timers.list().map((t) => ({
+      id: t.id,
+      name: t.name,
+      kind: t.kind,
+      durationSec: t.durationSec,
+      targetTime: t.targetTime,
+      overrun: t.overrun
+    })) as never
+  )
+}
+
+/**
+ * The values a message template can draw on right now: the wall clock, every
+ * timer's current display, and the church constants an operator would
+ * otherwise retype every week.
+ */
+function tokenContext(values?: Record<string, string>) {
+  const byName: Record<string, string> = {}
+  for (const t of timers.snapshot()) {
+    byName[t.id] = t.display
+    byName[t.name] = t.display
+  }
+  return {
+    now: Date.now(),
+    timers: byName,
+    values: values ?? {},
+    constants: {
+      church: String(getSetting('churchName') ?? ''),
+      room: String(getSetting('churchName') ?? '')
+    }
+  }
+}
+let isListening = false
+let lastResolverConfidence = 0.85
+let lastHeardText = ''
+let lastQuoteCandidates: Candidate[] = []
+let lastCandidates: Candidate[] = []
+const libraryFolders: Record<string, FolderIndex> = {}
+const searchRegistry = new CommandRegistry(ALL_ENTRIES)
+const searchIndex = new SearchIndex(searchRegistry)
+const viewerStats = new ViewerStats({ geo: nullGeo, roundBelow: 5 })
+const polls = new PollEngine({
+  onEvent: (e) => {
+    emitEngineEvent('on-companion-event', e)
+    broadcastToClients(e)
+  }
+})
+const autoMode = new AutoModeController({
+  isEligible: (pid) => !!ledger?.stats(pid).autoModeEligible,
+  isEnabled: (pid) => !!ledger?.isAutoModeEnabled(pid),
+  onEvent: (evt) => {
+    emitEngineEvent('on-auto-mode-event', {
+      ...evt,
+      ping: evt.type === 'auto-push' ? !!getSetting('autoPingEnabled') : undefined
+    })
+    if (evt.type === 'clash') console.log(`⚖️ Clash — holding for the operator (${evt.candidates.length} candidates)`)
+  }
+})
+
+function verseExists(book: string, chapter: number, verse: number): boolean {
+  if (!db) return true
+  const bookId = resolveBookId(book)
+  if (bookId === undefined) return false
+  try {
+    const row = db
+      .prepare('SELECT 1 FROM bible WHERE Book = ? AND Chapter = ? AND Versecount = ? LIMIT 1')
+      .get(bookId, chapter, verse)
+    return !!row
+  } catch {
+    return false
+  }
+}
+
+function remoteState() {
+  const ref = currentPreviewData
+    ? `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
+    : null
+  const pid = activePreacherId()
+  return {
+    listening: isListening,
+    pendingRef: currentPreviewData?.isPreview ? ref : null,
+    liveRef: currentPreviewData && !currentPreviewData.isPreview ? ref : null,
+    autoMode: pid ? !!ledger?.isAutoModeEnabled(pid) : false,
+    screen: screen.get(),
+    alert: alerts.current() ? { id: alerts.current()!.id, text: alerts.current()!.text } : null
+  }
+}
+
+function folderIndex(libraryId: 'presentations' | 'songs' | 'media'): FolderIndex {
+  if (!libraryFolders[libraryId]) {
+    libraryFolders[libraryId] = new FolderIndex(app.getPath('userData'), libraryId)
+  }
+  return libraryFolders[libraryId]
+}
+
 const intentEngine = new IntentEngine({
   onStateChange: (state) => emitIntentState(state),
   onReadingStarted: () => {
     // The telepathic moment: the preacher started reading the armed verse.
     // Auto mode pushes it live; otherwise the state change is the UI hint.
     const preacherId = getSetting('activePreacherId')
-    if (preacherId && ledger?.stats(preacherId).autoModeEligible) {
+    if (preacherId && autoMode.shouldAutoPushOnReadingStarted(preacherId)) {
       pushPreviewToLive('auto (reading started)')
     }
   },
@@ -213,14 +393,22 @@ function applyLanguageAndConfig(): void {
   // 2. Merged phrase config: defaults ∪ pack ∪ user file.
   let config = mergeCommandConfigs(DEFAULT_COMMANDS, pack?.commands ?? {})
   config = mergeCommandConfigs(config, loadUserCommandConfig(app.getPath('userData')))
+  // 4th layer: the active preacher's own phrases ("How they say it").
+  const pid = activePreacherId()
+  if (pid) config = mergeCommandConfigs(config, loadPreacherCommandConfig(app.getPath('userData'), pid))
   activeCommandConfig = config
 
   // 3. Engines pick up the config.
   voiceCommands = new VoiceCommandEngine(voiceCallbacks, {
     config,
     numberParser: makePackNumberParser(pack),
-    substringMode: substring
+    substringMode: substring,
+    isSuppressed: (u) => !!(pid && commandLog?.isSuppressed(pid, u))
   })
+  // Per-preacher vocabulary → Deepgram keyword boost (applies on next connect).
+  if (getSetting('vocabularyEnabled') && vocabulary) {
+    setDeepgramKeywords(pid ? deepgramKeywords(vocabulary.get(pid).terms) : [])
+  }
   intentEngine.setConfig(config, substring)
   session.configureCommands(config)
 
@@ -243,6 +431,8 @@ function applyLanguageAndConfig(): void {
 /** Settings keys that require an engine reconfiguration when they change. */
 const RECONFIGURE_KEYS = new Set([
   'engineLanguage',
+  'activePreacherId',
+  'vocabularyEnabled',
   'autoModeMinTrust',
   'autoModeMinSamples',
   'autoModeMinServices',
@@ -324,7 +514,27 @@ const voiceCallbacks: VoiceCommandCallbacks = {
     emitPrayerMode(inPrayer)
     if (inPrayer) emitVerseAutoDismiss()
   },
-  onCommand: (event) => emitVoiceCommand(event)
+  onNavigate: (direction) => {
+    session.exitReadingMode()
+    if (direction === 'next') session.advance()
+    else session.goBack()
+  },
+  onCommand: (event) => {
+    emitVoiceCommand(event)
+    const pid = activePreacherId()
+    if (pid) commandLog?.record(pid, event)
+  }
+}
+
+/** The operator manually reversed something — if a voice command fired just
+ *  before, that command was a false positive and the log learns it. */
+function noteOperatorReversal(kind: 'display-dismiss' | 'display-hold' | 'navigate-next' | 'navigate-previous' | 'version-switch'): void {
+  if (!commandLog) return
+  const hit = commandLog.wasRecentlyFired(kind, getSetting('commandUndoWindowMs'), activePreacherId() || undefined)
+  if (hit) {
+    commandLog.markUndone(hit.id)
+    console.log(`↩️ Voice command undone by operator — logged as false positive: "${hit.utterance}"`)
+  }
 }
 
 /** Preview → live, from the operator button, auto mode, or grace window. */
@@ -334,9 +544,20 @@ function pushPreviewToLive(via: string): void {
     `🔴 Pushing to LIVE (${via}):`,
     `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
   )
+  screen.onContentPushed()
   emitVerseDetected({ ...currentPreviewData, isPreview: false })
   displayTimingManager.onVerseDisplayed(currentPreviewData.text)
   intentEngine.disarmGraceWindow()
+  // Congregation poll (if one is open) closes with this verse as the label.
+  const openPoll = polls.current()
+  if (openPoll) {
+    const idx = openPoll.candidates.findIndex(
+      (c) => c.book === currentPreviewData.book && c.chapter === currentPreviewData.chapter && c.verse === currentPreviewData.verse
+    )
+    polls.close(openPoll.id, idx >= 0 ? idx : null, via.startsWith('auto') ? 'auto' : 'operator')
+  }
+  if (autoMode.hasPendingClash()) autoMode.dismissClash()
+  broadcastState()
   // Every live verse becomes a review item; unresolved ones auto-confirm at
   // end-of-service (silence = the operator saw it and left it up).
   if (ledger) {
@@ -378,6 +599,7 @@ function reEmitCurrentVerseInVersion(version: string): void {
       verses,
       version
     }
+    screen.onContentPushed()
     emitVerseDetected(currentPreviewData)
     emitVersionChanged(version)
   } catch (e) {
@@ -422,6 +644,7 @@ const session = new ScriptureSession((display: any) => {
     chunkSize: display.chunkSize
   }
   currentPreviewData = detection
+  screen.onContentPushed()
   emitVerseDetected(detection)
   const refStr = detection.endVerse
     ? `${detection.book} ${detection.chapter}:${detection.verse}-${detection.endVerse}`
@@ -447,17 +670,53 @@ const session = new ScriptureSession((display: any) => {
   intentEngine.onReferenceDetected()
   if (detection.isPreview && detection.text) {
     const preacherId = activePreacherId()
-    const autoEligible = preacherId ? ledger?.stats(preacherId).autoModeEligible : false
-    if (getSetting('graceWindowEnabled')) {
+    // Ranked candidates: the primary plus ASR-confusion alternates, quote
+    // matches and context. Feeds the clash rule, the operator prompt and
+    // the congregation poll.
+    const candidates = buildCandidates(
+      {
+        book: detection.book,
+        chapter: detection.chapter,
+        verse: detection.verse,
+        endVerse: detection.endVerse,
+        confidence: lastResolverConfidence
+      },
+      {
+        verseExists,
+        recentRefs: lastDisplayedRef ? [{ book: lastDisplayedRef.book, chapter: lastDisplayedRef.chapter }] : [],
+        quoteCandidates: lastQuoteCandidates,
+        seasonalBoost: getSetting('seasonalEnabled')
+          ? (b) => Math.round((seasonalBoost(b, detection.chapter, new Date()) - 1) * 100)
+          : undefined,
+        heardText: lastHeardText
+      }
+    )
+    lastQuoteCandidates = []
+    lastCandidates = candidates
+    emitEngineEvent('on-candidates', { ref: refStr, candidates })
+    if (getSetting('companionPollsEnabled')) {
+      polls.maybeOpen(candidates, {
+        minTop: getSetting('companionPollMinTop'),
+        maxTop: getSetting('companionPollMaxTop'),
+        minSecond: getSetting('companionPollMinSecond'),
+        ttlMs: getSetting('companionPollTtlMs'),
+        cooldownMs: getSetting('companionPollCooldownMs')
+      })
+    }
+    const decision = autoMode.decide(preacherId, candidates, {
+      graceWindow: !!getSetting('graceWindowEnabled'),
+      clashMarginPts: getSetting('clashMarginPts')
+    })
+    if (decision.action === 'arm-grace') {
       // Hold as preview; goes live the moment the preacher starts reading.
       intentEngine.armGraceWindow(refStr, detection.text)
-    } else if (autoEligible) {
+    } else if (decision.action === 'auto-push') {
       pushPreviewToLive('auto mode')
     }
+    // 'hold-clash' and 'preview': stays on preview; UI shows the candidates.
   }
+  broadcastState()
 })
-
-let isListening = false
 
 function startASR(deviceLabel?: string) {
   if (isListening) return
@@ -466,7 +725,14 @@ function startASR(deviceLabel?: string) {
   emitASRStatus('Connecting...')
   activeASR.start(
     // onText callback
-    (text, isFinal) => {
+    (rawText, isFinal) => {
+      // Per-preacher vocabulary fixes proper nouns before anything reads the text.
+      let text = rawText
+      const vocabPid = activePreacherId()
+      if (getSetting('vocabularyEnabled') && vocabulary && vocabPid) {
+        text = applyVocabulary(rawText, vocabulary.get(vocabPid).terms)
+      }
+      if (isFinal) lastHeardText = text
       console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${text}`)
       emitTranscript(text)
       if (isFinal) {
@@ -552,6 +818,7 @@ function handleMLVerseDetection(data: any) {
       data = { ...data, book: bookOnly }
     }
   }
+  if (typeof data.confidence === 'number') lastResolverConfidence = data.confidence
   // Seasonal prior: in-season chapters get a small confidence boost
   if (getSetting('seasonalEnabled') && typeof data.confidence === 'number') {
     const boost = seasonalBoost(data.book, data.chapter ?? null, new Date())
@@ -618,6 +885,9 @@ function lookupVerseText(book: string, chapter: number, verse: number, version =
 }
 
 function handleASRText(text: string) {
+  if (activeCommandConfig.ignoreTails?.length) {
+    text = stripIgnoreTails(text, activeCommandConfig.ignoreTails)
+  }
   if (session.onCommand(text)) {
     return
   }
@@ -631,6 +901,7 @@ function handleASRText(text: string) {
     console.log(
       `📜 Quote match: ${best.ref} (+${quoteResults.length - 1} candidates)`
     )
+    lastQuoteCandidates = candidatesFromQuotes(quoteResults.slice(0, 4))
     if (getSetting('falsePositiveFilterEnabled') && transitionDetector) {
       const segment = transitionDetector.getCurrentSegment()
       if (falsePositiveFilter.shouldBlock(
@@ -744,12 +1015,83 @@ function createDesignWindow() {
 }
 
 ipcMain.on('open-output', (_event, outputId) => {
-  const titles: Record<string, string> = {
-    main: 'Main Display Output',
-    alternate: 'Livestream Output',
-    third: 'Stage Confidence Monitor'
+  const role = roleFor(String(outputId), getSetting('outputRoles') as Record<string, unknown>)
+  createOutputWindow(outputId, ROLE_TITLES[role])
+})
+
+/* -------- screen state, output roles, message alerts (BUILD-MAP 2.10–2.11) -------- */
+
+ipcMain.handle('screen-state-set', (_event, state: string) => {
+  if (isScreenState(state)) screen.set(state)
+  return screen.get()
+})
+ipcMain.handle('screen-state-get', () => screen.get())
+ipcMain.handle('output-role-get', (_event, outputId: string) =>
+  roleFor(String(outputId), getSetting('outputRoles') as Record<string, unknown>)
+)
+ipcMain.handle(
+  'alert-show',
+  (
+    _event,
+    {
+      text,
+      target,
+      durationSec,
+      values
+    }: { text: string; target?: AlertTarget; durationSec?: number | null; values?: Record<string, string> }
+  ) => {
+    const seconds = durationSec === null ? null : durationSec ?? getSetting('alertDefaultSeconds')
+    // Templates are filled at trigger time, so '{clock}' and '{timer:x}' show
+    // the values as they were when the operator pressed Show.
+    const filled = fillTokens(String(text ?? ''), tokenContext(values))
+    return alerts.show(filled, { target, durationSec: seconds })
   }
-  createOutputWindow(outputId, titles[outputId] || 'Display Output')
+)
+
+/** Which holes a saved message still has, so the Live panel can prompt. */
+ipcMain.handle('alert-inspect', (_event, text: string) => {
+  const ctx = tokenContext()
+  return {
+    slots: parseTokens(String(text ?? '')),
+    unfilled: hasUnfilledTokens(String(text ?? ''), ctx),
+    preview: fillTokens(String(text ?? ''), ctx)
+  }
+})
+
+/* -------- service timers (BUILD-MAP 2.16) -------- */
+
+ipcMain.handle('timers-list', () => timers.snapshot())
+ipcMain.handle('timers-create', (_event, input) => {
+  const created = timers.create(input)
+  if (created) persistTimers()
+  return created
+})
+ipcMain.handle('timers-update', (_event, { id, patch }) => {
+  const updated = timers.update(String(id), patch)
+  if (updated) persistTimers()
+  return updated
+})
+ipcMain.handle('timers-remove', (_event, id: string) => {
+  const removed = timers.remove(String(id))
+  if (removed) persistTimers()
+  return removed
+})
+ipcMain.handle('timers-start', (_event, id: string) => timers.start(String(id)))
+ipcMain.handle('timers-pause', (_event, id: string) => timers.pause(String(id)))
+ipcMain.handle('timers-reset', (_event, id: string) => timers.reset(String(id)))
+ipcMain.handle('alert-dismiss', () => alerts.dismiss())
+ipcMain.handle('alert-current', () => alerts.current())
+
+/* -------- keyword search over the Bible text (BUILD-MAP 2.12) -------- */
+
+ipcMain.handle('bible-keyword-search', (_event, { query, version, limit }: { query: string; version?: string; limit?: number }) => {
+  if (!db) return []
+  try {
+    return searchBible(db, String(query ?? ''), { version: version || getSetting('displayVersion') || 'KJV', limit })
+  } catch (error) {
+    console.error('Bible keyword search failed:', error)
+    return []
+  }
 })
 
 ipcMain.on('process-text', (_event, text) => {
@@ -771,6 +1113,168 @@ ipcMain.on('stop-listening', () => {
 
 ipcMain.on('push-to-live', () => {
   pushPreviewToLive('operator')
+})
+
+/* -------- 2026-09 engine additions: IPC -------- */
+
+// Auto mode (item 16): operator switch, gated by eligibility; clash resolution.
+ipcMain.handle('auto-mode-set', (_event, { preacherId, enabled }) => {
+  const pid = preacherId || activePreacherId()
+  if (!pid || !ledger) return { success: false, error: 'no preacher' }
+  const ok = ledger.setAutoModeEnabled(pid, !!enabled)
+  broadcastState()
+  return { success: ok, enabled: ledger.isAutoModeEnabled(pid), eligible: ledger.stats(pid).autoModeEligible }
+})
+ipcMain.handle('auto-mode-get-candidates', () => ({
+  candidates: lastCandidates,
+  clash: autoMode.hasPendingClash() ? autoMode.pendingClash() : null
+}))
+ipcMain.handle('auto-mode-resolve-clash', (_event, index: number) => {
+  const chosen = autoMode.resolveClash(index)
+  if (!chosen) return { success: false }
+  session.onReferenceDetected({
+    book: chosen.book,
+    chapter: chosen.chapter,
+    verse: chosen.verse,
+    rangeEnd: chosen.endVerse ?? null
+  })
+  pushPreviewToLive('operator picked from clash')
+  return { success: true, chosen }
+})
+ipcMain.handle('auto-mode-dismiss-clash', () => {
+  autoMode.dismissClash()
+  return { success: true }
+})
+ipcMain.on('operator-reversal', (_event, kind) => noteOperatorReversal(kind))
+
+// Voice command log + "How they say it" (item 17).
+ipcMain.handle('command-log-recent', (_event, { preacherId, limit }) =>
+  commandLog?.recent(preacherId || activePreacherId(), limit ?? 50) ?? []
+)
+ipcMain.handle('command-log-false-positives', (_event, preacherId?: string) =>
+  commandLog?.falsePositives(preacherId || activePreacherId()) ?? []
+)
+ipcMain.handle('command-log-suppress', (_event, { preacherId, utterance }) => {
+  commandLog?.suppress(preacherId || activePreacherId(), utterance)
+  return { success: true }
+})
+ipcMain.handle('command-log-teach', (_event, { preacherId, utterance, kind }) => {
+  const phrase = commandLog?.teach(preacherId || activePreacherId(), utterance, kind) ?? null
+  if (ledger) applyLanguageAndConfig()
+  return { success: phrase !== null, phrase }
+})
+ipcMain.handle('get-preacher-command-config', (_event, preacherId?: string) =>
+  loadPreacherCommandConfig(app.getPath('userData'), preacherId || activePreacherId())
+)
+ipcMain.handle('save-preacher-command-config', (_event, { preacherId, config }) => {
+  savePreacherCommandConfig(app.getPath('userData'), preacherId || activePreacherId(), config)
+  if (ledger) applyLanguageAndConfig()
+  return { success: true }
+})
+
+// Per-preacher vocabulary (item 18).
+ipcMain.handle('vocabulary-get', (_event, preacherId?: string) =>
+  vocabulary?.get(preacherId || activePreacherId()) ?? { terms: [] }
+)
+ipcMain.handle('vocabulary-set', (_event, { preacherId, terms }) => {
+  vocabulary?.set(preacherId || activePreacherId(), terms)
+  if (ledger) applyLanguageAndConfig()
+  return { success: true }
+})
+
+// Remote control pairing (item 22).
+ipcMain.handle('remote-generate-code', () => pairing?.generateCode() ?? null)
+ipcMain.handle('remote-current-code', () => pairing?.currentCode() ?? null)
+ipcMain.handle('remote-list-devices', () => pairing?.listDevices() ?? [])
+ipcMain.handle('remote-connected', () => connectedDevices())
+ipcMain.handle('remote-revoke', (_event, deviceId: string) => {
+  pairing?.revoke(deviceId)
+  return { success: true }
+})
+ipcMain.handle('remote-revoke-all', () => {
+  pairing?.revokeAll()
+  return { success: true }
+})
+
+// Companion: share link, viewers, polls, inbound relay frames (items 7, 9, 10).
+ipcMain.handle('companion-share-link', () => ({
+  url: shareLink(getSetting('publicWebUrl'), getSetting('accountSlug')),
+  mode: parseShareMode(getSetting('companionShareMode')),
+  streamUrl: getSetting('streamUrl')
+}))
+ipcMain.handle('companion-viewer-snapshot', () => viewerStats.snapshot())
+ipcMain.handle('companion-poll-current', () => polls.current())
+ipcMain.handle('companion-poll-close', (_event, { pollId, index }) => polls.close(pollId, index, 'operator'))
+/** Relay → laptop. The relay (or a local test client) forwards raw frames here. */
+export function handleCompanionFrame(raw: string, remoteIp: string): void {
+  const msg = parseCompanionMessage(raw)
+  if (!msg) return
+  if (msg.type === 'hello') {
+    if (parseShareMode(getSetting('companionShareMode')) === 'wifi-only') {
+      viewerStats.connect(msg.viewerId, remoteIp)
+      if (!viewerStats.isInVenue(msg.viewerId)) {
+        viewerStats.disconnect(msg.viewerId)
+        return
+      }
+    } else {
+      viewerStats.connect(msg.viewerId, remoteIp)
+    }
+    const snap = viewerStats.snapshot()
+    emitEngineEvent('on-viewer-count', snap)
+    broadcastToClients({ type: 'viewer-count', ...snap })
+  } else if (msg.type === 'bye') {
+    viewerStats.disconnect(msg.viewerId)
+    emitEngineEvent('on-viewer-count', viewerStats.snapshot())
+  } else if (msg.type === 'vote') {
+    const w = viewerStats.isInVenue(msg.viewerId) ? VOTE_WEIGHT_IN_VENUE : VOTE_WEIGHT_REMOTE
+    if (polls.vote(msg.pollId, msg.viewerId, msg.candidateIndex, w)) {
+      emitEngineEvent('on-poll-tally', { pollId: msg.pollId, tally: polls.tally(msg.pollId) })
+    }
+  }
+}
+ipcMain.on('companion-frame', (_event, { raw, ip }) => handleCompanionFrame(raw, ip || '127.0.0.1'))
+
+// Command palette search (item 6) — registry + local lexical index.
+ipcMain.handle('search-query', async (_event, { query, limit }) => searchIndex.search(query, { limit: limit ?? 8 }))
+
+// Library folders (item 12).
+ipcMain.handle('folders-list', (_event, { libraryId, itemIds }) => {
+  const idx = folderIndex(libraryId)
+  if (Array.isArray(itemIds)) idx.strip(itemIds)
+  return { folders: idx.listFolders(), stats: idx.stats(itemIds ?? []) }
+})
+ipcMain.handle('folders-create', (_event, { libraryId, name }) => folderIndex(libraryId).createFolder(name))
+ipcMain.handle('folders-rename', (_event, { libraryId, id, name }) => folderIndex(libraryId).renameFolder(id, name))
+ipcMain.handle('folders-color', (_event, { libraryId, id, color }) => folderIndex(libraryId).setColor(id, color))
+ipcMain.handle('folders-delete', (_event, { libraryId, id }) => folderIndex(libraryId).deleteFolder(id))
+ipcMain.handle('folders-move-item', (_event, { libraryId, itemId, folderId }) =>
+  folderIndex(libraryId).moveItem(itemId, folderId ?? null)
+)
+ipcMain.handle('folders-reorder', (_event, { libraryId, ids }) => folderIndex(libraryId).reorderFolders(ids))
+ipcMain.handle('folders-of-item', (_event, { libraryId, itemId }) => folderIndex(libraryId).folderOf(itemId))
+
+// Scripture → background preset (stock backgrounds, still-to-do list).
+ipcMain.handle('preset-for-reference', (_event, { book, chapter, verse }) =>
+  presetForReference({ book, chapter, verse }, getSetting('seasonalEnabled') ? seasonalThemeId(new Date()) : undefined)
+)
+
+// Song import (item 23): ChordPro / plain text / OpenLyrics → sections.
+ipcMain.handle('songs-import-text', (_event, { text, filename }) => parseSong(text, filename))
+ipcMain.handle('songs-import-file', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Songs', extensions: ['cho', 'chopro', 'crd', 'txt', 'xml'] }]
+  })
+  if (result.canceled) return { success: false, canceled: true }
+  const songs = result.filePaths.map((fp) => parseSong(fs.readFileSync(fp, 'utf-8'), path.basename(fp)))
+  return { success: true, songs }
+})
+
+// Evals (item 25): export ledger corrections as anonymised fixtures.
+ipcMain.handle('evals-export-fixtures', async () => {
+  const out = path.join(app.getPath('userData'), 'eval-fixtures.jsonl')
+  const n = await exportFixturesFromLedger(path.join(app.getPath('userData'), 'preacher-ledgers'), out, { anonymise: true })
+  return { success: true, file: out, count: n }
 })
 
 /* -------- agentic layer IPC (added post-recovery) -------- */
@@ -995,6 +1499,33 @@ ipcMain.handle('pick-background-image', async () => {
     return { success: true, url }
   } catch (e: any) {
     return { success: false, error: e?.message ?? 'could not copy image' }
+  }
+})
+
+// Stock backgrounds: search a free library (Pixabay now, Pexels when keyed)
+// and keep a copy of whatever is picked next to the native picker's copies.
+ipcMain.handle('get-stock-providers', () => stockProviders())
+
+ipcMain.handle('search-stock', async (_event, params) => {
+  try {
+    return { success: true, ...(await searchStock(params)) }
+  } catch (e: any) {
+    return { success: false, error: e?.message ?? 'search failed' }
+  }
+})
+
+ipcMain.handle('download-stock', async (_event, { item, apply }) => {
+  try {
+    const { url, src } = await downloadStock(item)
+    if (apply) {
+      setSetting('defaultBackgroundUrl', url)
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) win.webContents.send('on-theme-changed')
+      })
+    }
+    return { success: true, url, src }
+  } catch (e: any) {
+    return { success: false, error: e?.message ?? 'could not download' }
   }
 })
 
@@ -1264,7 +1795,26 @@ const THEME_KEYS = new Set([
   'defaultBackgroundUrl',
   'backgroundFit',
   'backgroundPosition',
-  'colorMode'
+  'colorMode',
+  // Output roles / layouts / logo repaint the same way (BUILD-MAP 2.11).
+  'churchLogoUrl',
+  'churchName',
+  'streamLayout',
+  'stageShowClock',
+  'stageShowNext',
+  'outputRoles',
+  // Passage layout (BUILD-MAP 2.18) — the output re-derives all of these from
+  // getSettings() in loadTheme, so they only needed to be on the repaint list.
+  'breakOnVerse',
+  'showVerseNumbers',
+  'referenceMode',
+  'showTranslation',
+  'maxCharsPerSlide',
+  'secondaryVersion',
+  // Stage monitor slots repaint the same way.
+  'stageShowVerseText',
+  'stageShowTimer',
+  'stageShowElapsed'
 ])
 
 ipcMain.handle('set-setting', (_event, { key, value }) => {
@@ -1308,6 +1858,7 @@ ipcMain.handle('set-active-preacher', (_event, preacherId) => {
     )
   }
   setSetting('activePreacherId', preacherId)
+  if (ledger) applyLanguageAndConfig()
   console.log(`👤 Active preacher set: ${profile.name} (${profile.id})`)
   return { success: true, name: profile.name }
 })
@@ -1352,6 +1903,14 @@ ipcMain.handle(
         }
         ledger.endService(preacherId)
         ledger.clearReview()
+        const pollResults = polls.results()
+        const viewerRecap = viewerStats.recap()
+        if (pollResults.length || viewerRecap.totalUnique) {
+          console.log(`📊 Companion recap: ${pollResults.length} polls · peak ${viewerRecap.peak} viewers`)
+          emitEngineEvent('on-companion-recap', { polls: pollResults, viewers: viewerRecap })
+        }
+        polls.reset()
+        viewerStats.reset()
         console.log(
           `🎓 Trust meter: ${(ledger.stats(preacherId).trustLowerBound * 100).toFixed(1)}% (auto mode ${ledger.stats(preacherId).autoModeEligible ? 'ELIGIBLE' : 'not yet'})`
         )
@@ -1738,21 +2297,8 @@ ipcMain.handle('ocr-process-images', async (_event, imagePaths) => {
 })
 
 app.whenReady().then(() => {
-  if (process.env.DESIGN_MODE === '1') {
-    console.log('🎨 Design sandbox mode — main app and services skipped')
-    const dbPath = findDatabase()
-    if (dbPath) {
-      try {
-        setDb(new Database(dbPath))
-        const count = db!.prepare('SELECT COUNT(*) as count FROM bible').get() as { count: number }
-        console.log(`✅ Database connected (design mode) - ${count.count} verses`)
-      } catch (e) {
-        console.error('❌ Database error (design mode):', e)
-      }
-    }
-    createDesignWindow()
-    return
-  }
+  // Serves files under userData to every window. Registered before the
+  // design-mode branch so the sandbox can show a downloaded background too.
   protocol.handle('local-media', async (request) => {
     try {
       const requestUrl = new URL(request.url)
@@ -1775,6 +2321,22 @@ app.whenReady().then(() => {
       return new Response('Bad request', { status: 400 })
     }
   })
+
+  if (process.env.DESIGN_MODE === '1') {
+    console.log('🎨 Design sandbox mode — main app and services skipped')
+    const dbPath = findDatabase()
+    if (dbPath) {
+      try {
+        setDb(new Database(dbPath))
+        const count = db!.prepare('SELECT COUNT(*) as count FROM bible').get() as { count: number }
+        console.log(`✅ Database connected (design mode) - ${count.count} verses`)
+      } catch (e) {
+        console.error('❌ Database error (design mode):', e)
+      }
+    }
+    createDesignWindow()
+    return
+  }
   const dbPath = findDatabase()
   if (dbPath) {
     try {
@@ -1790,7 +2352,22 @@ app.whenReady().then(() => {
   initAliasLogger()
   /* -------- agentic layer init (added post-recovery) -------- */
   setBareBookGate(() => intentEngine.allowBareBook())
-  ledger = new CorrectionLedger(path.join(app.getPath('userData'), 'preacher-ledgers'))
+  ledger = new CorrectionLedger(
+    path.join(app.getPath('userData'), 'preacher-ledgers'),
+    Date.now,
+    {},
+    {
+      onAutoModeDisabled: (pid) => {
+        emitEngineEvent('on-auto-mode-event', { type: 'auto-disabled', preacherId: pid })
+        broadcastState()
+      }
+    }
+  )
+  commandLog = new CommandLog(app.getPath('userData'), Date.now, { userDataDir: app.getPath('userData') })
+  vocabulary = new VocabularyStore(app.getPath('userData'))
+  pairing = new PairingStore(app.getPath('userData'))
+  restoreTimers()
+  setInterval(() => polls.expireStale(), 5000)
   applyLanguageAndConfig()
   console.log('🗣️ Voice commands + intent engine + correction ledger ready')
   const quoteMatcher = getQuoteMatcher()
@@ -1895,7 +2472,55 @@ app.whenReady().then(() => {
   // hot-reload in the sheet and on the real screen at the same time.
   // (DESIGN_MODE=1 above is the other mode: gallery only, engine skipped.)
   if (process.env.SANDBOX === '1') createDesignWindow()
-  if (mainWindow) startWebSocketServer(mainWindow)
+  if (getSetting('remoteControlEnabled') && pairing) {
+    const toRenderer = (command: string, value?: unknown) =>
+      mainWindow?.webContents.send('on-external-command', value === undefined ? { command } : { command, value })
+    const remoteHandlers: RemoteHandlers = {
+      startListening: () => startASR(),
+      stopListening: () => stopASR(),
+      clearScreen: () => {
+        screen.set('clear')
+        toRenderer('clear-screen')
+      },
+      // One-button remotes: pressing BLACK / LOGO again restores the screen.
+      blackScreen: () => screen.toggle('black'),
+      showLogo: () => screen.toggle('logo'),
+      showAlert: (text, opts) => {
+        const target = opts.target as AlertTarget | undefined
+        const seconds = opts.durationSec === null ? null : opts.durationSec ?? getSetting('alertDefaultSeconds')
+        // A Stream Deck button carries a template too, so fill it the same way.
+        alerts.show(fillTokens(text, tokenContext()), { target, durationSec: seconds })
+      },
+      dismissAlert: () => alerts.dismiss(),
+      pushPreview: () => pushPreviewToLive('remote'),
+      approvePending: () => pushPreviewToLive('remote'),
+      dismissPending: () => {
+        emitVerseAutoDismiss()
+        intentEngine.onDisplayCleared()
+        toRenderer('dismiss-pending')
+      },
+      nextVerse: () => {
+        session.exitReadingMode()
+        session.advance()
+      },
+      previousVerse: () => {
+        session.exitReadingMode()
+        session.goBack()
+      },
+      setAutoMode: (enabled) => {
+        const pid = activePreacherId()
+        if (pid && ledger) ledger.setAutoModeEnabled(pid, enabled)
+        broadcastState()
+      },
+      typeReference: (ref) => {
+        sendTranscript(ref, true)
+        emitTranscript(ref)
+      },
+      setMode: (mode) => toRenderer('set-mode', mode),
+      getState: () => remoteState()
+    }
+    startWebSocketServer(remoteHandlers, pairing, 8081)
+  }
   initCloudSync()
   console.log('🚀 AI Preacher Assistant ready')
   console.log("💡 Click 'Start' to begin voice recognition")
@@ -1929,6 +2554,8 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', () => {
+  alerts.dispose()
+  timers.dispose()
   if (process.env.DESIGN_MODE === '1') return
   if (serviceAgent) {
     postServiceSummary.importEvents(serviceAgent.getServiceLog())

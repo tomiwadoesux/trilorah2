@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 /*
@@ -146,6 +147,45 @@ export function LevelMeter({ db }: { db: number | null }) {
         />
       ))}
     </span>
+  );
+}
+
+/**
+ * A scrolling mic waveform — the sound-check surface.
+ *
+ * The level meter answers "is there signal"; this answers "is the signal any
+ * good", which is the question during a sound check. Each dB sample pushes a
+ * bar off the left, so a dead mic reads as a flat line rather than as a meter
+ * that merely happens to sit at zero. Colour tracks headroom: green is
+ * healthy, amber is hot, red is clipping.
+ */
+export function Waveform({ db, bars = 96 }: { db: number | null; bars?: number }) {
+  const [history, setHistory] = useState<number[]>(() => Array(bars).fill(0));
+
+  useEffect(() => {
+    // Silence still advances the trace, so the line keeps moving when the
+    // room goes quiet instead of freezing on the last loud sample.
+    const v = db == null ? 0 : Math.max(0, Math.min(1, (db + 60) / 60));
+    setHistory((prev) => [...prev.slice(1), v]);
+  }, [db]);
+
+  return (
+    <div
+      className="flex h-16 w-full items-center gap-[1px] overflow-hidden rounded-sm bg-black px-1"
+      title={db == null ? 'no signal' : `${db} dB`}
+    >
+      {history.map((v, i) => {
+        const pct = Math.max(2, v * 100);
+        const colour = v > 0.9 ? 'bg-red-500' : v > 0.75 ? 'bg-amber-400' : 'bg-green-500';
+        return (
+          <span
+            key={i}
+            className={`flex-1 rounded-[1px] ${v === 0 ? 'bg-neutral-700' : colour}`}
+            style={{ height: `${pct}%` }}
+          />
+        );
+      })}
+    </div>
   );
 }
 
