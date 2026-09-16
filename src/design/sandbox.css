@@ -34,18 +34,19 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* F-05 — density (PROVISIONAL)                                        */
+/* F-05 — tiers: no longer provisional, and no longer here             */
 /* ------------------------------------------------------------------ */
 
-[data-density='compact'] {
-  font-size: 13px;
-}
-[data-density='comfortable'] {
-  font-size: 15px;
-}
-[data-density='touch'] {
-  font-size: 17px;
-}
+/*
+ * This used to set a root font-size per density, which scaled nothing that
+ * mattered — every component states its own sizes in px, so the only thing
+ * that moved was text that happened to be in rem.
+ *
+ * The real mechanism now lives in src/ui/tokens.css, where each tier
+ * restates the metrics block. It ships with the app rather than being a
+ * sandbox override, because it is the answer to how ~181 components resize
+ * at all. The toolbar toggle just sets data-density on <html>.
+ */
 
 /* The gallery chrome itself must not resize with the specimens. */
 [data-gallery-chrome] {

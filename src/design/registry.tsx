@@ -1,7 +1,10 @@
 import type { ComponentType } from 'react';
 import { ColorTokens, Typography, SpacingRadius, Motion } from './entries/foundations';
 import { Buttons, Panels, Pills, Meters, FormsAndEmpty, OutputSurface } from './entries/primitives';
-import { TriButton, TriSlider, TriDashboardButton } from './entries/trilorah';
+import { TriThinkingOrb } from './entries/orbs';
+import { TriThinkingOrb2 } from './entries/orbs2';
+import { HeardStack } from './entries/heardStack';
+import { TriButton, TriSlider, TriDashboardButton, TriDisplayFontPicker, TriTextPositionPicker, TriSelect, TriSegmentedControl, TriScriptureReferenceInput, TriTypeScale, TriSurfaceTones } from './entries/trilorah';
 
 /*
  * The gallery's table of contents.
@@ -32,9 +35,19 @@ export const REGISTRY: EntryGroup[] = [
     title: 'Trilorah',
     total: 181,
     entries: [
+      { id: 'F-02', title: 'Type scale', Component: TriTypeScale },
+      { id: 'F-05', title: 'Surface tones', Component: TriSurfaceTones },
       { id: 'C-01', title: 'Button', Component: TriButton },
+      { id: 'C-04', title: 'Segmented control', Component: TriSegmentedControl },
+      { id: 'C-05', title: 'Display font', Component: TriDisplayFontPicker },
+      { id: 'C-06', title: 'Text position', Component: TriTextPositionPicker },
+      { id: 'C-07', title: 'Text effect select', Component: TriSelect },
+      { id: 'C-08', title: 'Scripture reference input', Component: TriScriptureReferenceInput },
       { id: 'C-20', title: 'Slider', Component: TriSlider },
+      { id: 'C-65', title: 'Thinking orb', Component: TriThinkingOrb },
+      { id: 'C-65b', title: 'Thinking orb 2', Component: TriThinkingOrb2 },
       { id: 'D-111', title: 'Dashboard row', Component: TriDashboardButton },
+      { id: 'S-02d+', title: 'Multiple detections', Component: HeardStack },
     ],
   },
   {
