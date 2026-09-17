@@ -1,11 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore, TABS } from './stores/appStore';
 import { useLiveStore } from './stores/liveStore';
 import { fetchVerseText, sameRef, pct } from './lib/verse';
 import { startMicCapture, stopMicCapture } from './lib/micCapture';
+import { listAudioInputs, onDeviceChange } from './lib/audioDevices';
 import { LevelMeter, hasEngine } from './components/ui';
 import { Tour } from './components/Tour';
-import { Live } from './screens/Live';
+/* The Trilorah LIVE screen. The previous surface is still in
+   ./screens/Live — swapping this import back is the whole rollback. */
+import { LiveHost } from './screens/LiveHost';
 import { Bible } from './screens/Bible';
 import { Songs } from './screens/Songs';
 import { Presentations } from './screens/Presentations';
@@ -149,6 +152,62 @@ function useEngineWiring() {
   }, []);
 }
 
+/*
+ * The mic, in the one strip every screen shares.
+ *
+ * The Trilorah LIVE screen has no microphone box by design, and it reads the
+ * saved micDeviceLabel when it starts listening — so the choice only needs
+ * somewhere to be made. Locked while listening: the engine binds the device
+ * at start, and a picker that looked live but changed nothing until the next
+ * start would be lying about which microphone is open.
+ */
+function MicPicker() {
+  const asrStatus = useAppStore((s) => s.asrStatus);
+  const settings = useAppStore((s) => s.settings);
+  const patchSetting = useAppStore((s) => s.patchSetting);
+  const [inputs, setInputs] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      void listAudioInputs().then((list) => {
+        if (!cancelled) setInputs(list.map((d) => d.label));
+      });
+    };
+    load();
+    const unsub = onDeviceChange(load);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
+  const saved = typeof settings?.micDeviceLabel === 'string' ? settings.micDeviceLabel : '';
+  const busy = asrStatus === 'listening' || asrStatus === 'connecting';
+
+  return (
+    <label className="flex items-center gap-x-1.5" title={busy ? 'stop listening to change the microphone' : 'microphone'}>
+      <span>mic</span>
+      <select
+        value={saved}
+        disabled={busy}
+        onChange={(e) => {
+          patchSetting('micDeviceLabel', e.target.value);
+          void window.api?.setSetting('micDeviceLabel', e.target.value);
+        }}
+        className="max-w-44 rounded border border-hairline bg-surface px-1 py-0.5 text-[10px] normal-case tracking-normal text-ink disabled:opacity-50"
+      >
+        <option value="">system default</option>
+        {inputs.map((label) => (
+          <option key={label} value={label}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function StatusCluster() {
   const asrStatus = useAppStore((s) => s.asrStatus);
   const segment = useAppStore((s) => s.segment);
@@ -167,6 +226,7 @@ function StatusCluster() {
         {asrStatus}
       </span>
       {listening && <LevelMeter db={audioLevel} />}
+      <MicPicker />
       {segment && <span>{segment.type}</span>}
       {preacherName && <span className="text-ink">{preacherName}</span>}
       {trust != null && <span>trust {pct(trust)}</span>}
@@ -193,7 +253,7 @@ export default function App() {
                   type="button"
                   onClick={() => setTab(t.id)}
                   className={`rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
-                    tab === t.id ? 'bg-accent text-white' : 'text-neutral-500 hover:text-ink'
+                    tab === t.id ? 'bg-accent text-[var(--color-on-accent)]' : 'text-neutral-500 hover:text-ink'
                   }`}
                 >
                   {t.label}
@@ -223,7 +283,7 @@ export default function App() {
       {tab === 'live' ? (
         // The control surface owns the whole viewport below the header.
         <main className="min-h-0 flex-1">
-          <Live />
+          <LiveHost />
         </main>
       ) : (
         <main className="min-h-0 flex-1 overflow-y-auto">

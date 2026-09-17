@@ -26,9 +26,9 @@ export function Button({ label, onClick, variant = 'outline', disabled, title, b
   const size = big ? 'px-5 py-2.5 text-sm' : 'px-3 py-1.5 text-xs';
   const look =
     variant === 'solid'
-      ? 'bg-accent text-white hover:bg-neutral-800 disabled:bg-neutral-300'
+      ? 'bg-accent text-[var(--color-on-accent)] hover:opacity-85 disabled:opacity-30'
       : variant === 'outline'
-        ? 'border border-ink hover:bg-ink hover:text-white disabled:border-neutral-300 disabled:text-neutral-400 disabled:hover:bg-transparent'
+        ? 'border border-ink hover:bg-ink hover:text-[var(--color-paper)] disabled:border-neutral-300 disabled:text-neutral-400 disabled:hover:bg-transparent'
         : 'underline-offset-4 hover:underline disabled:no-underline disabled:text-neutral-400';
   return (
     <button
@@ -126,7 +126,7 @@ export function Pill({
     <span
       title={title}
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${
-        active ? 'border-accent bg-accent text-white' : 'border-hairline text-neutral-500'
+        active ? 'border-accent bg-accent text-[var(--color-on-accent)]' : 'border-hairline text-neutral-500'
       }`}
     >
       {children}

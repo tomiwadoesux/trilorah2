@@ -18,6 +18,8 @@ import {
   SearchIcon,
   Select,
   surface,
+  toneClass,
+  PencilIcon,
   BookIcon,
   MusicIcon,
   TrashIcon,
@@ -25,6 +27,7 @@ import {
   PlusIcon,
   PlayIcon,
   slideBackdrop,
+  type BackdropStyle,
   BACKDROP_BY_CONTENT,
   Slider,
   TextPositionPicker,
@@ -523,50 +526,140 @@ function ThemePreview({ theme }: { theme: ThemeSettings }) {
   );
 }
 
+/*
+ * The tab holds two different jobs, and the toggle at its top left is the
+ * line between them.
+ *
+ *   themes  what goes BEHIND the words — the background the congregation
+ *           reads a verse off for the whole service.
+ *   media   what goes ON the screen instead of words — the announcement
+ *           slide, the countdown, the baptism clip.
+ *
+ * They looked like one library because both are pictures in a grid, and
+ * that is exactly the confusion worth spending a control on: choosing a
+ * background is a decision made once before the service, and choosing a
+ * clip is a thing done to the screen during it.
+ *
+ * It is also why only themes has a stock search. Nobody downloads their
+ * own announcement slide from Pixabay.
+ */
+type MediaView = 'themes' | 'media';
+
+const MEDIA_VIEWS: SegmentOption<MediaView>[] = [
+  { id: 'themes', label: 'themes' },
+  { id: 'media', label: 'media' },
+];
+
 /* A third shelf beside the two: not a source of media the church already
    has, but the way to get more. It is on the same control because the
    operator's question — "where is a background for this" — is the same,
    and the answer is one of three places. */
 type MediaShelf = MediaSource | 'search';
 
-const MEDIA_SOURCES: SegmentOption<MediaShelf>[] = [
+const MEDIA_SHELVES: SegmentOption<MediaShelf>[] = [
   { id: 'local', label: 'local' },
   { id: 'stock', label: 'stock' },
   { id: 'search', label: 'search' },
 ];
 
+/* What each view calls itself, so the header is not a fixed sentence that
+   goes half-true the moment the toggle moves. */
+const VIEW_COPY: Record<MediaView, { eyebrow: string; line: string; aside: string }> = {
+  themes: {
+    eyebrow: 'themes',
+    line: 'choose the background used on the projector',
+    aside: 'selects immediately',
+  },
+  media: {
+    eyebrow: 'media',
+    line: "this church's own images and clips",
+    aside: 'drag into the service',
+  },
+};
+
+/** The church's own content — not backgrounds, things shown in their place. */
+interface ServiceMedia {
+  id: string;
+  label: string;
+  detail: string;
+  seed: number;
+  style: BackdropStyle;
+  kind: 'image' | 'video';
+  /** Videos say how long, because a clip's length changes the run. */
+  length?: string;
+}
+
+const SERVICE_MEDIA: ServiceMedia[] = [
+  { id: 'welcome-loop', label: 'welcome loop', detail: 'plays before the service', seed: 11, style: 'smoke', kind: 'video', length: '2:00' },
+  { id: 'countdown-5', label: 'five minute countdown', detail: 'starts on the clock', seed: 6, style: 'facets', kind: 'video', length: '5:00' },
+  { id: 'announcements', label: 'announcements', detail: 'this week, three slides', seed: 8, style: 'facets', kind: 'image' },
+  { id: 'baptism-sunday', label: 'baptism sunday', detail: 'recorded last week', seed: 12, style: 'smoke', kind: 'video', length: '1:24' },
+  { id: 'giving-qr', label: 'giving code', detail: 'scan to give', seed: 10, style: 'facets', kind: 'image' },
+];
+
 function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
+  const [view, setView] = useState<MediaView>('themes');
+
   /*
    * Opens on the shelf holding whatever is on the projector, not on a fixed
    * default. The operator's first question here is always "where is the one
    * we are using" — answering it before they ask costs one lookup.
    */
   const library = useMediaLibrary();
-  const [source, setSource] = useState<MediaShelf>(
+  const [shelf, setShelf] = useState<MediaShelf>(
     () => library.find((m) => m.id === selected)?.source ?? 'stock',
   );
-  const shown = library.filter((m) => m.source === source);
+  const shown = library.filter((m) => m.source === shelf);
+  const copy = VIEW_COPY[view];
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="flex shrink-0 items-end justify-between px-1">
-        <div className="flex items-end gap-3">
-          <div>
-            <p className="tri-label text-[var(--tri-ink-muted)]">theme media</p>
-            <p className="mt-1 text-[length:var(--tri-size-sm)] text-[var(--tri-ink)]">choose the background used on the projector</p>
+      {/*
+        The header is two rows, not one, and the split is by rank: what this
+        tab IS on top, how to narrow it underneath. Cramming the shelf
+        control up beside the title made a row of three unrelated things and
+        left the reader to work out which governed which.
+      */}
+      <div className="flex shrink-0 flex-col gap-2 px-1">
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex items-end gap-3">
+            <div>
+              <p className="tri-label text-[var(--tri-ink-muted)]">{copy.eyebrow}</p>
+              <p className="mt-1 text-[length:var(--tri-size-sm)] text-[var(--tri-ink)]">{copy.line}</p>
+            </div>
+            <SegmentedControl options={MEDIA_VIEWS} value={view} onChange={setView} size="sm" />
           </div>
-          {/* Two shelves, both named on the control: the church's own media
-              and what Trilorah ships with. A Select would hide one of two
-              options behind a click, which is exactly what C-04 is for. */}
-          <SegmentedControl
-            options={MEDIA_SOURCES}
-            value={source}
-            onChange={setSource}
-            size="sm"
-          />
+          <span className="tri-label shrink-0 text-[var(--tri-ink-muted)]">{copy.aside}</span>
         </div>
-        <span className="tri-label text-[var(--tri-ink-muted)]">selects immediately</span>
+
+        {/*
+          Only under themes. The second row appears and disappears with the
+          view rather than greying out, because a disabled control still
+          asks to be read — and on the media shelf the question it answers
+          ("where do backgrounds come from") is not one being asked.
+        */}
+        {/*
+          The row keeps its height on both views. Letting it collapse moved
+          the whole grid up by 28px on every toggle, which turns a change of
+          shelf into a change of layout — the pictures the eye was reading
+          jump out from under it. Empty and present beats absent.
+        */}
+        <div className="flex h-[var(--tri-control-h)] items-center gap-3">
+          {view === 'themes' ? (
+            <>
+              <SegmentedControl options={MEDIA_SHELVES} value={shelf} onChange={setShelf} size="sm" />
+              <span className="tri-label text-[rgb(229_243_242_/_0.38)]">
+                {shelf === 'local'
+                  ? 'on this laptop'
+                  : shelf === 'stock'
+                    ? 'ships with trilorah'
+                    : 'free photo and video library'}
+              </span>
+            </>
+          ) : null}
+        </div>
       </div>
+
       {/*
         The songs and slides grid, exactly: five across, the same gaps, the
         same leading card, and a cell that is a picture with a two-line
@@ -575,7 +668,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
         chooses one should be the same object as the thing that chooses a
         verse — not a second, squarer kind of card in a neighbouring tab.
       */}
-      {source === 'search' ? (
+      {view === 'themes' && shelf === 'search' ? (
         /* A pick lands on the local shelf — it is on this laptop now — and
            goes straight to the projector, as a click on either other shelf
            does. */
@@ -585,53 +678,133 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
             onSelect(media.id);
           }}
         />
-      ) : (
-      <div className="grid min-h-0 auto-rows-min grid-cols-5 gap-x-3 gap-y-4 overflow-y-auto px-1 pb-3">
-        {/* Only on the local shelf: nothing can be added to what ships. */}
-        {source === 'local' ? <AddCard label="add media" hint="image, video, loop" /> : null}
-
-        {shown.map((media) => {
-          const isSelected = selected === media.id;
-          return (
-            <button
+      ) : view === 'themes' ? (
+        <MediaGrid add={shelf === 'local' ? { label: 'add media', hint: 'image, video, loop' } : null}>
+          {shown.map((media) => (
+            <MediaCard
               key={media.id}
-              type="button"
+              src={mediaSrc(media)}
+              label={media.label}
+              detail={media.detail}
+              selected={selected === media.id}
+              badge={selected === media.id ? 'in use' : null}
               onClick={() => onSelect(media.id)}
-              aria-pressed={isSelected}
-              className="group/card block w-full pb-3 text-left transition-transform duration-150 ease-out hover:-translate-y-[2px]"
-              style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
-            >
-              <span className="tri-rounded-control relative block overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
-                <img src={mediaSrc(media)} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover/card:scale-[1.03]" />
-                {/*
-                  The edge, carrying the corner itself rather than leaning on
-                  the parent to clip it: a square ring cropped by a squircle
-                  loses its corners and reads as four detached sides. Same
-                  weights as a slide card's ring, so a selected background
-                  and a selected song are edged alike.
-                */}
-                <span
-                  className="tri-rounded-control pointer-events-none absolute inset-0 transition-shadow duration-150"
-                  style={{
-                    boxShadow: isSelected
-                      ? 'inset 0 0 0 var(--tri-border) rgb(228 216 122 / 0.6)'
-                      : 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.22)',
-                  }}
-                />
-                {isSelected ? <span className="absolute bottom-2 right-2 rounded bg-black/55 px-1.5 py-1 text-[10px] lowercase text-[var(--tri-accent-yellow)]">in use</span> : null}
-              </span>
-              <span className="mt-2 block px-0.5">
-                <span className={cx('block truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors', isSelected ? 'text-[var(--tri-accent-yellow)]' : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]')}>
-                  {media.label}
-                </span>
-                <span className="mt-[2px] block truncate text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">{media.detail}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
+            />
+          ))}
+        </MediaGrid>
+      ) : (
+        <MediaGrid add={{ label: 'add media', hint: 'image, video, loop' }}>
+          {SERVICE_MEDIA.map((item) => (
+            <MediaCard
+              key={item.id}
+              src={slideBackdrop(item.seed, item.style)}
+              label={item.label}
+              detail={item.detail}
+              selected={false}
+              /* A clip's length is the one thing about it that changes the
+                 run, so it is on the picture rather than in the caption. */
+              badge={item.kind === 'video' ? (item.length ?? 'clip') : null}
+            />
+          ))}
+        </MediaGrid>
       )}
     </div>
+  );
+}
+
+/** The grid both views share, so a card cannot drift between them. */
+function MediaGrid({
+  add,
+  children,
+}: {
+  add: { label: string; hint: string } | null;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid min-h-0 auto-rows-min grid-cols-5 gap-x-3 gap-y-4 overflow-y-auto px-1 pb-3">
+      {add ? <AddCard label={add.label} hint={add.hint} /> : null}
+      {children}
+    </div>
+  );
+}
+
+function MediaCard({
+  src,
+  label,
+  detail,
+  selected,
+  badge,
+  onClick,
+}: {
+  src: string;
+  label: string;
+  detail: string;
+  selected: boolean;
+  badge: string | null;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="group/card block w-full pb-3 text-left transition-transform duration-150 ease-out hover:-translate-y-[2px]"
+      style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
+    >
+      <span className="tri-rounded-control relative block overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
+        <img src={src} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover/card:scale-[1.03]" />
+        {/*
+          A scrim under the badge, not a box around it. The badge sits on
+          whatever the picture happens to be at that corner — a bright sky
+          and a black chip both lose — so the picture is darkened where the
+          text lands and the chip itself can be nothing but the text.
+        */}
+        {badge ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2"
+            style={{ background: 'linear-gradient(to top, rgb(0 0 0 / 0.62), transparent)' }}
+          />
+        ) : null}
+        {/*
+          The edge, carrying the corner itself rather than leaning on
+          the parent to clip it: a square ring cropped by a squircle
+          loses its corners and reads as four detached sides. Same
+          weights as a slide card's ring, so a selected background
+          and a selected song are edged alike.
+        */}
+        <span
+          className="tri-rounded-control pointer-events-none absolute inset-0 transition-shadow duration-150"
+          style={{
+            boxShadow: selected
+              ? 'inset 0 0 0 var(--tri-border) rgb(228 216 122 / 0.6)'
+              : 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.22), inset 0 0 0 0 rgb(255 255 255 / 0)',
+          }}
+        />
+        {badge ? (
+          <span
+            className={cx(
+              'absolute bottom-2 right-2 flex items-center gap-[5px] text-[length:var(--tri-size-xs)] leading-none lowercase',
+              selected ? 'text-[var(--tri-accent-yellow)]' : 'text-[rgb(255_255_255_/_0.88)]',
+            )}
+          >
+            {/* The dot is the state; the word only says which state. On a
+                shelf of five pictures the eye finds a lit dot before it
+                finds two letters. */}
+            {selected ? (
+              <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-[var(--tri-accent-yellow)]" />
+            ) : null}
+            {badge}
+          </span>
+        ) : null}
+      </span>
+      <span className="mt-2 block px-0.5">
+        <span className={cx('block truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors', selected ? 'text-[var(--tri-accent-yellow)]' : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]')}>
+          {label}
+        </span>
+        <span className="mt-[2px] block truncate text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">{detail}</span>
+      </span>
+    </button>
   );
 }
 
@@ -1063,12 +1236,24 @@ function SongsBrowser() {
      it, come back, and the grid is still where you left it. The sheet's own
      search does not outlive the song, which is what the key below says. */
   const [query, setQuery] = useState('');
-  const open = SONGS.find((s) => s.id === openId);
+  /* Deleted songs, by id. SONGS is a seed list in this sandbox, so a
+     delete cannot remove a row from anywhere — it hides one here, which is
+     enough for the card's button to be a real gesture rather than a dead
+     shape. Swap for the store's own delete when the library is backed. */
+  const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
+  const songs = useMemo(() => SONGS.filter((s) => !deleted.has(s.id)), [deleted]);
+  const open = songs.find((s) => s.id === openId);
 
   return open ? (
     <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} />
   ) : (
-    <SongGrid query={query} onQuery={setQuery} onOpen={setOpenId} />
+    <SongGrid
+      songs={songs}
+      query={query}
+      onQuery={setQuery}
+      onOpen={setOpenId}
+      onDelete={(id) => setDeleted((d) => new Set(d).add(id))}
+    />
   );
 }
 
@@ -1089,13 +1274,17 @@ function SongsBrowser() {
  * list.
  */
 function SongGrid({
+  songs,
   query,
   onQuery,
   onOpen,
+  onDelete,
 }: {
+  songs: readonly Song[];
   query: string;
   onQuery: (q: string) => void;
   onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const drag = useDrag();
   const projector = useProjector();
@@ -1124,13 +1313,13 @@ function SongGrid({
   const needle = query.trim().toLowerCase();
   const matches = useMemo(
     () =>
-      SONGS.filter((s) =>
+      songs.filter((s) =>
         needle === ''
           ? true
           : s.title.toLowerCase().includes(needle) ||
             s.verses.some((v) => v.lines.join(' ').toLowerCase().includes(needle)),
       ),
-    [needle],
+    [needle, songs],
   );
 
   /* A song is live when a section of it is. The gold ring belongs on the
@@ -1283,31 +1472,94 @@ function SongGrid({
                     between name and artist wider than the gap separating
                     them from the card.
                   */}
-                  <div className="mt-2 px-0.5" title={`${song.title} — ${song.author}`}>
-                    {/* Ink, not the accent: gold is the colour of the one
-                        act that reaches the congregation, and sixteen gold
-                        titles would spend it on nothing. Live is the one
-                        that goes gold. */}
-                    <p
-                      className={cx(
-                        /* The caption step carrying weight, not the base
-                           step: that one scales with density and reached
-                           14px on a wide window, which put a heading under
-                           a 117px picture. */
-                        'truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
-                        live
-                          ? 'text-[var(--tri-accent-yellow)]'
-                          : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]',
-                      )}
-                    >
-                      {song.title}
-                    </p>
-                    {/* Quiet by a wide margin. The artist settles ties
-                        between two songs of the same name; it is never
-                        what the eye should land on first. */}
-                    <p className="mt-[2px] truncate text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">
-                      {song.author}
-                    </p>
+                  {/*
+                    The caption is a row now: name and artist on the left,
+                    the two things you can do to a song on the right. They
+                    sit level with the pair of text lines rather than under
+                    them, so the row stays two lines tall and the grid's
+                    vertical rhythm is the one described above.
+                  */}
+                  <div
+                    className="mt-2 flex items-center gap-2 px-0.5"
+                    title={`${song.title} — ${song.author}`}
+                  >
+                    {/* min-w-0: without it the flex item refuses to shrink
+                        below its text's width and `truncate` never fires —
+                        a long title would push the buttons off the card. */}
+                    <div className="min-w-0 flex-1">
+                      {/* Ink, not the accent: gold is the colour of the one
+                          act that reaches the congregation, and sixteen gold
+                          titles would spend it on nothing. Live is the one
+                          that goes gold. */}
+                      <p
+                        className={cx(
+                          /* The caption step carrying weight, not the base
+                             step: that one scales with density and reached
+                             14px on a wide window, which put a heading under
+                             a 117px picture. */
+                          'truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
+                          live
+                            ? 'text-[var(--tri-accent-yellow)]'
+                            : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]',
+                        )}
+                      >
+                        {song.title}
+                      </p>
+                      {/* Quiet by a wide margin. The artist settles ties
+                          between two songs of the same name; it is never
+                          what the eye should land on first. */}
+                      <p className="mt-[2px] truncate text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">
+                        {song.author}
+                      </p>
+                    </div>
+
+                    {/*
+                      Edit and delete, as a pair of equal squares — the
+                      system's surface at control shape, sized from the
+                      side rather than padded from a label, because an icon
+                      has no text to set the width. Teal then red: the two
+                      tones already mean "an action" and "a destructive
+                      one", so the colour says which is which before the
+                      glyph does.
+
+                      stopPropagation on both: the whole cell opens the song
+                      (see the wrapper's onClick), and a click on either of
+                      these is not that.
+                    */}
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        title={`edit ${song.title}`}
+                        aria-label={`edit ${song.title}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpen(song.id);
+                        }}
+                        className={cx(
+                          surface({ shape: 'control', interactive: true }),
+                          toneClass(),
+                          'grid size-7 place-items-center',
+                        )}
+                      >
+                        <PencilIcon size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        title={`delete ${song.title}`}
+                        aria-label={`delete ${song.title}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(song.id);
+                        }}
+                        className={cx(
+                          surface({ tone: 'danger', shape: 'control', interactive: true }),
+                          toneClass('danger'),
+                          'grid size-7 place-items-center',
+                        )}
+                      >
+                        <TrashIcon size={12} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -2470,8 +2722,13 @@ const LOG_SEED: LogSeed[] = [
  */
 function useServiceLog(stateLabel: string) {
   const nextId = useRef(LOG_SEED.length);
+  /* The seed lines are a specimen. With an engine behind the screen the log
+     starts empty — "listening" printed above an idle microphone is the log
+     lying before the service has begun. */
   const [entries, setEntries] = useState<LogEntry[]>(() =>
-    LOG_SEED.map((seed, i) => ({ ...seed, id: i, marks: shuffleMarks() })),
+    typeof window !== 'undefined' && window.api
+      ? []
+      : LOG_SEED.map((seed, i) => ({ ...seed, id: i, marks: shuffleMarks() })),
   );
 
   const say = useCallback((seed: LogSeed) => {
@@ -3206,19 +3463,33 @@ function LiveBody({ state }: { state?: string }) {
             control column beside a surface with no controls is 18% of the
             window spent on something nobody is going to touch — so the rail
             leaves with the rest of the body rather than staying as a frame
-            around it. See ./dashboard. */}
-        {view === 'operator' && (
-        /* The whole rail is a drop target, not just the segments in it.
-           data-drop-segment with an EMPTY value means "the run, but nowhere
-           in particular" — the drag layer reads that as a drop with no
-           segment and dropInto makes the one the carry belongs in. Without
-           this the rail was inert until the operator had already built it by
-           hand, which is the wrong way round. Segments inside carry their
-           own key and win, because elementFromPoint finds the innermost. */
+            around it. See ./dashboard.
+
+            The COLUMN stays, though, even when the rail does not. The rail
+            and the context bar are siblings in this row, so taking the
+            column out of the flow moves the bar with it: the whole top strip
+            slid left by the rail's width and then stretched to fill the
+            space, which also resized the view switch inside it. That switch
+            is the one control the two postures share — it is the way back —
+            and a control that jumps a quarter of the window the instant you
+            press it is a control you have to find again.
+
+            So the dashboard holds the same measure open on the same side and
+            draws nothing in it. The top of the window is then identical in
+            both postures, and the run of service keeps its header level with
+            the bar, because neither one has moved. */}
+        {view === 'operator' ? (
+        // The whole rail is a drop target, not just the segments in it.
+        // data-drop-segment with an EMPTY value means "the run, but nowhere
+        // in particular" — the drag layer reads that as a drop with no
+        // segment and dropInto makes the one the carry belongs in. Without
+        // this the rail was inert until the operator had already built it by
+        // hand, which is the wrong way round. Segments inside carry their
+        // own key and win, because elementFromPoint finds the innermost.
         <div
           data-drop-segment=""
           className="flex shrink-0 flex-col gap-[var(--tri-gap)]"
-          style={{ width: '18%' }}
+          style={{ width: 'var(--tri-rail-w)' }}
         >
           {/* Named, so the empty box says what it is for. The rail is the
               order of service — what is coming next, in sequence — which is
@@ -3333,16 +3604,25 @@ function LiveBody({ state }: { state?: string }) {
             <ProposalStack />
           </Panel>
         </div>
+        ) : (
+          /* The rail's column, held open and drawn empty — the whole reason
+             the top of the window does not move when the posture switches.
+
+             aria-hidden because there is nothing here to read: it is a
+             measure, not a region, and a screen reader announcing an empty
+             box would be announcing the layout rather than the screen. */
+          <div aria-hidden className="shrink-0" style={{ width: 'var(--tri-rail-w)' }} />
         )}
 
         {/* The right column — bar, stage, tabs, browser. Everything below
             the stage is in here now, which is what puts the tab strip on
             the stage's left edge instead of the window's.
 
-            With the rail gone it is the only column, so the bar runs the
-            full width of the window and the bento starts under it. The bar
-            is not rebuilt for that — it is the same row in the same place
-            in the tree, given more room. */}
+            With the rail gone the column beside it is empty but still held,
+            so this one keeps exactly the width it had and the bento starts
+            under the bar where the stage did. The bar is not rebuilt for the
+            dashboard — it is the same row, in the same place in the tree, at
+            the same width. */}
         <div className="flex min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
           {/* Context bar — title, glyph, breadcrumb, split 21.5 / 4 / 73.
               --tri-topbar-h, not --tri-bar-h: this row holds the view
