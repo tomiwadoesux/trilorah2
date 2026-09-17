@@ -122,3 +122,9 @@ export function emitMicStop(): void {
 export function emitAudioLevel(level: number): void {
   broadcast('on-audio-level', level)
 }
+
+/** Generic channel for the 2026-09 engine additions (auto mode, polls,
+ *  candidates, remote). Renderer subscribes per channel. */
+export function emitEngineEvent(channel: string, payload: unknown): void {
+  broadcast(channel, payload)
+}

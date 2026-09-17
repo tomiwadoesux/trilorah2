@@ -16,7 +16,25 @@
   /* The projector canvas — always black, like the room it lights. */
   --color-canvas: #0a0a0a;
 
+  /*
+   * Roboto is the interface face, everywhere — the same one the Trilorah
+   * components use (--tri-font), so chrome and components never disagree.
+   * The rest of the stack only covers the moment before the webfont lands.
+   */
+  --font-ui: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Scripture stays a serif: it is read from a projector, not a screen. */
   --font-scripture: Georgia, "Times New Roman", serif;
+}
+
+/*
+ * Scripture carries a little more weight than body text — it is read at a
+ * distance, often over a background image. 600 rather than 500 on purpose:
+ * Georgia ships only regular and bold, so 500 would round back down to
+ * regular and change nothing on the projector.
+ */
+:root {
+  --font-scripture-weight: 600;
 }
 
 @layer base {
@@ -28,13 +46,13 @@
     margin: 0;
     background-color: var(--color-paper);
     color: var(--color-ink);
-    font-family:
-      system-ui,
-      -apple-system,
-      "Segoe UI",
-      Roboto,
-      sans-serif;
+    font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Every scripture surface, in-app and on the projector sheet. */
+  .font-scripture {
+    font-weight: var(--font-scripture-weight);
   }
 
   /* Quiet, consistent form fields: a hairline underneath, nothing more. */
@@ -75,20 +93,31 @@
     cursor: default;
   }
 
-  /* Quiet scrollbars — hairline thumbs, no chrome. */
+  /*
+   * No native scrollbars anywhere. Ours are drawn over the content instead.
+   *
+   * The reason is layout, not taste. A styled ::-webkit-scrollbar is a
+   * CLASSIC scrollbar — Chromium reserves its width inside the box — so
+   * every scrolling region on the screen was quietly 8px narrower than the
+   * one beside it, and got 8px narrower again the moment its contents grew
+   * past the box. Panels that should have shared a right-hand inset did
+   * not, and a list reflowed as it filled.
+   *
+   * Both properties, because they are two engines' worth of the same
+   * switch: scrollbar-width is the standard one, ::-webkit-scrollbar is
+   * what Chromium honours once any part of it is styled.
+   *
+   * What replaces them is FadeScroller — a hairline thumb positioned over
+   * the content, so it costs no width, plus a fade at whichever end has
+   * more past it. Regions that scroll without it simply have no bar; the
+   * content running to the edge is the only cue, which is the trade the
+   * overlay buys.
+   */
+  * {
+    scrollbar-width: none;
+  }
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--color-hairline);
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--color-ink) 25%, transparent);
+    display: none;
   }
 }
 

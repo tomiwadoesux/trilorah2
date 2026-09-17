@@ -263,11 +263,16 @@ contextBridge.exposeInMainWorld('api', {
 
   // Themes — native background image picker (copies into userData)
   pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
+  // Stock backgrounds (Pixabay / Pexels), searched from the media tab
+  getStockProviders: () => ipcRenderer.invoke('get-stock-providers'),
+  searchStock: (params: any) => ipcRenderer.invoke('search-stock', params),
+  downloadStock: (payload: any) => ipcRenderer.invoke('download-stock', payload),
 
   // Media display on outputs + theme repaint
   showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),
   clearMedia: () => ipcRenderer.invoke('clear-media'),
   showQr: () => ipcRenderer.invoke('show-qr'),
+  getQrSvg: (size?: number) => ipcRenderer.invoke('get-qr-svg', size),
   onShowMedia: (callback: (imagePath: string) => void) => {
     const subscription = (_event: IpcRendererEvent, p: string) => callback(p)
     ipcRenderer.on('on-show-media', subscription)
@@ -277,5 +282,123 @@ contextBridge.exposeInMainWorld('api', {
     const subscription = () => callback()
     ipcRenderer.on('on-theme-changed', subscription)
     return () => ipcRenderer.removeListener('on-theme-changed', subscription)
-  }
+  },
+
+  /* -------- 2026-09-09 timers + message tokens (BUILD-MAP 2.16–2.17) -------- */
+  listTimers: () => ipcRenderer.invoke('timers-list'),
+  createTimer: (input: any) => ipcRenderer.invoke('timers-create', input),
+  updateTimer: (id: string, patch: any) => ipcRenderer.invoke('timers-update', { id, patch }),
+  removeTimer: (id: string) => ipcRenderer.invoke('timers-remove', id),
+  startTimer: (id: string) => ipcRenderer.invoke('timers-start', id),
+  pauseTimer: (id: string) => ipcRenderer.invoke('timers-pause', id),
+  resetTimer: (id: string) => ipcRenderer.invoke('timers-reset', id),
+  onTimers: (callback: (timers: any[]) => void) => {
+    const subscription = (_event: IpcRendererEvent, t: any[]) => callback(t)
+    ipcRenderer.on('on-timers', subscription)
+    return () => ipcRenderer.removeListener('on-timers', subscription)
+  },
+  // What holes a saved message still has, plus a filled preview.
+  inspectAlert: (text: string) => ipcRenderer.invoke('alert-inspect', text),
+
+  /* -------- 2026-09-08 outputs, alerts, keyword search (BUILD-MAP 2.10–2.13) -------- */
+  // Screen state: 'live' | 'clear' | 'black' | 'logo' on every output.
+  setScreenState: (state: string) => ipcRenderer.invoke('screen-state-set', state),
+  getScreenState: () => ipcRenderer.invoke('screen-state-get'),
+  onScreenState: (callback: (state: string) => void) => {
+    const subscription = (_event: IpcRendererEvent, s: string) => callback(s)
+    ipcRenderer.on('on-screen-state', subscription)
+    return () => ipcRenderer.removeListener('on-screen-state', subscription)
+  },
+  // Which role this output window plays (answered per-window by main).
+  getOutputRole: (outputId: string) => ipcRenderer.invoke('output-role-get', outputId),
+  // Message alerts.
+  showAlert: (
+    text: string,
+    opts?: { target?: string; durationSec?: number | null; values?: Record<string, string> }
+  ) => ipcRenderer.invoke('alert-show', { text, ...(opts ?? {}) }),
+  dismissAlert: () => ipcRenderer.invoke('alert-dismiss'),
+  getAlert: () => ipcRenderer.invoke('alert-current'),
+  onAlert: (callback: (alert: any | null) => void) => {
+    const subscription = (_event: IpcRendererEvent, a: any) => callback(a)
+    ipcRenderer.on('on-alert', subscription)
+    return () => ipcRenderer.removeListener('on-alert', subscription)
+  },
+  // Keyword search over the Bible text ("rejoice always" → Phil 4:4).
+  searchBibleText: (query: string, opts?: { version?: string; limit?: number }) =>
+    ipcRenderer.invoke('bible-keyword-search', { query, ...(opts ?? {}) }),
+
+  /* -------- 2026-09 engine additions (see BUILD-MAP.md) -------- */
+  // Generic subscription for the new engine channels:
+  // 'on-auto-mode-event' | 'on-candidates' | 'on-companion-event' |
+  // 'on-viewer-count' | 'on-poll-tally' | 'on-companion-recap'
+  onEngineEvent: (channel: string, callback: (payload: any) => void) => {
+    const subscription = (_event: IpcRendererEvent, payload: any) => callback(payload)
+    ipcRenderer.on(channel, subscription)
+    return () => ipcRenderer.removeListener(channel, subscription)
+  },
+  // Auto mode + clash (item 16)
+  setAutoMode: (preacherId: string | null, enabled: boolean) =>
+    ipcRenderer.invoke('auto-mode-set', { preacherId, enabled }),
+  getCandidates: () => ipcRenderer.invoke('auto-mode-get-candidates'),
+  resolveClash: (index: number) => ipcRenderer.invoke('auto-mode-resolve-clash', index),
+  dismissClash: () => ipcRenderer.invoke('auto-mode-dismiss-clash'),
+  noteOperatorReversal: (kind: string) => ipcRenderer.send('operator-reversal', kind),
+  // Voice command log + per-preacher phrases (item 17)
+  getCommandLog: (preacherId?: string, limit?: number) =>
+    ipcRenderer.invoke('command-log-recent', { preacherId, limit }),
+  getCommandFalsePositives: (preacherId?: string) =>
+    ipcRenderer.invoke('command-log-false-positives', preacherId),
+  suppressCommandUtterance: (preacherId: string | null, utterance: string) =>
+    ipcRenderer.invoke('command-log-suppress', { preacherId, utterance }),
+  teachCommandPhrase: (preacherId: string | null, utterance: string, kind: string) =>
+    ipcRenderer.invoke('command-log-teach', { preacherId, utterance, kind }),
+  getPreacherCommandConfig: (preacherId?: string) =>
+    ipcRenderer.invoke('get-preacher-command-config', preacherId),
+  savePreacherCommandConfig: (preacherId: string | null, config: any) =>
+    ipcRenderer.invoke('save-preacher-command-config', { preacherId, config }),
+  // Vocabulary (item 18)
+  getVocabulary: (preacherId?: string) => ipcRenderer.invoke('vocabulary-get', preacherId),
+  setVocabulary: (preacherId: string | null, terms: string[]) =>
+    ipcRenderer.invoke('vocabulary-set', { preacherId, terms }),
+  // Remote control pairing (item 22)
+  remoteGenerateCode: () => ipcRenderer.invoke('remote-generate-code'),
+  remoteCurrentCode: () => ipcRenderer.invoke('remote-current-code'),
+  remoteListDevices: () => ipcRenderer.invoke('remote-list-devices'),
+  remoteConnected: () => ipcRenderer.invoke('remote-connected'),
+  remoteRevoke: (deviceId: string) => ipcRenderer.invoke('remote-revoke', deviceId),
+  remoteRevokeAll: () => ipcRenderer.invoke('remote-revoke-all'),
+  // Companion (items 7, 9, 10)
+  getCompanionShareLink: () => ipcRenderer.invoke('companion-share-link'),
+  getViewerSnapshot: () => ipcRenderer.invoke('companion-viewer-snapshot'),
+  getCurrentPoll: () => ipcRenderer.invoke('companion-poll-current'),
+  closePoll: (pollId: string, index: number | null) =>
+    ipcRenderer.invoke('companion-poll-close', { pollId, index }),
+  sendCompanionFrame: (raw: string, ip?: string) => ipcRenderer.send('companion-frame', { raw, ip }),
+  // Command palette search (item 6)
+  searchCommands: (query: string, limit?: number) =>
+    ipcRenderer.invoke('search-query', { query, limit }),
+  // Library folders (item 12)
+  folders: {
+    list: (libraryId: string, itemIds?: string[]) =>
+      ipcRenderer.invoke('folders-list', { libraryId, itemIds }),
+    create: (libraryId: string, name: string) => ipcRenderer.invoke('folders-create', { libraryId, name }),
+    rename: (libraryId: string, id: string, name: string) =>
+      ipcRenderer.invoke('folders-rename', { libraryId, id, name }),
+    setColor: (libraryId: string, id: string, color: string) =>
+      ipcRenderer.invoke('folders-color', { libraryId, id, color }),
+    remove: (libraryId: string, id: string) => ipcRenderer.invoke('folders-delete', { libraryId, id }),
+    moveItem: (libraryId: string, itemId: string, folderId: string | null) =>
+      ipcRenderer.invoke('folders-move-item', { libraryId, itemId, folderId }),
+    reorder: (libraryId: string, ids: string[]) => ipcRenderer.invoke('folders-reorder', { libraryId, ids }),
+    of: (libraryId: string, itemId: string) => ipcRenderer.invoke('folders-of-item', { libraryId, itemId })
+  },
+  // Scripture → background preset
+  presetForReference: (book: string, chapter?: number, verse?: number) =>
+    ipcRenderer.invoke('preset-for-reference', { book, chapter, verse }),
+  // Song import (item 23)
+  importSongText: (text: string, filename?: string) =>
+    ipcRenderer.invoke('songs-import-text', { text, filename }),
+  importSongFiles: () => ipcRenderer.invoke('songs-import-file'),
+  // Evals (item 25)
+  exportEvalFixtures: () => ipcRenderer.invoke('evals-export-fixtures')
 })

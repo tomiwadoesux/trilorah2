@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { Button, EngineNote, Panel, PanelHeader, SectionLabel, TextButton, hasEngine } from '../components/ui';
 
@@ -36,6 +36,19 @@ export function Themes() {
   const settings = useAppStore((s) => s.settings);
   const loaded = settings != null;
   const [bgNote, setBgNote] = useState<string | null>(null);
+  const [versions, setVersions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.api?.getAvailableVersions?.()
+      .then((v) => {
+        if (!cancelled) setVersions(v ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const chooseImage = async () => {
     setBgNote(null);
@@ -76,6 +89,13 @@ export function Themes() {
   const bgPosition = typeof settings?.backgroundPosition === 'string' ? settings.backgroundPosition : 'center';
   const bgSizeCss = bgFit === 'fill' ? '100% 100%' : bgFit;
   const family = FONT_PRESETS.find((f) => f.id === preset)?.family ?? FONT_PRESETS[0].family;
+  // Passage layout (BUILD-MAP 2.18) — how a reading is cut into slides.
+  const breakOnVerse = settings?.breakOnVerse === true;
+  const showVerseNumbers = settings?.showVerseNumbers === true;
+  const referenceMode = typeof settings?.referenceMode === 'string' ? settings.referenceMode : 'each';
+  const showTranslation = settings?.showTranslation !== false;
+  const maxChars = typeof settings?.maxCharsPerSlide === 'number' ? settings.maxCharsPerSlide : 0;
+  const secondaryVersion = typeof settings?.secondaryVersion === 'string' ? settings.secondaryVersion : '';
 
   return (
     <div key={loaded ? 'loaded' : 'loading'} className="space-y-6">
@@ -130,6 +150,82 @@ export function Themes() {
               />
               <span className="text-xs text-neutral-400">{color}</span>
             </Row>
+          </div>
+        </Panel>
+
+        <Panel className="self-start">
+          <PanelHeader>passage layout</PanelHeader>
+          <div className="space-y-4">
+            <Row label="slides">
+              <select
+                value={breakOnVerse ? 'verse' : 'whole'}
+                onChange={(e) => save('breakOnVerse', e.target.value === 'verse')}
+                className="text-sm"
+              >
+                <option value="whole">whole passage on one slide</option>
+                <option value="verse">one slide per verse</option>
+              </select>
+            </Row>
+            <Row label="verse numbers">
+              <select
+                value={showVerseNumbers ? 'on' : 'off'}
+                onChange={(e) => save('showVerseNumbers', e.target.value === 'on')}
+                className="text-sm"
+              >
+                <option value="off">hidden</option>
+                <option value="on">shown inline</option>
+              </select>
+            </Row>
+            <Row label="reference">
+              <select value={referenceMode} onChange={(e) => save('referenceMode', e.target.value)} className="text-sm">
+                <option value="each">on every slide</option>
+                <option value="first">on the first slide only</option>
+                <option value="last">on the last slide only</option>
+                <option value="none">never</option>
+              </select>
+            </Row>
+            <Row label="translation">
+              <select
+                value={showTranslation ? 'on' : 'off'}
+                onChange={(e) => save('showTranslation', e.target.value === 'on')}
+                className="text-sm"
+              >
+                <option value="on">show beside the reference</option>
+                <option value="off">hide</option>
+              </select>
+            </Row>
+            <Row label="second translation">
+              <select
+                value={secondaryVersion}
+                onChange={(e) => save('secondaryVersion', e.target.value)}
+                className="text-sm"
+              >
+                <option value="">none</option>
+                {versions.filter((v) => v !== settings?.displayVersion).map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label="split long verses">
+              <input
+                type="range"
+                min="0"
+                max="400"
+                step="20"
+                defaultValue={String(maxChars)}
+                onChange={(e) => save('maxCharsPerSlide', Number.parseInt(e.target.value, 10))}
+                className="w-56"
+              />
+              <span className="text-xs tabular-nums text-neutral-400">
+                {maxChars > 0 ? `${maxChars} chars` : 'off'}
+              </span>
+            </Row>
+            <p className="text-xs leading-relaxed text-neutral-500">
+              Splitting only applies when each verse gets its own slide — asking for one slide and
+              silently getting three would surprise the operator mid-service.
+            </p>
           </div>
         </Panel>
 

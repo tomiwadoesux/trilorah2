@@ -38,7 +38,7 @@ body {
 .output-verse {
   font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
   font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--verse-scale, 1));
-  font-weight: var(--verse-weight, 400);
+  font-weight: var(--verse-weight, 600);
   line-height: 1.4;
   color: var(--verse-color, #ffffff);
   text-shadow:
@@ -120,4 +120,218 @@ body {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(127, 127, 127, 0.4);
+}
+
+/* ------------------------------------------------------------------ */
+/* Roles, screen state, alerts — 2026-09-08 (BUILD-MAP 2.10–2.11)      */
+/* ------------------------------------------------------------------ */
+
+.output-root {
+  position: absolute;
+  inset: 0;
+}
+
+/* Stream · lower-third: the verse becomes a band across the bottom so OBS /
+   vMix can key it over the camera. Left-aligned, tighter, smaller. */
+.role-stream.layout-lower-third .output-stage {
+  inset: auto 0 0 0;
+  height: auto;
+  align-items: flex-start;
+  justify-content: flex-end;
+  text-align: left;
+  padding: 2.2vh 4vw 3vh;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) 35%, rgba(0, 0, 0, 0.78) 100%);
+}
+
+.role-stream.layout-lower-third .output-verse {
+  font-size: calc(clamp(1.3rem, 2.6vw, 3.2vw) * var(--verse-scale, 1));
+  line-height: 1.3;
+  max-width: 80vw;
+}
+
+.role-stream.layout-lower-third .output-ref {
+  margin-top: 1vh;
+  font-size: calc(clamp(0.9rem, 1.3vw, 1.6vw) * var(--verse-scale, 1));
+}
+
+/* Stage · confidence monitor: verse a touch smaller to leave room for the strip. */
+.role-stage .output-stage {
+  padding-bottom: 12vh;
+}
+
+.role-stage .output-verse {
+  font-size: calc(clamp(1.6rem, 3.6vw, 4.8vw) * var(--verse-scale, 1));
+}
+
+.output-stage-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4vw;
+  padding: 2vh 4vw;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: rgba(255, 255, 255, 0.85);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.6) 100%);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.output-clock {
+  font-size: clamp(1.6rem, 3.2vw, 4vw);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.output-next {
+  font-family: var(--verse-font, Georgia, serif);
+  font-size: clamp(1.1rem, 2vw, 2.6vw);
+  text-align: right;
+}
+
+.output-next-label {
+  display: block;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.55em;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Black / logo: an opaque sheet above the verse, below the alert. */
+.output-black {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+
+.output-black.visible {
+  opacity: 1;
+}
+
+.output-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 12vh 12vw;
+  box-sizing: border-box;
+}
+
+.output-logo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.output-logo-name {
+  font-family: var(--verse-font, Georgia, serif);
+  font-size: clamp(2rem, 5vw, 6vw);
+  font-weight: var(--verse-weight, 600);
+  letter-spacing: 0.04em;
+  color: var(--verse-color, #ffffff);
+}
+
+/* Message alert bar: same font family as the verse, but a plain, bright
+   band so it reads as "notice", not "scripture". */
+.output-alert {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 1.4vh 4vw;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111111;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: clamp(1.1rem, 2.2vw, 2.8vw);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transform: translateY(100%);
+  opacity: 0;
+  transition:
+    transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 200ms ease;
+}
+
+.output-alert.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.role-stream .output-alert {
+  /* Keep the stream's alert inside the safe area for TV overscan. */
+  bottom: 3vh;
+  left: 4vw;
+  right: 4vw;
+  border-radius: 0.4vw;
+}
+
+.output-alert-text {
+  max-width: 90vw;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .output-alert,
+  .output-black,
+  .output-stage {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Verse slicing, second translation, stage timer — 2026-09-09         */
+/* ------------------------------------------------------------------ */
+
+/* The second translation reads as a companion, not a competitor: same
+   family, a size down, slightly dimmed. */
+.output-verse-secondary {
+  margin-top: 2.4vh;
+  font-size: calc(clamp(1.4rem, 3.2vw, 4.2vw) * var(--verse-scale, 1));
+  opacity: 0.78;
+}
+
+.role-stream.layout-lower-third .output-verse-secondary {
+  margin-top: 0.8vh;
+  font-size: calc(clamp(1rem, 2vw, 2.4vw) * var(--verse-scale, 1));
+}
+
+/* '2 / 3' — quiet enough that the congregation never reads it first. */
+.output-slide-count {
+  position: absolute;
+  bottom: 3vh;
+  right: 4vw;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  color: rgba(255, 255, 255, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.role-stage .output-slide-count {
+  bottom: 13vh;
+}
+
+.output-stage-timer {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: clamp(1.6rem, 3.2vw, 4vw);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Overrun is the one thing on the stage screen that should alarm. */
+.output-stage-timer.overrunning {
+  color: #ff6b6b;
 }

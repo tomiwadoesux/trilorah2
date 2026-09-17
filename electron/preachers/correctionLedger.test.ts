@@ -118,3 +118,86 @@ describe('CorrectionLedger', () => {
     expect(ledger.resolveAlias('p1', 'romans eight one')).toBe('Romans 8:11')
   })
 })
+
+/* ---------------- auto-mode switch & maturity stats ---------------- */
+
+/** 5 services × 24 confirmed detections → eligible. */
+function trainToEligible(ledger: CorrectionLedger, pid: string) {
+  for (let s = 0; s < 5; s++) {
+    for (let d = 0; d < 24; d++) ledger.recordDetection(pid, true)
+    ledger.endService(pid)
+    now += 86_400_000
+  }
+}
+
+describe('auto-mode switch', () => {
+  it('refuses to turn on while not eligible', () => {
+    const ledger = makeLedger()
+    expect(ledger.setAutoModeEnabled('p1', true)).toBe(false)
+    expect(ledger.isAutoModeEnabled('p1')).toBe(false)
+    expect(ledger.stats('p1').autoModeEnabled).toBe(false)
+  })
+
+  it('turns on once eligible and persists', () => {
+    const ledger = makeLedger()
+    trainToEligible(ledger, 'p1')
+    expect(ledger.setAutoModeEnabled('p1', true)).toBe(true)
+    expect(ledger.isAutoModeEnabled('p1')).toBe(true)
+    expect(makeLedger().stats('p1').autoModeEnabled).toBe(true)
+    // off always works
+    expect(ledger.setAutoModeEnabled('p1', false)).toBe(true)
+    expect(ledger.isAutoModeEnabled('p1')).toBe(false)
+  })
+
+  it('switches itself off (with callback) when eligibility is lost at endService', () => {
+    const disabled: string[] = []
+    const ledger = new CorrectionLedger(dir, () => now, {}, { onAutoModeDisabled: (p) => disabled.push(p) })
+    trainToEligible(ledger, 'p1')
+    ledger.setAutoModeEnabled('p1', true)
+    // a disastrous service: 30 rejected detections → precision 120/150 = 0.8
+    for (let d = 0; d < 30; d++) ledger.recordDetection('p1', false)
+    expect(ledger.stats('p1').autoModeEnabled).toBe(true) // not yet — only at endService
+    ledger.endService('p1')
+    expect(ledger.stats('p1').autoModeEligible).toBe(false)
+    expect(ledger.isAutoModeEnabled('p1')).toBe(false)
+    expect(disabled).toEqual(['p1'])
+  })
+})
+
+describe('servicesSinceMature', () => {
+  it('is 0 before maturity, counts closed services after, resets on reopen', () => {
+    const ledger = makeLedger()
+    expect(ledger.stats('p1').servicesSinceMature).toBe(0)
+    for (let s = 0; s < 3; s++) {
+      ledger.recordDetection('p1', true)
+      ledger.endService('p1')
+      now += 86_400_000
+    }
+    expect(ledger.stats('p1').mature).toBe(true)
+    expect(ledger.stats('p1').servicesSinceMature).toBe(0)
+    // two more clean services
+    for (let s = 0; s < 2; s++) {
+      ledger.recordDetection('p1', true)
+      ledger.endService('p1')
+      now += 3_600_000 // same-day evening service still counts
+    }
+    expect(ledger.stats('p1').servicesSinceMature).toBe(2)
+    // an in-progress service with detections counts too
+    ledger.recordDetection('p1', true)
+    expect(ledger.stats('p1').servicesSinceMature).toBe(3)
+    // reopen → back to 0
+    for (let i = 0; i < 4; i++) ledger.recordCorrection('p1', `m${i}`, 'Z', 'voice')
+    expect(ledger.stats('p1').mature).toBe(false)
+    expect(ledger.stats('p1').servicesSinceMature).toBe(0)
+  })
+
+  it('loads legacy files without the switch field', () => {
+    fs.writeFileSync(
+      path.join(dir, 'old.json'),
+      JSON.stringify({ preacherId: 'old', name: 'Old', samples: [], services: [], aliases: {}, mature: false })
+    )
+    const ledger = makeLedger()
+    expect(ledger.isAutoModeEnabled('old')).toBe(false)
+    expect(ledger.stats('old').servicesSinceMature).toBe(0)
+  })
+})

@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cx, surface, Button, SegmentedControl } from '../../../ui';
-import { fnv1a, avatarFor } from '../../../../shared/avatar';
 import { Panel } from '../parts';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
@@ -10,10 +9,9 @@ import { RowList, type Row } from '../settingsRows';
  *
  * On the dashboard it is the QR code and the one choice that matters
  * before a service: can anyone open the link, or only phones on the
- * church's Wi-Fi. The church logo sits in the code's centre, streamed from
- * this computer the same way it reaches phones; if there is no logo, or it
- * could not load, the centre falls back to the church's generated mark
- * rather than to an empty square.
+ * church's Wi-Fi. The code itself is rendered by the engine as SVG — the
+ * same link the projector shows — so the tile never draws a second version
+ * of it, and never draws one at all until there is a real link to encode.
  *
  * "show on live" puts the code on the projector. It asks first — once —
  * with a box to stop asking, because putting something on the screen in
@@ -24,64 +22,6 @@ import { RowList, type Row } from '../settingsRows';
  * every companion setting. The thresholds that used to sit in an advanced
  * drawer are gone — the polls tune themselves.
  */
-
-const CHURCH = 'Victory Royale Church';
-
-/*
- * A stand-in for the real code. Deterministic from the slug so it is the
- * same picture every render, with the three finder squares a QR is
- * recognised by — the point is that the tile reads as "a QR code" at booth
- * distance, not that a phone can scan a mock.
- */
-function PseudoQr({ seed, size, logo }: { seed: string; size: number; logo: string | null }) {
-  const N = 25;
-  const cells = useMemo(() => {
-    const out: boolean[] = [];
-    let h = fnv1a(seed);
-    for (let i = 0; i < N * N; i += 1) {
-      h = (Math.imul(h, 1103515245) + 12345) >>> 0;
-      out.push(((h >>> 16) & 1) === 1);
-    }
-    return out;
-  }, [seed]);
-  const cell = size / N;
-  const finder = (x: number, y: number) => (
-    <g key={`${x}${y}`}>
-      <rect x={x * cell} y={y * cell} width={cell * 7} height={cell * 7} fill="var(--tri-ink)" />
-      <rect x={(x + 1) * cell} y={(y + 1) * cell} width={cell * 5} height={cell * 5} fill="#0e1413" />
-      <rect x={(x + 2) * cell} y={(y + 2) * cell} width={cell * 3} height={cell * 3} fill="var(--tri-ink)" />
-    </g>
-  );
-  const inFinder = (x: number, y: number) => (x < 8 && y < 8) || (x >= N - 8 && y < 8) || (x < 8 && y >= N - 8);
-  const inLogo = (x: number, y: number) => Math.abs(x - 12) <= 4 && Math.abs(y - 12) <= 4;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label="companion QR code" className="shrink-0">
-      <rect width={size} height={size} rx={8} fill="#0e1413" />
-      {cells.map((on, i) => {
-        const x = i % N;
-        const y = Math.floor(i / N);
-        if (!on || inFinder(x, y) || inLogo(x, y)) return null;
-        return <rect key={i} x={x * cell + 0.5} y={y * cell + 0.5} width={cell - 1} height={cell - 1} rx={1} fill="var(--tri-ink)" />;
-      })}
-      {finder(0, 0)}
-      {finder(N - 7, 0)}
-      {finder(0, N - 7)}
-      {/* The logo well. A rounded plate so the mark has an edge against the
-          modules, then whatever the church gave us — or its generated mark. */}
-      <rect x={8 * cell} y={8 * cell} width={9 * cell} height={9 * cell} rx={cell} fill="#0e1413" />
-      {logo ? (
-        <image href={logo} x={8.6 * cell} y={8.6 * cell} width={7.8 * cell} height={7.8 * cell} preserveAspectRatio="xMidYMid meet" />
-      ) : (
-        <foreignObject x={8.6 * cell} y={8.6 * cell} width={7.8 * cell} height={7.8 * cell}>
-          <div
-            className="h-full w-full overflow-hidden rounded-[6px]"
-            dangerouslySetInnerHTML={{ __html: avatarFor(CHURCH, { size: 64 }).svg }}
-          />
-        </foreignObject>
-      )}
-    </svg>
-  );
-}
 
 const ROWS: Row[] = [
   { kind: 'segment', key: 'companionShareMode', label: 'Who can open the link', blurb: 'anyone — the link works from home. wifi-only — only phones on the church network.', value: 'anyone', options: ['anyone', 'wifi-only'] },
@@ -116,7 +56,6 @@ export function CompanionTile({ className }: { className?: string }) {
   const [mode, setMode] = useState<'anyone' | 'wifi-only'>('anyone');
   const [confirm, setConfirm] = useState(false);
   const [live, setLive] = useState(false);
-  const logo: string | null = null; /* the church's file, when there is one */
 
   /*
    * The real share link, read from settings rather than drawn from a slug.
@@ -127,23 +66,34 @@ export function CompanionTile({ className }: { className?: string }) {
    * staying null is what puts the tile into its unavailable state.
    */
   const [link, setLink] = useState<string | null>(null);
+  const [qrSvg, setQrSvg] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     const api = typeof window === 'undefined' ? undefined : window.api;
-    if (!api?.getSettings) return;
+    if (!api) return;
     let alive = true;
+
+    /* The engine renders the code, so the tile shows the same one the
+       projector does rather than a second drawing of the same link. */
     void api
-      .getSettings()
+      .getQrSvg?.(148)
+      .then((res) => {
+        if (!alive) return;
+        setLink(res?.url ?? null);
+        setQrSvg(res?.svg ?? null);
+      })
+      .catch(() => undefined);
+
+    void api
+      .getSettings?.()
       .then((s: Record<string, unknown>) => {
         if (!alive) return;
-        const base = String(s?.publicWebUrl ?? '').replace(/\/+$/, '');
-        const slug = String(s?.accountSlug ?? '');
-        setLink(base && slug ? `${base}/live/${slug}` : null);
         const share = String(s?.companionShareMode ?? 'anyone');
         if (share === 'wifi-only' || share === 'anyone') setMode(share);
       })
       .catch(() => undefined);
+
     return () => {
       alive = false;
     };
@@ -192,10 +142,18 @@ export function CompanionTile({ className }: { className?: string }) {
             {/* The code is the door: press it and the tile opens. The
                 controls beside it act without opening anything. */}
             <button type="button" onClick={onOpen} title="open companion settings" className="flex min-h-0 shrink-0 items-center justify-center">
-              {/* Only ever drawn from a real link. A code drawn from a
-                  placeholder slug is a code someone will scan, and it
-                  would resolve to nothing. */}
-              {link ? <PseudoQr seed={link} size={148} logo={logo} /> : <div style={{ width: 148, height: 148 }} />}
+              {/* The engine's own SVG — scannable, and the same code the
+                  projector shows. Nothing is drawn without a real link: a
+                  code built from a placeholder is one someone will scan. */}
+              {qrSvg ? (
+                <span
+                  className="tri-rounded-control block overflow-hidden"
+                  style={{ width: 148, height: 148 }}
+                  dangerouslySetInnerHTML={{ __html: qrSvg }}
+                />
+              ) : (
+                <div style={{ width: 148, height: 148 }} />
+              )}
             </button>
             <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
               <div className="min-w-0">

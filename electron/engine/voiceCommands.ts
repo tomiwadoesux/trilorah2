@@ -7,6 +7,7 @@
  *   "not verse twenty-four, thirty-four"→ correct the displayed verse
  *   "let us pray" … "amen"              → suppress displays during prayer
  *   "take that down" / "leave it up"    → display control
+ *   "next verse" / "the verse before"   → navigation
  *
  * EVERY phrase is configuration, not code: built-in defaults + the active
  * language pack + the user's voice-commands.json are unioned into the
@@ -45,6 +46,7 @@ export interface VoiceCommandCallbacks {
   onChapterCorrection: (chapter: number) => void
   onDismiss: () => void
   onHold: () => void
+  onNavigate: (direction: 'next' | 'previous') => void
   onPrayerChange: (inPrayer: boolean) => void
   /** Every recognized command, for logging/UI/ledger. */
   onCommand: (event: VoiceCommandEvent) => void
@@ -57,6 +59,12 @@ export interface VoiceCommandOptions {
   /** Chinese etc.: match phrases without word boundaries. */
   substringMode?: boolean
   now?: () => number
+  /**
+   * Per-preacher veto: utterances the operator marked "never treat as a
+   * command" (see preachers/commandLog.ts). When it returns true the chunk
+   * is left alone entirely.
+   */
+  isSuppressed?: (utterance: string) => boolean
 }
 
 /** How long after a verse leaves the screen its context still counts. */
@@ -69,6 +77,7 @@ export class VoiceCommandEngine {
   private config: CommandPhraseConfig
   private parseNum: SpokenNumberParser
   private substringMode: boolean
+  private isSuppressed: (utterance: string) => boolean
   private inPrayer = false
   private lastFired: Record<string, number> = {}
 
@@ -78,6 +87,7 @@ export class VoiceCommandEngine {
     this.config = opts.config ?? DEFAULT_COMMANDS
     this.parseNum = opts.numberParser ?? parseSpokenNumber
     this.substringMode = opts.substringMode ?? false
+    this.isSuppressed = opts.isSuppressed ?? (() => false)
   }
 
   isInPrayer(): boolean {
@@ -102,6 +112,8 @@ export class VoiceCommandEngine {
     const raw = text.toLowerCase()
     const now = this.now()
     const c = this.config
+
+    if (this.isSuppressed(text)) return false
 
     // ---- prayer mode ----
     if (!this.inPrayer && this.hasAny(padded, raw, c.prayerStart)) {
@@ -211,6 +223,20 @@ export class VoiceCommandEngine {
         if (this.dedup('hold', now)) return false
         this.fire({ kind: 'display-hold', utterance: text, ts: now })
         this.cb.onHold()
+        return true
+      }
+      if (this.hasAny(padded, raw, c.navNext)) {
+        if (this.dedup('nav:next', now)) return false
+        console.log('🗣️ Voice command: next verse')
+        this.fire({ kind: 'navigate-next', utterance: text, ts: now })
+        this.cb.onNavigate('next')
+        return true
+      }
+      if (this.hasAny(padded, raw, c.navPrevious)) {
+        if (this.dedup('nav:previous', now)) return false
+        console.log('🗣️ Voice command: previous verse')
+        this.fire({ kind: 'navigate-previous', utterance: text, ts: now })
+        this.cb.onNavigate('previous')
         return true
       }
     }

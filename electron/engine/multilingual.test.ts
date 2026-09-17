@@ -208,6 +208,7 @@ describe('Config merging + localized voice commands', () => {
       onDismiss: () => {},
       onHold: () => {},
       onPrayerChange: () => {},
+      onNavigate: () => {},
       onCommand: () => {}
     }
     const engine = new VoiceCommandEngine(cb, {
@@ -232,6 +233,7 @@ describe('Config merging + localized voice commands', () => {
       onDismiss: () => {},
       onHold: () => {},
       onPrayerChange: () => {},
+      onNavigate: () => {},
       onCommand: () => {}
     }
     const engine = new VoiceCommandEngine(cb, {

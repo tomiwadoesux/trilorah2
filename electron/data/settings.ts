@@ -9,6 +9,8 @@ const Store: typeof StoreModule =
 export const defaults = {
   hfToken: '',
   deepgramApiKey: '',
+  pixabayApiKey: '',
+  pexelsApiKey: '',
   agentEnabled: true,
   autoDisplayTimeout: 15,
   falsePositiveFilterEnabled: true,
@@ -85,7 +87,81 @@ export const defaults = {
   // Training thermostat.
   matureMaxCorrections: 2,
   matureStreak: 3,
-  reopenCorrections: 4
+  reopenCorrections: 4,
+  // --- 2026-09 engine additions (see IDEAS-BACKLOG.md / BUILD-MAP.md) ---
+  // Auto mode: a ping when a verse is auto-pushed (EdgeGlow spec, item 11/16).
+  autoPingEnabled: false,
+  autoPingVolume: 0.5,
+  // Two candidates within this many points = a clash → hold and ask the operator.
+  clashMarginPts: 15,
+  // Local Whisper model size — 'small' is the right pick for strong accents.
+  whisperModelSize: 'base' as 'base' | 'small' | 'medium',
+  // Companion page (item 7/8): who may open the shared link, and the church's
+  // own livestream URL shown as a "Watch the stream" button.
+  companionShareMode: 'anyone' as 'anyone' | 'wifi-only',
+  streamUrl: '',
+  // Congregation polls on low-confidence detections (item 10).
+  companionPollsEnabled: true,
+  companionPollMinTop: 40,
+  companionPollMaxTop: 75,
+  companionPollMinSecond: 15,
+  companionPollTtlMs: 45000,
+  companionPollCooldownMs: 180000,
+  companionPollMaxShiftPts: 15,
+  companionRoundCitiesBelow: 5,
+  companionGeoDbPath: '',
+  // Per-preacher vocabulary (names, titles) applied to transcripts + ASR keyword boost.
+  vocabularyEnabled: true,
+  // A manual reversal within this window marks the last voice command a false positive.
+  commandUndoWindowMs: 10000,
+  // Church brand colour that seeds every generated avatar (item 14).
+  churchBrandColor: '',
+  // Remote control page / paired devices (item 22).
+  remoteControlEnabled: true,
+  // --- 2026-09-08 EasyWorship parity pass (BUILD-MAP 2.10–2.13) ---
+  // Which job each output window does; ids are the three windows main.ts
+  // opens (main / alternate / third). See electron/output/outputState.ts.
+  outputRoles: {} as Partial<Record<'main' | 'alternate' | 'third', 'projector' | 'stream' | 'stage'>>,
+  // Stream output: lower-third band for OBS/vMix capture, or the full
+  // projector look on a transparent canvas.
+  streamLayout: 'lower-third' as 'lower-third' | 'full',
+  // Stage confidence monitor extras.
+  stageShowClock: true,
+  stageShowNext: true,
+  // Message alerts: default seconds on screen, and the operator's quick list.
+  alertDefaultSeconds: 20,
+  alertPresets: [
+    'Parent of child {child} please come to the nursery',
+    'A car is blocking the driveway — please move it',
+    'Please silence your phones'
+  ] as string[],
+  // --- 2026-09-09 ProPresenter parity pass (BUILD-MAP 2.16–2.21) ---
+  // How a passage is laid out on the screen. Mirrors ProPresenter's Bible
+  // options: one slide per verse or the whole range together, inline verse
+  // numbers, and where the reference line appears across the slides.
+  breakOnVerse: false,
+  showVerseNumbers: false,
+  referenceMode: 'each' as 'each' | 'last' | 'first' | 'none',
+  showTranslation: true,
+  // Soft character cap before a long verse splits onto another slide; 0 = off.
+  maxCharsPerSlide: 0,
+  // A second translation under the first — bilingual congregations read the
+  // verse in both at once instead of the operator switching versions.
+  secondaryVersion: '',
+  // Timers (BUILD-MAP 2.16). Definitions live here so a church's pre-service
+  // countdown survives a restart; running state is in-memory only.
+  timers: [] as Array<{
+    id: string
+    name: string
+    kind: 'countdown' | 'to-time' | 'elapsed'
+    durationSec?: number
+    targetTime?: string
+    overrun: boolean
+  }>,
+  // Stage confidence monitor: what the preacher sees beside the verse.
+  stageShowVerseText: true,
+  stageShowTimer: '',
+  stageShowElapsed: true
 }
 
 export type Settings = typeof defaults
@@ -119,6 +195,10 @@ function mirrorKeysToEnv(s: StoreModule<Settings>): void {
   if (dg) process.env.DEEPGRAM_API_KEY = dg
   const hf = s.get('hfToken')
   if (hf) process.env.HF_API_TOKEN = hf
+  const px = s.get('pixabayApiKey')
+  if (px) process.env.PIXABAY_API_KEY = px
+  const pe = s.get('pexelsApiKey')
+  if (pe) process.env.PEXELS_API_KEY = pe
 }
 
 export function getStore(): StoreModule<Settings> {
@@ -130,6 +210,12 @@ export function getStore(): StoreModule<Settings> {
     }
     if (!store.get('hfToken') && process.env.HF_API_TOKEN) {
       store.set('hfToken', process.env.HF_API_TOKEN)
+    }
+    if (!store.get('pixabayApiKey') && process.env.PIXABAY_API_KEY) {
+      store.set('pixabayApiKey', process.env.PIXABAY_API_KEY)
+    }
+    if (!store.get('pexelsApiKey') && process.env.PEXELS_API_KEY) {
+      store.set('pexelsApiKey', process.env.PEXELS_API_KEY)
     }
     mirrorKeysToEnv(store)
   }
@@ -150,5 +236,5 @@ export function setSetting<K extends keyof Settings>(
 ): void {
   const s = getStore()
   s.set(key, value)
-  if (key === 'deepgramApiKey' || key === 'hfToken') mirrorKeysToEnv(s)
+  if (key === 'deepgramApiKey' || key === 'hfToken' || key === 'pixabayApiKey' || key === 'pexelsApiKey') mirrorKeysToEnv(s)
 }

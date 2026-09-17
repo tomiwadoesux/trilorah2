@@ -32,6 +32,8 @@ export interface ServiceRecord {
   detections: number
   confirmed: number
   corrections: number
+  /** Set when the service is closed out (endService). */
+  endedAt?: number
 }
 
 export interface LedgerData {
@@ -42,6 +44,22 @@ export interface LedgerData {
   aliases: Record<string, string>
   mature: boolean
   reopenedAt?: number
+  /** ISO timestamp of the moment `mature` flipped true; cleared on reopen. */
+  matureSince?: string
+  /** Operator switch — only honoured while the trust gate says eligible. */
+  autoModeEnabled: boolean
+}
+
+/** What the ledger reports; the two extra fields belong in shared PreacherStats. */
+export interface LedgerStats extends PreacherStats {
+  autoModeEnabled: boolean
+  /** Services closed out since training completed (0 while not mature). */
+  servicesSinceMature: number
+}
+
+export interface LedgerCallbacks {
+  /** Auto mode was switched off because the preacher lost eligibility. */
+  onAutoModeDisabled?: (preacherId: string) => void
 }
 
 /** All gates are tunable — churches differ. These are the defaults. */
@@ -98,15 +116,18 @@ export class CorrectionLedger {
   private nextReviewId = 1
   private now: () => number
   private t: LedgerThresholds
+  private cb: LedgerCallbacks
 
   constructor(
     storageDir: string,
     now: () => number = Date.now,
-    thresholds: Partial<LedgerThresholds> = {}
+    thresholds: Partial<LedgerThresholds> = {},
+    callbacks: LedgerCallbacks = {}
   ) {
     this.dir = storageDir
     this.now = now
     this.t = { ...DEFAULT_THRESHOLDS, ...thresholds }
+    this.cb = callbacks
   }
 
   /** Live-update the gates (e.g. when settings change). */
@@ -134,9 +155,12 @@ export class CorrectionLedger {
         samples: [],
         services: [],
         aliases: {},
-        mature: false
+        mature: false,
+        autoModeEnabled: false
       }
     }
+    // Files written before the switch existed
+    if (typeof data.autoModeEnabled !== 'boolean') data.autoModeEnabled = false
     if (name && !data.name) data.name = name
     this.cache.set(preacherId, data)
     return data
@@ -170,6 +194,7 @@ export class CorrectionLedger {
     if (data.mature && svc.corrections >= this.t.reopenCorrections) {
       data.mature = false
       data.reopenedAt = this.now()
+      delete data.matureSince
       console.log(`🎓 Training reopened for ${data.name || preacherId} (accuracy dip)`)
     }
     this.save(preacherId)
@@ -207,6 +232,7 @@ export class CorrectionLedger {
     const data = this.load(preacherId)
     const svc = this.currentService.get(preacherId)
     if (svc && svc.detections > 0) {
+      svc.endedAt = this.now()
       data.services.push(svc)
       this.currentService.delete(preacherId)
     }
@@ -217,14 +243,45 @@ export class CorrectionLedger {
       recent.every((s) => s.corrections < this.t.matureMaxCorrections)
     ) {
       data.mature = true
+      data.matureSince = new Date(this.now()).toISOString()
       console.log(`🎓 Profile mature: ${data.name || preacherId} — training prompts off`)
+    }
+    // The switch never outlives eligibility.
+    if (data.autoModeEnabled && !this.stats(preacherId).autoModeEligible) {
+      data.autoModeEnabled = false
+      console.log(`🔒 Auto mode off for ${data.name || preacherId} — trust dropped below the gate`)
+      this.cb.onAutoModeDisabled?.(preacherId)
     }
     this.save(preacherId)
   }
 
-  stats(preacherId: string): PreacherStats {
+  /** Operator switch. Refuses (returns false) to turn on while not eligible. */
+  setAutoModeEnabled(preacherId: string, on: boolean): boolean {
     const data = this.load(preacherId)
-    const all = [...data.services, ...(this.currentService.has(preacherId) ? [this.currentService.get(preacherId)!] : [])]
+    if (on && !this.stats(preacherId).autoModeEligible) {
+      console.log(`🔒 Auto mode refused for ${data.name || preacherId} — not yet eligible`)
+      return false
+    }
+    data.autoModeEnabled = on
+    this.save(preacherId)
+    console.log(`${on ? '🤖' : '🙋'} Auto mode ${on ? 'ON' : 'OFF'} for ${data.name || preacherId}`)
+    return true
+  }
+
+  isAutoModeEnabled(preacherId: string): boolean {
+    return this.load(preacherId).autoModeEnabled
+  }
+
+  stats(preacherId: string): LedgerStats {
+    const data = this.load(preacherId)
+    const current = this.currentService.get(preacherId)
+    const all = [...data.services, ...(current ? [current] : [])]
+    const matureAt = data.mature && data.matureSince ? Date.parse(data.matureSince) : null
+    const servicesSinceMature =
+      matureAt === null
+        ? 0
+        : data.services.filter((s) => (s.endedAt ?? 0) > matureAt).length +
+          (current && current.detections > 0 ? 1 : 0)
     const detections = all.reduce((n, s) => n + s.detections, 0)
     const confirmed = all.reduce((n, s) => n + s.confirmed, 0)
     const trustLowerBound = wilsonLowerBound(confirmed, detections)
@@ -242,7 +299,9 @@ export class CorrectionLedger {
         detections >= this.t.autoModeMinSamples &&
         services >= this.t.autoModeMinServices,
       mature: data.mature,
-      correctionsLastService: lastService?.corrections ?? 0
+      correctionsLastService: lastService?.corrections ?? 0,
+      autoModeEnabled: data.autoModeEnabled,
+      servicesSinceMature
     }
   }
 

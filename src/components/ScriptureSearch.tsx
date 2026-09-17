@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Pill, SectionLabel, TextButton, hasEngine } from './ui';
 import { bookIdFromName, completeBookName } from '../lib/books';
+import { parseReference, formatParsed } from '../../shared/parseReference';
 import { useLiveStore } from '../stores/liveStore';
 
 /**
@@ -16,17 +17,28 @@ interface ParsedRef {
   book: string;
   chapter: number;
   verse: number | null;
+  /** End of a range, e.g. the 18 in 'John 3:16-18'. */
+  endVerse: number | null;
 }
 
+/**
+ * Resolve a typed reference against the book list. The parsing itself lives
+ * in shared/parseReference.ts so the engine and this box agree on what
+ * 'matt 1 2 3' or 'john 3:16-18' means; here we only turn the book fragment
+ * into a real book id.
+ */
 function parseRef(input: string): ParsedRef | null {
-  const m = input.trim().match(/^(\d?\s*[a-z][a-z\s]*?)[\s.]+(\d+)(?:[\s.:]+(\d+))?$/i);
-  if (!m) return null;
-  const resolved = bookIdFromName(m[1]);
+  const parsed = parseReference(input);
+  if (!parsed || parsed.chapter == null) return null;
+  const resolved = bookIdFromName(parsed.bookQuery);
   if (!resolved) return null;
-  const chapter = Number.parseInt(m[2], 10);
-  if (Number.isNaN(chapter) || chapter < 1) return null;
-  const verse = m[3] != null ? Number.parseInt(m[3], 10) : null;
-  return { bookId: resolved.id, book: resolved.name, chapter, verse };
+  return {
+    bookId: resolved.id,
+    book: resolved.name,
+    chapter: parsed.chapter,
+    verse: parsed.verse,
+    endVerse: parsed.endVerse,
+  };
 }
 
 /** Split "rom 8 28" into the book fragment and the numeric tail. */
@@ -65,6 +77,22 @@ export function ScriptureSearch() {
 
   const parsed = parseRef(q);
   const completion = bookCompletion(q);
+  // Not a reference but two or more words → keyword hits (BUILD-MAP 2.12).
+  const [hits, setHits] = useState<BibleSearchHit[]>([]);
+  const keywordQuery = !parsed && !completion && /\S+\s+\S+/.test(q.trim()) ? q.trim() : '';
+  useEffect(() => {
+    if (!keywordQuery || !window.api?.searchBibleText) {
+      setHits([]);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void window.api
+        ?.searchBibleText?.(keywordQuery, { version, limit: 6 })
+        .then((r) => setHits(r ?? []))
+        .catch(() => setHits([]));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [keywordQuery, version]);
 
   const acceptCompletion = () => {
     if (!completion) return;
@@ -120,8 +148,16 @@ export function ScriptureSearch() {
     }
     const t = q.trim();
     if (!t) return;
-    // A parsed chapter-only ref goes as "Book 3"; anything else goes raw.
-    api.sendText(parsed ? `${parsed.book} ${parsed.chapter}${parsed.verse != null ? `:${parsed.verse}` : ''}` : t);
+    // A parsed chapter-only ref goes as "Book 3"; a range keeps both ends so
+    // the engine displays the whole passage, not just its first verse.
+    api.sendText(
+      parsed
+        ? formatParsed(
+            { bookQuery: parsed.book, chapter: parsed.chapter, verse: parsed.verse, endVerse: parsed.endVerse, partial: false },
+            parsed.book,
+          )
+        : t,
+    );
     setNote(`sent — ${t}`);
     setQ('');
     setOpen(false);
@@ -129,6 +165,41 @@ export function ScriptureSearch() {
 
   return (
     <div className="relative shrink-0">
+      {!open && hits.length > 0 && (
+        <div className="absolute bottom-full left-0 right-0 z-10 mb-2 rounded-md border border-hairline bg-surface shadow-lg">
+          <div className="flex items-center justify-between gap-x-4 border-b border-hairline px-4 py-2.5">
+            <SectionLabel>verses that say this</SectionLabel>
+            <span className="text-[10px] uppercase tracking-widest text-neutral-400">
+              click to send to preview · enter still sends the text to the engine
+            </span>
+          </div>
+          <div className="max-h-56 overflow-y-auto px-2 py-2">
+            {hits.map((h) => (
+              <button
+                key={`${h.bookId}-${h.chapter}-${h.verse}`}
+                type="button"
+                onClick={() => {
+                  const ref = `${h.book} ${h.chapter}:${h.verse}`;
+                  window.api?.sendText(ref);
+                  setNote(`sent to preview — ${ref}`);
+                  setQ('');
+                  setHits([]);
+                }}
+                className="flex w-full items-baseline gap-x-3 rounded px-2 py-1 text-left hover:bg-paper"
+              >
+                <span className="w-32 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+                  {h.book} {h.chapter}:{h.verse}
+                </span>
+                <span
+                  className="truncate font-scripture text-sm [&_b]:font-semibold [&_b]:text-accent"
+                  // Snippet markup is our own FTS output (<b> only).
+                  dangerouslySetInnerHTML={{ __html: h.snippet }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {open && loaded && (
         <div className="absolute bottom-full left-0 right-0 z-10 mb-2 rounded-md border border-hairline bg-surface shadow-lg">
           <div className="flex items-center justify-between gap-x-4 border-b border-hairline px-4 py-2.5">

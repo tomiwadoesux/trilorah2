@@ -26,8 +26,22 @@ const SAMPLE_RATE = 16000
 const CHUNK_SECONDS = 5
 /** .en models are English-only; the multilingual ones serve every other
  *  language, so non-English setups should download ggml-small.bin etc. */
-const EN_MODEL_CANDIDATES = ['ggml-small.en.bin', 'ggml-base.en.bin', 'ggml-tiny.en.bin']
-const MULTILINGUAL_MODEL_CANDIDATES = ['ggml-small.bin', 'ggml-base.bin', 'ggml-tiny.bin']
+const EN_MODEL_CANDIDATES = ['ggml-medium.en.bin', 'ggml-small.en.bin', 'ggml-base.en.bin', 'ggml-tiny.en.bin']
+const MULTILINGUAL_MODEL_CANDIDATES = ['ggml-medium.bin', 'ggml-small.bin', 'ggml-base.bin', 'ggml-tiny.bin']
+
+export type WhisperModelSize = 'base' | 'small' | 'medium'
+const MODEL_SIZES: WhisperModelSize[] = ['base', 'small', 'medium']
+
+/** Setting `whisperModelSize` ('base' | 'small' | 'medium'); missing/unknown → 'base'. */
+export function whisperModelSize(): WhisperModelSize {
+  const raw = (getSetting as (key: string) => unknown)('whisperModelSize')
+  return MODEL_SIZES.includes(raw as WhisperModelSize) ? (raw as WhisperModelSize) : 'base'
+}
+
+/** ggml filename for a size + language (English-only `.en` vs multilingual). */
+export function whisperModelFilename(size: WhisperModelSize, lang: string): string {
+  return lang === 'en' ? `ggml-${size}.en.bin` : `ggml-${size}.bin`
+}
 
 let micProcess: ChildProcess | null = null
 let stopped = true
@@ -46,7 +60,8 @@ let downloading = false
 /**
  * Download the right ggml model into <userData>/models when none exists,
  * reporting progress through the callback (rendered in the ASR status pill).
- * base.en (~142MB) for English setups, multilingual base otherwise.
+ * Size follows the `whisperModelSize` setting (base ~142MB / small ~466MB /
+ * medium ~1.5GB); `.en` variants for English setups, multilingual otherwise.
  */
 export async function ensureWhisperModel(
   onProgress: (message: string) => void
@@ -56,7 +71,7 @@ export async function ensureWhisperModel(
   if (downloading) return null
   downloading = true
   const lang = (getSetting('asrLanguage') || 'en-US').split('-')[0]
-  const name = lang === 'en' ? 'ggml-base.en.bin' : 'ggml-base.bin'
+  const name = whisperModelFilename(whisperModelSize(), lang)
   const dir = whisperModelDir()
   const dest = path.join(dir, name)
   const tmp = `${dest}.download`
@@ -106,10 +121,13 @@ export function findWhisperModel(): string | null {
   const lang = (getSetting('asrLanguage') || 'en-US').split('-')[0]
   // Non-English languages need a multilingual model; English prefers the
   // smaller/faster .en models but can use a multilingual one too.
-  const candidates =
-    lang === 'en'
+  const preferred = whisperModelFilename(whisperModelSize(), lang)
+  const candidates = [
+    preferred,
+    ...(lang === 'en'
       ? [...EN_MODEL_CANDIDATES, ...MULTILINGUAL_MODEL_CANDIDATES]
-      : MULTILINGUAL_MODEL_CANDIDATES
+      : MULTILINGUAL_MODEL_CANDIDATES)
+  ]
   for (const name of candidates) {
     const p = path.join(dir, name)
     if (fs.existsSync(p)) return p

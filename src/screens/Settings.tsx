@@ -461,6 +461,30 @@ export function Settings() {
         <ToggleSetting label="grace window" settingKey="graceWindowEnabled" />
       </Section>
 
+      <Section title="outputs & alerts">
+        <SelectSetting
+          label="stream layout"
+          settingKey="streamLayout"
+          options={['lower-third', 'full']}
+          fallback="lower-third"
+        />
+        <ToggleSetting label="stage clock" settingKey="stageShowClock" />
+        <ToggleSetting label="stage up-next" settingKey="stageShowNext" />
+        <TextSetting
+          label="stage timer"
+          settingKey="stageShowTimer"
+          placeholder="timer name — shown on the confidence monitor"
+          wide
+        />
+        <NumberSetting label="alert duration" settingKey="alertDefaultSeconds" suffix="seconds" />
+        <p className="max-w-xl text-xs leading-relaxed text-neutral-500">
+          STREAM is a transparent window: add it to OBS / vMix as a window capture with “allow
+          transparency” and the verse rides over your camera as a lower third. STAGE is the
+          confidence monitor for the pulpit. Roles can be re-assigned per window in the engine
+          setting <code>outputRoles</code>.
+        </p>
+      </Section>
+
       <Section title="trust & auto mode">
         <PercentSetting label="auto-mode trust" settingKey="autoModeMinTrust" />
         <NumberSetting label="min detections" settingKey="autoModeMinSamples" suffix="verified verses" />

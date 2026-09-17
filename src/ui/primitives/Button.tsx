@@ -1,22 +1,30 @@
 import type { ReactNode } from 'react';
+import { cx } from '../lib/cx';
+import { surface, toneClass, type SurfaceTone } from '../lib/surface';
+import { useNudge } from '../hooks/useNudge';
 
 /*
  * C-01 — Button. Figma: `Buttom Icon` (97:376), `Buttom noIcon` (97:405),
  * `Delete Button Icon` (97:381), `Delete Button noIcon` (97:421).
  *
- * Geometry straight from the file: 9px horizontal padding, no vertical
- * padding (the 28px line-height sets the height), 5px gap to the icon,
- * 6px radius, 1px border at 12% ink. Hover is not a different style — it
- * is the same gradient at 0.7 alpha instead of 0.3.
+ * Geometry from the file, one size up: Figma's 9px padding / 28px height
+ * reads cramped at real size, so the box comes from --tri-control-* (32px
+ * tall, 12px padding, 12px label). Surface, corner, stroke, hover, press —
+ * all of it comes from the system; this file owns only what makes a button
+ * a button.
  */
 
 interface ButtonProps {
   label: string;
   onClick?: () => void;
-  /** Leading glyph — pass an icon component from ./icons. */
+  /** Leading glyph — pass an icon component from ../icons. */
   icon?: ReactNode;
   /** danger = the red set used for destructive actions. */
-  tone?: 'default' | 'danger';
+  tone?: SurfaceTone;
+  /**
+   * Refuses the press rather than hiding from it: the button stays
+   * focusable and answers a click with a nudge instead of silence.
+   */
   disabled?: boolean;
   title?: string;
   type?: 'button' | 'submit';
@@ -28,29 +36,32 @@ export function Button({
   onClick,
   icon,
   tone = 'default',
-  disabled,
+  disabled = false,
   title,
   type = 'button',
   className = '',
 }: ButtonProps) {
-  const danger = tone === 'danger';
+  const { ref, nudge } = useNudge<HTMLButtonElement>();
+
   return (
     <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
+      ref={ref}
+      // A refused submit must not submit, so the type is neutralised too.
+      type={disabled ? 'button' : type}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? nudge : onClick}
       title={title}
-      className={[
-        'tri-surface tri-interactive tri-label',
-        danger ? 'tri-surface--danger tri-tone-danger' : 'tri-tone',
-        'inline-flex items-center justify-center gap-[5px] whitespace-nowrap lowercase',
-        'rounded-[var(--tri-radius-control)] border px-[9px]',
-        'transition-[background-image,color] duration-[140ms]',
+      className={cx(
+        surface({ tone, shape: 'control', interactive: true }),
+        toneClass(tone),
+        'tri-label',
+        'inline-flex items-center justify-center gap-[6px] whitespace-nowrap lowercase',
+        /* No font-size here: .tri-label carries it (--tri-size). A utility
+           on this element would be dead anyway — tokens.css is injected
+           unlayered and outranks Tailwind's utilities layer. */
+        'min-h-[var(--tri-control-h)] px-[var(--tri-control-pad-x)]',
         className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      style={{ borderColor: 'var(--tri-ink-faint)' }}
+      )}
     >
       {icon}
       {label}

@@ -13,6 +13,21 @@ let micProcess: ChildProcess | null = null
 let currentDeviceLabel: string | undefined
 const SAMPLE_RATE = 48000
 
+/** Vocabulary boosts ("Ayotomiwa:2") — see preachers/vocabulary.ts. */
+let deepgramKeywordList: string[] = []
+
+/**
+ * Set the keyword boosts for the NEXT connection (Deepgram takes repeated
+ * `keywords=` query params; the SDK appends one per array item). Call
+ * before startDeepgram(), or restart the ASR for a change to apply.
+ */
+export function setDeepgramKeywords(list: string[]): void {
+  deepgramKeywordList = [...new Set(list.map((k) => k.trim()).filter(Boolean))]
+  if (deepgramKeywordList.length) {
+    console.log(`📚 Deepgram keywords: ${deepgramKeywordList.length} boosted`)
+  }
+}
+
 export function startDeepgram(
   onText: (text: string, isFinal: boolean) => void,
   onError?: (error: Error) => void,
@@ -36,7 +51,8 @@ export function startDeepgram(
     endpointing: 3500,
     sample_rate: SAMPLE_RATE,
     encoding: 'linear16',
-    channels: 1
+    channels: 1,
+    ...(deepgramKeywordList.length ? { keywords: deepgramKeywordList } : {})
   })
   deepgramConnection.on(LiveTranscriptionEvents.Open, () => {
     console.log('✅ Deepgram connection opened')

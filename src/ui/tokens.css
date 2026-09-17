@@ -16,6 +16,36 @@
   --tri-teal-3: 26 54 48; /* #1A3630 */
   --tri-teal-4: 26 51 54; /* #1A3336 */
 
+  /*
+   * Further hue sets. Each is the teal ramp with its hue turned: the same
+   * lightness at each stop (dark, then three near-equal steps) and the same
+   * faint drift across the last three, which is what keeps the surface from
+   * looking like flat tint. Because a tone is only these four numbers, every
+   * one of them inherits the two-phase hover — middle first, edges trailing —
+   * without a line of its own.
+   */
+
+  /* Ash — the neutral. For any control that should not claim to be about
+     anything: it is the teal ramp with the colour taken out and a trace of
+     cool left so it does not go dead grey against warm content. */
+  --tri-ash-1: 22 24 26; /* #16181A */
+  --tri-ash-2: 40 43 45; /* #282B2D */
+  --tri-ash-3: 43 45 47; /* #2B2D2F */
+  --tri-ash-4: 40 44 48; /* #282C30 */
+
+  /* Gold — the same family as --tri-accent-yellow, taken down to a surface.
+     For "now", "live", anything the eye should reach first. */
+  --tri-gold-1: 42 33 9; /* #2A2109 */
+  --tri-gold-2: 56 51 28; /* #38331C */
+  --tri-gold-3: 59 53 27; /* #3B351B */
+  --tri-gold-4: 58 48 26; /* #3A301A */
+
+  /* Indigo — cool and quiet, for a second voice that is not a warning. */
+  --tri-indigo-1: 12 7 39; /* #0C0727 */
+  --tri-indigo-2: 29 29 52; /* #1D1D34 */
+  --tri-indigo-3: 31 26 55; /* #1F1A37 */
+  --tri-indigo-4: 38 26 55; /* #261A37 */
+
   --tri-red-1: 92 16 16; /* #5C1010 */
   --tri-red-2: 118 26 26; /* #761A1A */
   --tri-red-3: 120 34 34; /* #782222 */
@@ -40,44 +70,319 @@
   /* ---------------------------------------------------------------- */
   --tri-ink: #e5f3f2;
   --tri-ink-muted: rgb(229 243 242 / 0.64);
-  --tri-ink-faint: rgb(229 243 242 / 0.12); /* control borders */
+  --tri-stroke-opacity: 0.12;
+  --tri-stroke-opacity-hover: 0.04;
+  --tri-ink-faint: rgb(229 243 242 / var(--tri-stroke-opacity)); /* control borders */
   --tri-edge: #07271c; /* solid border on panels + track */
 
   --tri-ink-danger: #eac7c6;
   --tri-ink-danger-hover: #fec9c9;
+  --tri-accent-yellow: #e4d87a;
 
   --tri-text-shadow: 0 1px 3.2px rgb(0 0 0 / 0.48);
 
   /* ---------------------------------------------------------------- */
   /* Shape & type                                                     */
   /* ---------------------------------------------------------------- */
-  --tri-radius-control: 6px;
-  --tri-radius-surface: 8px;
+  /* Well past the file's 6/8. The smoothing below reads softer with more
+     radius under it, so the two were raised together.
 
-  --tri-font: Roboto, system-ui, sans-serif;
+     Note the control value is a ceiling, not a promise: a radius is clamped
+     to half the box, so on a 32px button 18px draws as 16px and the button
+     is a soft stadium. It is the taller boxes — the 38px field and tab
+     strip, the bars — that actually spend the whole 18. */
+  --tri-radius-control: 18px;
+  --tri-radius-surface: 30px;
+
+  /*
+   * Figma runs corner smoothing at 100% (iOS) on top of the 6px radius, so
+   * the corners are superellipses, not circular arcs. Chromium 142 — the
+   * only engine we ever run on — ships `corner-shape`, so there is no
+   * fallback path to maintain.
+   *
+   * `squircle` is superellipse(2) — the full-smoothing curve. At the small
+   * radii Figma drew (6/8px) that is imperceptible, but at the radii above
+   * it over-flattens the corner's midpoint and the box starts to read as a
+   * lozenge rather than a rounded rect. Apple's own continuous corner sits
+   * short of that: the curve carries further round the turn and meets the
+   * side with less of a straight run into it. superellipse(1.6) is that
+   * shape — still unmistakably smoothed, but the corner reads as a corner
+   * at 30px the way squircle only does at 8px.
+   */
+  --tri-corner: superellipse(1.6);
+
+  /*
+   * Control metrics. Figma's 9px/28px reads cramped at real size, so the
+   * button is one step up from the file — the radius and smoothing are
+   * unchanged, only the box around them.
+   */
+  /*
+   * Every outline in the app, one number. Rings used to be drawn by hand at
+   * 1px, 1.45px (the Figma inspect value) and 1.7px depending on who wrote
+   * the component, which read as three different strokes sitting next to
+   * each other on the same screen. Anything that draws a box outline now
+   * references this; only the colour and opacity are the caller's.
+   *
+   * Rules and dividers — `inset 0 -1px 0`, table border-t — are NOT this.
+   * A line between two things is not an outline around one.
+   */
+  --tri-border: 1.2px;
+
+  /* ---------------------------------------------------------------- */
+  /* Tier-scaled metrics — see F-05 at the foot of this file           */
+  /* ---------------------------------------------------------------- */
+  /*
+   * Every intrinsic size in the system lives here and nowhere else. A
+   * component that hard-codes its own height cannot be reached by a tier,
+   * and with ~181 components to build, "reached by one rule" is the only
+   * version of this that works. If you find yourself typing a pixel height
+   * into a primitive, it belongs in this block instead.
+   */
+  --tri-control-h: 32px; /* button */
+  --tri-control-pad-x: 12px;
+  --tri-control-size: 12px;
+  --tri-field-h: 38px; /* select trigger */
+  /* The top bar row — context bar, panel headers, the rail's mode buttons.
+     Its own token because those read as a header strip rather than a field,
+     but the presence comes from the rule under them and the type inside, not
+     from height: at 44px the strip was a slab with a word floating in it.
+     Now one row past the control it holds — a 32px button with 3px to
+     breathe — which lands it on the field height, and the whole top of the
+     window sits on a single line. */
+  --tri-bar-h: 38px;
+  /*
+   * The topmost strip — the context bar on the right, and the header band of
+   * the panel that starts level with it on the left.
+   *
+   * A token of its own rather than the "+ 8px" that used to be typed at each
+   * use. That row holds the view switch, the two pills the operator reaches
+   * for most, and wants to be a hand's target rather than a header — but the
+   * run-of-service header beside it has to be exactly as tall or the top of
+   * the window comes apart into two lines that nearly agree.
+   *
+   * Written out per tier instead of derived from --tri-bar-h, because the
+   * panel header sets --tri-bar-h to THIS to match, and a token defined off
+   * the one that points back at it is a cycle CSS throws away.
+   */
+  --tri-topbar-h: 46px;
+  /*
+   * The room a bar leaves around the control it holds — half the difference
+   * between the two heights, which is the 3px noted above.
+   *
+   * A token rather than an inline calc because it is also the RIGHT inset of
+   * an action button in a panel header: a "+" 3px off the top and bottom but
+   * 16px off the right is not centred in anything, it is just near a corner.
+   * One value, so the gap around it reads the same on all three sides at
+   * every tier.
+   */
+  --tri-bar-inset: calc((var(--tri-bar-h) - var(--tri-control-h)) / 2);
+  /* A field on a toolbar, where the control is one of several things sharing
+     a row rather than the subject of the panel. Same type, less slab. */
+  --tri-field-h-sm: 32px;
+  /* Shorter than the select on purpose: a slider is a line you grab, not a
+     box you open, and at field height it reads as a slab. */
+  --tri-slider-h: 30px;
+  --tri-option-h: 33px; /* a row in an open dropdown */
+  --tri-row-h: 39px; /* dashboard row */
+  --tri-card-w: 108px; /* position card — the floor it will not shrink past */
+  /*
+   * And the ceiling it will not grow past — 1.5× the tier size. The cards
+   * are fluid so they can share a row, but a card is a CONTROL, and controls
+   * are sized by the tier, not by the window: on a 2560 display an uncapped
+   * position card reached ~280px — two and a half times what was drawn —
+   * while its caption stayed 11px, which is how "some things look oversize"
+   * happens. Past the cap, extra width becomes space between the cards.
+   * Derived, so every tier gets its own ceiling without three more numbers.
+   */
+  --tri-card-max: calc(var(--tri-card-w) * 1.5);
+  /* Its shape, unitless so aspect-ratio can take it. Constant across tiers:
+     a card gets bigger between tiers, it does not change proportion. */
+  --tri-card-ratio: 108 / 57;
+  --tri-card-gap: 5px; /* the concentric inset on both card types */
+  /*
+   * The bento gap — the space between two surfaces that sit side by side.
+   *
+   * It was 0.45rem hand-typed in a dozen places across the live surface,
+   * which is exactly how a layout ends up with a 7px gutter in one row and
+   * an 8px one in the next. One token, so a panel added later cannot invent
+   * its own gutter, and so the whole grid can be loosened in one edit.
+   *
+   * NOT --tri-card-gap: that is the concentric inset INSIDE a surface, the
+   * frame between a card's edge and its content. A gap between two boxes and
+   * a frame within one box are different jobs and drift apart between tiers.
+   */
+  --tri-gap: 7.2px;
+  /*
+   * Card corners are a PROPORTION of the card, not a pixel size.
+   *
+   * Both card types size themselves from their container, so a fixed radius
+   * drifts badly: the same 22px was 36% of a font card at 1280 and 14% at
+   * 2560 — a blob at one end and a near-rectangle at the other. Expressed in
+   * cqw (1% of the card's own width) the corner holds its proportion at
+   * every size, which is what "the same component" actually means.
+   *
+   * The values are the Figma ratios: 22/86 for the font card, 20/108 for the
+   * position card.
+   */
+  --tri-card-round: 18.5; /* position card, % of its width */
+  --tri-font-card-round: 25.5; /* font card, % of its width */
+  --tri-handle-h: 16px;
+  --tri-handle-h-active: 23px;
+
+  /* Same face as the rest of the interface; the literal is the fallback for
+     any surface that loads tokens.css without index.css. */
+  --tri-font: var(--font-ui, Roboto, system-ui, sans-serif);
+  /* Up from the file's 12/10. Figma was drawn at screen-reading distance;
+     the operator is at arm's length in a dark booth, often standing. */
+  /*
+   * The type scale, named by the job each step does. Five steps, and nothing
+   * outside them — six ad-hoc sizes had accumulated across the screens
+   * (9, 10, 11, 12, 13, 14) doing four jobs between them.
+   *
+   *   eyebrow  uppercase and tracked: column headers, badges, pills
+   *   xs       meta: status lines, numeric readouts, hints
+   *   body     content rows: a verse, a lyric, a list item
+   *   sm       secondary: captions, authorship, sub-labels
+   *   (base)   controls and titles — --tri-size
+   */
+  --tri-size-eyebrow: 10px;
+  --tri-size-xs: 10px;
+  /*
+   * Content, so it does NOT scale with density — see the tier note below. A
+   * bigger screen shows more verses, it does not show bigger ones.
+   */
+  --tri-size-body: 11px;
   --tri-size: 12px;
-  --tri-size-sm: 10px;
-  --tri-leading: 28px;
+  --tri-size-sm: 11px;
+  /* 1.45, not the old 2.0 — that ratio was set against a 12px label and
+     left behind when the type scale went up. */
+  --tri-leading: 20px;
   --tri-tracking: 0.24px;
+  /* Medium, not regular: at 12–13px over a gradient, regular goes thin. */
+  --tri-weight: 500;
+
+  /* ---------------------------------------------------------------- */
+  /* Motion                                                           */
+  /* ---------------------------------------------------------------- */
+  /*
+   * Two curves, not ten. The built-in CSS easings are too weak to read as
+   * intentional; these are the strong variants. Nothing in this system uses
+   * ease-in — it withholds movement at the exact moment the user is looking
+   * hardest, which reads as lag.
+   */
+  --tri-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --tri-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Silky, ultra-soft decelerating curve for phase 2 edge bloom */
+  --tri-ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Press feedback has to land inside the same frame the finger does. */
+  --tri-dur-press: 140ms;
+  --tri-dur-state: 110ms;
+  /* The dark edges trail the middle with a soft, gentle feather out. */
+  --tri-dur-state-trail: 240ms;
+  --tri-delay-trail: 40ms;
+  --tri-press-scale: 0.97;
+}
+
+/* ------------------------------------------------------------------ */
+/* Corners                                                             */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Radius and smoothing always travel together — use these instead of a
+ * bare `rounded-[var(--tri-radius-*)]`, so no surface can ship a plain
+ * circular corner by omission.
+ */
+.tri-rounded-control {
+  border-radius: var(--tri-radius-control);
+  corner-shape: var(--tri-corner);
+}
+
+.tri-rounded-surface {
+  border-radius: var(--tri-radius-surface);
+  corner-shape: var(--tri-corner);
+}
+
+/*
+ * The outline — an inset shadow, not a border, and that is deliberate.
+ *
+ * A CSS border on a squircle draws its inner edge as a *smaller superellipse*
+ * rather than a true constant-width offset of the outer one, so the stroke
+ * visibly fattens at each corner. An inset shadow is stroked along the shape
+ * itself and stays even the whole way round. (`outline` behaves correctly
+ * too, but it is reserved for focus rings.)
+ *
+ * Colour comes from --tri-stroke-color so a surface can swap the hairline for
+ * the solid edge without redeclaring the geometry.
+ */
+.tri-stroke {
+  box-shadow: inset 0 0 0 var(--tri-border) var(--tri-stroke-color, rgb(229 243 242 / var(--tri-stroke-opacity)));
+  transition: box-shadow var(--tri-dur-state) var(--tri-ease-out);
 }
 
 /* ------------------------------------------------------------------ */
 /* The gradient surface                                                */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Alpha is animated per band rather than as one number, so the surface
+ * lights up from the inside out: the two middle stops come up first and the
+ * dark outer stops follow a beat later. Registering them tells the engine
+ * they are numbers, which is what makes them interpolate at all — an
+ * unregistered custom property would jump.
+ *
+ * Both still read from --tri-alpha, so every state (rest, hover, active,
+ * solid) sets that one value and gets the staged reveal for free.
+ */
+@property --tri-a-mid {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.3;
+}
+
+@property --tri-a-edge {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.3;
+}
+
 .tri-surface {
   --tri-alpha: var(--tri-alpha-rest);
+  --tri-a-mid: var(--tri-alpha);
+  --tri-a-edge: var(--tri-alpha);
   --tri-1: var(--tri-teal-1);
   --tri-2: var(--tri-teal-2);
   --tri-3: var(--tri-teal-3);
   --tri-4: var(--tri-teal-4);
   background-image: linear-gradient(
     var(--tri-angle),
-    rgb(var(--tri-1) / var(--tri-alpha)) 10.054%,
-    rgb(var(--tri-2) / var(--tri-alpha)) 36.448%,
-    rgb(var(--tri-3) / var(--tri-alpha)) 63.057%,
-    rgb(var(--tri-4) / var(--tri-alpha)) 89.946%
+    rgb(var(--tri-1) / var(--tri-a-edge)) 10.054%,
+    rgb(var(--tri-2) / var(--tri-a-mid)) 36.448%,
+    rgb(var(--tri-3) / var(--tri-a-mid)) 63.057%,
+    rgb(var(--tri-4) / var(--tri-a-edge)) 89.946%
   );
+  /*
+   * Decelerating, and the edges outlast the middle — the light reads as
+   * spreading outward rather than as two things switching on. Declared here
+   * so every surface inherits the same ramp; components no longer carry a
+   * transition utility of their own.
+   */
+  transition:
+    --tri-a-mid var(--tri-dur-state) var(--tri-ease-out),
+    --tri-a-edge var(--tri-dur-state-trail) var(--tri-ease-soft) var(--tri-delay-trail),
+    color var(--tri-dur-state) var(--tri-ease-out),
+    transform var(--tri-dur-press) var(--tri-ease-out);
+}
+
+/*
+ * Reduced motion keeps the brightness change — it carries meaning — and
+ * drops only the timing that makes it feel like movement.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .tri-surface {
+    transition-duration: 1ms;
+    transition-delay: 0s;
+  }
 }
 
 .tri-surface--danger {
@@ -85,6 +390,30 @@
   --tri-2: var(--tri-red-2);
   --tri-3: var(--tri-red-3);
   --tri-4: var(--tri-red-4);
+}
+
+/* A tone is four variables. Nothing else changes — not the angle, not the
+   alpha model, not the transition — so these read as the same material in a
+   different colour rather than as four different surfaces. */
+.tri-surface--ash {
+  --tri-1: var(--tri-ash-1);
+  --tri-2: var(--tri-ash-2);
+  --tri-3: var(--tri-ash-3);
+  --tri-4: var(--tri-ash-4);
+}
+
+.tri-surface--gold {
+  --tri-1: var(--tri-gold-1);
+  --tri-2: var(--tri-gold-2);
+  --tri-3: var(--tri-gold-3);
+  --tri-4: var(--tri-gold-4);
+}
+
+.tri-surface--indigo {
+  --tri-1: var(--tri-indigo-1);
+  --tri-2: var(--tri-indigo-2);
+  --tri-3: var(--tri-indigo-3);
+  --tri-4: var(--tri-indigo-4);
 }
 
 .tri-surface--wide {
@@ -96,12 +425,37 @@
   --tri-alpha: 1;
 }
 
-/* Interactive surfaces brighten on hover; disabled ones never do. */
-.tri-interactive:hover:not(:disabled) {
-  --tri-alpha: var(--tri-alpha-hover);
-}
-.tri-interactive:disabled {
+/*
+ * State.
+ *
+ * A refused control is marked with aria-disabled, never the `disabled`
+ * attribute: `disabled` drops the element out of the tab order and swallows
+ * clicks entirely, so the user gets silence. aria-disabled keeps it
+ * reachable and lets us answer the press with the nudge — same semantics
+ * for assistive tech, but the interface admits it heard you.
+ */
+.tri-interactive[aria-disabled='true'] {
   opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Touch devices fire hover on tap, which lights the surface after the press
+   has already ended. Gate it to real pointers. */
+@media (hover: hover) and (pointer: fine) {
+  .tri-interactive:hover:not([aria-disabled='true']) {
+    --tri-alpha: var(--tri-alpha-hover);
+    --tri-stroke-opacity: var(--tri-stroke-opacity-hover);
+  }
+  .tri-tone-danger:hover:not([aria-disabled='true']) {
+    color: var(--tri-ink-danger-hover);
+    --tri-stroke-color: rgb(234 199 198 / var(--tri-stroke-opacity-hover));
+  }
+}
+
+/* Press: the control gives under the finger, so the UI feels like it heard.
+   Scale, not colour — it survives on any tone and costs no paint. */
+.tri-interactive:active:not([aria-disabled='true']) {
+  transform: scale(var(--tri-press-scale));
 }
 
 /*
@@ -114,9 +468,6 @@
 }
 .tri-tone-danger {
   color: var(--tri-ink-danger);
-}
-.tri-tone-danger:hover:not(:disabled) {
-  color: var(--tri-ink-danger-hover);
 }
 
 /* Selected/active state for list surfaces. */
@@ -135,8 +486,108 @@
  */
 .tri-label {
   font-family: var(--tri-font);
+  font-weight: var(--tri-weight);
   font-size: var(--tri-size);
   line-height: var(--tri-leading);
   letter-spacing: var(--tri-tracking);
   text-shadow: var(--tri-text-shadow);
+}
+
+/* ------------------------------------------------------------------ */
+/* F-05 — Tiers                                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * One lever for the whole system.
+ *
+ * A tier is nothing but a different set of values for the metrics block
+ * above; every component reads those, so a tier reaches all of them at
+ * once. This is the answer to "how does this scale when there are 181
+ * components" — you never touch a component to change size.
+ *
+ * Three of them, not a continuous scale: each tier is a state somebody has
+ * actually looked at, which an interpolation between two of them is not.
+ *
+ *   compact       a 13" laptop lid, close up
+ *   comfortable   the default — a laptop on a desk, or a small monitor
+ *   touch         a booth monitor read at arm's length or standing
+ *
+ * Deliberately NOT scaled by tier: list row heights and anything measured
+ * in content (a transcript line, a verse). Those show *more* on a bigger
+ * screen rather than growing, which is the whole point of capping the
+ * chrome. See the note in Live.tsx.
+ */
+
+[data-density='compact'] {
+  --tri-gap: 6px;
+  --tri-control-h: 28px;
+  --tri-control-pad-x: 10px;
+  --tri-size-eyebrow: 9px;
+  --tri-size-xs: 9px;
+  --tri-control-size: 11px;
+  --tri-size: 11px;
+  --tri-size-sm: 10px;
+  --tri-leading: 18px;
+  --tri-field-h: 33px;
+  --tri-bar-h: 33px;
+  --tri-topbar-h: 41px;
+  --tri-field-h-sm: 28px;
+  --tri-slider-h: 26px;
+  --tri-option-h: 29px;
+  --tri-row-h: 34px;
+  --tri-card-w: 95px;
+  --tri-handle-h: 14px;
+  --tri-handle-h-active: 20px;
+  --tri-radius-control: 16px;
+  --tri-radius-surface: 27px;
+}
+
+/* comfortable is the :root block above — listed here only so the set of
+   tiers reads as three things rather than two plus a default. */
+[data-density='comfortable'] {
+  --tri-gap: 7.2px;
+  --tri-control-h: 32px;
+  --tri-control-pad-x: 12px;
+  --tri-size-eyebrow: 10px;
+  --tri-size-xs: 10px;
+  --tri-control-size: 12px;
+  --tri-size: 12px;
+  --tri-size-sm: 11px;
+  --tri-leading: 20px;
+  --tri-field-h: 38px;
+  --tri-bar-h: 38px;
+  --tri-topbar-h: 46px;
+  --tri-field-h-sm: 32px;
+  --tri-slider-h: 30px;
+  --tri-option-h: 33px;
+  --tri-row-h: 39px;
+  --tri-card-w: 108px;
+  --tri-handle-h: 16px;
+  --tri-handle-h-active: 23px;
+  --tri-radius-control: 18px;
+  --tri-radius-surface: 30px;
+}
+
+[data-density='touch'] {
+  --tri-gap: 9px;
+  --tri-control-h: 38px;
+  --tri-control-pad-x: 16px;
+  --tri-size-eyebrow: 11px;
+  --tri-size-xs: 11px;
+  --tri-control-size: 14px;
+  --tri-size: 14px;
+  --tri-size-sm: 12px;
+  --tri-leading: 24px;
+  --tri-field-h: 45px;
+  --tri-bar-h: 45px;
+  --tri-topbar-h: 53px;
+  --tri-field-h-sm: 37px;
+  --tri-slider-h: 36px;
+  --tri-option-h: 39px;
+  --tri-row-h: 46px;
+  --tri-card-w: 128px;
+  --tri-handle-h: 19px;
+  --tri-handle-h-active: 27px;
+  --tri-radius-control: 21px;
+  --tri-radius-surface: 35px;
 }

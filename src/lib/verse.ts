@@ -40,6 +40,33 @@ export async function fetchVerseText(d: VerseDetection): Promise<string | null> 
   return parts.length > 0 ? parts.join(' ') : null;
 }
 
+/**
+ * Fetch a detection's verses individually, so the display layer can slice
+ * them into slides (shared/verseDisplay.ts) rather than receiving one
+ * pre-joined blob. Bounded the same way fetchVerseText is, so a mis-detected
+ * '1-150' cannot flood the projector.
+ */
+export async function fetchVerseParts(
+  d: VerseDetection,
+  version?: string,
+): Promise<{ verse: number; text: string }[]> {
+  const api = window.api;
+  if (!api || d.verse == null) return [];
+  const start = d.verse;
+  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 11) : start;
+  const parts: { verse: number; text: string }[] = [];
+  for (let v = start; v <= end; v++) {
+    try {
+      const res = await api.searchVerse(d.book, d.chapter, v, version ?? d.version);
+      if (res?.success && res.data?.text) parts.push({ verse: v, text: res.data.text });
+      else break;
+    } catch {
+      break;
+    }
+  }
+  return parts;
+}
+
 export function describeVoiceCommand(e: VoiceCommandEvent): string {
   switch (e.kind) {
     case 'version-switch':

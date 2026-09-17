@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
+import { cx } from '../lib/cx';
+import { surface, strokeStyle } from '../lib/surface';
+import { useNudge } from '../hooks/useNudge';
 
 /*
  * D-xx — Dashboard row button. Figma: `Dashboard Icon` (430:456).
  *
  * A wide surface with the label left and a glyph right: 39px tall, 10px
- * padding, 8px radius, solid --tri-edge border (not the 12% ink hairline
- * the small controls use). Three states in the file — rest at 0.3 alpha
- * and selected at 0.65.
+ * padding, the solid --tri-edge outline rather than the 12% ink hairline the
+ * small controls use. Three states in the file — rest at 0.3 alpha and
+ * selected at 0.65.
  *
  * Unlike Button, the label keeps its casing ("Today's Flow").
  */
@@ -18,6 +21,7 @@ interface DashboardButtonProps {
   icon?: ReactNode;
   /** Selected rows sit at the brighter alpha. */
   active?: boolean;
+  /** Refused rather than inert — see Button. */
   disabled?: boolean;
   className?: string;
 }
@@ -27,25 +31,25 @@ export function DashboardButton({
   onClick,
   icon,
   active = false,
-  disabled,
+  disabled = false,
   className = '',
 }: DashboardButtonProps) {
+  const { ref, nudge } = useNudge<HTMLButtonElement>();
+
   return (
     <button
+      ref={ref}
       type="button"
-      onClick={onClick}
-      disabled={disabled}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? nudge : onClick}
       data-active={active}
-      className={[
-        'tri-surface tri-surface--wide tri-interactive tri-label',
-        'flex h-[39px] w-full items-center justify-between gap-4',
-        'rounded-[var(--tri-radius-surface)] border p-[10px] text-left',
-        'transition-[background-image] duration-[140ms]',
+      className={cx(
+        surface({ shape: 'panel', interactive: true, wide: true, stroke: 'edge' }),
+        'tri-label',
+        'flex h-[var(--tri-row-h)] w-full items-center justify-between gap-4 p-[10px] text-left',
         className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
-      style={{ borderColor: 'var(--tri-edge)', color: 'var(--tri-ink)' }}
+      )}
+      style={{ ...strokeStyle('edge'), color: 'var(--tri-ink)' }}
     >
       <span>{label}</span>
       {icon}

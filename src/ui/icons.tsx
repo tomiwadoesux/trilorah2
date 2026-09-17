@@ -14,7 +14,7 @@ interface IconProps {
 }
 
 /** Gear — Figma symbol `settings` (35:212). Natural box 14.15 × 14.57. */
-export function SettingsIcon({ size = 17, className }: IconProps) {
+export function SettingsIcon({ size = 14, className }: IconProps) {
   return (
     <svg
       width={size}
@@ -36,7 +36,7 @@ export function SettingsIcon({ size = 17, className }: IconProps) {
 }
 
 /** Trash — Figma `Button Icon/Variant3` (429:449). Natural box 12 × 14. */
-export function TrashIcon({ size = 16, className }: IconProps) {
+export function TrashIcon({ size = 14, className }: IconProps) {
   return (
     <svg
       width={(size * 12) / 14}
@@ -51,6 +51,344 @@ export function TrashIcon({ size = 16, className }: IconProps) {
         clipRule="evenodd"
         fill="currentColor"
         d="M10.3687 5.5C10.6448 5.5 10.8687 5.72386 10.8687 6C10.8687 6.03856 10.8642 6.07699 10.8554 6.11452L9.3628 12.4581C9.1502 13.3615 8.3441 14 7.41597 14H4.58403C3.65593 14 2.84977 13.3615 2.6372 12.4581L1.14459 6.11452C1.08135 5.84572 1.24798 5.57654 1.51678 5.51329C1.55431 5.50446 1.59274 5.5 1.6313 5.5H10.3687ZM6.5 0C7.88071 0 9 1.11929 9 2.5H11C11.5523 2.5 12 2.94772 12 3.5V4C12 4.27614 11.7761 4.5 11.5 4.5H0.5C0.22386 4.5 0 4.27614 0 4V3.5C0 2.94772 0.44772 2.5 1 2.5H3C3 1.11929 4.11929 0 5.5 0H6.5ZM6.5 1.5H5.5C4.94772 1.5 4.5 1.94772 4.5 2.5H7.5C7.5 1.94772 7.05228 1.5 6.5 1.5Z"
+      />
+    </svg>
+  );
+}
+
+/** Circular arrows — reset/revert, distinct from the destructive trash icon. */
+export function ResetIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="none" aria-hidden="true" className={className}>
+      <path d="M11.6 5.2A4.9 4.9 0 0 0 3.2 3.7L2 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 2.4V5h2.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.4 8.8a4.9 4.9 0 0 0 8.4 1.5L12 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 11.6V9H9.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Chevron Down Icon for Select / Dropdown menu components. */
+export function ChevronDownIcon({ size = 10, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <path
+        /* Ink centred in the box, not the path. The stroked glyph runs
+           y 3.75..8.75 when drawn at 4.5..8, which sits a quarter-unit low —
+           enough to read as misaligned beside a line of type, and enough to
+           make the open-state 180° flip visibly jump. Drawn a quarter up so
+           the ink centre and the box centre are the same point. */
+        d="M2.5 4.25L6 7.75L9.5 4.25"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/*
+ * Magnifier — NOT a Figma export. The scriptures search field needed a glyph
+ * and the file has none, so this is drawn to the system's own metrics: a
+ * 1.6px stroke on a 14 box, matching the hairline weight used elsewhere.
+ * Replace it with the real path when Figma has one.
+ */
+export function SearchIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <circle cx="6.1" cy="6.1" r="4.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M9.5 9.5L12.7 12.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/*
+ * Pencil and plus — also NOT Figma exports, drawn to the same 1.6px stroke as
+ * the magnifier above. Replace with the real paths when the file has them.
+ */
+export function PencilIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <path
+        d="M9.6 1.9a1.6 1.6 0 0 1 2.3 2.3l-6.6 6.6-3 .7.7-3 6.6-6.6Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function PlusIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M7 2.2v9.6M2.2 7h9.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* Scan frame — the OCR import affordance. Drawn, not a Figma export. */
+export function ScanIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M1.6 5.2V3.2a1.6 1.6 0 0 1 1.6-1.6h2M14.4 5.2V3.2a1.6 1.6 0 0 0-1.6-1.6h-2M1.6 10.8v2a1.6 1.6 0 0 0 1.6 1.6h2M14.4 10.8v2a1.6 1.6 0 0 1-1.6 1.6h-2"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <rect x="4.4" y="5.6" width="7.2" height="4.8" rx="1.2" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+/*
+ * Sparkle — marks a suggestion the engine made rather than something the
+ * operator entered. One glyph, used everywhere the machine proposes.
+ */
+export function SparkleIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M6.6 1.8 7.9 5.3l3.5 1.3-3.5 1.3-1.3 3.5-1.3-3.5L1.8 6.6l3.5-1.3 1.3-3.5Z"
+        fill="currentColor"
+      />
+      <path d="M12.1 8.9l.62 1.67 1.67.62-1.67.62-.62 1.67-.62-1.67-1.67-.62 1.67-.62.62-1.67Z" fill="currentColor" opacity="0.8" />
+    </svg>
+  );
+}
+
+/* Film reel — media. Drawn, not a Figma export. */
+export function MediaIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="7.4" cy="7.4" r="5.6" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="7.4" cy="4.9" r="1.05" fill="currentColor" />
+      <circle cx="7.4" cy="9.9" r="1.05" fill="currentColor" />
+      <circle cx="4.9" cy="7.4" r="1.05" fill="currentColor" />
+      <circle cx="9.9" cy="7.4" r="1.05" fill="currentColor" />
+      <path d="M11.6 12.1c1.3 0 2.6.4 2.6 1.1s-1 1.1-2.3 1.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* A page with a turned corner — a note against a segment. */
+export function NoteIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M2.4 3.6a1.6 1.6 0 0 1 1.6-1.6h8a1.6 1.6 0 0 1 1.6 1.6v5.2l-4.6 4.6H4a1.6 1.6 0 0 1-1.6-1.6V3.6Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M13.6 8.8H10.6a1.6 1.6 0 0 0-1.6 1.6v3" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/*
+ * Grip — six dots, the universal "this row can be dragged".
+ *
+ * Two columns of three, on a 4px pitch, in a 10 × 16 box so it sits on the
+ * text baseline grid of a row rather than floating in the middle of one.
+ * Drawn, not a Figma export: the file has no handle glyph yet.
+ */
+export function GripIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg
+      width={(size * 10) / 16}
+      height={size}
+      viewBox="0 0 10 16"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      {[3, 8, 13].map((cy) => (
+        <g key={cy} fill="currentColor">
+          <circle cx="3" cy={cy} r="1.35" />
+          <circle cx="7" cy={cy} r="1.35" />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/*
+ * Tick — the mark inside a checked box.
+ *
+ * Stroked rather than filled, and drawn slightly off-centre low, because a
+ * geometrically centred tick reads as sitting high inside a square.
+ */
+export function CheckIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M2.5 6.4 4.8 8.7 9.5 3.6"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/*
+ * History — a dial with its arrow running backwards.
+ *
+ * Drawn, not a Figma export. Same idiom as the scan and note glyphs: a 16
+ * box, 1.4 stroke, round joins — so it sits beside them at the same weight
+ * rather than reading as a heavier icon from somewhere else.
+ *
+ * Three parts: the dial, the tail that sweeps off its top into the corner,
+ * and the corner itself, which is the arrowhead. The hands are what stop it
+ * reading as a plain refresh arrow.
+ */
+export function HistoryIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.49 1.83L2 5.33"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2 2v3.33h3.33"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 4.67v3.33l2.67 1.33"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/*
+ * Book — scripture's mark in a queue row. Drawn in the house idiom: 16 box,
+ * 1.4 stroke, round joins. An open spread with a centre fold, so it reads
+ * as "bible" at 12px without any text.
+ */
+export function BookIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M8 3.5C6.8 2.6 5.2 2.1 3.4 2.1h-1.2v9.9h1.2c1.8 0 3.4.5 4.6 1.4 1.2-.9 2.8-1.4 4.6-1.4h1.2V2.1h-1.2c-1.8 0-3.4.5-4.6 1.4Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M8 3.5v9.9" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+/*
+ * Music note — a song's mark in a queue row. A beamed pair, because a single
+ * note at 12px reads as a golf club.
+ */
+export function MusicIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M6.4 11.5V4.2l6.4-1.4v7.4"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <circle cx="4.5" cy="11.5" r="1.9" fill="currentColor" />
+      <circle cx="10.9" cy="10.2" r="1.9" fill="currentColor" />
+    </svg>
+  );
+}
+
+/*
+ * Microphone — the listen-for-service affordance. House idiom: 16 box, 1.4
+ * stroke. Capsule, cradle, stem — no base bar, which at 13px turns the
+ * whole glyph into a lollipop.
+ */
+/*
+ * Play — NOT a Figma export, drawn to the system's metrics like the
+ * magnifier above. Replace it when the file has one.
+ *
+ * A FILLED triangle, where every other glyph here is a 1.5px stroke: this is
+ * the only icon in the set that rides a gold act rather than sitting beside
+ * a line of type, and a stroked outline at 12px on a filled button reads as
+ * a hollow arrow rather than as play. Corners are joined round at a third of
+ * the stroke weight so it is not a needle-sharp wedge next to the system's
+ * rounded caps.
+ *
+ * Nudged a half-unit right of centre: a triangle's optical centre is behind
+ * its own centroid, and drawn on the box centre it reads as sitting left.
+ */
+export function PlayIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+      className={className}
+    >
+      <path
+        d="M3.75 2.4L9.6 5.78a0.25 0.25 0 0 1 0 0.44L3.75 9.6A0.25 0.25 0 0 1 3.4 9.38V2.62A0.25 0.25 0 0 1 3.75 2.4Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="0.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function MicIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="6" y="1.4" width="4" height="7.4" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M3.6 7.8v.4a4.4 4.4 0 0 0 8.8 0v-.4M8 12.9v1.7"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
       />
     </svg>
   );

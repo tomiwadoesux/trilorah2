@@ -1378,6 +1378,35 @@ ipcMain.handle('clear-media', () => {
 
 // Companion QR — rendered as media on every open output so congregants can
 // scan straight from the projector. URL comes from Settings (web url + slug).
+/*
+ * The companion code as SVG, for drawing inside the app.
+ *
+ * Vector rather than the PNG the projector path writes: the tile renders it
+ * at whatever size the layout gives it and at whatever the display's pixel
+ * ratio is, with no temp file to write, find stale, or clean up. About 1.5KB
+ * of markup, so it crosses IPC as a string.
+ *
+ * Returns null rather than an error when there is no link yet — a tile with
+ * nothing to encode is a normal state before a church has signed in, not a
+ * failure worth a red note.
+ */
+ipcMain.handle('get-qr-svg', async (_event, size?: number) => {
+  const url = shareLink(String(getSetting('publicWebUrl') ?? ''), String(getSetting('accountSlug') ?? ''))
+  if (!url) return { success: true, url: null, svg: null }
+  try {
+    const { toString: qrToString } = await import('qrcode')
+    const svg = await qrToString(url, {
+      type: 'svg',
+      margin: 1,
+      width: typeof size === 'number' && size > 0 ? size : 256,
+      color: { dark: '#e5f3f2', light: '#0e1413' }
+    })
+    return { success: true, url, svg }
+  } catch (e: any) {
+    return { success: false, error: e?.message }
+  }
+})
+
 ipcMain.handle('show-qr', async () => {
   try {
     const base = String(getSetting('publicWebUrl') ?? '').replace(/\/+$/, '')

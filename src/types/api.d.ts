@@ -17,6 +17,37 @@
 
 type Unsubscribe = () => void;
 
+/** Stock backgrounds — mirrors electron/media/stockImages.ts. */
+type StockKind = 'photo' | 'video';
+type StockProvider = 'pixabay' | 'pexels';
+interface StockItem {
+  id: string;
+  provider: StockProvider;
+  kind: StockKind;
+  thumb: string;
+  preview: string;
+  full: string;
+  width: number;
+  height: number;
+  duration?: number;
+  credit: string;
+  pageUrl: string;
+  tags: string;
+}
+interface StockSearchParams {
+  query: string;
+  kind?: StockKind;
+  page?: number;
+  provider?: StockProvider;
+}
+interface StockSearchResult {
+  items: StockItem[];
+  page: number;
+  total: number;
+  provider: StockProvider;
+  cached: boolean;
+}
+
 /** Generic success/error envelope used by most invoke handlers. */
 interface OpResult {
   success: boolean;
@@ -449,10 +480,28 @@ interface WindowApi {
   onMicStop?(callback: () => void): Unsubscribe;
   // Media on outputs + themes
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; canceled?: boolean; error?: string }>;
+  // Stock backgrounds — electron/media/stockImages.ts
+  getStockProviders?(): Promise<StockProvider[]>;
+  searchStock?(
+    params: StockSearchParams,
+  ): Promise<({ success: true } & StockSearchResult) | { success: false; error: string }>;
+  /** `url` is file:// (what the theme stores); `src` is local-media:// (what an <img> can load). */
+  downloadStock?(payload: { item: StockItem; apply?: boolean }): Promise<{ success: boolean; url?: string; src?: string; error?: string }>;
   showMedia?(imagePath: string): Promise<{ success: boolean }>;
   clearMedia?(): Promise<{ success: boolean }>;
   /** Render the companion QR (publicWebUrl + accountSlug) on every open output. */
   showQr?(): Promise<{ success: boolean; url?: string; error?: string }>;
+  /**
+   * The companion code as SVG markup, for drawing inside the app.
+   * `svg`/`url` are null when no link is configured yet — a normal state,
+   * not an error.
+   */
+  getQrSvg?(size?: number): Promise<{
+    success: boolean;
+    url?: string | null;
+    svg?: string | null;
+    error?: string;
+  }>;
   onShowMedia?(callback: (imagePath: string) => void): Unsubscribe;
   onThemeChanged?(callback: () => void): Unsubscribe;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;
@@ -466,6 +515,91 @@ interface WindowApi {
    * adds it. The UI also tracks status optimistically from start/stop.
    */
   onAsrStatus?(callback: (status: ASRStatus) => void): Unsubscribe;
+
+  /* Outputs, alerts, keyword search — 2026-09-08 (BUILD-MAP 2.10–2.13) */
+  setScreenState?(state: ScreenState): Promise<ScreenState>;
+  getScreenState?(): Promise<ScreenState>;
+  onScreenState?(callback: (state: ScreenState) => void): Unsubscribe;
+  getOutputRole?(outputId: string): Promise<OutputRole>;
+  showAlert?(
+    text: string,
+    opts?: { target?: AlertTarget; durationSec?: number | null; values?: Record<string, string> },
+  ): Promise<ScreenAlert | null>;
+  dismissAlert?(): Promise<boolean>;
+  getAlert?(): Promise<ScreenAlert | null>;
+  onAlert?(callback: (alert: ScreenAlert | null) => void): Unsubscribe;
+  searchBibleText?(query: string, opts?: { version?: string; limit?: number }): Promise<BibleSearchHit[]>;
+
+  /* Timers + message tokens — 2026-09-09 (BUILD-MAP 2.16–2.17) */
+  listTimers?(): Promise<TimerSnapshot[]>;
+  createTimer?(input: {
+    name?: string;
+    kind: TimerKind;
+    durationSec?: number;
+    targetTime?: string;
+    overrun?: boolean;
+  }): Promise<TimerRecord | null>;
+  updateTimer?(id: string, patch: Record<string, unknown>): Promise<TimerRecord | null>;
+  removeTimer?(id: string): Promise<boolean>;
+  startTimer?(id: string): Promise<TimerRecord | null>;
+  pauseTimer?(id: string): Promise<TimerRecord | null>;
+  resetTimer?(id: string): Promise<TimerRecord | null>;
+  onTimers?(callback: (timers: TimerSnapshot[]) => void): Unsubscribe;
+  inspectAlert?(text: string): Promise<{ slots: AlertTokenSlot[]; unfilled: boolean; preview: string }>;
+}
+
+type TimerKind = 'countdown' | 'to-time' | 'elapsed';
+type TimerState = 'stopped' | 'running' | 'paused';
+
+interface TimerSnapshot {
+  id: string;
+  name: string;
+  kind: TimerKind;
+  state: TimerState;
+  /** Negative once a countdown passes zero with overrun on. */
+  remainingMs: number;
+  overrunning: boolean;
+  display: string;
+}
+
+interface TimerRecord {
+  id: string;
+  name: string;
+  kind: TimerKind;
+  durationSec?: number;
+  targetTime?: string;
+  overrun: boolean;
+  state: TimerState;
+}
+
+interface AlertTokenSlot {
+  name: string;
+  kind: 'clock' | 'timer' | 'custom';
+  raw: string;
+  arg?: string;
+}
+
+type ScreenState = 'live' | 'clear' | 'black' | 'logo';
+type OutputRole = 'projector' | 'stream' | 'stage';
+type AlertTarget = 'all' | 'projector' | 'stream' | 'stage';
+
+interface ScreenAlert {
+  id: string;
+  text: string;
+  target: AlertTarget;
+  shownAt: number;
+  expiresAt: number | null;
+}
+
+interface BibleSearchHit {
+  bookId: number;
+  book: string;
+  chapter: number;
+  verse: number;
+  version: string;
+  text: string;
+  /** Match-highlighted with <b>…</b> when the FTS index exists. */
+  snippet: string;
 }
 
 interface Window {

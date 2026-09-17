@@ -402,6 +402,12 @@ export class SpokenReferenceResolver {
   private pendingBook: string | null = null
   private pendingChapter: number | null = null
   private pendingAt = 0
+  /** True while nothing but fillers/connectors/keywords has been spoken since
+   *  the pending book (or the last emitted reference). A bare number only
+   *  attaches as chapter/verse while this holds — "Romans about three years
+   *  later" must not become Romans 3, even though Romans is still pending
+   *  for an explicit "chapter three" within the TTL. */
+  private pendingAdjacent = false
 
   private lastEmitKey = ''
   private lastEmitAt = 0
@@ -434,6 +440,7 @@ export class SpokenReferenceResolver {
     this.pendingBook = null
     this.pendingChapter = null
     this.pendingAt = 0
+    this.pendingAdjacent = false
   }
 
   /** Feed one ASR chunk. Partial chunks refresh state; finals detect fully. */
@@ -515,10 +522,12 @@ export class SpokenReferenceResolver {
         if (idx === -1) break
         from = idx + alias.length
         const rest = text.slice(idx + alias.length)
-        // "3章16节" | "三章十六节" | "23篇" (Psalms) | "3:16"
+        // "3章16节" | "三章十六节" | "23篇" (Psalms) | "3:16" | "一到五节"
+        // (the verse-start 节 is only optional when a 到/至 range follows,
+        // so a chapter followed by unrelated numerals is still chapter-only)
         let m = rest.match(
           new RegExp(
-            `^\\s*第?(${NUM})[章篇][\\s,，]*(?:第?(${NUM})[节節])?(?:[到至](${NUM})[节節]?)?`
+            `^\\s*第?(${NUM})[章篇][\\s,，]*(?:第?(${NUM})(?:[节節]|(?=[到至])))?(?:[到至](${NUM})[节節]?)?`
           )
         )
         if (!m) {
@@ -556,6 +565,7 @@ export class SpokenReferenceResolver {
         this.pendingBook = book
         this.pendingChapter = null
         this.pendingAt = now
+        this.pendingAdjacent = true
 
         const after = this.readReferenceNumbers(tokens, i + 1)
         if (after) {
@@ -590,8 +600,8 @@ export class SpokenReferenceResolver {
             const v = this.parseNum(tokens.map((x) => x.word), j + 1)
             if (v) {
               const range = this.readRange(tokens, j + 1 + v.consumed)
-              this.emit(this.pendingBook, num.value, v.value, range, 0.95, now)
-              i = j + 1 + v.consumed + (range ? 2 : 0)
+              this.emit(this.pendingBook, num.value, v.value, range?.end ?? null, 0.95, now)
+              i = j + 1 + v.consumed + (range?.consumed ?? 0)
               continue
             }
           }
@@ -622,7 +632,8 @@ export class SpokenReferenceResolver {
       if (this.verseWords.has(t.word)) {
         const num = this.parseNum(tokens.map((x) => x.word), i + 1)
         if (num) {
-          const rangeEnd = this.readRange(tokens, i + 1 + num.consumed)
+          const range = this.readRange(tokens, i + 1 + num.consumed)
+          const rangeEnd = range?.end ?? null
           if (this.pendingBook && this.pendingChapter) {
             this.emit(this.pendingBook, this.pendingChapter, num.value, rangeEnd, 0.95, now)
           } else {
@@ -637,15 +648,17 @@ export class SpokenReferenceResolver {
               source: 'resolver'
             })
           }
-          i += 1 + num.consumed
+          i += 1 + num.consumed + (range?.consumed ?? 0)
           continue
         }
         i++
         continue
       }
 
-      // Number continuation after a pending book: "John ... three ... sixteen"
-      if (this.pendingBook) {
+      // Number continuation after a pending book: "John ... three ... sixteen".
+      // Only while adjacent — a number spoken after intervening narrative
+      // words ("Romans about three years later") is not a chapter.
+      if (this.pendingBook && this.pendingAdjacent) {
         const num = this.parseNum(tokens.map((x) => x.word), i)
         if (num) {
           if (this.pendingChapter === null) {
@@ -671,6 +684,11 @@ export class SpokenReferenceResolver {
         }
       }
 
+      // Any other word (not a filler/connector/keyword) breaks adjacency:
+      // later bare numbers no longer attach to the pending book.
+      if (!this.fillers.has(t.word) && !this.connectors.has(t.word)) {
+        this.pendingAdjacent = false
+      }
       i++
     }
   }
@@ -701,39 +719,42 @@ export class SpokenReferenceResolver {
       explicit = true
       const v = this.parseNum(words, j + 1)
       if (v) {
-        const rangeEnd = this.readRange(tokens, j + 1 + v.consumed)
+        const range = this.readRange(tokens, j + 1 + v.consumed)
         return {
           chapter: chap.value,
           verse: v.value,
-          rangeEnd,
-          consumed: j + 1 + v.consumed - start + (rangeEnd ? 2 : 0),
+          rangeEnd: range?.end ?? null,
+          consumed: j + 1 + v.consumed - start + (range?.consumed ?? 0),
           explicit
         }
       }
     }
     const v2 = this.parseNum(words, i)
     if (v2) {
-      const rangeEnd = this.readRange(tokens, i + v2.consumed)
+      const range = this.readRange(tokens, i + v2.consumed)
       return {
         chapter: chap.value,
         verse: v2.value,
-        rangeEnd,
-        consumed: i + v2.consumed - start + (rangeEnd ? 2 : 0),
+        rangeEnd: range?.end ?? null,
+        consumed: i + v2.consumed - start + (range?.consumed ?? 0),
         explicit
       }
     }
     return { chapter: chap.value, verse: null, rangeEnd: null, consumed: i - start, explicit }
   }
 
-  /** "to five" / "through five" / "al cinco" immediately after a verse number. */
+  /** "to five" / "through five" / "al cinco" immediately after a verse number.
+   *  Returns the range end AND the number of tokens used (range word + the
+   *  number's tokens) so multi-word ends like "through thirty two" are fully
+   *  consumed — callers used to assume exactly 2, leaking "two" as a verse. */
   private readRange(
     tokens: { word: string; bookBoundary: BookMatch | null }[],
     at: number
-  ): number | null {
+  ): { end: number; consumed: number } | null {
     const words = tokens.map((x) => x.word)
     if (this.rangeWords.has(words[at])) {
       const n = this.parseNum(words, at + 1)
-      if (n) return n.value
+      if (n) return { end: n.value, consumed: 1 + n.consumed }
     }
     return null
   }
@@ -756,6 +777,7 @@ export class SpokenReferenceResolver {
       this.pendingBook = book
       this.pendingChapter = chapter
       this.pendingAt = now
+      this.pendingAdjacent = true
     }
     this.onDetection({
       type: 'verse',
