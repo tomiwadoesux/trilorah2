@@ -109,6 +109,7 @@ import { IncrementalNotesBuilder } from './notes/incrementalNotesBuilder'
 import { generateSermonNotes } from './notes/sermonNotesGenerator'
 import { exportSermonNotesPdf, exportSermonNotesMarkdown } from './notes/sermonNotesGenerator'
 import { getQuoteMatcher } from './engine/quoteMatcher'
+import { findNamedPassage } from './engine/namedPassages'
 import { initAliasLogger } from './data/aliasLogger'
 import { convertPptxToImages } from './media/pptxConverter'
 import {
@@ -911,6 +912,8 @@ function lookupVerseText(book: string, chapter: number, verse: number, version =
   return ''
 }
 
+let lastNamedPassage: { name: string; at: number } | null = null
+
 /** A nav command already acted on from a partial; its final must not act again. */
 let navFiredOnPartial = false
 
@@ -926,6 +929,21 @@ function handleASRText(text: string) {
     return
   }
   sendTranscript(text, true)
+  // "bring up the Lord's Prayer" — a passage called by its heading rather
+  // than its numbers. Goes to preview like any other detection. One per
+  // name per minute: a preacher repeats the name while teaching from it.
+  const named = findNamedPassage(text)
+  if (named && !(lastNamedPassage?.name === named.name && Date.now() - lastNamedPassage.at < 60_000)) {
+    lastNamedPassage = { name: named.name, at: Date.now() }
+    console.log(`📖 Named passage: "${named.name}" → ${named.book} ${named.chapter}:${named.verse}-${named.end}`)
+    session.onReferenceDetected({
+      book: named.book,
+      chapter: named.chapter,
+      verse: named.verse,
+      rangeEnd: named.end > named.verse ? named.end : null
+    })
+    return
+  }
   if (voiceCommands?.isInPrayer()) return // 🙏 no quote detection during prayer
   const quoteMatcher = getQuoteMatcher()
   const quoteResults = quoteMatcher.tryDetectQuotes()
