@@ -84,7 +84,24 @@ export const DEFAULT_COMMANDS: CommandPhraseConfig = {
   ],
   // Multi-word only — bare "next" / "back" / "continue" fire on ordinary
   // preaching ("and then the next thing Paul says…").
-  navNext: ['next verse', 'the next verse', 'go to the next verse', 'verse after that'],
+  navNext: [
+    'next verse',
+    'the next verse',
+    'go to the next verse',
+    'verse after that',
+    // Asked of the text rather than commanded — "what's the next thing there?"
+    'read the next verse',
+    'read the next one',
+    'the next one',
+    'whats next',
+    'what is next',
+    'whats the next',
+    'what is the next',
+    'what does the next',
+    'the following verse',
+    'lets read on',
+    'read on'
+  ],
   navPrevious: [
     'previous verse',
     'the previous verse',

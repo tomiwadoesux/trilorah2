@@ -176,3 +176,43 @@ describe('SpokenReferenceResolver', () => {
     expect(bare!.book).toBe('')
   })
 })
+
+describe('preaching-cadence fixes', () => {
+  const ref = (d: ResolvedReference) => `${d.book} ${d.chapter}:${d.verse}${d.endVerse ? '-' + d.endVerse : ''}`
+
+  it('"verse four and five" is one passage, not two detections', () => {
+    const c = collect()
+    c.feed('genesis chapter one verse four and five')
+    expect(c.detections.map(ref)).toEqual(['Genesis 1:4-5'])
+  })
+  it('"verses four and verse five" too', () => {
+    const c = collect()
+    c.feed('genesis chapter one verses four and verse five')
+    expect(c.detections.map(ref)).toEqual(['Genesis 1:4-5'])
+  })
+  it('non-consecutive "and" stays two places', () => {
+    const c = collect()
+    c.feed('genesis chapter one verse four and nine')
+    expect(c.detections.map(ref)[0]).toBe('Genesis 1:4')
+    expect(c.detections.some((d) => d.endVerse === 9)).toBe(false)
+  })
+  it('"and" followed by speech is not a range', () => {
+    const c = collect()
+    c.feed('genesis chapter one verse four and the lord said')
+    expect(c.detections.map(ref)).toEqual(['Genesis 1:4'])
+  })
+  it('"chapter nine verse two" a minute later stays in the book being preached', () => {
+    const c = collect()
+    c.feed('exodus chapter four verse seven')
+    c.tick(60_000)
+    c.feed('then lets go to chapter nine verse two')
+    expect(c.detections.map(ref)).toEqual(['Exodus 4:7', 'Exodus 9:2'])
+  })
+  it('a bare number never borrows the remembered book', () => {
+    const c = collect()
+    c.feed('exodus chapter four verse seven')
+    c.tick(60_000)
+    c.feed('there were nine of them and two came back')
+    expect(c.detections.map(ref)).toEqual(['Exodus 4:7'])
+  })
+})

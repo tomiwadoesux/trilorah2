@@ -371,6 +371,8 @@ interface BookMatch {
 /* ------------------------------------------------------------------ */
 
 const PENDING_TTL_MS = 8000
+/** How long "chapter N" may still mean the last book named — a sermon point, not a sentence. */
+const LAST_BOOK_TTL_MS = 15 * 60_000
 const DEDUP_WINDOW_MS = 4000
 const EN_FILLER = ['uh', 'um', 'ah', 'the', 'now', 'so', 'okay', 'well']
 
@@ -399,6 +401,20 @@ export class SpokenReferenceResolver {
   private substringPack: LanguagePack | null
   private substringAliases: Array<{ alias: string; canonical: string }> = []
 
+  /*
+   * The book the sermon is IN, as opposed to the book a sentence is in.
+   *
+   * pendingBook lives 8 seconds — long enough to join "Philippians chapter
+   * four … verse six". But a preacher who read Exodus 4:7 and, a minute of
+   * preaching later, says "let's go to chapter nine verse two" means Exodus
+   * 9:2, and by then pendingBook is long gone: the chapter was discarded and
+   * a bookless ":2" went out, which the session turned into Exodus 4:2.
+   *
+   * Only an EXPLICIT "chapter N" may borrow it. Bare numbers never do — that
+   * is what the short window and the adjacency rule are for.
+   */
+  private lastBook: string | null = null
+  private lastBookAt = 0
   private pendingBook: string | null = null
   private pendingChapter: number | null = null
   private pendingAt = 0
@@ -585,6 +601,9 @@ export class SpokenReferenceResolver {
 
       if (this.chapterWords.has(t.word)) {
         const num = this.parseNum(tokens.map((x) => x.word), i + 1)
+        if (num && !this.pendingBook && this.lastBook && now - this.lastBookAt < LAST_BOOK_TTL_MS) {
+          this.pendingBook = this.lastBook
+        }
         if (num && this.pendingBook) {
           this.pendingChapter = num.value
           this.pendingAt = now
@@ -599,7 +618,9 @@ export class SpokenReferenceResolver {
           if (tokens[j] && this.verseWords.has(tokens[j].word)) {
             const v = this.parseNum(tokens.map((x) => x.word), j + 1)
             if (v) {
-              const range = this.readRange(tokens, j + 1 + v.consumed)
+              const range =
+                this.readRange(tokens, j + 1 + v.consumed) ??
+                this.readAndPair(tokens, j + 1 + v.consumed, v.value)
               this.emit(this.pendingBook, num.value, v.value, range?.end ?? null, 0.95, now)
               i = j + 1 + v.consumed + (range?.consumed ?? 0)
               continue
@@ -632,7 +653,9 @@ export class SpokenReferenceResolver {
       if (this.verseWords.has(t.word)) {
         const num = this.parseNum(tokens.map((x) => x.word), i + 1)
         if (num) {
-          const range = this.readRange(tokens, i + 1 + num.consumed)
+          const range =
+            this.readRange(tokens, i + 1 + num.consumed) ??
+            this.readAndPair(tokens, i + 1 + num.consumed, num.value)
           const rangeEnd = range?.end ?? null
           if (this.pendingBook && this.pendingChapter) {
             this.emit(this.pendingBook, this.pendingChapter, num.value, rangeEnd, 0.95, now)
@@ -719,7 +742,9 @@ export class SpokenReferenceResolver {
       explicit = true
       const v = this.parseNum(words, j + 1)
       if (v) {
-        const range = this.readRange(tokens, j + 1 + v.consumed)
+        const range =
+          this.readRange(tokens, j + 1 + v.consumed) ??
+          this.readAndPair(tokens, j + 1 + v.consumed, v.value)
         return {
           chapter: chap.value,
           verse: v.value,
@@ -759,6 +784,26 @@ export class SpokenReferenceResolver {
     return null
   }
 
+  /**
+   * "verse four and five" — two consecutive verses named together are one
+   * passage, not two detections that replace each other on the screen.
+   * Consecutive only: "verse four and nine" really is two places, and
+   * "verse four and the Lord said" must not read "and" as a range at all.
+   */
+  private readAndPair(
+    tokens: { word: string; bookBoundary: BookMatch | null }[],
+    at: number,
+    start: number
+  ): { end: number; consumed: number } | null {
+    const words = tokens.map((x) => x.word)
+    if (words[at] !== 'and') return null
+    let j = at + 1
+    if (this.verseWords.has(words[j])) j++
+    const n = this.parseNum(words, j)
+    if (n && n.value === start + 1) return { end: n.value, consumed: j - at + n.consumed }
+    return null
+  }
+
   private emit(
     book: string,
     chapter: number | null,
@@ -778,6 +823,10 @@ export class SpokenReferenceResolver {
       this.pendingChapter = chapter
       this.pendingAt = now
       this.pendingAdjacent = true
+    }
+    if (book) {
+      this.lastBook = book
+      this.lastBookAt = now
     }
     this.onDetection({
       type: 'verse',

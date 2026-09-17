@@ -34,3 +34,18 @@ describe('navigation commands: real instructions must still work', () => {
     it(`prev: "${c}"`, () => expect(s.isPreviousCommand(c)).toBe(true))
   }
 })
+
+describe('navigation commands: punctuation and natural asks', () => {
+  for (const c of ['Next verse.', 'next verse, please', "What's next?", "what's the next thing there", 'read the next one']) {
+    it(`next: "${c}"`, () => {
+      const t: any = new ScriptureSession(() => {})
+      t.configureCommands({ navNext: ['next verse', 'read the next one', 'whats next', 'whats the next'], navPrevious: ['previous verse'] })
+      expect(t.isNextCommand(c)).toBe(true)
+    })
+  }
+  it('only multi-word phrases may fire from a partial', () => {
+    expect(s.isUnambiguousNav('next verse')).toBe('next')
+    expect(s.isUnambiguousNav('next')).toBe(null)
+    expect(s.isUnambiguousNav('next week we will')).toBe(null)
+  })
+})

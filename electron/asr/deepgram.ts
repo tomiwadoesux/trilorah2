@@ -48,7 +48,13 @@ export function startDeepgram(
     smart_format: true,
     interim_results: true,
     punctuate: true,
-    endpointing: 3500,
+    /* Milliseconds of silence before Deepgram closes a sentence. This was
+       3500, and the engine acts on finals — so every spoken command and
+       every reference waited three and a half seconds after the preacher
+       stopped talking. A reference split across a pause is already joined
+       by the resolver's own pending window, so the recogniser does not need
+       to hold the sentence open to keep it together. */
+    endpointing: 700,
     sample_rate: SAMPLE_RATE,
     encoding: 'linear16',
     channels: 1,

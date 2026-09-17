@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, systemPreferences } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell, systemPreferences } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
@@ -57,6 +57,8 @@ import { ALL_ENTRIES } from './search/entries'
 import { FolderIndex } from './library/folders'
 import { presetForReference } from './media/presetPicker'
 import { parseSong } from './songs/import'
+import type { ImportedSong } from './songs/import'
+import { SongStore } from './songs/store'
 // --- 2026-09-08 EasyWorship parity pass (BUILD-MAP 2.10–2.13) ---
 import { AlertManager, type AlertTarget } from './alerts/alerts'
 // --- 2026-09-09 ProPresenter parity pass (BUILD-MAP 2.16–2.21) ---
@@ -296,6 +298,7 @@ let lastHeardText = ''
 let lastQuoteCandidates: Candidate[] = []
 let lastCandidates: Candidate[] = []
 const libraryFolders: Record<string, FolderIndex> = {}
+let songs: SongStore | null = null
 const searchRegistry = new CommandRegistry(ALL_ENTRIES)
 const searchIndex = new SearchIndex(searchRegistry)
 const viewerStats = new ViewerStats({ geo: nullGeo, roundBelow: 5 })
@@ -351,6 +354,23 @@ function folderIndex(libraryId: 'presentations' | 'songs' | 'media'): FolderInde
     libraryFolders[libraryId] = new FolderIndex(app.getPath('userData'), libraryId)
   }
   return libraryFolders[libraryId]
+}
+
+/**
+ * The song library, built on first use — lazy for the same reason the folder
+ * index is: it reads a JSON file off disk, and a church that never opens the
+ * songs screen should not pay for that at boot.
+ *
+ * Seeding happens here rather than at startup so the public-domain hymns
+ * appear the first time somebody actually looks at the library. It is a
+ * no-op afterwards, and stays a no-op for hymns the church deleted.
+ */
+function songStore(): SongStore {
+  if (!songs) {
+    songs = new SongStore(app.getPath('userData'))
+    songs.seedIfNeeded()
+  }
+  return songs
 }
 
 const intentEngine = new IntentEngine({
@@ -777,6 +797,13 @@ function startASR(deviceLabel?: string) {
       if (isFinal) {
         handleASRText(text)
       } else {
+        // "next verse" moves the screen as it is spoken. One shot per
+        // utterance: the partials that follow are the same sentence still
+        // growing, and its final is swallowed in handleASRText.
+        if (!navFiredOnPartial && session.isUnambiguousNav(text) && session.onCommand(text)) {
+          navFiredOnPartial = true
+          return
+        }
         sendTranscript(text, false)
       }
     },
@@ -884,9 +911,16 @@ function lookupVerseText(book: string, chapter: number, verse: number, version =
   return ''
 }
 
+/** A nav command already acted on from a partial; its final must not act again. */
+let navFiredOnPartial = false
+
 function handleASRText(text: string) {
   if (activeCommandConfig.ignoreTails?.length) {
     text = stripIgnoreTails(text, activeCommandConfig.ignoreTails)
+  }
+  if (navFiredOnPartial) {
+    navFiredOnPartial = false
+    if (session.isUnambiguousNav(text)) return
   }
   if (session.onCommand(text)) {
     return
@@ -1259,6 +1293,11 @@ ipcMain.handle('preset-for-reference', (_event, { book, chapter, verse }) =>
 )
 
 // Song import (item 23): ChordPro / plain text / OpenLyrics → sections.
+//
+// Import is deliberately two steps. Parsing returns songs and writes nothing,
+// so the UI can show the duplicate review before anything lands in the
+// library; 'songs-import-commit' is the step that writes. A church dropping
+// forty files from SongSelect gets to look before it leaps.
 ipcMain.handle('songs-import-text', (_event, { text, filename }) => parseSong(text, filename))
 ipcMain.handle('songs-import-file', async () => {
   const result = await dialog.showOpenDialog({
@@ -1266,9 +1305,45 @@ ipcMain.handle('songs-import-file', async () => {
     filters: [{ name: 'Songs', extensions: ['cho', 'chopro', 'crd', 'txt', 'xml'] }]
   })
   if (result.canceled) return { success: false, canceled: true }
-  const songs = result.filePaths.map((fp) => parseSong(fs.readFileSync(fp, 'utf-8'), path.basename(fp)))
-  return { success: true, songs }
+  // Per file, not per batch: a folder of exports usually contains one file
+  // saved wrong (binary, truncated, half a gigabyte of something else). That
+  // file names itself in `errors` and the other thirty-nine still import —
+  // and an unreadable file never takes the main process down with it.
+  const parsed: ImportedSong[] = []
+  const errors: { file: string; error: string }[] = []
+  for (const fp of result.filePaths) {
+    const file = path.basename(fp)
+    try {
+      parsed.push(parseSong(fs.readFileSync(fp, 'utf-8'), file))
+    } catch (err) {
+      errors.push({ file, error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  return { success: true, songs: parsed, errors }
 })
+ipcMain.handle('songs-import-commit', (_event, { songs: parsed }) => songStore().importMany(parsed ?? []))
+
+// Song library CRUD (item 1.11) — <userData>/songs.json, seeded with
+// public-domain hymns on first run.
+ipcMain.handle('songs-list', () => songStore().list())
+// Null when the file read cleanly. Anything else is a songs.json the store
+// could not parse: it has gone read-only rather than overwrite the church's
+// library with an empty one, and the operator has to be told that before
+// they conclude their songs are simply gone and start re-importing.
+ipcMain.handle('songs-problem', () => songStore().problem)
+ipcMain.handle('songs-get', (_event, { id }) => songStore().get(id))
+ipcMain.handle('songs-add', (_event, { song }) => songStore().add(song))
+// The store throws on a missing id or an empty title; across IPC that would
+// reach the renderer as an unhandled rejection with a mangled message, so it
+// becomes a null the caller can branch on instead.
+ipcMain.handle('songs-update', (_event, { id, patch }) => {
+  try {
+    return songStore().update(id, patch)
+  } catch {
+    return null
+  }
+})
+ipcMain.handle('songs-remove', (_event, { id }) => songStore().remove(id))
 
 // Evals (item 25): export ledger corrections as anonymised fixtures.
 ipcMain.handle('evals-export-fixtures', async () => {
@@ -2324,6 +2399,58 @@ ipcMain.handle('ocr-process-images', async (_event, imagePaths) => {
     return { success: false, error: msg }
   }
 })
+
+/**
+ * Nothing navigates away from the app. Ever.
+ *
+ * A dropped file is the reason this exists. Chromium's default handling of a
+ * file dropped on a page is to NAVIGATE to it, so an operator who drags a
+ * .cho off a memory stick and releases it an inch outside the Songs panel —
+ * over the sidebar, the header, the Live tab — replaces the entire operator
+ * UI with the raw text of that file. window.api is gone, there is no back
+ * button in a frameless window, and the service is blind until somebody
+ * force-quits. Mid-service that is the worst failure in the product.
+ *
+ * The renderer's own drop handlers cover the region they know about; this
+ * covers everywhere else, including the output windows on the projector.
+ * Opening a link in a real browser still works — see setWindowOpenHandler.
+ */
+function guardNavigation(contents: Electron.WebContents): void {
+  const allowed = (url: string): boolean => {
+    try {
+      const u = new URL(url)
+      // Dev server and packaged files only. A file:// URL is precisely the
+      // dropped-file case, and is allowed only for the app's own pages,
+      // which is what loadFile() itself produces.
+      if (u.protocol === 'http:' || u.protocol === 'https:') return isDev && u.hostname === 'localhost'
+      if (u.protocol === 'file:') return u.pathname.endsWith('.html')
+      return false
+    } catch {
+      return false
+    }
+  }
+  const block = (e: Electron.Event, url: string) => {
+    if (!allowed(url)) e.preventDefault()
+  }
+  contents.on('will-navigate', block)
+  contents.on('will-frame-navigate', (e) => block(e, e.url))
+  // A link that genuinely wants a browser gets one; nothing opens a new
+  // Electron window with our preload in it.
+  contents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:$/.test(safeProtocol(url))) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+}
+
+function safeProtocol(url: string): string {
+  try {
+    return new URL(url).protocol
+  } catch {
+    return ''
+  }
+}
+
+app.on('web-contents-created', (_event, contents) => guardNavigation(contents))
 
 app.whenReady().then(() => {
   // Serves files under userData to every window. Registered before the

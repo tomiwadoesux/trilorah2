@@ -303,8 +303,12 @@ export class ScriptureSession {
   ])
 
   private static matchesPhrase(text: string, cmd: string): boolean {
-    const phrase = cmd.toLowerCase().trim()
+    const phrase = cmd.toLowerCase().replace(/[^\w\s]/g, '').trim()
     if (!phrase) return false
+    /* Deepgram punctuates: a final arrives as "Next verse." and "what's
+       next?". Strip it before matching or the boundary test fails on the
+       full stop and the command only ever works on an unpunctuated partial. */
+    text = text.toLowerCase().replace(/['’]/g, '').replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim()
     const bounded = new RegExp(
       `(?:^|\\s)${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`
     )
@@ -320,6 +324,23 @@ export class ScriptureSession {
       .replace(/\s+/g, ' ')
       .trim()
     return stripped === phrase
+  }
+
+  /**
+   * Safe to act on BEFORE the sentence is finished.
+   *
+   * A partial is a guess that may still grow — "next" can become "next week
+   * we will…". So only phrases that cannot be the start of something else
+   * count: multi-word, and not on the ordinary-English list. This is what
+   * lets "next verse" move the screen as it is spoken rather than after the
+   * recogniser has waited out the silence that follows it.
+   */
+  isUnambiguousNav(text: string): 'next' | 'previous' | null {
+    const strong = (list: string[]) =>
+      list.filter((c) => c.trim().includes(' ') && !ScriptureSession.STANDALONE_ONLY.has(c.toLowerCase().trim()))
+    if (strong(this.nextCommands ?? ScriptureSession.NEXT_DEFAULTS).some((c) => ScriptureSession.matchesPhrase(text, c))) return 'next'
+    if (strong(this.previousCommands ?? ScriptureSession.PREVIOUS_DEFAULTS).some((c) => ScriptureSession.matchesPhrase(text, c))) return 'previous'
+    return null
   }
 
   isNextCommand(text: string): boolean {
