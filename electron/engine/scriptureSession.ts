@@ -253,30 +253,85 @@ export class ScriptureSession {
     if (nav.navPrevious?.length) this.previousCommands = nav.navPrevious
   }
 
+  /*
+   * Navigation phrases, matched as WHOLE PHRASES rather than substrings.
+   *
+   * `text.includes('before')` fired on "the earth also was corrupt before
+   * God" and walked the projector backwards mid-sermon; `includes('continue')`
+   * fired on "let us continue in the faith". Scripture is full of these words,
+   * so a bare substring test turns ordinary preaching into navigation.
+   *
+   * Two rules, and the second is what makes it safe:
+   *
+   * 1. Every phrase is bounded — "back" must be the word back, not the tail
+   *    of "come back" inside a sentence about coming back to God.
+   * 2. A phrase that is ALSO ordinary English ("next", "back", "before",
+   *    "continue"…) only counts when the whole utterance is essentially that
+   *    phrase — a short chunk spoken as an instruction. Unambiguous phrases
+   *    ("next verse", "go back one") still match anywhere, because nobody
+   *    preaches those by accident.
+   */
+  private static readonly NEXT_DEFAULTS = [
+    'next verse',
+    'next',
+    'continue',
+    'go on',
+    'keep going',
+    'move on'
+  ]
+
+  private static readonly PREVIOUS_DEFAULTS = [
+    'previous verse',
+    'previous',
+    'go back',
+    'back',
+    'last verse',
+    'before'
+  ]
+
+  /** Phrases too ordinary to accept mid-sentence — they must BE the utterance. */
+  private static readonly STANDALONE_ONLY = new Set([
+    'next',
+    'back',
+    'before',
+    'continue',
+    'previous',
+    'go on',
+    'move on',
+    'keep going',
+    'go back'
+  ])
+
+  private static matchesPhrase(text: string, cmd: string): boolean {
+    const phrase = cmd.toLowerCase().trim()
+    if (!phrase) return false
+    const bounded = new RegExp(
+      `(?:^|\\s)${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\s|$)`
+    )
+    if (!bounded.test(text)) return false
+    if (!ScriptureSession.STANDALONE_ONLY.has(phrase)) return true
+    /* Ordinary-English phrase: only an instruction-shaped utterance counts.
+       "please, next" and "next." are commands; a clause that merely contains
+       the word is not. Filler words are allowed around it, but not a
+       sentence's worth. */
+    const stripped = text
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\b(please|ok|okay|now|alright|right|lets|let us|and|so|uh|um)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return stripped === phrase
+  }
+
   isNextCommand(text: string): boolean {
-    return (
-      this.nextCommands ?? [
-        'next verse',
-        'next',
-        'continue',
-        'go on',
-        'keep going',
-        'move on'
-      ]
-    ).some((cmd) => text.includes(cmd))
+    return (this.nextCommands ?? ScriptureSession.NEXT_DEFAULTS).some((cmd) =>
+      ScriptureSession.matchesPhrase(text, cmd)
+    )
   }
 
   isPreviousCommand(text: string): boolean {
-    return (
-      this.previousCommands ?? [
-        'previous verse',
-        'previous',
-        'go back',
-        'back',
-        'last verse',
-        'before'
-      ]
-    ).some((cmd) => text.includes(cmd))
+    return (this.previousCommands ?? ScriptureSession.PREVIOUS_DEFAULTS).some((cmd) =>
+      ScriptureSession.matchesPhrase(text, cmd)
+    )
   }
 
   /* ---------------- CORRECTIONS (added post-recovery) ---------------- */
