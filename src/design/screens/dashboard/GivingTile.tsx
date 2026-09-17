@@ -41,7 +41,7 @@ export function GivingTile({ className }: { className?: string }) {
       blurb="Ways to give, shown on the companion page as tappable buttons."
       size={{ w: 640, h: 560 }}
       tile={({ onOpen }) => (
-        <Panel className="min-h-0 flex-1" bodyStyle={{ padding: 0 }} unavailable="add your giving details to show them on the companion page">
+        <Panel className="min-h-0 flex-1" bodyStyle={{ padding: 0 }}>
           <button type="button" onClick={onOpen} className="flex h-full w-full items-center gap-3 px-3 text-left">
             <span className="shrink-0 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">giving</span>
             <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 overflow-hidden">

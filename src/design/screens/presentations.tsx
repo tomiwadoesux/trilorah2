@@ -218,6 +218,7 @@ type LoadedDeck = (typeof DECKS)[number];
 export function SlidesBrowser() {
   const drag = useDrag();
   const [query, setQuery] = useState('');
+  const [importNote, setImportNote] = useState<string | null>(null);
 
   /* Which page each card is showing, once paged off its first. Sparse and
      keyed by deck, exactly as the songs grid keeps its verses: filter the
@@ -294,7 +295,33 @@ export function SlidesBrowser() {
                   it will take — a sentence that is load-bearing on a machine
                   with no LibreOffice, where PDF is the format that always
                   works. */}
-              {needle === '' ? <AddCard label="import slides" hint="pdf, pptx, keynote" /> : null}
+              {needle === '' ? (
+                <AddCard
+                  label="import slides"
+                  hint={importNote ?? 'pptx, ppt or odp'}
+                  onClick={() => {
+                    /* The engine's own importer: it converts the deck to
+                       images (LibreOffice does the conversion) and keeps it
+                       in the MEDIA tab's library, where its slides can be
+                       pushed today. The note carries whatever it said —
+                       a missing converter is something the operator can fix,
+                       a silent nothing is not. */
+                    setImportNote('importing…');
+                    void window.api
+                      ?.importPresentation()
+                      .then((res) =>
+                        setImportNote(
+                          res?.success
+                            ? `imported ${res.data?.slides?.length ?? 0} slides — open them in the MEDIA tab`
+                            : res?.error === 'Cancelled'
+                              ? null
+                              : (res?.error ?? 'import failed'),
+                        ),
+                      )
+                      .catch(() => setImportNote('import failed'));
+                  }}
+                />
+              ) : null}
 
               {matches.map((deck, i) => {
                 const at = pageOf(deck);

@@ -237,7 +237,7 @@ export function TrustTrendTile({ className }: { className?: string }) {
   const head = trustPts[trustPts.length - 1];
 
   return (
-    <Panel className={className} bodyClass="pt-3" unavailable="builds up after a few services with this preacher">
+    <Panel className={className} bodyClass="pt-3">
       <div className="flex h-full flex-col gap-[var(--tri-gap)]">
         {/* (a) the span, and where the climb has got to */}
         <div className="flex shrink-0 items-baseline justify-between gap-[var(--tri-gap)]">

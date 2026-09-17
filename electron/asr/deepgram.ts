@@ -29,7 +29,7 @@ export function setDeepgramKeywords(list: string[]): void {
 }
 
 export function startDeepgram(
-  onText: (text: string, isFinal: boolean) => void,
+  onText: (text: string, isFinal: boolean, display?: string) => void,
   onError?: (error: Error) => void,
   deviceLabel?: string
 ): void {
@@ -69,7 +69,7 @@ export function startDeepgram(
     if (!transcript) return
     const isFinal = data.is_final || data.speech_final
     console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${transcript}`)
-    onText(transcript.toLowerCase(), isFinal)
+    onText(transcript.toLowerCase(), isFinal, transcript)
   })
   deepgramConnection.on(LiveTranscriptionEvents.Error, (error: any) => {
     console.error('❌ Deepgram error:', error)

@@ -32,7 +32,7 @@ export function PreachingTile({ className }: { className?: string }) {
   const ball = Math.round(Math.min(orb.width, orb.height) * 0.86);
 
   return (
-    <Panel className={className} bodyClass="pt-3" unavailable="needs a preacher profile selected for this service">
+    <Panel className={className} bodyClass="pt-3">
       <div className="flex h-full flex-col gap-[var(--tri-gap)]">
         <p className="shrink-0 truncate text-center text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.55)]">
           {WHO}

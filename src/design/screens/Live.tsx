@@ -51,7 +51,7 @@ import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
 import { addMedia, mediaSrc, useMediaLibrary, type MediaSource } from './mediaLibrary';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
-import { EngineProvider, useEngine, SLIDE_RULES } from './engine';
+import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, TIGHT_WORDS } from './engine';
 import { RunProvider, useRun, type RunSegment, type QueueItem } from './run';
 import { DragKeyframes, DragProvider, useDrag } from './drag';
 import { Empty, Panel } from './parts';
@@ -679,7 +679,31 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           }}
         />
       ) : view === 'themes' ? (
-        <MediaGrid add={shelf === 'local' ? { label: 'add media', hint: 'image, video, loop' } : null}>
+        <MediaGrid
+          add={shelf === 'local' ? { label: 'add media', hint: 'an image from this computer' } : null}
+          onAdd={() => {
+            /* The engine copies the file into its own folder — so the
+               background survives the USB stick being pulled — and makes it
+               the projector's background. It lands on this shelf and is
+               selected, the same as a stock pick. */
+            void window.api?.pickBackgroundImage?.().then((res) => {
+              if (!res?.success || !res.url) return;
+              const name = decodeURIComponent(res.url.split('/').pop() ?? 'background');
+              const media = {
+                id: `local:${res.url}`,
+                label: name.replace(/\.[a-z0-9]+$/i, ''),
+                detail: 'from this laptop',
+                seed: 4,
+                style: 'smoke' as const,
+                source: 'local' as const,
+                url: res.url,
+                kind: 'photo' as const,
+              };
+              addMedia(media);
+              onSelect(media.id);
+            });
+          }}
+        >
           {shown.map((media) => (
             <MediaCard
               key={media.id}
@@ -715,14 +739,16 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
 /** The grid both views share, so a card cannot drift between them. */
 function MediaGrid({
   add,
+  onAdd,
   children,
 }: {
   add: { label: string; hint: string } | null;
+  onAdd?: () => void;
   children: ReactNode;
 }) {
   return (
     <div className="grid min-h-0 auto-rows-min grid-cols-5 gap-x-3 gap-y-4 overflow-y-auto px-1 pb-3">
-      {add ? <AddCard label={add.label} hint={add.hint} /> : null}
+      {add ? <AddCard label={add.label} hint={add.hint} onClick={onAdd} /> : null}
       {children}
     </div>
   );
@@ -1241,7 +1267,54 @@ function SongsBrowser() {
      enough for the card's button to be a real gesture rather than a dead
      shape. Swap for the store's own delete when the library is backed. */
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
-  const songs = useMemo(() => SONGS.filter((s) => !deleted.has(s.id)), [deleted]);
+
+  /*
+   * The library, when there is one.
+   *
+   * With an engine the grid is the song store — the same songs.json the rest
+   * of the app reads, seeded hymns included — so a song added here is there
+   * next Sunday. With no bridge it is still the seed list, which is what
+   * keeps this a reviewable sheet in a browser tab.
+   */
+  const store = typeof window === 'undefined' ? undefined : window.api?.songs;
+  const [stored, setStored] = useState<Song[] | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const refresh = useCallback(() => {
+    if (!store) return;
+    void store
+      .list()
+      .then((list) =>
+        setStored(
+          list.map((song) => ({
+            id: song.id,
+            title: song.title,
+            author: (song.authors ?? []).join(', '),
+            verses: song.sections.map((sec, i) => ({ id: `${song.id}:${i}`, label: sec.label, lines: sec.lines })),
+          })),
+        ),
+      )
+      .catch(() => undefined);
+  }, [store]);
+  useEffect(refresh, [refresh]);
+
+  /* Pick files, write them, show them. The store names likely duplicates in
+     its report rather than dropping them, so the note says what happened. */
+  const addSongs = async () => {
+    if (!store) return;
+    const picked = await store.importFiles();
+    if (!picked?.success || !picked.songs?.length) {
+      if (picked?.errors?.length) setNote(`could not read ${picked.errors.map((e) => e.file).join(', ')}`);
+      return;
+    }
+    await store.importCommit(picked.songs);
+    setNote(`added ${picked.songs.length} song${picked.songs.length === 1 ? '' : 's'}`);
+    refresh();
+  };
+
+  const songs = useMemo(
+    () => (stored ?? SONGS).filter((s) => !deleted.has(s.id)),
+    [stored, deleted],
+  );
   const open = songs.find((s) => s.id === openId);
 
   return open ? (
@@ -1252,7 +1325,12 @@ function SongsBrowser() {
       query={query}
       onQuery={setQuery}
       onOpen={setOpenId}
-      onDelete={(id) => setDeleted((d) => new Set(d).add(id))}
+      onAdd={store ? () => void addSongs() : undefined}
+      note={note}
+      onDelete={(id) => {
+        setDeleted((d) => new Set(d).add(id));
+        if (store) void store.remove(id).then(refresh).catch(() => undefined);
+      }}
     />
   );
 }
@@ -1279,12 +1357,17 @@ function SongGrid({
   onQuery,
   onOpen,
   onDelete,
+  onAdd,
+  note,
 }: {
   songs: readonly Song[];
   query: string;
   onQuery: (q: string) => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Absent with no engine, which leaves the card drawn but inert. */
+  onAdd?: () => void;
+  note?: string | null;
 }) {
   const drag = useDrag();
   const projector = useProjector();
@@ -1370,7 +1453,9 @@ function SongGrid({
               should say so, not offer to make a song out of the search
               text.
             */}
-            {needle === '' ? <AddCard label="add song" hint="title, artist, lyrics" /> : null}
+            {needle === '' ? (
+              <AddCard label="add song" hint={note ?? 'chordpro, openlyrics or .txt'} onClick={onAdd} />
+            ) : null}
 
             {matches.map((song, i) => {
               const verse = verseOf(song, i);
@@ -1860,6 +1945,10 @@ interface Heard {
   backdrop: number;
   /** Pre-sliced, when this came from the engine rather than the seed. */
   slides?: VerseSlide[];
+  verses?: { verse: number; text: string }[];
+  /** The database has no such verse — shown so the operator knows what was
+      heard, but it can only be dismissed. */
+  missing?: boolean;
 }
 
 /*
@@ -1977,6 +2066,9 @@ function DetectedScripture({
         borderRadius: 12,
         animation: 'tri-heard-in 240ms var(--tri-ease-out) both',
         animationDelay: `${index * 60}ms`,
+        /* A reference that is not in the Bible is information, not an
+           offer: it sits back, and the only thing it can do is go away. */
+        opacity: heard.missing ? 0.45 : undefined,
       }}
     >
       {/* The picture and its dim, behind everything (-z-10 inside the
@@ -2123,6 +2215,11 @@ function DetectedScripture({
         >
           <PlusIcon size={12} className="rotate-45" />
         </button>
+        {heard.missing ? (
+          <span className="flex min-w-0 flex-1 items-center text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.45)]">
+            not in the bible — nothing to show
+          </span>
+        ) : (
         <button
           type="button"
           onClick={onLive}
@@ -2146,6 +2243,63 @@ function DetectedScripture({
               still carries it for the card the keyboard is actually on. */}
           live
         </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/*
+ * What the preacher is saying, while there is nothing to answer.
+ *
+ * The rail is empty most of a sermon, and an empty box beside an open
+ * microphone gives the operator no way to tell "nothing caught" from
+ * "nothing heard". So the quiet state is the sermon itself, set the way a
+ * lyrics view sets a song: the sentence being spoken is at full strength in
+ * the middle, the ones before it climb and fade above it.
+ *
+ * The line being spoken is the recogniser's partial and is replaced as it
+ * grows; when the recogniser closes the sentence it arrives punctuated and
+ * takes its place in the stack, which is the moment everything moves up one.
+ * Keyed by id so React moves the existing lines rather than redrawing them —
+ * that is what makes the climb an animation and not a flicker.
+ */
+function SpokenLyrics() {
+  const { spoken } = useEngine();
+  const shown = spoken.lines.slice(-5);
+  return (
+    <div
+      className="flex h-full flex-col justify-center overflow-hidden px-3"
+      style={{
+        maskImage: 'linear-gradient(to bottom, transparent 0, black 28%, black 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 28%, black 100%)',
+      }}
+    >
+      <style>{`@keyframes tri-lyric-in { from { opacity: 0; transform: translateY(14px); } }`}</style>
+      <div className="flex flex-col justify-end gap-2.5">
+        {shown.map((line, i) => {
+          const age = shown.length - 1 - i + (spoken.partial ? 1 : 0);
+          return (
+            <p
+              key={line.id}
+              className="text-center leading-[1.5] text-[var(--tri-ink)]"
+              style={{
+                fontSize: age === 0 ? 13 : 12,
+                opacity: Math.max(0.16, 0.9 - age * 0.22),
+                transition: 'opacity 400ms var(--tri-ease-out), font-size 400ms var(--tri-ease-out)',
+                animation: 'tri-lyric-in 360ms var(--tri-ease-out) both',
+              }}
+            >
+              {line.text}
+            </p>
+          );
+        })}
+        {spoken.partial && (
+          <p className="text-center text-[13px] leading-[1.5] text-[var(--tri-ink)]">
+            {spoken.partial}
+            <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-[rgb(228_216_122_/_0.8)]" />
+          </p>
+        )}
       </div>
     </div>
   );
@@ -2184,10 +2338,14 @@ function ProposalStack() {
            neighbours, which is all the backdrop is doing here. */
         backdrop: 2 + i * 3,
         slides: p.slides,
+        verses: p.verses,
+        missing: p.missing,
       }))
     : CATCHES;
 
   if (live && cards.length === 0) {
+    const hearing = engine.spoken.lines.length > 0 || engine.spoken.partial !== '';
+    if (engine.asr === 'listening' && hearing) return <SpokenLyrics />;
     return (
       <div className="flex h-full items-center justify-center px-4">
         <p className="text-center text-[length:var(--tri-size-xs)] lowercase leading-[1.6] text-[rgb(229_243_242_/_0.32)]">
@@ -2210,7 +2368,7 @@ function ProposalStack() {
              button that did nothing would be worse than one that plainly
              cannot be pressed. */
           onLive={
-            live
+            live && !c.missing
               ? () => {
                   /* Straight to the wall. The operator answering a proposal
                      HAS looked at it — the words are on the card — so a
@@ -2224,6 +2382,7 @@ function ProposalStack() {
                     version: c.version,
                     text: c.text,
                     slides: c.slides,
+                    verses: c.verses,
                     origin: 'engine',
                   };
                   /* origin 'engine' means main already holds it as its own
@@ -2774,9 +2933,9 @@ function useServiceLog(stateLabel: string) {
     );
 
     off.push(
-      api.onVersePreview?.((d: { book?: string; chapter?: number; verse?: number | null }) => {
+      api.onVersePreview?.((d: { book?: string; chapter?: number; verse?: number | null; endVerse?: number | null }) => {
         if (!d?.book) return;
-        const verse = d.verse == null ? '' : `:${d.verse}`;
+        const verse = d.verse == null ? '' : `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `-${d.endVerse}` : ''}`;
         say({ text: `caught ${d.book} ${d.chapter}${verse} — waiting for you` });
       }),
     );
@@ -3144,6 +3303,33 @@ function StageCaption({ item }: { item: LiveItem | null }) {
   );
 }
 
+/** "Genesis 1:4-5" → its parts. Null for anything that is not a verse. */
+function parseStagedRef(reference?: string): { book: string; chapter: number; start: number; end: number } | null {
+  const m = reference?.match(/^(.+?)\s+(\d+):(\d+)(?:\s*[-–]\s*(\d+))?$/);
+  if (!m) return null;
+  const start = Number(m[3]);
+  return { book: m[1], chapter: Number(m[2]), start, end: m[4] ? Number(m[4]) : start };
+}
+
+/** The verse before, the verse after — a tall quiet strip beside the slide. */
+function StepArrow({ dir, onClick, disabled }: { dir: 1 | -1; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={dir === 1 ? 'next verse' : 'previous verse'}
+      className={cx(
+        surface({ tone: 'ash', shape: 'control', interactive: !disabled }),
+        'flex w-7 shrink-0 items-center justify-center text-[15px] text-[rgb(229_243_242_/_0.7)]',
+        disabled && 'opacity-30',
+      )}
+    >
+      {dir === 1 ? '›' : '‹'}
+    </button>
+  );
+}
+
 function Stage({ theme }: { theme: ThemeSettings }) {
   const projector = useProjector();
   const engine = useEngine();
@@ -3177,12 +3363,78 @@ function Stage({ theme }: { theme: ThemeSettings }) {
    */
   const goLive = () => {
     if (!preview) return;
+    /* The wall slices a range by the church's own setting, so the choice made
+       here has to become that setting or the preview would be a picture of
+       something the congregation never sees. */
+    if ((preview.verses?.length ?? 0) > 1) {
+      void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) > 1);
+    }
     if (preview.origin === 'engine') engine.pushEnginePreview();
     else if (preview.reference) engine.pushReference(preview.reference);
     projector.promote();
   };
 
   const blacked = screen === 'black' || screen === 'logo';
+
+  /*
+   * One verse forward, one verse back — from whatever is staged.
+   *
+   * The preacher reads on past the verse that was called, and the operator's
+   * move is always the same: the next one. It belongs on the preview box
+   * because that is where the eyes are when it is needed. A range steps off
+   * its ends (4-5 → 6, or → 3), and the chapter's own rows are the bound, so
+   * the arrow that would walk off the end of a chapter is simply disabled by
+   * finding nothing there.
+   */
+  const stagedRef = preview?.source === 'scripture' ? parseStagedRef(preview.reference) : null;
+  const step = (dir: 1 | -1) => {
+    if (!stagedRef || !preview) return;
+    const bookIndex = BOOKS.indexOf(stagedRef.book);
+    const target = dir === 1 ? stagedRef.end + 1 : stagedRef.start - 1;
+    if (bookIndex < 0 || target < 1 || !window.api?.getChapter) return;
+    const version = preview.version || 'KJV';
+    void window.api.getChapter(bookIndex, stagedRef.chapter, version).then((res) => {
+      const row = res?.data?.find((v) => v.id === target);
+      if (!row) return;
+      const verses = [{ verse: target, text: row.text }];
+      const reference = `${stagedRef.book} ${stagedRef.chapter}:${target}`;
+      projector.stage({
+        source: 'scripture',
+        id: reference,
+        label: reference,
+        reference,
+        version,
+        text: row.text,
+        verses,
+        slides: buildVerseSlides({ book: stagedRef.book, chapter: stagedRef.chapter, version }, verses, fitRules(verses)),
+        origin: 'operator',
+      });
+    });
+  };
+
+  /*
+   * Together or apart — a range's one real choice.
+   *
+   * "Verse four and five" is staged on one slide while it fits, because that
+   * is what was asked for. The meter beside it is the honest check: words,
+   * not pixels, since the projector's type size is the church's own setting.
+   * Pressing the control re-slices the same verses; nothing is fetched.
+   */
+  const range = (preview?.verses?.length ?? 0) > 1;
+  const together = range && (preview?.slides?.length ?? 0) === 1;
+  const words = preview?.text ? wordCount(preview.text) : 0;
+  const fit = fitOf(words);
+  const reslice = () => {
+    if (!preview?.verses || !stagedRef) return;
+    projector.stage({
+      ...preview,
+      slides: buildVerseSlides(
+        { book: stagedRef.book, chapter: stagedRef.chapter, version: preview.version || 'KJV' },
+        preview.verses,
+        fitRules(preview.verses, !together),
+      ),
+    });
+  };
 
   return (
     <div className="flex min-h-0 flex-1 gap-[var(--tri-gap)]">
@@ -3226,11 +3478,37 @@ function Stage({ theme }: { theme: ThemeSettings }) {
         }
       >
         <div className="flex h-full min-h-0 flex-col gap-2">
-          <div className="min-h-0 flex-1">
-            <SlideCanvas theme={theme} slide={staged} empty="nothing staged" />
+          <div className="flex min-h-0 flex-1 items-stretch gap-1.5">
+            {stagedRef && <StepArrow dir={-1} onClick={() => step(-1)} disabled={stagedRef.start <= 1} />}
+            <div className="min-h-0 min-w-0 flex-1">
+              <SlideCanvas theme={theme} slide={staged} empty="nothing staged" />
+            </div>
+            {stagedRef && <StepArrow dir={1} onClick={() => step(1)} />}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <StageCaption item={preview} />
+            {preview?.source === 'scripture' && words > 0 && (
+              <span
+                className="shrink-0 text-[length:var(--tri-size-xs)] tabular-nums"
+                style={{ color: fit === 'fits' ? 'rgb(143 211 192 / 0.8)' : fit === 'tight' ? 'rgb(228 216 122 / 0.85)' : '#eac7c6' }}
+                title={`one slide reads comfortably up to ${FIT_WORDS} words and holds about ${TIGHT_WORDS}`}
+              >
+                {words} words · {together || !range ? fit : 'split'}
+              </span>
+            )}
+            {range && (
+              <button
+                type="button"
+                onClick={reslice}
+                className={cx(
+                  surface({ tone: 'ash', shape: 'control', interactive: true }),
+                  'tri-label shrink-0 px-2 py-[3px] lowercase text-[var(--tri-ink)]',
+                )}
+                title={together ? 'show one verse per slide' : 'show the verses together on one slide'}
+              >
+                {together ? 'separate' : 'together'}
+              </button>
+            )}
             {/* The staged reading's length, without a cursor to move — it
                 says "this is three screens" before the operator commits to
                 reading it out. */}
@@ -3430,6 +3708,11 @@ function LiveBody({ state }: { state?: string }) {
    */
   const mirror = projector.send;
   useEffect(() => engine.onEngineLive((item) => mirror(item)), [engine, mirror]);
+
+  /* The engine took the verse down — the preacher has moved on and stopped
+     saying its words. The wall is already clear; this box has to agree, or
+     the operator is looking at a "live" verse nobody can see. */
+  useEffect(() => window.api?.onVerseAutoDismiss?.(() => projector.clear()), [projector]);
 
   /* The bar's contents. The log listens to the state so a change speaks
      for itself, and the one action any line offers lands back here. */

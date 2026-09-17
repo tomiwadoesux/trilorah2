@@ -100,7 +100,6 @@ export function RecentServicesTile({ className }: { className?: string }) {
     <Panel
       className={className}
       bodyClass="pt-3"
-      unavailable="needs cloud sync — past services are stored in the church account"
     >
       <div className="flex h-full flex-col">
         {/* Only two words, for five columns. Naming every column would put

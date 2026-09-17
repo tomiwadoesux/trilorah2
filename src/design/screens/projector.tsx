@@ -62,6 +62,9 @@ export interface LiveItem {
    * congregation's. One slicer, one result, passed to both.
    */
   slides?: VerseSlide[];
+  /** The reading verse by verse — what lets a range be re-sliced together
+      or apart without going back to the database. */
+  verses?: { verse: number; text: string }[];
   origin?: Origin;
 }
 

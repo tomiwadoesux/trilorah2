@@ -43,6 +43,18 @@ export function emitTranscript(text: string): void {
   })
 }
 
+/**
+ * The transcript as something to READ: the recogniser's punctuation and
+ * casing, and whether the line is finished. on-transcript-update carries
+ * neither — every partial arrives there as if it were a new line — so a
+ * surface that wants to show a sentence growing and then settling needs this.
+ */
+export function emitTranscriptLine(text: string, isFinal: boolean): void {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    if (!win.isDestroyed()) win.webContents.send('on-transcript-line', { text, isFinal })
+  })
+}
+
 export function emitASRStatus(status: string): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-asr-status', status)

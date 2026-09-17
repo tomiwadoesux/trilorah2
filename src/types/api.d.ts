@@ -345,6 +345,112 @@ interface CloudOpResult {
 }
 
 /* ------------------------------------------------------------------ */
+/* Library folders                                                     */
+/* ------------------------------------------------------------------ */
+
+type LibraryId = 'presentations' | 'songs' | 'media';
+
+/** Mirrors `Folder` in electron/library/folders.ts. */
+interface LibraryFolder {
+  id: string;
+  name: string;
+  color?: string;
+  order: number;
+  createdAt: number;
+}
+
+/**
+ * One row per folder plus a `folderId: null` row for the unfoldered items,
+ * so a sidebar can render counts without counting anything itself.
+ */
+interface LibraryFolderStats {
+  folderId: string | null;
+  name: string;
+  count: number;
+}
+
+interface LibraryFoldersApi {
+  /**
+   * Passing `itemIds` also prunes mappings for items that no longer exist —
+   * the folder index is an overlay and never learns about deletions on its
+   * own, so the caller that knows the live ids is the one that tells it.
+   */
+  list(libraryId: LibraryId, itemIds?: string[]): Promise<{ folders: LibraryFolder[]; stats: LibraryFolderStats[] }>;
+  create(libraryId: LibraryId, name: string): Promise<LibraryFolder>;
+  rename(libraryId: LibraryId, id: string, name: string): Promise<LibraryFolder>;
+  setColor(libraryId: LibraryId, id: string, color: string): Promise<LibraryFolder>;
+  /** Deleting a folder never deletes items — they fall back to unfoldered. */
+  remove(libraryId: LibraryId, id: string): Promise<void>;
+  moveItem(libraryId: LibraryId, itemId: string, folderId: string | null): Promise<void>;
+  reorder(libraryId: LibraryId, ids: string[]): Promise<LibraryFolder[]>;
+  of(libraryId: LibraryId, itemId: string): Promise<string | null>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Songs                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The song types live in shared/types.ts (the stored record) and
+ * electron/songs/import.ts (the parser output). They are pulled in with
+ * `import(...)` expressions rather than top-level imports so this file stays
+ * an ambient script — one top-level import would turn it into a module and
+ * every interface above would stop being global.
+ */
+type ImportedSong = import('../../electron/songs/import').ImportedSong;
+type Song = import('../../shared/types').Song;
+type SongSection = import('../../shared/types').SongSection;
+type SongOrigin = import('../../shared/types').SongOrigin;
+type SongPatch = import('../../shared/types').SongPatch;
+type SongDuplicate = import('../../shared/types').SongDuplicate;
+type SongImportResult = import('../../shared/types').SongImportResult;
+
+/**
+ * What `importFiles()` returns — parsed only; nothing has reached the library
+ * yet. The UI shows the duplicate review off this, then calls `importCommit`.
+ */
+interface SongParseResult {
+  success: boolean;
+  canceled?: boolean;
+  songs?: ImportedSong[];
+  /**
+   * Files that could not be read or parsed, named individually. One unreadable
+   * file in a folder of exports never stops the other thirty-nine, so a
+   * non-empty `errors` alongside a full `songs` is a normal outcome.
+   */
+  errors?: { file: string; error: string }[];
+}
+
+interface SongsApi {
+  list(): Promise<Song[]>;
+  /**
+   * Why the library may be lying to you, or null when it is not.
+   *
+   * A songs.json the store could not parse leaves it read-only holding an
+   * empty list, so an empty library is ambiguous until this is checked: a
+   * fresh install and a truncated file look identical otherwise, and the
+   * wrong guess has a church re-importing four hundred songs over a file
+   * that still has them in it.
+   */
+  problem(): Promise<string | null>;
+  /** Null when there is no such song — a normal answer, not an error. */
+  get(id: string): Promise<Song | null>;
+  add(song: ImportedSong): Promise<Song>;
+  /** Null when the id is unknown or the patch is rejected (e.g. a blank title). */
+  update(id: string, patch: SongPatch): Promise<Song | null>;
+  /** False when the id was already gone. Deleting a seeded hymn is permanent. */
+  remove(id: string): Promise<boolean>;
+  importText(text: string, filename?: string): Promise<ImportedSong>;
+  /** Opens the native picker and parses. Writes nothing — follow with `importCommit`. */
+  importFiles(): Promise<SongParseResult>;
+  /**
+   * The write step. Everything passed in is imported; likely duplicates come
+   * back named in the report rather than dropped, for the operator to settle.
+   */
+  importCommit(songs: ImportedSong[]): Promise<SongImportResult>;
+}
+
+/* ------------------------------------------------------------------ */
 /* The bridge                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -357,6 +463,8 @@ interface WindowApi {
 
   /* Engine events --------------------------------------------------- */
   onTranscriptUpdate(callback: (text: string) => void): Unsubscribe;
+  /** Punctuated transcript lines, each marked final or still growing. */
+  onTranscriptLine?(callback: (line: { text: string; isFinal: boolean }) => void): Unsubscribe;
   onVersePreview(callback: (detection: VerseDetection) => void): Unsubscribe;
   onVerseDetected(callback: (detection: VerseDetection) => void): Unsubscribe;
   onAudioLevel(callback: (level: number) => void): Unsubscribe;
@@ -529,6 +637,16 @@ interface WindowApi {
   getAlert?(): Promise<ScreenAlert | null>;
   onAlert?(callback: (alert: ScreenAlert | null) => void): Unsubscribe;
   searchBibleText?(query: string, opts?: { version?: string; limit?: number }): Promise<BibleSearchHit[]>;
+
+  /* Library folders (BUILD-MAP 1.12) */
+  folders?: LibraryFoldersApi;
+
+  /* Songs — import (backlog 23) and the library behind it (BUILD-MAP 1.11) */
+  songs?: SongsApi;
+  /** Parse pasted text. Equivalent to `songs.importText`; kept for callers that predate the namespace. */
+  importSongText?(text: string, filename?: string): Promise<ImportedSong>;
+  /** Equivalent to `songs.importFiles`; kept for callers that predate the namespace. */
+  importSongFiles?(): Promise<SongParseResult>;
 
   /* Timers + message tokens — 2026-09-09 (BUILD-MAP 2.16–2.17) */
   listTimers?(): Promise<TimerSnapshot[]>;

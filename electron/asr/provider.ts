@@ -17,7 +17,10 @@ export type ASRProviderId = 'deepgram' | 'whisper-local'
 export interface ASRProvider {
   id: ASRProviderId
   start: (
-    onText: (text: string, isFinal: boolean) => void,
+    /* `display` is the recogniser's own casing and punctuation, when it has
+       any. The engine matches on lowercase; a person reading the transcript
+       wants the sentence. */
+    onText: (text: string, isFinal: boolean, display?: string) => void,
     onError?: (error: Error) => void,
     deviceLabel?: string,
     onStatus?: (message: string) => void

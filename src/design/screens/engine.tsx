@@ -78,6 +78,11 @@ export interface EngineValue {
   level: number;
   /** Newest last, capped. The sermon transcript as it arrives. */
   transcript: string[];
+  /**
+   * The transcript as sentences: what has been SAID (finished lines, newest
+   * last) and what is BEING said (the partial, replaced as it grows).
+   */
+  spoken: { lines: { id: number; text: string }[]; partial: string };
   /** What the real projector says it is doing. */
   screen: ScreenState;
 
@@ -119,6 +124,9 @@ export interface Proposal {
   /** The engine's confidence, or null when it did not say. */
   trust: number | null;
   slides: VerseSlide[];
+  verses: { verse: number; text: string }[];
+  /** The database had no such verse. Shown, but never offered to the room. */
+  missing: boolean;
 }
 
 const EngineContext = createContext<EngineValue | null>(null);
@@ -141,8 +149,42 @@ export const SLIDE_RULES = {
   maxCharsPerSlide: 240,
 };
 
+/*
+ * How much one slide can hold and still be read from the back row.
+ *
+ * Counted in words because that is what an operator can judge at a glance —
+ * "is this too much?" — and because the projector's type size is a setting,
+ * so any pixel answer would be wrong for somebody. Up to FIT_WORDS a reading
+ * sits comfortably; up to TIGHT_WORDS it fits but is dense; past that it
+ * should be split.
+ */
+export const FIT_WORDS = 45;
+export const TIGHT_WORDS = 70;
+
+export function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+export type Fit = 'fits' | 'tight' | 'too long';
+export function fitOf(words: number): Fit {
+  return words <= FIT_WORDS ? 'fits' : words <= TIGHT_WORDS ? 'tight' : 'too long';
+}
+
+/**
+ * "Verse four and five" means show four and five — together, if they fit.
+ * A range is kept on one slide until it would stop being readable, and only
+ * then walked verse by verse.
+ */
+export function fitRules(verses: { text: string }[], together?: boolean) {
+  const words = wordCount(verses.map((v) => v.text).join(' '));
+  const keep = together ?? (verses.length > 1 && words <= TIGHT_WORDS);
+  return { ...SLIDE_RULES, breakOnVerse: !keep, showVerseNumbers: keep && verses.length > 1 };
+}
+
 /** How many transcript lines to keep. Enough to read back, not a log file. */
 const TRANSCRIPT_CAP = 200;
+/** Finished sentences kept for the read-along. It shows six; this is slack. */
+const SPOKEN_CAP = 12;
 /** How many unanswered proposals the rail will hold. */
 const PROPOSAL_CAP = 4;
 
@@ -172,6 +214,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const [asr, setAsr] = useState<AsrStatus>('idle');
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState<string[]>([]);
+  const [spoken, setSpoken] = useState<{ lines: { id: number; text: string }[]; partial: string }>({
+    lines: [],
+    partial: '',
+  });
+  const spokenId = useRef(0);
   const [screen, setScreenState] = useState<ScreenState>('live');
   const [proposals, setProposals] = useState<Proposal[]>([]);
 
@@ -244,6 +291,18 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       }),
     );
 
+    off.push(
+      api.onTranscriptLine?.((line) => {
+        const text = String(line?.text || '').trim();
+        if (!text) return;
+        setSpoken((s) =>
+          line.isFinal
+            ? { lines: [...s.lines.slice(-(SPOKEN_CAP - 1)), { id: spokenId.current++, text }], partial: '' }
+            : { ...s, partial: text },
+        );
+      }),
+    );
+
     off.push(api.onScreenState?.((s: string) => setScreenState(s as ScreenState)));
 
     /*
@@ -273,6 +332,10 @@ export function EngineProvider({ children }: { children: ReactNode }) {
         const text = d.text || verses.map((v) => v.text).join(' ');
         if (!text) return;
         const version = d.version || 'KJV';
+        /* main.ts writes the literal "Verse N not found" into the text when
+           the row is absent. That is a message to the operator, and it must
+           never be one press away from the projector. */
+        const missing = /\bnot found\b/i.test(text);
         const proposal: Proposal = {
           id: `${reference}@${version}`,
           reference,
@@ -281,7 +344,9 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           /* No invented figure. The trust meter is the product's own promise
              and a made-up number on it is worse than no meter. */
           trust: typeof d.confidence === 'number' ? d.confidence : null,
-          slides: buildVerseSlides({ book: d.book, chapter: d.chapter, version }, verses, SLIDE_RULES),
+          slides: buildVerseSlides({ book: d.book, chapter: d.chapter, version }, verses, fitRules(verses)),
+          verses,
+          missing,
         };
         setProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id)].slice(0, PROPOSAL_CAP));
       }),
@@ -303,7 +368,8 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           reference,
           version,
           text: d.text || verses.map((v) => v.text).join(' '),
-          slides: buildVerseSlides({ book: d.book, chapter: d.chapter, version }, verses, SLIDE_RULES),
+          slides: buildVerseSlides({ book: d.book, chapter: d.chapter, version }, verses, fitRules(verses)),
+          verses,
           origin: 'engine',
         };
         setProposals((p) => p.filter((x) => x.id !== `${reference}@${version}`));
@@ -467,6 +533,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       asr,
       level,
       transcript,
+      spoken,
       screen,
       listen,
       show,
@@ -484,6 +551,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       asr,
       level,
       transcript,
+      spoken,
       screen,
       listen,
       show,
@@ -515,6 +583,7 @@ const DEAD: EngineValue = {
   asr: 'idle',
   level: 0,
   transcript: [],
+  spoken: { lines: [], partial: '' },
   screen: 'live',
   listen: () => undefined,
   show: () => false,

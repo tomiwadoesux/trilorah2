@@ -145,7 +145,7 @@ export function VoiceCommandsTile({ className }: { className?: string }) {
       blurb="What the pastor can say to the app from the pulpit — and what the app has noticed them saying."
       size={{ w: 640, h: 620 }}
       tile={({ onOpen }) => (
-        <Panel className="min-h-0 flex-1" bodyClass="pt-3" unavailable="phrases the preacher actually uses appear here after a service">
+        <Panel className="min-h-0 flex-1" bodyClass="pt-3">
           <div className="flex h-full min-h-0 flex-col gap-2">
             <button type="button" onClick={onOpen} className="flex shrink-0 items-baseline justify-between text-left">
               <span className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">voice commands</span>

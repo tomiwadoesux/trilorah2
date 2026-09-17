@@ -176,6 +176,19 @@
    * every tier.
    */
   --tri-bar-inset: calc((var(--tri-bar-h) - var(--tri-control-h)) / 2);
+  /*
+   * The rail's column — the run of service on the left of S-02.
+   *
+   * A token because the operator posture fills this column and the dashboard
+   * leaves it empty, and the two have to agree to the pixel. When the width
+   * lived only on the rail, switching to the dashboard took the column out of
+   * the row entirely and the whole top strip — the view switch included —
+   * slid left by its width and then grew to fill it. The bar is the one thing
+   * both postures share, so it is the one thing that must not move when you
+   * switch between them. The dashboard now holds the same column open and
+   * draws nothing in it. See Live.tsx.
+   */
+  --tri-rail-w: 18%;
   /* A field on a toolbar, where the control is one of several things sharing
      a row rather than the subject of the panel. Same type, less slab. */
   --tri-field-h-sm: 32px;

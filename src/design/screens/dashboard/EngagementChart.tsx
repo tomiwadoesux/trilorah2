@@ -182,7 +182,7 @@ export function EngagementChart({ className }: { className?: string }) {
     : [];
 
   return (
-    <Panel className={className} bodyClass="pt-3" unavailable="needs the companion page — amens and bookmarks come from phones">
+    <Panel className={className} bodyClass="pt-3">
       <div className="flex h-full flex-col gap-[var(--tri-gap)]">
         {/* (a) the day, and what the service has added up to so far */}
         <div className="flex shrink-0 items-baseline justify-between gap-[var(--tri-gap)]">

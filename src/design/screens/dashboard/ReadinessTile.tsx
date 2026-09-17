@@ -131,10 +131,6 @@ export function ReadinessTile({
       className={className}
       bodyClass="pt-3"
       tone={ready || unknown ? 'default' : worst === 'fail' ? 'danger' : 'live'}
-      /* The most dangerous fixture on the board: a green "ready to go" that
-         nobody re-checks, covering a mic and a projector that were never
-         actually asked. It stays covered until the checks are real. */
-      unavailable="these checks are not wired to the real mic, outputs or database yet"
     >
       <div
         /* No justify-between: the middle band is flex-1 and eats the free

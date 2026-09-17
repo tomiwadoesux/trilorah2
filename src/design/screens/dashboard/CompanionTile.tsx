@@ -62,8 +62,8 @@ export function CompanionTile({ className }: { className?: string }) {
    *
    * Until the church has both a public address and an account slug there is
    * no link to encode, and a QR drawn anyway would be a code that resolves
-   * to nothing — worse than no code, because someone will scan it. `link`
-   * staying null is what puts the tile into its unavailable state.
+   * to nothing — worse than no code, because someone will scan it. While
+   * `link` is null the tile draws no QR.
    */
   const [link, setLink] = useState<string | null>(null);
   const [qrSvg, setQrSvg] = useState<string | null>(null);
@@ -127,7 +127,6 @@ export function CompanionTile({ className }: { className?: string }) {
           className="relative min-h-0 flex-1"
           bodyClass="pt-3"
           tone={live ? 'live' : 'default'}
-          unavailable={link ? false : 'sign in and set your public address to get a scannable code'}
         >
           {confirm && (
             <Confirm

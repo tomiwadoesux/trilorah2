@@ -8,6 +8,7 @@ import { TrustTrendTile } from './TrustTrendTile';
 import { CompanionTile } from './CompanionTile';
 import { VoiceCommandsTile } from './VoiceCommandsTile';
 import { GivingTile } from './GivingTile';
+import { TimersTile } from './TimersTile';
 
 /*
  * S-02 · dashboard — the bento the rest of the team watches.
@@ -87,8 +88,15 @@ export function DashboardBento() {
         </div>
         <div className="flex min-w-0 basis-0 grow-[535] flex-col gap-[var(--tri-gap)]">
           {/* The QR wants a near-square; the giving strip is a row of chips
-              and wants exactly the short cell the drawing left under it. */}
-          <CompanionTile className="basis-0 grow-[259]" />
+              and wants exactly the short cell the drawing left under it.
+
+              Timers take their cell out of the companion's, not out of
+              giving's: the QR was the one tile on the board with slack in it
+              — a 148px code in a cell drawn for more — while the giving strip
+              is a single row of chips that has nothing to give. A few rows of
+              clock is what the leftover is worth. */}
+          <CompanionTile className="basis-0 grow-[175]" />
+          <TimersTile className="basis-0 grow-[84]" />
           <GivingTile className="basis-0 grow-[82]" />
         </div>
       </div>

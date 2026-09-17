@@ -68,6 +68,12 @@ export class DisplayTimingManager {
     const overlapRatio = windowSize > 0 ? overlapCount / windowSize : 0
     if (overlapRatio > 0.3) {
       this.resetDismissTimer()
+    } else if (!this.dismissTimer) {
+      // A pause cancels the countdown (a silent preacher is not "done with
+      // the verse"), and nothing restarted it: one three-second breath and
+      // the verse stayed up for the rest of the sermon. Speech that is no
+      // longer about the verse is what starts the clock again.
+      this.resetDismissTimer()
     }
   }
 

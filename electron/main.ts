@@ -7,6 +7,7 @@ import {
   shouldEmit,
   emitVerseDetected,
   emitTranscript,
+  emitTranscriptLine,
   emitASRStatus,
   emitSegmentChanged,
   emitMediaSuggestion,
@@ -746,7 +747,7 @@ function startASR(deviceLabel?: string) {
   emitASRStatus('Connecting...')
   activeASR.start(
     // onText callback
-    (rawText, isFinal) => {
+    (rawText, isFinal, display) => {
       // Per-preacher vocabulary fixes proper nouns before anything reads the text.
       let text = rawText
       const vocabPid = activePreacherId()
@@ -756,6 +757,7 @@ function startASR(deviceLabel?: string) {
       if (isFinal) lastHeardText = text
       console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${text}`)
       emitTranscript(text)
+      emitTranscriptLine(display ?? text, isFinal)
       if (isFinal) {
         const segType = transitionDetector?.getCurrentSegment().type ?? 'unknown'
         pushTranscriptChunk(text, true, segType)

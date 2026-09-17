@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
+import type { SongPatch } from '../shared/types'
+import type { ImportedSong } from './songs/import'
 
 contextBridge.exposeInMainWorld('api', {
   // Fetch a chapter by book ID and chapter number (optionally with version)
@@ -21,6 +23,13 @@ contextBridge.exposeInMainWorld('api', {
     const subscription = (_event: IpcRendererEvent, text: string) => callback(text)
     ipcRenderer.on('on-transcript-update', subscription)
     return () => ipcRenderer.removeListener('on-transcript-update', subscription)
+  },
+
+  // The transcript as readable lines: punctuated, and marked final or not
+  onTranscriptLine: (callback: (line: { text: string; isFinal: boolean }) => void) => {
+    const subscription = (_event: IpcRendererEvent, line: { text: string; isFinal: boolean }) => callback(line)
+    ipcRenderer.on('on-transcript-line', subscription)
+    return () => ipcRenderer.removeListener('on-transcript-line', subscription)
   },
 
   // Listener for AI verse PREVIEW events (goes to preview first)
@@ -395,10 +404,24 @@ contextBridge.exposeInMainWorld('api', {
   // Scripture → background preset
   presetForReference: (book: string, chapter?: number, verse?: number) =>
     ipcRenderer.invoke('preset-for-reference', { book, chapter, verse }),
-  // Song import (item 23)
+  // Song import (item 23) — parse only, nothing is written
   importSongText: (text: string, filename?: string) =>
     ipcRenderer.invoke('songs-import-text', { text, filename }),
   importSongFiles: () => ipcRenderer.invoke('songs-import-file'),
+  // Song library (item 1.11). `importCommit` is the second half of import:
+  // parse first, let the operator review the duplicates, then commit.
+  songs: {
+    list: () => ipcRenderer.invoke('songs-list'),
+    problem: () => ipcRenderer.invoke('songs-problem'),
+    get: (id: string) => ipcRenderer.invoke('songs-get', { id }),
+    add: (song: ImportedSong) => ipcRenderer.invoke('songs-add', { song }),
+    update: (id: string, patch: SongPatch) => ipcRenderer.invoke('songs-update', { id, patch }),
+    remove: (id: string) => ipcRenderer.invoke('songs-remove', { id }),
+    importText: (text: string, filename?: string) =>
+      ipcRenderer.invoke('songs-import-text', { text, filename }),
+    importFiles: () => ipcRenderer.invoke('songs-import-file'),
+    importCommit: (songs: ImportedSong[]) => ipcRenderer.invoke('songs-import-commit', { songs })
+  },
   // Evals (item 25)
   exportEvalFixtures: () => ipcRenderer.invoke('evals-export-fixtures')
 })

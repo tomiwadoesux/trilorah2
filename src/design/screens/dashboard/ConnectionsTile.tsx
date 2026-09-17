@@ -62,7 +62,7 @@ const RULE = 'inset 0 -1px 0 rgb(255 255 255 / 0.07)';
 
 export function ConnectionsTile({ className }: { className?: string }) {
   return (
-    <Panel className={className} bodyClass="pt-3" unavailable="not wired to the real output and device state yet">
+    <Panel className={className} bodyClass="pt-3">
       <div className="flex h-full flex-col">
         <div
           className="flex shrink-0 items-baseline justify-between gap-2 pb-1.5 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]"

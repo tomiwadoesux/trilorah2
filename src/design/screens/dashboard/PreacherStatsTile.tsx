@@ -38,7 +38,7 @@ const MUTED = 'rgb(229 243 242 / 0.45)';
 
 export function PreacherStatsTile({ className }: { className?: string }) {
   return (
-    <Panel className={className} bodyClass="pt-3" unavailable="builds up after a few services with this preacher">
+    <Panel className={className} bodyClass="pt-3">
       <div
         className="flex h-full min-h-0 flex-col justify-between"
         /* cqw only means anything with a container under it, and it has to be
