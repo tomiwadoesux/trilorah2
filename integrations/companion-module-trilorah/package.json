@@ -1,0 +1,18 @@
+{
+  "name": "trilorah-companion",
+  "version": "0.1.0",
+  "description": "Bitfocus Companion module for Trilorah — Stream Deck control of scripture, screen state, and alerts",
+  "main": "src/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "package": "companion-module-build"
+  },
+  "dependencies": {
+    "@companion-module/base": "~1.11.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@companion-module/tools": "^2.1.0"
+  }
+}

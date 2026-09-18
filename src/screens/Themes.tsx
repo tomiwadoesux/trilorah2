@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toDisplayUrl } from '../../shared/mediaUrl';
 import { useAppStore } from '../stores/appStore';
 import { Button, EngineNote, Panel, PanelHeader, SectionLabel, TextButton, hasEngine } from '../components/ui';
 
@@ -288,7 +289,7 @@ export function Themes() {
           className="relative flex min-h-64 flex-col items-center justify-center overflow-hidden px-10 py-12 text-center"
           style={{
             background: backgroundUrl
-              ? `#000 url(${backgroundUrl}) ${bgPosition} / ${bgSizeCss} no-repeat`
+              ? `#000 url(${toDisplayUrl(backgroundUrl)}) ${bgPosition} / ${bgSizeCss} no-repeat`
               : '#1a1a1a',
           }}
         >

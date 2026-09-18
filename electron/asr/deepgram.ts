@@ -11,6 +11,7 @@ let usingWindowMic = false
 let deepgramConnection: any = null
 let micProcess: ChildProcess | null = null
 let currentDeviceLabel: string | undefined
+let currentOnStatus: ((message: string) => void) | undefined
 const SAMPLE_RATE = 48000
 
 /** Vocabulary boosts ("Ayotomiwa:2") — see preachers/vocabulary.ts. */
@@ -31,9 +32,11 @@ export function setDeepgramKeywords(list: string[]): void {
 export function startDeepgram(
   onText: (text: string, isFinal: boolean, display?: string) => void,
   onError?: (error: Error) => void,
-  deviceLabel?: string
+  deviceLabel?: string,
+  onStatus?: (message: string) => void
 ): void {
   currentDeviceLabel = deviceLabel
+  currentOnStatus = onStatus
   const apiKey = process.env.DEEPGRAM_API_KEY
   if (!apiKey) {
     console.error('❌ DEEPGRAM_API_KEY not set in environment')
@@ -63,6 +66,11 @@ export function startDeepgram(
   deepgramConnection.on(LiveTranscriptionEvents.Open, () => {
     console.log('✅ Deepgram connection opened')
     startMicrophoneCapture()
+    // Only now is the app genuinely listening: the socket is up and the mic
+    // has been asked for. Saying so any earlier — as the caller used to, the
+    // instant start() returned — left the pill reading 'Listening...' through
+    // a failed connection, with no audio behind it.
+    currentOnStatus?.('Listening...')
   })
   deepgramConnection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const transcript = data.channel?.alternatives?.[0]?.transcript

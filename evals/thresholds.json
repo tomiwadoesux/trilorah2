@@ -1,0 +1,5 @@
+{
+  "precision": 0.95,
+  "recall": 0.9,
+  "falsePositiveRate": 0.05
+}

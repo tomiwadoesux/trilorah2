@@ -1,0 +1,16 @@
+{
+  "id": "trilorah",
+  "name": "trilorah",
+  "shortname": "trilorah",
+  "description": "Control Trilorah — approve verses, black / logo, message alerts — from a Stream Deck.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": "",
+  "bugs": "",
+  "maintainers": [{ "name": "Trilorah" }],
+  "legacyIds": [],
+  "runtime": { "type": "node18", "api": "nodejs-ipc", "apiVersion": "0.0.0", "entrypoint": "../src/main.js" },
+  "manufacturer": "Trilorah",
+  "products": ["Trilorah"],
+  "keywords": ["church", "scripture", "presentation"]
+}

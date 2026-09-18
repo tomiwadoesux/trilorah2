@@ -428,6 +428,23 @@ export class SpokenReferenceResolver {
   private lastEmitKey = ''
   private lastEmitAt = 0
 
+  /** The reference parsed from the utterance currently in flight.
+   *
+   *  Deepgram sends cumulative partials, so "romans four twenty one" arrives as
+   *  four separate re-parses and the third of them genuinely reads 4:20 — the
+   *  words "twenty one" had not finished arriving. Emitting each parse as it
+   *  came put 4:20 on the projector before 4:21, and 4:21 before 4:21-22.
+   *
+   *  A refinement cannot be recognised after the fact: the dedup below keys on
+   *  the whole reference, so 4:20 and 4:21 are simply two different references.
+   *  The only thing that reliably marks an utterance as finished is the
+   *  recogniser's own isFinal, so a partial parks its result here and the final
+   *  releases it. Whisper sends finals only and is unaffected either way. */
+  private heldEmit: (() => void) | null = null
+
+  /** Whether the chunk being walked right now was the recogniser's final. */
+  private utteranceFinal = true
+
   constructor(onDetection: VerseCallback, opts: ResolverOptions = {}) {
     this.onDetection = onDetection
     this.bareBookGate = opts.bareBookGate ?? (() => true)
@@ -457,10 +474,29 @@ export class SpokenReferenceResolver {
     this.pendingChapter = null
     this.pendingAt = 0
     this.pendingAdjacent = false
+    // An abandoned utterance must not surface later behind the next one.
+    this.heldEmit = null
   }
 
   /** Feed one ASR chunk. Partial chunks refresh state; finals detect fully. */
   process(text: string, isFinal: boolean): void {
+    this.utteranceFinal = isFinal
+    try {
+      this.walkChunk(text, isFinal)
+    } finally {
+      // A final releases whatever the partials settled on, including when the
+      // final itself parsed nothing new — Deepgram often closes an utterance
+      // with a chunk that adds no words, and the reference would otherwise sit
+      // held forever.
+      if (isFinal && this.heldEmit) {
+        const held = this.heldEmit
+        this.heldEmit = null
+        held()
+      }
+    }
+  }
+
+  private walkChunk(text: string, isFinal: boolean): void {
     const now = this.now()
     if (this.pendingBook && now - this.pendingAt > PENDING_TTL_MS) {
       this.reset()
@@ -805,6 +841,33 @@ export class SpokenReferenceResolver {
   }
 
   private emit(
+    book: string,
+    chapter: number | null,
+    verse: number | null,
+    rangeEnd: number | null,
+    confidence: number,
+    now: number
+  ): void {
+    const key = `${book}|${chapter}|${verse}|${rangeEnd ?? ''}`
+    if (key === this.lastEmitKey && now - this.lastEmitAt < DEDUP_WINDOW_MS) {
+      return
+    }
+
+    // Mid-utterance: park the newest reading and let a later partial overwrite
+    // it. Each partial re-parses the whole sentence, so the last one standing
+    // when isFinal arrives is the complete reading — 4:21, never the 4:20 that
+    // the truncated "romans four twenty" parsed to a moment earlier.
+    if (!this.utteranceFinal) {
+      this.heldEmit = () => this.commit(book, chapter, verse, rangeEnd, confidence, this.now())
+      return
+    }
+
+    this.heldEmit = null
+    this.commit(book, chapter, verse, rangeEnd, confidence, now)
+  }
+
+  /** The emit proper, once the utterance that produced it has settled. */
+  private commit(
     book: string,
     chapter: number | null,
     verse: number | null,

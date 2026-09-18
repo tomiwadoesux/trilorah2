@@ -33,6 +33,11 @@ export interface QueueItem {
   preview?: string;
   /** Scripture: the verse text, carried from the drag. */
   quote?: string;
+  /** Song: enough to go live from the row. Media: the file. */
+  lines?: string[];
+  title?: string;
+  section?: string;
+  path?: string;
 }
 
 /*

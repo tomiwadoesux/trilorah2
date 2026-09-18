@@ -57,6 +57,19 @@ body {
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 
+/* A song section. Same face, weight and colour as a verse so the wall does
+   not change character between a reading and a chorus; the lines sit a
+   little tighter because lyric lines are short and read as one breath. The
+   stage's own fade applies — the block is always `visible`, and it comes and
+   goes by being mounted, so a song never has to wait for a verse to fade. */
+.output-song .output-verse {
+  line-height: 1.25;
+  margin: 0.15em 0;
+}
+.output-song .output-ref {
+  margin-top: 3vh;
+}
+
 /* Optional themed background (only when a background URL is set). */
 .output-background {
   position: absolute;

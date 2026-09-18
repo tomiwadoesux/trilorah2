@@ -216,3 +216,68 @@ describe('preaching-cadence fixes', () => {
     expect(c.detections.map(ref)).toEqual(['Exodus 4:7'])
   })
 })
+
+describe('SpokenReferenceResolver — a growing utterance emits once, complete', () => {
+  const ref = (d: ResolvedReference) =>
+    `${d.book} ${d.chapter}:${d.verse}${d.endVerse ? '-' + d.endVerse : ''}`
+  // Deepgram re-sends the whole sentence as it grows, so every one of these
+  // partials is a complete-looking parse of a sentence that is not over yet.
+  // Before the hold, the projector showed each of them in turn.
+  it('never shows the tens part of a compound verse number', () => {
+    const c = collect()
+    c.feed('romans', false)
+    c.feed('romans four', false)
+    c.feed('romans four twenty', false)
+    c.feed('romans four twenty one', false)
+    c.feed('romans four twenty one', true)
+    expect(c.detections.map(ref)).toEqual(['Romans 4:21'])
+  })
+
+  it('holds every tens boundary, not just twenty', () => {
+    for (const [spoken, expected] of [
+      ['thirty one', 'Romans 4:31'],
+      ['forty two', 'Romans 4:42'],
+      ['fifty five', 'Romans 4:55']
+    ] as const) {
+      const c = collect()
+      const words = spoken.split(' ')
+      c.feed(`romans four ${words[0]}`, false)
+      c.feed(`romans four ${spoken}`, false)
+      c.feed(`romans four ${spoken}`, true)
+      expect(c.detections.map(ref)).toEqual([expected])
+    }
+  })
+
+  it('never shows the endpoints of a range before the range', () => {
+    const c = collect()
+    c.feed('romans 4 21', false)
+    c.feed('romans 4 21 to', false)
+    c.feed('romans 4 21 to 22', false)
+    c.feed('romans 4 21 to 22', true)
+    expect(c.detections.map(ref)).toEqual(['Romans 4:21-22'])
+  })
+
+  it('releases the held reference when the final adds no new words', () => {
+    // Deepgram routinely closes an utterance with a chunk identical to the
+    // last partial. The reference must not sit held forever.
+    const c = collect()
+    c.feed('john three sixteen', false)
+    c.feed('john three sixteen', true)
+    expect(c.detections.map(ref)).toEqual(['John 3:16'])
+  })
+
+  it('a finals-only provider is unaffected', () => {
+    // whisper-local never sends a partial, so nothing is ever held.
+    const c = collect()
+    c.feed('romans four twenty one')
+    expect(c.detections.map(ref)).toEqual(['Romans 4:21'])
+  })
+
+  it('drops a held reference the preacher abandoned mid-sentence', () => {
+    const c = collect()
+    c.feed('romans four twenty', false)
+    c.tick(60_000)
+    c.feed('anyway lets pray', true)
+    expect(c.detections.map(ref)).toEqual([])
+  })
+})

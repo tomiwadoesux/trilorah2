@@ -12,6 +12,10 @@ export const defaults = {
   pixabayApiKey: '',
   pexelsApiKey: '',
   agentEnabled: true,
+  /** Lets speech detection blank the projector by itself (prayer-mode verse
+   *  dismiss, the 30 s worship auto-clear). Off: the screen changes only when
+   *  an operator pushes, clears or blacks it. */
+  autoScreenActions: false,
   autoDisplayTimeout: 15,
   falsePositiveFilterEnabled: true,
   defaultFontSize: 1,
@@ -122,6 +126,9 @@ export const defaults = {
   // Which job each output window does; ids are the three windows main.ts
   // opens (main / alternate / third). See electron/output/outputState.ts.
   outputRoles: {} as Partial<Record<'main' | 'alternate' | 'third', 'projector' | 'stream' | 'stage'>>,
+  /** Operator's display choice per output, by Electron display id. Unset →
+   *  externals are handed out in order (output/displays.ts). */
+  outputDisplays: {} as Partial<Record<'main' | 'alternate' | 'third', number>>,
   // Stream output: lower-third band for OBS/vMix capture, or the full
   // projector look on a transparent canvas.
   streamLayout: 'lower-third' as 'lower-third' | 'full',

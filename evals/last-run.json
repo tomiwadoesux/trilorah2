@@ -1,0 +1,2710 @@
+{
+  "ranAt": "2026-09-12T23:31:06.483Z",
+  "totalFixtures": 101,
+  "overall": {
+    "fixtures": 101,
+    "passed": 101,
+    "tp": 82,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1,
+    "recall": 1,
+    "falsePositiveRate": 0,
+    "medianLatencyMs": 0.015958000000011907,
+    "knownFailures": 0
+  },
+  "byLang": {
+    "en": {
+      "fixtures": 65,
+      "passed": 65,
+      "tp": 49,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.014082999999999402,
+      "knownFailures": 0
+    },
+    "es": {
+      "fixtures": 8,
+      "passed": 8,
+      "tp": 7,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.016479000000003907,
+      "knownFailures": 0
+    },
+    "fr": {
+      "fixtures": 7,
+      "passed": 7,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.03166699999999878,
+      "knownFailures": 0
+    },
+    "hi": {
+      "fixtures": 6,
+      "passed": 6,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.012978999999987195,
+      "knownFailures": 0
+    },
+    "pt": {
+      "fixtures": 7,
+      "passed": 7,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.017833999999993466,
+      "knownFailures": 0
+    },
+    "zh": {
+      "fixtures": 8,
+      "passed": 8,
+      "tp": 8,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01918799999999976,
+      "knownFailures": 0
+    }
+  },
+  "byPreacher": {},
+  "byTag": {
+    "alias": {
+      "fixtures": 4,
+      "passed": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01593750000000682,
+      "knownFailures": 0
+    },
+    "asr-partials": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.031334000000015294,
+      "knownFailures": 0
+    },
+    "bare-numbers": {
+      "fixtures": 25,
+      "passed": 25,
+      "tp": 27,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.012584000000003925,
+      "knownFailures": 0
+    },
+    "chapter-only": {
+      "fixtures": 7,
+      "passed": 7,
+      "tp": 7,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.018374999999991815,
+      "knownFailures": 0
+    },
+    "chunked": {
+      "fixtures": 3,
+      "passed": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.03466599999998721,
+      "knownFailures": 0
+    },
+    "code-switch": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.022209000000003698,
+      "knownFailures": 0
+    },
+    "colon": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.05587500000001455,
+      "knownFailures": 0
+    },
+    "compound-number": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.032250000000004775,
+      "knownFailures": 0
+    },
+    "connector": {
+      "fixtures": 3,
+      "passed": 3,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.017833999999993466,
+      "knownFailures": 0
+    },
+    "digits": {
+      "fixtures": 11,
+      "passed": 11,
+      "tp": 11,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.013208000000020093,
+      "knownFailures": 0
+    },
+    "explicit": {
+      "fixtures": 38,
+      "passed": 38,
+      "tp": 38,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01943800000000806,
+      "knownFailures": 0
+    },
+    "hundreds": {
+      "fixtures": 4,
+      "passed": 4,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.022812999999999306,
+      "knownFailures": 0
+    },
+    "multi-ref": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01937499999999659,
+      "knownFailures": 0
+    },
+    "multi-token-range-end": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01387500000001296,
+      "knownFailures": 0
+    },
+    "narrative": {
+      "fixtures": 14,
+      "passed": 14,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01650000000000773,
+      "knownFailures": 0
+    },
+    "negative": {
+      "fixtures": 22,
+      "passed": 22,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.014374999999986926,
+      "knownFailures": 0
+    },
+    "number-words": {
+      "fixtures": 6,
+      "passed": 6,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01918799999999976,
+      "knownFailures": 0
+    },
+    "numbers-after-book": {
+      "fixtures": 2,
+      "passed": 2,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.021082999999990193,
+      "knownFailures": 0
+    },
+    "numbers-no-book": {
+      "fixtures": 8,
+      "passed": 8,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.014103999999989014,
+      "knownFailures": 0
+    },
+    "ordinal-book": {
+      "fixtures": 14,
+      "passed": 14,
+      "tp": 14,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.011583500000000413,
+      "knownFailures": 0
+    },
+    "ordinal-chapter": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.030499999999989313,
+      "knownFailures": 0
+    },
+    "preamble": {
+      "fixtures": 6,
+      "passed": 6,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.02435400000000243,
+      "knownFailures": 0
+    },
+    "psalms": {
+      "fixtures": 1,
+      "passed": 1,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.013208000000020093,
+      "knownFailures": 0
+    },
+    "range": {
+      "fixtures": 7,
+      "passed": 7,
+      "tp": 7,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.016791999999981044,
+      "knownFailures": 0
+    },
+    "tens": {
+      "fixtures": 13,
+      "passed": 13,
+      "tp": 13,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.01362499999999045,
+      "knownFailures": 0
+    },
+    "verse-list": {
+      "fixtures": 2,
+      "passed": 2,
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.02435400000000243,
+      "knownFailures": 0
+    }
+  },
+  "knownFailures": [],
+  "failures": [],
+  "results": [
+    {
+      "id": "en-001",
+      "lang": "en",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.45649999999997704,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-002",
+      "lang": "en",
+      "tags": [
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.15849999999997522,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-003",
+      "lang": "en",
+      "tags": [
+        "chapter-only",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.03941599999998857,
+      "detections": [
+        {
+          "book": "1 Corinthians",
+          "chapter": 13,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-004",
+      "lang": "en",
+      "tags": [
+        "chapter-only"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.05316600000000449,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 23,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-005",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "range"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.038792000000000826,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 1,
+          "endVerse": 5
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-006",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.03887499999999022,
+      "detections": [
+        {
+          "book": "2 Timothy",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-007",
+      "lang": "en",
+      "tags": [
+        "digits"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01895800000002623,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-008",
+      "lang": "en",
+      "tags": [
+        "chunked",
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.08125000000001137,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": null,
+          "endVerse": null
+        },
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-009",
+      "lang": "en",
+      "tags": [
+        "chapter-only",
+        "ordinal-chapter"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.030499999999989313,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-010",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "hundreds"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.027792000000005146,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 119,
+          "verse": 11,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-011",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013249999999999318,
+      "detections": [
+        {
+          "book": "1 John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-012",
+      "lang": "en",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.016667000000012422,
+      "detections": [
+        {
+          "book": "Genesis",
+          "chapter": 1,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-013",
+      "lang": "en",
+      "tags": [
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.022582999999997355,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 5,
+          "verse": 3,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-014",
+      "lang": "en",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013958000000002357,
+      "detections": [
+        {
+          "book": "Hebrews",
+          "chapter": 11,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-015",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "verse-list"
+      ],
+      "knownFailure": false,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.03083300000000122,
+      "detections": [
+        {
+          "book": "Ephesians",
+          "chapter": 2,
+          "verse": 8,
+          "endVerse": null
+        },
+        {
+          "book": "Ephesians",
+          "chapter": 2,
+          "verse": 9,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-016",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "preamble"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.022792000000009693,
+      "detections": [
+        {
+          "book": "Philippians",
+          "chapter": 4,
+          "verse": 13,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-017",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.017125000000021373,
+      "detections": [
+        {
+          "book": "Revelation",
+          "chapter": 21,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-018",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "alias"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.02041699999998059,
+      "detections": [
+        {
+          "book": "Revelation",
+          "chapter": 22,
+          "verse": 20,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-019",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.021291000000019267,
+      "detections": [
+        {
+          "book": "Isaiah",
+          "chapter": 53,
+          "verse": 5,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-020",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.012584000000003925,
+      "detections": [
+        {
+          "book": "Jeremiah",
+          "chapter": 29,
+          "verse": 11,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-021",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "verse-list"
+      ],
+      "knownFailure": false,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.017875000000003638,
+      "detections": [
+        {
+          "book": "Proverbs",
+          "chapter": 3,
+          "verse": 5,
+          "endVerse": null
+        },
+        {
+          "book": "Proverbs",
+          "chapter": 3,
+          "verse": 6,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-022",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.008250000000003865,
+      "detections": [
+        {
+          "book": "2 Corinthians",
+          "chapter": 5,
+          "verse": 17,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-023",
+      "lang": "en",
+      "tags": [
+        "chapter-only",
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009917000000001508,
+      "detections": [
+        {
+          "book": "Acts",
+          "chapter": 2,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-024",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "alias"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.012208000000015318,
+      "detections": [
+        {
+          "book": "Acts",
+          "chapter": 1,
+          "verse": 8,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-025",
+      "lang": "en",
+      "tags": [
+        "digits"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.007542000000000826,
+      "detections": [
+        {
+          "book": "Galatians",
+          "chapter": 5,
+          "verse": 22,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-026",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009916000000004033,
+      "detections": [
+        {
+          "book": "1 Peter",
+          "chapter": 5,
+          "verse": 7,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-027",
+      "lang": "en",
+      "tags": [
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.008957999999978483,
+      "detections": [
+        {
+          "book": "James",
+          "chapter": 1,
+          "verse": 5,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-028",
+      "lang": "en",
+      "tags": [
+        "range"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.016791999999981044,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 12,
+          "verse": 1,
+          "endVerse": 2
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-029",
+      "lang": "en",
+      "tags": [
+        "chunked",
+        "explicit",
+        "asr-partials"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.031334000000015294,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": null,
+          "endVerse": null
+        },
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-030",
+      "lang": "en",
+      "tags": [
+        "range",
+        "tens",
+        "multi-token-range-end"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01387500000001296,
+      "detections": [
+        {
+          "book": "Luke",
+          "chapter": 15,
+          "verse": 11,
+          "endVerse": 32
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-031",
+      "lang": "en",
+      "tags": [
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009332999999998037,
+      "detections": [
+        {
+          "book": "Mark",
+          "chapter": 16,
+          "verse": 15,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-032",
+      "lang": "en",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.006875000000007958,
+      "detections": [
+        {
+          "book": "Deuteronomy",
+          "chapter": 6,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-033",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "alias"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.007499999999993179,
+      "detections": [
+        {
+          "book": "Song of Solomon",
+          "chapter": 2,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-034",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.008250000000003865,
+      "detections": [
+        {
+          "book": "1 Samuel",
+          "chapter": 17,
+          "verse": 45,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-035",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.0071659999999837964,
+      "detections": [
+        {
+          "book": "1 John",
+          "chapter": 4,
+          "verse": 8,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-036",
+      "lang": "en",
+      "tags": [
+        "digits",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.006875000000007958,
+      "detections": [
+        {
+          "book": "1 John",
+          "chapter": 4,
+          "verse": 8,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-037",
+      "lang": "en",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.005707999999998492,
+      "detections": [
+        {
+          "book": "Ecclesiastes",
+          "chapter": 3,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-038",
+      "lang": "en",
+      "tags": [
+        "range",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.011750000000006366,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 28,
+          "verse": 19,
+          "endVerse": 20
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-039",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01037500000001046,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 91,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-040",
+      "lang": "en",
+      "tags": [
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.007125000000002046,
+      "detections": [
+        {
+          "book": "Colossians",
+          "chapter": 3,
+          "verse": 2,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-041",
+      "lang": "en",
+      "tags": [
+        "explicit",
+        "alias",
+        "preamble"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.019666999999998325,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 1,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-042",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.008667000000002645,
+      "detections": [
+        {
+          "book": "Numbers",
+          "chapter": 6,
+          "verse": 24,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-043",
+      "lang": "en",
+      "tags": [
+        "chunked",
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.03466599999998721,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": null,
+          "endVerse": null
+        },
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-044",
+      "lang": "en",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.006583000000006223,
+      "detections": [
+        {
+          "book": "2 Chronicles",
+          "chapter": 7,
+          "verse": 14,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-045",
+      "lang": "en",
+      "tags": [
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009999999999990905,
+      "detections": [
+        {
+          "book": "Titus",
+          "chapter": 2,
+          "verse": 11,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-046",
+      "lang": "en",
+      "tags": [
+        "multi-ref"
+      ],
+      "knownFailure": false,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01937499999999659,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        },
+        {
+          "book": "Romans",
+          "chapter": 5,
+          "verse": 8,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-001",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.018375000000020236,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-002",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.014082999999999402,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-003",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.014624999999995225,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-004",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.014042000000017651,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-005",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013958000000002357,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-006",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.011332999999979165,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-007",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.014124999999978627,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-008",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.015457999999995309,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-009",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013166000000012446,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-010",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.010249999999984993,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-011",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.023083999999983007,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-012",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.0161250000000166,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-013",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01579200000000469,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-014",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009375000000005684,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-015",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "numbers-no-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013417000000004009,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-016",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.006249999999994316,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-017",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01362499999999045,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-018",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative",
+        "numbers-after-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.02070799999998485,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-neg-019",
+      "lang": "en",
+      "tags": [
+        "negative",
+        "narrative",
+        "numbers-after-book"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.021457999999995536,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-001",
+      "lang": "es",
+      "tags": [
+        "explicit",
+        "preamble"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.019209000000017795,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-002",
+      "lang": "es",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01125000000001819,
+      "detections": [
+        {
+          "book": "1 Corinthians",
+          "chapter": 13,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-003",
+      "lang": "es",
+      "tags": [
+        "explicit",
+        "hundreds"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.014791999999999916,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 119,
+          "verse": 11,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-004",
+      "lang": "es",
+      "tags": [
+        "explicit",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01362499999999045,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-005",
+      "lang": "es",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.008916999999996733,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 5,
+          "verse": 3,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-006",
+      "lang": "es",
+      "tags": [
+        "code-switch",
+        "explicit"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.022209000000003698,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-007",
+      "lang": "es",
+      "tags": [
+        "range",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.018166000000007898,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 12,
+          "verse": 1,
+          "endVerse": 2
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "es-neg-001",
+      "lang": "es",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.022709000000020296,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-001",
+      "lang": "fr",
+      "tags": [
+        "explicit",
+        "preamble"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.05912499999999454,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-002",
+      "lang": "fr",
+      "tags": [
+        "explicit",
+        "hundreds",
+        "compound-number"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.032250000000004775,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 119,
+          "verse": 11,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-003",
+      "lang": "fr",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.020375000000001364,
+      "detections": [
+        {
+          "book": "1 Corinthians",
+          "chapter": 13,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-004",
+      "lang": "fr",
+      "tags": [
+        "explicit",
+        "tens"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.03166699999999878,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-005",
+      "lang": "fr",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.015958000000011907,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 5,
+          "verse": 3,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-006",
+      "lang": "fr",
+      "tags": [
+        "chapter-only"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.018374999999991815,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 23,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "fr-neg-001",
+      "lang": "fr",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.03999999999999204,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-001",
+      "lang": "pt",
+      "tags": [
+        "explicit",
+        "preamble"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.025915999999995165,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-002",
+      "lang": "pt",
+      "tags": [
+        "explicit",
+        "tens",
+        "connector"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.02183299999998667,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-003",
+      "lang": "pt",
+      "tags": [
+        "chapter-only",
+        "tens",
+        "connector"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.012207999999986896,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 23,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-004",
+      "lang": "pt",
+      "tags": [
+        "bare-numbers",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.011916999999982636,
+      "detections": [
+        {
+          "book": "1 Corinthians",
+          "chapter": 13,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-005",
+      "lang": "pt",
+      "tags": [
+        "bare-numbers"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009916000000004033,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 5,
+          "verse": 3,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-006",
+      "lang": "pt",
+      "tags": [
+        "explicit",
+        "hundreds",
+        "connector"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.017833999999993466,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 119,
+          "verse": 11,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "pt-neg-001",
+      "lang": "pt",
+      "tags": [
+        "negative",
+        "narrative"
+      ],
+      "knownFailure": false,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.02075000000002092,
+      "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "hi-001",
+      "lang": "hi",
+      "tags": [
+        "explicit",
+        "digits"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.016792000000009466,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "hi-002",
+      "lang": "hi",
+      "tags": [
+        "explicit",
+        "number-words"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.042833000000001675,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "hi-003",
+      "lang": "hi",
+      "tags": [
+        "explicit",
+        "digits"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013582999999982803,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "hi-004",
+      "lang": "hi",
+      "tags": [
+        "chapter-only",
+        "digits"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.007459000000011429,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 23,
+          "verse": null,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "hi-005",
+      "lang": "hi",
+      "tags": [
+        "digits"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.009167000000019243,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 5,
+          "verse": 3,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "hi-006",
+      "lang": "hi",
+      "tags": [
+        "explicit",
+        "digits",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.012374999999991587,
+      "detections": [
+        {
+          "book": "1 Corinthians",
+          "chapter": 13,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-001",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "digits",
+        "preamble"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.2827090000000112,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-002",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "number-words"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.12204199999999332,
+      "detections": [
+        {
+          "book": "John",
+          "chapter": 3,
+          "verse": 16,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-003",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "digits",
+        "psalms"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.013208000000020093,
+      "detections": [
+        {
+          "book": "Psalms",
+          "chapter": 23,
+          "verse": 1,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-004",
+      "lang": "zh",
+      "tags": [
+        "digits",
+        "colon"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.05587500000001455,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 28,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-005",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "number-words"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.01754199999999173,
+      "detections": [
+        {
+          "book": "Matthew",
+          "chapter": 5,
+          "verse": 3,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-006",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "number-words",
+        "ordinal-book"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.02083400000000779,
+      "detections": [
+        {
+          "book": "1 Corinthians",
+          "chapter": 13,
+          "verse": 4,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-007",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "number-words",
+        "range"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.017333000000007814,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 1,
+          "endVerse": 5
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "zh-008",
+      "lang": "zh",
+      "tags": [
+        "explicit",
+        "number-words",
+        "range"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.011166000000002896,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 8,
+          "verse": 1,
+          "endVerse": 5
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    }
+  ]
+}

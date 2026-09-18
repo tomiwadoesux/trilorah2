@@ -599,6 +599,7 @@ const SERVICE_MEDIA: ServiceMedia[] = [
 
 function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
   const [view, setView] = useState<MediaView>('themes');
+  const drag = useDrag();
 
   /*
    * Opens on the shelf holding whatever is on the projector, not on a fixed
@@ -696,7 +697,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
                 seed: 4,
                 style: 'smoke' as const,
                 source: 'local' as const,
-                url: res.url,
+                url: res.src ?? res.url,
                 kind: 'photo' as const,
               };
               addMedia(media);
@@ -705,15 +706,33 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           }}
         >
           {shown.map((media) => (
-            <MediaCard
+            /* A click makes the picture the theme background; a HOLD drags
+               it into the run of service, where its row can put it on the
+               wall by itself. Two gestures because they are two different
+               jobs — the backdrop behind every verse, and a picture shown
+               on its own — and the second one had no way in at all. Only a
+               picture with a real file can be dragged: the procedural
+               washes have nothing to show. */
+            <div
               key={media.id}
-              src={mediaSrc(media)}
-              label={media.label}
-              detail={media.detail}
-              selected={selected === media.id}
-              badge={selected === media.id ? 'in use' : null}
-              onClick={() => onSelect(media.id)}
-            />
+              {...(media.url
+                ? drag.bind(() => ({
+                    source: 'media',
+                    label: media.label,
+                    preview: mediaSrc(media),
+                    path: media.url,
+                  }))
+                : {})}
+            >
+              <MediaCard
+                src={mediaSrc(media)}
+                label={media.label}
+                detail={media.detail}
+                selected={selected === media.id}
+                badge={selected === media.id ? 'in use' : null}
+                onClick={() => onSelect(media.id)}
+              />
+            </div>
           ))}
         </MediaGrid>
       ) : (
@@ -1474,6 +1493,9 @@ function SongGrid({
                   {...drag.bind(() => ({
                     source: 'song',
                     label: `${song.title} — ${verse.label}`,
+                    title: song.title,
+                    section: verse.label,
+                    lines: verse.lines,
                   }))}
                   /*
                    * The whole cell opens the song, not just the picture.
@@ -1691,7 +1713,14 @@ function SongSheet({ song, onBack }: { song: Song; onBack: () => void }) {
   );
 
   const send = (v: SongVerse) =>
-    projector.send({ source: 'song', id: sectionId(song, v), label: `${song.title} — ${v.label}` });
+    projector.send({
+      source: 'song',
+      id: sectionId(song, v),
+      label: `${song.title} — ${v.label}`,
+      title: song.title,
+      section: v.label,
+      lines: v.lines,
+    });
 
   /*
    * Where the song is, measured against the WHOLE song rather than the
@@ -1796,7 +1825,13 @@ function SongSheet({ song, onBack }: { song: Song; onBack: () => void }) {
                   key={v.id}
                   type="button"
                   onClick={() => send(v)}
-                  {...drag.bind(() => ({ source: 'song', label: `${song.title} — ${v.label}` }))}
+                  {...drag.bind(() => ({
+                    source: 'song',
+                    label: `${song.title} — ${v.label}`,
+                    title: song.title,
+                    section: v.label,
+                    lines: v.lines,
+                  }))}
                   title={`put ${v.label.toLowerCase()} on the projector`}
                   className={cx(
                     'group/sec tri-rounded-control flex flex-col items-start gap-1.5 px-3 py-2.5 text-left transition-colors',
@@ -2477,8 +2512,32 @@ function ItemMark({ item }: { item: QueueItem }) {
 function QueuedItemRow({ segKey, item }: { segKey: string; item: QueueItem }) {
   const run = useRun();
   const projector = useProjector();
+  const engine = useEngine();
   const isVerse = item.source === 'scripture';
-  const live = isVerse && projector.isLive('scripture', item.label);
+  const canGoLive = isVerse || (item.source === 'song' && !!item.lines) || !!item.path;
+  const live = canGoLive && projector.isLive(item.source === 'note' ? 'scripture' : item.source, item.label);
+
+  /* A verse is pushed through the engine, which looks the text up and logs
+     the review item — sending it to the projector context alone would light
+     the row and show the congregation nothing. A song or a picture carries
+     its own content and goes straight out. */
+  const putUp = () => {
+    if (isVerse) {
+      engine.pushReference(item.label);
+      projector.send({ source: 'scripture', id: item.label, label: item.label });
+    } else if (item.source === 'song' && item.lines) {
+      projector.send({
+        source: 'song',
+        id: item.label,
+        label: item.label,
+        title: item.title,
+        section: item.section,
+        lines: item.lines,
+      });
+    } else if (item.path && (item.source === 'media' || item.source === 'presentation')) {
+      projector.send({ source: item.source, id: item.label, label: item.label, path: item.path });
+    }
+  };
 
   return (
     <li className="group flex items-center gap-2 rounded-[8px] bg-[rgb(0_0_0_/_0.14)] px-2 py-[5px] text-[length:var(--tri-size-body)] text-[rgb(229_243_242_/_0.62)]">
@@ -2497,7 +2556,7 @@ function QueuedItemRow({ segKey, item }: { segKey: string; item: QueueItem }) {
         <span className="min-w-0 flex-1 truncate">{item.label}</span>
       )}
 
-      {isVerse && (
+      {canGoLive && (
         /*
          * The push. A single deliberate click, not the browser's
          * double-click: everything in this list was queued on purpose
@@ -2507,12 +2566,8 @@ function QueuedItemRow({ segKey, item }: { segKey: string; item: QueueItem }) {
          */
         <button
           type="button"
-          onClick={() =>
-            live
-              ? projector.clear()
-              : projector.send({ source: 'scripture', id: item.label, label: item.label })
-          }
-          title={live ? 'take it off the projector' : 'put this verse on the projector'}
+          onClick={() => (live ? projector.clear() : putUp())}
+          title={live ? 'take it off the projector' : `put this ${isVerse ? 'verse' : item.source} on the projector`}
           className={cx(
             'shrink-0 rounded-full px-1.5 py-[1px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.12em] transition-all',
             live
@@ -2811,7 +2866,6 @@ interface LogSeed {
 interface LogEntry extends LogSeed {
   id: number;
   /** Dealt once, when the line is said, and never re-dealt after. */
-  marks: string;
 }
 
 /* One way out, worded once. Every confidence failure ends here: the
@@ -2887,13 +2941,13 @@ function useServiceLog(stateLabel: string) {
   const [entries, setEntries] = useState<LogEntry[]>(() =>
     typeof window !== 'undefined' && window.api
       ? []
-      : LOG_SEED.map((seed, i) => ({ ...seed, id: i, marks: shuffleMarks() })),
+      : LOG_SEED.map((seed, i) => ({ ...seed, id: i })),
   );
 
   const say = useCallback((seed: LogSeed) => {
     setEntries((list) => [
       ...list.slice(-7),
-      { ...seed, id: nextId.current++, marks: shuffleMarks() },
+      { ...seed, id: nextId.current++ },
     ]);
   }, []);
 
@@ -2963,33 +3017,9 @@ function useServiceLog(stateLabel: string) {
 /** Two visible rows; a third is rendered so it can be clipped as it goes. */
 const LOG_ROWS = 2;
 
-/*
- * The three marks that close every line.
- *
- * They are not decoration and they are not a severity code — they are the
- * one thing in the bar that is different on every line, which is what
- * makes a new arrival legible as new. Two lines of yellow text at the
- * same weight can look like the same two lines; a trio that has visibly
- * re-dealt itself cannot. Same size as the text, right-aligned in their
- * own column, so they read as punctuation and not as an icon.
- */
-const LOG_MARKS = ['▲', '●', '■'] as const;
-
-/** A fresh deal of the three, so no line closes the way the last one did. */
-function shuffleMarks(): string {
-  const m = [...LOG_MARKS];
-  for (let i = m.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [m[i], m[j]] = [m[j], m[i]];
-  }
-  return m.join('');
-}
-
 interface LogRow {
   key: string;
   text: string;
-  /** The line's own deal of the marks. Action rows get none. */
-  marks?: string;
   /** An action row is the way out of the line above it, not an event. */
   isAction: boolean;
 }
@@ -3011,10 +3041,10 @@ function ServiceLogBar({ entries, onAction }: { entries: LogEntry[]; onAction: (
       entries.flatMap((e) =>
         e.action
           ? [
-              { key: `${e.id}`, text: e.text, marks: e.marks, isAction: false },
+              { key: `${e.id}`, text: e.text, isAction: false },
               { key: `${e.id}-do`, text: e.action.label, isAction: true },
             ]
-          : [{ key: `${e.id}`, text: e.text, marks: e.marks, isAction: false }],
+          : [{ key: `${e.id}`, text: e.text, isAction: false }],
       ),
     [entries],
   );
@@ -3087,12 +3117,6 @@ function ServiceLogBar({ entries, onAction }: { entries: LogEntry[]; onAction: (
             ) : (
               <div key={row.key} className={common}>
                 <span className="min-w-0 flex-1 truncate">{row.text}</span>
-                {/* Right-aligned column of its own: the marks land on the
-                    same pixel line to line, so a re-deal reads as a change
-                    in the marks and not as the text having moved. */}
-                <span aria-hidden className="shrink-0 tracking-[0.12em]">
-                  {row.marks}
-                </span>
               </div>
             );
           })}

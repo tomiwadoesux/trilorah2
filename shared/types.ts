@@ -92,6 +92,10 @@ export interface PreacherStats {
   /** Training thermostat: mature profiles stop prompting for corrections. */
   mature: boolean
   correctionsLastService: number
+  /** Operator's per-preacher auto-mode switch (only honoured when eligible). */
+  autoModeEnabled?: boolean
+  /** Services completed since the profile matured; 0 when not mature. */
+  servicesSinceMature?: number
 }
 
 /** Natural-language commands recognized from the preacher's own speech. */
@@ -121,3 +125,84 @@ export type ASRStatus =
   | 'listening'
   | 'error'
   | 'stopped'
+
+/* ------------------------------------------------------------------ */
+/* Songs                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One block of a song — the unit that goes on a slide.
+ *
+ * Identical to the parser's own SongSection by design: the importers in
+ * electron/songs/import.ts produce this shape and the store keeps it
+ * untouched, so a song that survives a round trip through disk still
+ * matches the file the church imported line for line.
+ */
+export interface SongSection {
+  label: string
+  lines: string[]
+}
+
+/**
+ * Where a song in the library came from, which is really a question about
+ * who is allowed to delete it and whether it may come back.
+ *
+ * 'imported' — the church's own file (SongSelect, OpenLyrics, plain text).
+ * 'seed'     — a public-domain hymn we shipped so the library is not empty
+ *              on first run. Deleting one is permanent: the seeder records
+ *              the deletion and never re-adds it (see electron/songs/seed.ts).
+ * 'manual'   — typed into the app by hand.
+ */
+export type SongOrigin = 'imported' | 'seed' | 'manual'
+
+/**
+ * A song as the library stores it.
+ *
+ * This is the one canonical shape, and it has to reconcile three that grew
+ * separately: the parser's ImportedSong (authors[], ccliNumber, sections),
+ * the old Songs screen's flat `lyrics` string, and the design prototype's
+ * `author` + `verses[]`. It stays close to ImportedSong — that is the shape
+ * with real data behind it — and adds only identity and provenance. The
+ * renderer flattens to whatever it needs to draw; nothing flattens on the
+ * way in, because the section labels are what make a slide a slide.
+ */
+export interface Song {
+  id: string
+  title: string
+  /** Every credited author, in file order. The UI that wants one joins them. */
+  authors?: string[]
+  /** CCLI song number, when the source file carried one. */
+  ccliNumber?: string
+  copyright?: string
+  sections: SongSection[]
+  createdAt: number
+  updatedAt: number
+  origin: SongOrigin
+  /**
+   * Stable key for a seeded hymn (e.g. 'amazing-grace'), so a deletion can be
+   * remembered across restarts even though the row itself is gone. Only set
+   * when origin is 'seed'.
+   */
+  seedKey?: string
+}
+
+/** The fields a caller may change on an existing song. */
+export type SongPatch = Partial<Pick<Song, 'title' | 'authors' | 'ccliNumber' | 'copyright' | 'sections'>>
+
+/**
+ * One title that arrived more than once in an import.
+ *
+ * Imports never drop or overwrite: a church that exports the same song twice
+ * from SongSelect gets both copies and this report, so a human decides which
+ * one is the good one. `ids` lists every song in the library now sharing the
+ * normalised title, existing rows included.
+ */
+export interface SongDuplicate {
+  title: string
+  ids: string[]
+}
+
+export interface SongImportResult {
+  imported: Song[]
+  duplicates: SongDuplicate[]
+}

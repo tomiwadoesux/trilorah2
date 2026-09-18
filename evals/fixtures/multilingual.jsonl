@@ -1,0 +1,36 @@
+{"id":"es-001","lang":"es","tags":["explicit","preamble"],"chunks":[{"text":"vayamos a juan capitulo tres versiculo dieciseis","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"es-002","lang":"es","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"primera de corintios trece cuatro","isFinal":true}],"expected":[{"book":"1 Corinthians","chapter":13,"verse":4}]}
+{"id":"es-003","lang":"es","tags":["explicit","hundreds"],"chunks":[{"text":"salmo ciento diecinueve versiculo once","isFinal":true}],"expected":[{"book":"Psalms","chapter":119,"verse":11}]}
+{"id":"es-004","lang":"es","tags":["explicit","tens"],"chunks":[{"text":"romanos capitulo ocho versiculo veintiocho","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"es-005","lang":"es","tags":["bare-numbers"],"chunks":[{"text":"mateo cinco tres","isFinal":true}],"expected":[{"book":"Matthew","chapter":5,"verse":3}]}
+{"id":"es-006","lang":"es","tags":["code-switch","explicit"],"chunks":[{"text":"turn with me to john chapter three verse sixteen","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"es-007","lang":"es","tags":["range","tens"],"chunks":[{"text":"romanos doce versiculos uno al dos","isFinal":true}],"expected":[{"book":"Romans","chapter":12,"verse":1,"endVerse":2}]}
+{"id":"es-neg-001","lang":"es","tags":["negative","narrative"],"chunks":[{"text":"pablo escribio a los romanos desde la carcel","isFinal":true}],"expected":[]}
+{"id":"fr-001","lang":"fr","tags":["explicit","preamble"],"chunks":[{"text":"ouvrez vos bibles a jean chapitre trois verset seize","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"fr-002","lang":"fr","tags":["explicit","hundreds","compound-number"],"chunks":[{"text":"psaume cent dix neuf verset onze","isFinal":true}],"expected":[{"book":"Psalms","chapter":119,"verse":11}]}
+{"id":"fr-003","lang":"fr","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"premiere corinthiens treize quatre","isFinal":true}],"expected":[{"book":"1 Corinthians","chapter":13,"verse":4}]}
+{"id":"fr-004","lang":"fr","tags":["explicit","tens"],"chunks":[{"text":"romains chapitre huit verset vingt huit","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"fr-005","lang":"fr","tags":["bare-numbers"],"chunks":[{"text":"matthieu cinq trois","isFinal":true}],"expected":[{"book":"Matthew","chapter":5,"verse":3}]}
+{"id":"fr-006","lang":"fr","tags":["chapter-only"],"chunks":[{"text":"le psaume vingt trois","isFinal":true}],"expected":[{"book":"Psalms","chapter":23,"verse":null}]}
+{"id":"fr-neg-001","lang":"fr","tags":["negative","narrative"],"chunks":[{"text":"paul a ecrit aux romains depuis la prison","isFinal":true}],"expected":[]}
+{"id":"pt-001","lang":"pt","tags":["explicit","preamble"],"chunks":[{"text":"abram suas biblias em joao capitulo tres versiculo dezesseis","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"pt-002","lang":"pt","tags":["explicit","tens","connector"],"chunks":[{"text":"romanos capitulo oito versiculo vinte e oito","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"pt-003","lang":"pt","tags":["chapter-only","tens","connector"],"chunks":[{"text":"salmo vinte e tres","isFinal":true}],"expected":[{"book":"Psalms","chapter":23,"verse":null}]}
+{"id":"pt-004","lang":"pt","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"primeira corintios treze quatro","isFinal":true}],"expected":[{"book":"1 Corinthians","chapter":13,"verse":4}]}
+{"id":"pt-005","lang":"pt","tags":["bare-numbers"],"chunks":[{"text":"mateus cinco tres","isFinal":true}],"expected":[{"book":"Matthew","chapter":5,"verse":3}]}
+{"id":"pt-006","lang":"pt","tags":["explicit","hundreds","connector"],"chunks":[{"text":"salmo cento e dezenove versiculo onze","isFinal":true}],"expected":[{"book":"Psalms","chapter":119,"verse":11}]}
+{"id":"pt-neg-001","lang":"pt","tags":["negative","narrative"],"chunks":[{"text":"paulo escreveu aos romanos da prisao","isFinal":true}],"expected":[]}
+{"id":"hi-001","lang":"hi","tags":["explicit","digits"],"chunks":[{"text":"यूहन्ना अध्याय 3 आयत 16","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"hi-002","lang":"hi","tags":["explicit","number-words"],"chunks":[{"text":"यूहन्ना अध्याय तीन आयत सोलह","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"hi-003","lang":"hi","tags":["explicit","digits"],"chunks":[{"text":"रोमियों अध्याय 8 आयत 28","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"hi-004","lang":"hi","tags":["chapter-only","digits"],"chunks":[{"text":"भजन संहिता 23","isFinal":true}],"expected":[{"book":"Psalms","chapter":23,"verse":null}]}
+{"id":"hi-005","lang":"hi","tags":["digits"],"chunks":[{"text":"मत्ती 5:3","isFinal":true}],"expected":[{"book":"Matthew","chapter":5,"verse":3}]}
+{"id":"hi-006","lang":"hi","tags":["explicit","digits","ordinal-book"],"chunks":[{"text":"पहला कुरिन्थियों अध्याय 13 आयत 4","isFinal":true}],"expected":[{"book":"1 Corinthians","chapter":13,"verse":4}]}
+{"id":"zh-001","lang":"zh","tags":["explicit","digits","preamble"],"chunks":[{"text":"请翻开约翰福音3章16节","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"zh-002","lang":"zh","tags":["explicit","number-words"],"chunks":[{"text":"约翰福音三章十六节","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"zh-003","lang":"zh","tags":["explicit","digits","psalms"],"chunks":[{"text":"诗篇23篇1节","isFinal":true}],"expected":[{"book":"Psalms","chapter":23,"verse":1}]}
+{"id":"zh-004","lang":"zh","tags":["digits","colon"],"chunks":[{"text":"罗马书8:28","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"zh-005","lang":"zh","tags":["explicit","number-words"],"chunks":[{"text":"马太福音五章三节","isFinal":true}],"expected":[{"book":"Matthew","chapter":5,"verse":3}]}
+{"id":"zh-006","lang":"zh","tags":["explicit","number-words","ordinal-book"],"chunks":[{"text":"哥林多前书十三章四节","isFinal":true}],"expected":[{"book":"1 Corinthians","chapter":13,"verse":4}]}
+{"id":"zh-007","lang":"zh","tags":["explicit","number-words","range"],"chunks":[{"text":"罗马书八章一到五节","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":1,"endVerse":5}]}
+{"id":"zh-008","lang":"zh","tags":["explicit","number-words","range"],"chunks":[{"text":"罗马书八章一节到五节","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":1,"endVerse":5}]}

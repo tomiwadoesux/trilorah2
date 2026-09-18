@@ -23,6 +23,9 @@ export class ScriptureSession {
   chapterTimer: NodeJS.Timeout | null
   lastCommandTime: number
   lastVerseDisplayTime: number
+  /** When auto-advance last fired. Distinct from lastVerseDisplayTime, which
+   *  also moves when a verse is put up deliberately. */
+  lastAutoAdvanceTime: number
   currentVerseText: string
   matchedWordsCount: number
   verseWords: string[]
@@ -42,6 +45,7 @@ export class ScriptureSession {
     this.chapterTimer = null
     this.lastCommandTime = 0
     this.lastVerseDisplayTime = 0
+    this.lastAutoAdvanceTime = 0
     this.currentVerseText = ''
     this.matchedWordsCount = 0
     this.verseWords = []
@@ -87,13 +91,27 @@ export class ScriptureSession {
 
   processTranscript(text: string) {
     if (!this.readingMode || this.verseWords.length === 0) return
+    // Clearing verseWords below is not enough of a guard on its own: advance()
+    // immediately repopulates it with the NEXT verse's tail, so the very same
+    // utterance could match twice and skip a verse. Deepgram makes that the
+    // normal case rather than a rare one — its partials are cumulative, so the
+    // text that triggered the advance arrives again, longer, a moment later.
+    // Hence the lockout. It is timed from the last AUTO-advance rather than
+    // from any display, because putting a verse up deliberately is exactly
+    // when the preacher is about to read it — locking that out would swallow
+    // the first advance of every passage.
+    if (Date.now() - this.lastAutoAdvanceTime < this.VERSE_LOCKOUT_MS) return
     const input = text.toLowerCase().replace(/[^\w\s]/g, '')
-    input.split(/\s+/).filter((w) => w.length > 0)
     const last3VerseWords = this.verseWords.slice(-3).join(' ')
     if (input.includes(last3VerseWords)) {
       console.log('✨ Auto-Advance: Matched end of verse!')
-      this.advance()
+      this.lastAutoAdvanceTime = Date.now()
+      // Clear BEFORE advancing. advance() emits, and main.ts answers that emit
+      // synchronously with setCurrentVerseText for the verse now on screen —
+      // so clearing afterwards wiped the new verse's words and auto-advance
+      // went dead for the rest of the passage.
       this.verseWords = []
+      this.advance()
       return
     }
   }

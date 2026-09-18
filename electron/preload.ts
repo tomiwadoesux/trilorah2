@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type { SongPatch } from '../shared/types'
+import type { LiveContent } from '../shared/liveContent'
 import type { ImportedSong } from './songs/import'
 
 contextBridge.exposeInMainWorld('api', {
@@ -279,6 +280,14 @@ contextBridge.exposeInMainWorld('api', {
 
   // Media display on outputs + theme repaint
   showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),
+  // Words on the projector that are not a verse (songs). See shared/liveContent.ts.
+  pushLiveContent: (content: LiveContent) => ipcRenderer.invoke('push-live-content', content),
+  getLiveContent: () => ipcRenderer.invoke('get-live-content'),
+  onLiveContent: (callback: (content: LiveContent) => void) => {
+    const subscription = (_event: IpcRendererEvent, c: LiveContent) => callback(c)
+    ipcRenderer.on('on-live-content', subscription)
+    return () => ipcRenderer.removeListener('on-live-content', subscription)
+  },
   clearMedia: () => ipcRenderer.invoke('clear-media'),
   showQr: () => ipcRenderer.invoke('show-qr'),
   getQrSvg: (size?: number) => ipcRenderer.invoke('get-qr-svg', size),

@@ -28,7 +28,8 @@ async function resolveDeviceId(deviceLabel?: string): Promise<string | undefined
       console.warn(`mic "${deviceLabel}" not found — falling back to the system default input`);
     }
     return match?.deviceId;
-  } catch {
+  } catch (err) {
+    console.error('mic: could not enumerate devices to resolve the saved one', err);
     return undefined;
   }
 }

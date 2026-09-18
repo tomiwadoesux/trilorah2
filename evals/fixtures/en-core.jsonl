@@ -1,0 +1,65 @@
+{"id":"en-001","lang":"en","tags":["bare-numbers"],"chunks":[{"text":"john three sixteen","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"en-002","lang":"en","tags":["explicit"],"chunks":[{"text":"turn with me to romans chapter eight verse twenty eight","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"en-003","lang":"en","tags":["chapter-only","ordinal-book"],"chunks":[{"text":"first corinthians thirteen","isFinal":true}],"expected":[{"book":"1 Corinthians","chapter":13,"verse":null}]}
+{"id":"en-004","lang":"en","tags":["chapter-only"],"chunks":[{"text":"psalm twenty three","isFinal":true}],"expected":[{"book":"Psalms","chapter":23,"verse":null}]}
+{"id":"en-005","lang":"en","tags":["explicit","range"],"chunks":[{"text":"romans chapter eight verses one through five","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":1,"endVerse":5}]}
+{"id":"en-006","lang":"en","tags":["explicit","ordinal-book"],"chunks":[{"text":"second timothy chapter three verse sixteen","isFinal":true}],"expected":[{"book":"2 Timothy","chapter":3,"verse":16}]}
+{"id":"en-007","lang":"en","tags":["digits"],"chunks":[{"text":"john 3:16","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"en-008","lang":"en","tags":["chunked","explicit"],"chunks":[{"text":"turn to the book of john","isFinal":false},{"text":"chapter three","isFinal":true},{"text":"verse sixteen","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"en-009","lang":"en","tags":["chapter-only","ordinal-chapter"],"chunks":[{"text":"the third chapter of john","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":null}]}
+{"id":"en-010","lang":"en","tags":["explicit","hundreds"],"chunks":[{"text":"psalm one hundred and nineteen verse eleven","isFinal":true}],"expected":[{"book":"Psalms","chapter":119,"verse":11}]}
+{"id":"en-011","lang":"en","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"first john three sixteen","isFinal":true}],"expected":[{"book":"1 John","chapter":3,"verse":16}]}
+{"id":"en-012","lang":"en","tags":["bare-numbers"],"chunks":[{"text":"genesis one one","isFinal":true}],"expected":[{"book":"Genesis","chapter":1,"verse":1}]}
+{"id":"en-013","lang":"en","tags":["explicit"],"chunks":[{"text":"matthew chapter five verse three","isFinal":true}],"expected":[{"book":"Matthew","chapter":5,"verse":3}]}
+{"id":"en-014","lang":"en","tags":["bare-numbers"],"chunks":[{"text":"hebrews eleven one","isFinal":true}],"expected":[{"book":"Hebrews","chapter":11,"verse":1}]}
+{"id":"en-015","lang":"en","tags":["bare-numbers","verse-list"],"chunks":[{"text":"ephesians two eight and nine","isFinal":true}],"expected":[{"book":"Ephesians","chapter":2,"verse":8},{"book":"Ephesians","chapter":2,"verse":9}]}
+{"id":"en-016","lang":"en","tags":["bare-numbers","preamble"],"chunks":[{"text":"let's look at philippians four thirteen","isFinal":true}],"expected":[{"book":"Philippians","chapter":4,"verse":13}]}
+{"id":"en-017","lang":"en","tags":["bare-numbers","tens"],"chunks":[{"text":"revelation twenty one four","isFinal":true}],"expected":[{"book":"Revelation","chapter":21,"verse":4}]}
+{"id":"en-018","lang":"en","tags":["explicit","alias"],"chunks":[{"text":"revelations chapter twenty two verse twenty","isFinal":true}],"expected":[{"book":"Revelation","chapter":22,"verse":20}]}
+{"id":"en-019","lang":"en","tags":["bare-numbers","tens"],"chunks":[{"text":"isaiah fifty three five","isFinal":true}],"expected":[{"book":"Isaiah","chapter":53,"verse":5}]}
+{"id":"en-020","lang":"en","tags":["bare-numbers","tens"],"chunks":[{"text":"jeremiah twenty nine eleven","isFinal":true}],"expected":[{"book":"Jeremiah","chapter":29,"verse":11}]}
+{"id":"en-021","lang":"en","tags":["bare-numbers","verse-list"],"chunks":[{"text":"proverbs three five and six","isFinal":true}],"expected":[{"book":"Proverbs","chapter":3,"verse":5},{"book":"Proverbs","chapter":3,"verse":6}]}
+{"id":"en-022","lang":"en","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"second corinthians five seventeen","isFinal":true}],"expected":[{"book":"2 Corinthians","chapter":5,"verse":17}]}
+{"id":"en-023","lang":"en","tags":["chapter-only","explicit"],"chunks":[{"text":"acts chapter two","isFinal":true}],"expected":[{"book":"Acts","chapter":2,"verse":null}]}
+{"id":"en-024","lang":"en","tags":["explicit","alias"],"chunks":[{"text":"the book of acts chapter one verse eight","isFinal":true}],"expected":[{"book":"Acts","chapter":1,"verse":8}]}
+{"id":"en-025","lang":"en","tags":["digits"],"chunks":[{"text":"galatians 5:22","isFinal":true}],"expected":[{"book":"Galatians","chapter":5,"verse":22}]}
+{"id":"en-026","lang":"en","tags":["explicit","ordinal-book"],"chunks":[{"text":"first peter chapter five verse seven","isFinal":true}],"expected":[{"book":"1 Peter","chapter":5,"verse":7}]}
+{"id":"en-027","lang":"en","tags":["explicit"],"chunks":[{"text":"james one verse five","isFinal":true}],"expected":[{"book":"James","chapter":1,"verse":5}]}
+{"id":"en-028","lang":"en","tags":["range"],"chunks":[{"text":"romans twelve verses one to two","isFinal":true}],"expected":[{"book":"Romans","chapter":12,"verse":1,"endVerse":2}]}
+{"id":"en-029","lang":"en","tags":["chunked","explicit","asr-partials"],"chunks":[{"text":"romans","isFinal":false},{"text":"romans chapter","isFinal":false},{"text":"romans chapter eight","isFinal":false},{"text":"romans chapter eight verse twenty eight","isFinal":true}],"expected":[{"book":"Romans","chapter":8,"verse":28}]}
+{"id":"en-030","lang":"en","tags":["range","tens","multi-token-range-end"],"chunks":[{"text":"luke fifteen verse eleven through thirty two","isFinal":true}],"expected":[{"book":"Luke","chapter":15,"verse":11,"endVerse":32}]}
+{"id":"en-031","lang":"en","tags":["explicit"],"chunks":[{"text":"mark chapter sixteen verse fifteen","isFinal":true}],"expected":[{"book":"Mark","chapter":16,"verse":15}]}
+{"id":"en-032","lang":"en","tags":["bare-numbers"],"chunks":[{"text":"deuteronomy six four","isFinal":true}],"expected":[{"book":"Deuteronomy","chapter":6,"verse":4}]}
+{"id":"en-033","lang":"en","tags":["bare-numbers","alias"],"chunks":[{"text":"song of songs two one","isFinal":true}],"expected":[{"book":"Song of Solomon","chapter":2,"verse":1}]}
+{"id":"en-034","lang":"en","tags":["bare-numbers","ordinal-book","tens"],"chunks":[{"text":"first samuel seventeen forty five","isFinal":true}],"expected":[{"book":"1 Samuel","chapter":17,"verse":45}]}
+{"id":"en-035","lang":"en","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"one john four eight","isFinal":true}],"expected":[{"book":"1 John","chapter":4,"verse":8}]}
+{"id":"en-036","lang":"en","tags":["digits","ordinal-book"],"chunks":[{"text":"1 john 4:8","isFinal":true}],"expected":[{"book":"1 John","chapter":4,"verse":8}]}
+{"id":"en-037","lang":"en","tags":["bare-numbers"],"chunks":[{"text":"ecclesiastes three one","isFinal":true}],"expected":[{"book":"Ecclesiastes","chapter":3,"verse":1}]}
+{"id":"en-038","lang":"en","tags":["range","tens"],"chunks":[{"text":"matthew twenty eight nineteen to twenty","isFinal":true}],"expected":[{"book":"Matthew","chapter":28,"verse":19,"endVerse":20}]}
+{"id":"en-039","lang":"en","tags":["explicit","tens"],"chunks":[{"text":"psalms chapter ninety one verse one","isFinal":true}],"expected":[{"book":"Psalms","chapter":91,"verse":1}]}
+{"id":"en-040","lang":"en","tags":["explicit"],"chunks":[{"text":"colossians three verse two","isFinal":true}],"expected":[{"book":"Colossians","chapter":3,"verse":2}]}
+{"id":"en-041","lang":"en","tags":["explicit","alias","preamble"],"chunks":[{"text":"turn in your bibles to the gospel of john chapter one verse one","isFinal":true}],"expected":[{"book":"John","chapter":1,"verse":1}]}
+{"id":"en-042","lang":"en","tags":["bare-numbers","tens"],"chunks":[{"text":"numbers six twenty four","isFinal":true}],"expected":[{"book":"Numbers","chapter":6,"verse":24}]}
+{"id":"en-043","lang":"en","tags":["chunked","bare-numbers"],"chunks":[{"text":"john","isFinal":true},{"text":"three","isFinal":true},{"text":"sixteen","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16}]}
+{"id":"en-044","lang":"en","tags":["bare-numbers","ordinal-book"],"chunks":[{"text":"second chronicles seven fourteen","isFinal":true}],"expected":[{"book":"2 Chronicles","chapter":7,"verse":14}]}
+{"id":"en-045","lang":"en","tags":["explicit"],"chunks":[{"text":"titus chapter two verse eleven","isFinal":true}],"expected":[{"book":"Titus","chapter":2,"verse":11}]}
+{"id":"en-046","lang":"en","tags":["multi-ref"],"chunks":[{"text":"john three sixteen","isFinal":true},{"text":"and then romans chapter five verse eight","isFinal":true}],"expected":[{"book":"John","chapter":3,"verse":16},{"book":"Romans","chapter":5,"verse":8}]}
+{"id":"en-neg-001","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"when paul wrote to the romans he was in prison","isFinal":true}],"expected":[]}
+{"id":"en-neg-002","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"there were three hundred people at the service","isFinal":true}],"expected":[]}
+{"id":"en-neg-003","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"the first john i met was a fisherman","isFinal":true}],"expected":[]}
+{"id":"en-neg-004","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"we had about twenty three visitors last sunday","isFinal":true}],"expected":[]}
+{"id":"en-neg-005","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"john was a disciple who loved jesus","isFinal":true}],"expected":[]}
+{"id":"en-neg-006","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"the psalms are full of praise","isFinal":true}],"expected":[]}
+{"id":"en-neg-007","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"i want to see ten thousand souls saved","isFinal":true}],"expected":[]}
+{"id":"en-neg-008","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"the number of the beast is six six six","isFinal":true}],"expected":[]}
+{"id":"en-neg-009","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"in the year two thousand and five","isFinal":true}],"expected":[]}
+{"id":"en-neg-010","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"acts of kindness change lives","isFinal":true}],"expected":[]}
+{"id":"en-neg-011","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"james and john were brothers","isFinal":true}],"expected":[]}
+{"id":"en-neg-012","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"this is the second time i've said it","isFinal":true}],"expected":[]}
+{"id":"en-neg-013","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"we have five minutes left so let's wrap up","isFinal":true}],"expected":[]}
+{"id":"en-neg-014","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"romans is my favorite book","isFinal":true}],"expected":[]}
+{"id":"en-neg-015","lang":"en","tags":["negative","numbers-no-book"],"chunks":[{"text":"give a hand to the first three rows","isFinal":true}],"expected":[]}
+{"id":"en-neg-016","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"mark my words","isFinal":true}],"expected":[]}
+{"id":"en-neg-017","lang":"en","tags":["negative","narrative"],"chunks":[{"text":"i have four kids and job is hard","isFinal":true}],"expected":[]}
+{"id":"en-neg-018","lang":"en","tags":["negative","narrative","numbers-after-book"],"chunks":[{"text":"paul wrote to the romans about three years later","isFinal":true}],"expected":[]}
+{"id":"en-neg-019","lang":"en","tags":["negative","narrative","numbers-after-book"],"chunks":[{"text":"john baptised thousands in the river","isFinal":true},{"text":"seven days later he was arrested","isFinal":true}],"expected":[]}

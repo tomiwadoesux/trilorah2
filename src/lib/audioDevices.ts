@@ -18,7 +18,8 @@ export async function listAudioInputs(): Promise<AudioInput[]> {
   let inputs: MediaDeviceInfo[] = [];
   try {
     inputs = (await md.enumerateDevices()).filter((d) => d.kind === 'audioinput');
-  } catch {
+  } catch (err) {
+    console.error('mic: enumerateDevices failed', err);
     return [];
   }
   const labelsLocked = inputs.length === 0 || inputs.every((d) => !d.label);
@@ -28,8 +29,13 @@ export async function listAudioInputs(): Promise<AudioInput[]> {
       const stream = await md.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
       inputs = (await md.enumerateDevices()).filter((d) => d.kind === 'audioinput');
-    } catch {
-      // Permission denied or genuinely no input hardware — return what we have.
+    } catch (err) {
+      // Permission denied or genuinely no input hardware. This used to be a
+      // bare catch, and it is how a dead microphone looked healthy for a whole
+      // service: the picker kept listing devices from before the denial while
+      // capture could never start. Loud now, because the two failures need
+      // very different fixes.
+      console.error('mic: could not open a stream to unlock device labels', err);
     }
   }
   return inputs

@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { buildVerseSlides, type VerseSlide } from '../shared/verseDisplay';
 import { formatTimerDisplay } from '../shared/timerDisplay';
+import { toDisplayUrl } from '../shared/mediaUrl';
+import type { LiveContent } from '../shared/liveContent';
 import './output.css';
 
 /**
@@ -102,7 +104,7 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     scale: typeof s.defaultFontSize === 'number' && s.defaultFontSize > 0 ? s.defaultFontSize : 1,
     weight: typeof s.defaultFontWeight === 'number' ? s.defaultFontWeight : DEFAULT_THEME.weight,
     color: typeof s.defaultTextColor === 'string' && s.defaultTextColor ? s.defaultTextColor : '#ffffff',
-    backgroundUrl: typeof s.defaultBackgroundUrl === 'string' ? s.defaultBackgroundUrl : '',
+    backgroundUrl: toDisplayUrl(typeof s.defaultBackgroundUrl === 'string' ? s.defaultBackgroundUrl : ''),
     overlayOpacity:
       typeof s.overlayOpacity === 'number' ? Math.min(1, Math.max(0, s.overlayOpacity)) : 0.3,
     backgroundFit: typeof s.backgroundFit === 'string' && s.backgroundFit ? s.backgroundFit : 'cover',
@@ -149,6 +151,9 @@ function OutputSurface() {
   const [shown, setShown] = useState<Shown | null>(null);
   const [visible, setVisible] = useState(false);
   const [media, setMedia] = useState<string | null>(null); // data URL
+  // A song section. One of verse / media / song is up at a time: each arrival
+  // takes the other two down, mirroring what main remembers as live.
+  const [song, setSong] = useState<LiveContent | null>(null);
   const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
   const [role, setRole] = useState<OutputRole>('projector');
   const [screen, setScreen] = useState<ScreenState>('live');
@@ -173,9 +178,12 @@ function OutputSurface() {
     void api.getAlert?.().then((a) => setAlert(a ?? null)).catch(() => undefined);
     void api.getVerseQueue?.().then((q) => setQueue(q ?? [])).catch(() => undefined);
     void api.listTimers?.().then((t) => setTimers(t ?? [])).catch(() => undefined);
+    // Opened mid-service: pick up whatever song is already on the wall.
+    void api.getLiveContent?.().then((c) => c && setSong(c)).catch(() => undefined);
 
     const display = (detection: VerseDetection, isPreview: boolean) => {
       setMedia(null); // scripture supersedes a slide
+      setSong(null);
       setShown({ detection, slides: null, isPreview });
       setVisible(true);
       setSlideIndex(0);
@@ -231,6 +239,7 @@ function OutputSurface() {
       api.onShowCleanBackground(() => {
         setVisible(false);
         setMedia(null);
+        setSong(null);
       }),
       api.onThemeChanged?.(loadTheme),
       api.onScreenState?.((s) => setScreen(s)),
@@ -242,10 +251,16 @@ function OutputSurface() {
         if (cmd.command === 'slide-next') setSlideIndex((i) => i + 1);
         if (cmd.command === 'slide-previous') setSlideIndex((i) => Math.max(0, i - 1));
       }),
+      api.onLiveContent?.((content) => {
+        setVisible(false);
+        setMedia(null);
+        setSong(content);
+      }),
       api.onShowMedia?.((imagePath) => {
         void api.readImageDataUrl(imagePath).then((dataUrl) => {
           if (dataUrl) {
             setVisible(false); // slide replaces scripture
+            setSong(null);
             setMedia(dataUrl);
           }
         }).catch(() => undefined);
@@ -306,6 +321,19 @@ function OutputSurface() {
       {media && screen === 'live' && (
         <div className="output-media">
           <img src={media} alt="" />
+        </div>
+      )}
+      {song && screen === 'live' && (
+        <div className="output-stage visible output-song">
+          {song.lines.map((line, i) => (
+            <div key={i} className="output-verse">
+              {line}
+            </div>
+          ))}
+          <div className="output-ref">
+            {song.title}
+            <span className="output-version">{song.label}</span>
+          </div>
         </div>
       )}
       <div className={`output-stage ${contentVisible ? 'visible' : ''}`}>

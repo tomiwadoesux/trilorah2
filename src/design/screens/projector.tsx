@@ -66,6 +66,51 @@ export interface LiveItem {
       or apart without going back to the database. */
   verses?: { verse: number; text: string }[];
   origin?: Origin;
+
+  /** A song section's words, one slide's worth. What the projector draws. */
+  lines?: string[];
+  /** The song's title and the section's own name, kept apart from `label`
+      (which joins them for the operator) because the wall shows them apart. */
+  title?: string;
+  section?: string;
+  /** A picture's file (file://, local-media:// or a bare path). */
+  path?: string;
+}
+
+/*
+ * The other half of "one projector": the real one, in its own window.
+ *
+ * Holding a single `live` value in this context stopped the tabs disagreeing
+ * with each other. It did nothing for the congregation — a song promoted here
+ * moved from one box to another inside the app and the output window was
+ * never told, because the only wire out of the app was the verse one. So
+ * every act that changes `live` also goes out on the wire, from here and
+ * nowhere else, which is the same reason the value lives here and nowhere
+ * else.
+ *
+ * Verses are the exception, on purpose: a verse goes live through the engine
+ * (`pushReference` / `pushEnginePreview`), which resolves the text and
+ * records the review item, and the engine's echo comes back in as a
+ * `send(...)` — bridging that again would push every verse twice.
+ */
+function toWall(item: LiveItem): void {
+  const api = typeof window === 'undefined' ? undefined : window.api;
+  if (!api) return;
+  if (item.source === 'song' && item.lines) {
+    void api.pushLiveContent?.({
+      kind: 'song',
+      title: item.title ?? item.label,
+      label: item.section ?? '',
+      lines: item.lines,
+    });
+  } else if ((item.source === 'media' || item.source === 'presentation') && item.path) {
+    void api.showMedia?.(item.path);
+  }
+}
+
+function clearWall(): void {
+  const api = typeof window === 'undefined' ? undefined : window.api;
+  void api?.clearMedia?.();
 }
 
 interface ProjectorValue {
@@ -107,6 +152,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
 
   const send = useCallback((item: LiveItem) => {
+    toWall(item);
     setLive(item);
     /* A new reading starts at its first slide. Carrying the old index over
        lands the congregation on slide 3 of a reading that has two. */
@@ -120,6 +166,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const promote = useCallback(() => {
     setPreview((staged) => {
       if (staged) {
+        toWall(staged);
         setLive(staged);
         setSlideIndex(0);
         setScreen((s) => (s === 'clear' ? 'live' : s));
@@ -132,6 +179,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clear = useCallback(() => {
+    clearWall();
     setLive(null);
     setSlideIndex(0);
   }, []);

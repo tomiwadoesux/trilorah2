@@ -73,6 +73,13 @@ export interface DragItem {
   quote?: string;
   /** Media and slides: something to draw in the card. */
   preview?: string;
+  /** A song section's words, title and section name — so the row it becomes
+      can put the section on the projector without going back to the sheet. */
+  lines?: string[];
+  title?: string;
+  section?: string;
+  /** Media and slides: the file, so the row can show it on the wall. */
+  path?: string;
 }
 
 /*
@@ -496,12 +503,11 @@ export function DragProvider({
   );
 }
 
-const stripParked = (p: Parked): DragItem => ({
-  source: p.source,
-  label: p.label,
-  quote: p.quote,
-  preview: p.preview,
-});
+/* Everything the chip carried and nothing the shelf added: the shelf's own
+   bookkeeping (key, timer, position) must not land in the run. Spelled out
+   as an omit rather than a pick so a new content field is not silently lost
+   the way `lines` and `path` once were. */
+const stripParked = ({ key: _key, left: _left, at: _at, ...item }: Parked): DragItem => item;
 
 /* ------------------------------------------------------------------ */
 /* The layer                                                           */

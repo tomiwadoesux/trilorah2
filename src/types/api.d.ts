@@ -273,6 +273,8 @@ interface AppSettings {
   deepgramApiKey?: string;
   hfToken?: string;
   agentEnabled?: boolean;
+  /** Speech detection may blank the projector on its own. Default false. */
+  autoScreenActions?: boolean;
   autoDisplayTimeout?: number;
   falsePositiveFilterEnabled?: boolean;
   slowPathEnabled?: boolean;
@@ -324,6 +326,17 @@ interface VmixStatus {
   reachable?: boolean;
   error?: string;
   [key: string]: unknown;
+}
+
+/* ------------------------------------------------------------------ */
+/* Remote control                                                      */
+/* ------------------------------------------------------------------ */
+
+interface PairedDeviceInfo {
+  deviceId: string;
+  deviceName: string;
+  pairedAt: number;
+  lastSeenAt: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -399,6 +412,7 @@ interface LibraryFoldersApi {
  */
 type ImportedSong = import('../../electron/songs/import').ImportedSong;
 type Song = import('../../shared/types').Song;
+type LiveContent = import('../../shared/liveContent').LiveContent;
 type SongSection = import('../../shared/types').SongSection;
 type SongOrigin = import('../../shared/types').SongOrigin;
 type SongPatch = import('../../shared/types').SongPatch;
@@ -537,6 +551,13 @@ interface WindowApi {
   vmixOverlay(channel: number, action: 'in' | 'out', input?: number | string): Promise<OpResult>;
   vmixSetTitleText(input: number | string, selectedName: string, value: string): Promise<OpResult>;
 
+  /* Remote control — the websocket server a paired phone or Stream Deck talks to */
+  /**
+   * Devices with a live, authenticated socket right now — not the paired
+   * list, which is who MAY connect. Empty when the server is off.
+   */
+  remoteConnected(): Promise<PairedDeviceInfo[]>;
+
   /* Schedule import / learning --------------------------------------------- */
   importScheduleImage(): Promise<ScheduleImportResult>;
   scheduleSuggestion(): Promise<{ success: boolean; suggestion?: ScheduleSuggestion | null; error?: string }>;
@@ -587,7 +608,8 @@ interface WindowApi {
   onMicRequest?(callback: (req: { sampleRate: number; deviceLabel?: string }) => void): Unsubscribe;
   onMicStop?(callback: () => void): Unsubscribe;
   // Media on outputs + themes
-  pickBackgroundImage?(): Promise<{ success: boolean; url?: string; canceled?: boolean; error?: string }>;
+  /** `url` is file:// (what the setting stores); `src` is local-media:// (what an <img> can load). */
+  pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
   // Stock backgrounds — electron/media/stockImages.ts
   getStockProviders?(): Promise<StockProvider[]>;
   searchStock?(
@@ -611,6 +633,11 @@ interface WindowApi {
     error?: string;
   }>;
   onShowMedia?(callback: (imagePath: string) => void): Unsubscribe;
+  /** Words on the projector that are not a verse (a song section). A push
+      takes any verse or picture down; a verse push or clear takes it down. */
+  pushLiveContent?(content: LiveContent): Promise<{ success: boolean }>;
+  getLiveContent?(): Promise<LiveContent | null>;
+  onLiveContent?(callback: (content: LiveContent) => void): Unsubscribe;
   onThemeChanged?(callback: () => void): Unsubscribe;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;
   onVersionChanged?(callback: (version: string) => void): Unsubscribe;

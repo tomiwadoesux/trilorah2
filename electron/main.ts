@@ -1,4 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain, protocol, shell, systemPreferences } from 'electron'
+// `session` is already the ScriptureSession instance in this file, so Electron's
+// comes in aliased rather than renaming an engine object used throughout.
+import { app, BrowserWindow, dialog, ipcMain, protocol, screen as electronScreen, session as electronSession, shell, systemPreferences } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
@@ -66,6 +68,8 @@ import { AlertManager, type AlertTarget } from './alerts/alerts'
 import { fillTokens, hasUnfilledTokens, parseTokens } from './alerts/tokens'
 import { TimerStore } from './engine/timers'
 import { ScreenStateMachine, roleFor, ROLE_TITLES, isScreenState } from './output/outputState'
+import { placeOutput } from './output/displays'
+import type { LiveContent } from '../shared/liveContent'
 import { searchBible } from './data/bibleSearch'
 import { emitEngineEvent } from './emitters'
 import { resolveASRProvider, type ASRProvider } from './asr/provider'
@@ -534,7 +538,9 @@ const voiceCallbacks: VoiceCommandCallbacks = {
   },
   onPrayerChange: (inPrayer) => {
     emitPrayerMode(inPrayer)
-    if (inPrayer) emitVerseAutoDismiss()
+    // Taking a verse down because the room went into prayer is a projector
+    // write triggered by nothing but speech. Opt-in.
+    if (inPrayer && getSetting('autoScreenActions')) emitVerseAutoDismiss()
   },
   onNavigate: (direction) => {
     session.exitReadingMode()
@@ -566,6 +572,7 @@ function pushPreviewToLive(via: string): void {
     `🔴 Pushing to LIVE (${via}):`,
     `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
   )
+  currentLiveContent = null
   screen.onContentPushed()
   emitVerseDetected({ ...currentPreviewData, isPreview: false })
   displayTimingManager.onVerseDisplayed(currentPreviewData.text)
@@ -621,7 +628,10 @@ function reEmitCurrentVerseInVersion(version: string): void {
       verses,
       version
     }
-    screen.onContentPushed()
+    // Switching translation re-renders what is already up; it is not a push,
+    // so it must not lift a CLEAR. A spoken "switch to NIV" used to un-clear
+    // the screen through here.
+    if (!currentPreviewData.isPreview) screen.onContentPushed()
     emitVerseDetected(currentPreviewData)
     emitVersionChanged(version)
   } catch (e) {
@@ -666,7 +676,12 @@ const session = new ScriptureSession((display: any) => {
     chunkSize: display.chunkSize
   }
   currentPreviewData = detection
-  screen.onContentPushed()
+  // Only a LIVE push lifts a CLEAR. This used to run for previews too, so a
+  // reference the engine merely HEARD un-cleared the projector — the verse
+  // itself stayed off, but the operator's blank screen came back on. The
+  // session only ever emits previews (isPreview is hardcoded true there), so
+  // in practice this branch is dormant and pushPreviewToLive is the lifter.
+  if (!detection.isPreview) screen.onContentPushed()
   emitVerseDetected(detection)
   const refStr = detection.endVerse
     ? `${detection.book} ${detection.chapter}:${detection.verse}-${detection.endVerse}`
@@ -814,13 +829,21 @@ function startASR(deviceLabel?: string) {
     (error) => {
       console.error('❌ ASR error:', error)
       emitASRStatus('Error: ' + error.message)
+      // Release the guard below, or a connection that failed on open would
+      // wedge the button: isListening stayed true, so every later Start
+      // returned immediately and only Stop could clear it.
+      isListening = false
+      activeASR = null
     },
     deviceLabel,
-    // onStatus callback — model download progress etc.
+    // onStatus callback — model download progress, and the provider's own
+    // 'Listening...' once it is really capturing.
     (message) => emitASRStatus(message)
   )
+  // Guards re-entry from here on. The status pill is left to the provider,
+  // which is the only thing that knows whether audio is actually flowing.
   isListening = true
-  emitASRStatus('Listening...')
+  emitASRStatus('Connecting...')
 }
 
 function stopASR() {
@@ -996,9 +1019,19 @@ function createOutputWindow(id: string, title: string) {
     outputWindows[id]?.focus()
     return
   }
+  // The projector gets the external screen. See output/displays.ts.
+  const placement = placeOutput(
+    id,
+    electronScreen.getAllDisplays(),
+    electronScreen.getPrimaryDisplay().id,
+    getSetting('outputDisplays') as Partial<Record<string, number>>
+  )
+  const onDisplay = placement.display?.bounds
   const win = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    ...(onDisplay
+      ? { x: onDisplay.x, y: onDisplay.y, width: onDisplay.width, height: onDisplay.height }
+      : { width: 1280, height: 720 }),
+    fullscreen: placement.fullscreen,
     title,
     transparent: true,
     frame: false,
@@ -1012,6 +1045,9 @@ function createOutputWindow(id: string, title: string) {
       contextIsolation: true
     }
   })
+  console.log(
+    `🖥️ Output "${id}" → ${placement.display ? `display ${placement.display.id} (${onDisplay!.width}×${onDisplay!.height})${placement.fullscreen ? ', fullscreen' : ''}` : 'windowed on primary'}`
+  )
   const query = `?outputId=${id}`
   if (isDev) {
     win.loadURL(`http://localhost:5173/output.html${query}`)
@@ -1456,7 +1492,27 @@ ipcMain.handle('request-mic-permission', async () => {
 
 /* -------- media display on the output windows -------- */
 
+/*
+ * Non-verse content on the projector — songs, today. Remembered here so an
+ * output window opened mid-service can ask what is up, and cleared whenever a
+ * verse or a picture takes the wall so nothing lingers behind them. One
+ * thing is live at a time; the output windows draw whichever arrived last.
+ */
+let currentLiveContent: LiveContent | null = null
+
+ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
+  if (!content || typeof content !== 'object' || content.kind !== 'song') return { success: false }
+  currentLiveContent = content
+  console.log(`🎵 Live: ${content.title} — ${content.label}`)
+  screen.onContentPushed()
+  broadcastToWindows('on-live-content', content)
+  return { success: true }
+})
+
+ipcMain.handle('get-live-content', () => currentLiveContent)
+
 ipcMain.handle('show-media', (_event, imagePath: string) => {
+  currentLiveContent = null
   console.log(`🖼️ Showing media on output: ${path.basename(imagePath)}`)
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-show-media', imagePath)
@@ -1465,6 +1521,7 @@ ipcMain.handle('show-media', (_event, imagePath: string) => {
 })
 
 ipcMain.handle('clear-media', () => {
+  currentLiveContent = null
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-show-clean-background')
   })
@@ -1615,12 +1672,16 @@ ipcMain.handle('pick-background-image', async () => {
     fs.mkdirSync(dir, { recursive: true })
     const dest = path.join(dir, `bg-${Date.now()}${path.extname(src).toLowerCase()}`)
     fs.copyFileSync(src, dest)
-    const url = `file://${dest.split(path.sep).join('/')}`
+    const posix = dest.split(path.sep).join('/')
+    const url = `file://${posix}`
+    // The setting keeps file:// (every existing install holds that); `src` is
+    // what a window can actually draw. See shared/mediaUrl.ts.
+    const displaySrc = `local-media://file${posix.startsWith('/') ? '' : '/'}${posix}`
     setSetting('defaultBackgroundUrl', url)
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) win.webContents.send('on-theme-changed')
     })
-    return { success: true, url }
+    return { success: true, url, src: displaySrc }
   } catch (e: any) {
     return { success: false, error: e?.message ?? 'could not copy image' }
   }
@@ -1839,6 +1900,10 @@ let worshipTimeoutHandle: NodeJS.Timeout | null = null
 ipcMain.on('set-current-song-lyrics', (_event, lyrics) => {
   if (worshipTimeoutHandle) clearTimeout(worshipTimeoutHandle)
   worshipTimeoutHandle = setTimeout(() => {
+    // Blanking every output thirty seconds into worship, unannounced, is
+    // exactly the kind of surprise a pilot church reports as "the screen
+    // went off by itself". Opt-in.
+    if (!getSetting('autoScreenActions')) return
     if (transitionDetector?.getCurrentSegment().type === 'worship') {
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed())
@@ -2347,7 +2412,12 @@ ipcMain.handle('apply-schedule-suggestion', () => {
 ipcMain.handle('read-image-data-url', (_event, imagePath) => {
   if (!imagePath || typeof imagePath !== 'string') return null
   try {
-    const normalizedPath = imagePath.startsWith('file://') ? decodeURI(imagePath.replace(/^file:\/+/, '/')) : imagePath
+    // Both URL forms the app stores resolve to the same file on disk.
+    const normalizedPath = imagePath.startsWith('file://')
+      ? decodeURI(imagePath.replace(/^file:\/+/, '/'))
+      : imagePath.startsWith('local-media://')
+        ? decodeURIComponent(new URL(imagePath).pathname)
+        : imagePath
     if (!fs.existsSync(normalizedPath)) return null
     const mimeType = getMimeType(normalizedPath)
     const bytes = fs.readFileSync(normalizedPath)
@@ -2473,6 +2543,18 @@ function safeProtocol(url: string): string {
 app.on('web-contents-created', (_event, contents) => guardNavigation(contents))
 
 app.whenReady().then(() => {
+  // Chromium asks the app before handing a renderer the microphone, and with
+  // no handler installed it denies — silently, and only in production, because
+  // a file:// origin is opaque where the dev server's http://localhost is not.
+  // That asymmetry is why this went unnoticed: the picker still filled (device
+  // enumeration needs no permission) while capture never started. The macOS
+  // TCC prompt in 'request-mic-permission' is a different gate entirely and
+  // granting it cannot substitute for this one.
+  electronSession.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(permission === 'media')
+  })
+  electronSession.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media')
+
   // Serves files under userData to every window. Registered before the
   // design-mode branch so the sandbox can show a downloaded background too.
   protocol.handle('local-media', async (request) => {

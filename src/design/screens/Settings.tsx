@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { cx, surface, Button, SearchField, SettingsIcon, MicIcon, BookIcon, SparkleIcon, MediaIcon, PencilIcon, CheckIcon, ResetIcon, TrashIcon } from '../../ui';
 import { AppShell, type ShellModel } from './AppShell';
 import { Pill } from './parts';
@@ -81,7 +81,7 @@ const PAGES: Page[] = [
     rows: [
       { kind: 'select', key: 'engineLanguage', label: 'Engine language', blurb: 'Which language pack the reference resolver and voice commands use.', value: 'en', options: ['en', 'es', 'fr', 'pt', 'hi', 'zh'] },
       { kind: 'select', key: 'asrLanguage', label: 'Speech language', blurb: 'What the transcriber listens for. Usually the same as the engine language.', value: 'en-US', options: ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'pt-BR', 'hi-IN', 'zh-CN'] },
-      { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live; this is what it goes back to.', value: 'KJV', options: ['KJV', 'NIV', 'ESV', 'NLT', 'NKJV', 'AMP'] },
+      { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live; this is what it goes back to.', value: 'KJV', options: ['KJV'] },
       { kind: 'note', key: 'uiLanguage', text: 'UI language is not built yet — the app is English-only for now. The setting is here so it is not forgotten.' },
     ],
   },
@@ -204,7 +204,22 @@ const PAGES: Page[] = [
 function PageBody({ page }: { page: Page }) {
   const [values, setValues] = useState<Record<string, unknown>>(() => seedValues(page.rows));
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const visible = page.rows.filter((r) => rowVisible(r, values));
+  /* The Bible list is whatever bible.db actually holds, never a guess. The
+     old hardcoded list offered NKJV and NIV against a database that has
+     neither — pick one and every verse on the projector reads "not found". */
+  const [versions, setVersions] = useState<string[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void window.api?.getAvailableVersions?.().then((v) => {
+      if (alive && Array.isArray(v) && v.length) setVersions(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const withLiveOptions = (r: Row): Row =>
+    r.key === 'displayVersion' && versions && 'options' in r ? { ...r, options: versions } : r;
+  const visible = page.rows.map(withLiveOptions).filter((r) => rowVisible(r, values));
   const normal = visible.filter((r) => !r.advanced);
   const advanced = visible.filter((r) => r.advanced);
   const set = (key: string) => (next: unknown) => setValues((v) => ({ ...v, [key]: next }));

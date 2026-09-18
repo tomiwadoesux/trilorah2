@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Panel, Dot } from '../parts';
 
 /*
@@ -13,18 +14,20 @@ import { Panel, Dot } from '../parts';
  * height is a promise about how many rows fit, and this panel is handed a box
  * it does not choose; sharing the region means the list is always exactly as
  * tall as the tile, so it can neither scroll nor end in white space, and a
- * seventh output makes every row shorter rather than pushing one out of sight.
+ * fourth output makes every row shorter rather than pushing one out of sight.
  */
 
 type OutputState = 'connected' | 'not connected' | 'connecting' | 'disabled';
 
 interface Output {
-  /* Not the name and not the position: all six outputs are called the same
-     thing, and the list is expected to reorder once it is real. */
-  id: string;
+  /* The row is keyed by which integration it is, not by its position: the
+     list is fixed and the same three names come back every poll. */
+  id: OutputId;
   name: string;
   state: OutputState;
 }
+
+type OutputId = 'vmix' | 'obs';
 
 const STATE_TONE: Record<OutputState, 'ok' | 'warn' | 'danger' | 'idle'> = {
   connected: 'ok',
@@ -44,15 +47,87 @@ const STATE_INK: Record<OutputState, string> = {
   disabled: 'rgb(229 243 242 / 0.35)',
 };
 
-/* Placeholder content standing in for the real output list. */
-const OUTPUTS: Output[] = [
-  { id: 'out-1', name: 'vmix', state: 'connected' },
-  { id: 'out-2', name: 'vmix', state: 'not connected' },
-  { id: 'out-3', name: 'vmix', state: 'connecting' },
-  { id: 'out-4', name: 'vmix', state: 'disabled' },
-  { id: 'out-5', name: 'vmix', state: 'connected' },
-  { id: 'out-6', name: 'vmix', state: 'connected' },
+/* The switchers the app pushes to. The phone remote is deliberately not a
+   row: on most Sundays nothing is paired, and a red "not connected" for a
+   thing nobody was using reads as a fault. */
+const ROWS: { id: OutputId; name: string }[] = [
+  { id: 'vmix', name: 'vMix' },
+  { id: 'obs', name: 'OBS' },
 ];
+
+/* What the design surface shows when there is no engine behind it. One of
+   each state, so the sandbox keeps every pill on screen to look at. */
+const SAMPLE: Record<OutputId, OutputState> = {
+  vmix: 'connected',
+  obs: 'not connected',
+};
+
+/* Both status IPCs are pull-only — nothing in the main process announces a
+   switcher dropping off — so the tile asks. Eight seconds is slow enough
+   that an OBS that is off does not get hammered with connection attempts,
+   and fast enough that a fix in the booth shows on the board before anyone
+   walks over to check. */
+const POLL_MS = 8000;
+
+/* Each IPC's answer folded into the four words the row can say. The engine
+   tells the story two ways — vMix has "reachable", OBS has "connected" —
+   and the booth needs one. */
+function fromVmix(s: VmixStatus): OutputState {
+  if (!s.enabled) return 'disabled';
+  return s.reachable ? 'connected' : 'not connected';
+}
+
+function fromObs(s: ObsStatus): OutputState {
+  if (!s.enabled) return 'disabled';
+  return s.connected ? 'connected' : 'not connected';
+}
+
+/*
+ * A row that has not answered yet is "connecting", and only then. A row
+ * that has answered once keeps its last word while the next poll is out —
+ * flipping every row to amber for the half-second each request takes
+ * would make the board blink eight times a minute, and the amber would
+ * stop meaning anything. So the map holds only rows that have spoken; a
+ * missing key is the in-flight state.
+ */
+function useOutputs(): Output[] {
+  const [states, setStates] = useState<Partial<Record<OutputId, OutputState>>>({});
+
+  useEffect(() => {
+    const api = typeof window === 'undefined' ? undefined : window.api;
+    if (!api?.vmixStatus || !api?.obsStatus) {
+      setStates(SAMPLE);
+      return;
+    }
+    let alive = true;
+
+    /* Each row lands on its own rather than waiting for the slowest: OBS
+       with a wrong password can take its whole timeout to say so, and
+       vMix should not sit at "connecting" while it does. A throw is the
+       same answer as an explicit failure — the thing is not reachable. */
+    const settle = (id: OutputId, state: OutputState) => {
+      if (alive) setStates((prev) => (prev[id] === state ? prev : { ...prev, [id]: state }));
+    };
+
+    const poll = () => {
+      api.vmixStatus()
+        .then((s) => settle('vmix', fromVmix(s)))
+        .catch(() => settle('vmix', 'not connected'));
+      api.obsStatus()
+        .then((s) => settle('obs', fromObs(s)))
+        .catch(() => settle('obs', 'not connected'));
+    };
+
+    poll();
+    const id = window.setInterval(poll, POLL_MS);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  return ROWS.map((row) => ({ ...row, state: states[row.id] ?? 'connecting' }));
+}
 
 /* One weight for every line inside this tile — the column headers and the
    rules between the rows. It is a table, and the lines here are separating
@@ -61,6 +136,7 @@ const OUTPUTS: Output[] = [
 const RULE = 'inset 0 -1px 0 rgb(255 255 255 / 0.07)';
 
 export function ConnectionsTile({ className }: { className?: string }) {
+  const outputs = useOutputs();
   return (
     <Panel className={className} bodyClass="pt-3">
       <div className="flex h-full flex-col">
@@ -73,7 +149,7 @@ export function ConnectionsTile({ className }: { className?: string }) {
         </div>
 
         <ul className="flex min-h-0 flex-1 flex-col">
-          {OUTPUTS.map((output, i) => (
+          {outputs.map((output, i) => (
             <li
               key={output.id}
               className="flex min-h-0 flex-1 items-center gap-2 py-1"
@@ -81,7 +157,7 @@ export function ConnectionsTile({ className }: { className?: string }) {
                  an element of its own — a divider would take height the rows
                  are already dividing between them. The last row goes without,
                  so the list does not end on a line. */
-              style={i < OUTPUTS.length - 1 ? { boxShadow: RULE } : undefined}
+              style={i < outputs.length - 1 ? { boxShadow: RULE } : undefined}
             >
               {/* Where the app's own mark goes once there is one. Empty on
                   purpose: a letter here would read as content and get
