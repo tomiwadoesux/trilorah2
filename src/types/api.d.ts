@@ -610,6 +610,16 @@ interface WindowApi {
   // Media on outputs + themes
   /** `url` is file:// (what the setting stores); `src` is local-media:// (what an <img> can load). */
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
+  pickMediaFile?(): Promise<{ success: boolean; url?: string; src?: string; kind?: 'video' | 'photo'; name?: string; canceled?: boolean; error?: string }>;
+  fetchYoutubeTranscript?(url: string): Promise<{
+    success: boolean;
+    title?: string;
+    author?: string;
+    lines?: Array<{ startMs: number; durMs: number; text: string }>;
+    song?: any;
+    error?: string;
+  }>;
+  getDisplaysStatus?(): Promise<{ totalDisplays: number; hasExternal: boolean; primary: { id: number; bounds: any }; externals: Array<{ id: number; bounds: any }> }>;
   // Stock backgrounds — electron/media/stockImages.ts
   getStockProviders?(): Promise<StockProvider[]>;
   searchStock?(

@@ -103,6 +103,14 @@ function toWall(item: LiveItem): void {
       label: item.section ?? '',
       lines: item.lines,
     });
+  } else if (item.source === 'presentation' && item.lines) {
+    void api.pushLiveContent?.({
+      kind: 'slide',
+      title: item.title ?? item.label,
+      label: item.section ?? '',
+      lines: item.lines,
+      path: item.path,
+    });
   } else if ((item.source === 'media' || item.source === 'presentation') && item.path) {
     void api.showMedia?.(item.path);
   }

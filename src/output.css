@@ -19,13 +19,13 @@ body {
 
 .output-stage {
   position: absolute;
-  inset: 0;
+  inset: var(--safe-margin, 5%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 5vh 7vw;
-  text-align: center;
+  align-items: var(--stage-align, center);
+  justify-content: var(--stage-justify, center);
+  padding: 0;
+  text-align: var(--stage-text-align, center);
   opacity: 0;
   transition: opacity 450ms ease;
 }

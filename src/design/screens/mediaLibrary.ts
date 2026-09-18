@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { slideBackdrop, type BackdropStyle } from '../../ui';
+import { toDisplayUrl } from '../../../shared/mediaUrl';
 
 /*
  * The background library the live surface chooses from.
@@ -46,7 +47,34 @@ const SEED: ThemeMedia[] = [
   { id: 'youth-week', label: 'youth week', detail: 'from this laptop', seed: 9, style: 'facets', source: 'local' },
 ];
 
-let items: ThemeMedia[] = SEED;
+const STORAGE_KEY = 'trilorah_saved_media_library';
+
+function loadPersistedMedia(): ThemeMedia[] {
+  if (typeof window === 'undefined') return SEED;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return SEED;
+    const custom: ThemeMedia[] = JSON.parse(raw);
+    const existingIds = new Set(SEED.map((s) => s.id));
+    const uniqueCustom = custom.filter((c) => !existingIds.has(c.id));
+    return [...uniqueCustom, ...SEED];
+  } catch {
+    return SEED;
+  }
+}
+
+function savePersistedMedia(all: ThemeMedia[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const seedIds = new Set(SEED.map((s) => s.id));
+    const customOnly = all.filter((m) => !seedIds.has(m.id));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customOnly));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+let items: ThemeMedia[] = loadPersistedMedia();
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -56,6 +84,7 @@ function emit() {
 /** Newest first — the thing just picked is the thing about to be used. */
 export function addMedia(media: ThemeMedia): void {
   items = [media, ...items.filter((m) => m.id !== media.id)];
+  savePersistedMedia(items);
   emit();
 }
 
@@ -71,6 +100,8 @@ export function useMediaLibrary(): ThemeMedia[] {
 
 /** What to put in an <img> for this background. */
 export function mediaSrc(media: ThemeMedia): string {
-  if (media.kind === 'video') return media.poster ?? slideBackdrop(media.seed, media.style);
-  return media.url ?? slideBackdrop(media.seed, media.style);
+  if (media.kind === 'video') {
+    return toDisplayUrl(media.poster) || toDisplayUrl(media.url) || slideBackdrop(media.seed, media.style);
+  }
+  return toDisplayUrl(media.url) || slideBackdrop(media.seed, media.style);
 }

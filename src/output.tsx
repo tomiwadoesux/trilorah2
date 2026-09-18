@@ -58,6 +58,8 @@ interface Theme {
   secondaryVersion: string;
   stageShowVerseText: boolean;
   stageShowTimer: string;
+  verseLayout: string;
+  safeMargin: number;
 }
 
 const FONT_PRESETS: Record<string, string> = {
@@ -91,6 +93,8 @@ const DEFAULT_THEME: Theme = {
   secondaryVersion: '',
   stageShowVerseText: true,
   stageShowTimer: '',
+  verseLayout: 'top',
+  safeMargin: 7,
 };
 
 function themeFromSettings(s: Record<string, unknown>): Theme {
@@ -126,6 +130,8 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     secondaryVersion: typeof s.secondaryVersion === 'string' ? s.secondaryVersion : '',
     stageShowVerseText: s.stageShowVerseText !== false,
     stageShowTimer: typeof s.stageShowTimer === 'string' ? s.stageShowTimer : '',
+    verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'top',
+    safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 7,
   };
 }
 
@@ -288,11 +294,22 @@ function OutputSurface() {
     ? timers.find((t) => t.id === theme.stageShowTimer || t.name === theme.stageShowTimer) ?? null
     : null;
 
+  const atBottom = theme.verseLayout !== 'top';
+  const stageJustify = atBottom ? 'flex-end' : 'flex-start';
+  const stageAlign =
+    theme.verseLayout === 'bottom-left' ? 'flex-start' : theme.verseLayout === 'bottom-right' ? 'flex-end' : 'center';
+  const stageTextAlign =
+    theme.verseLayout === 'bottom-left' ? 'left' : theme.verseLayout === 'bottom-right' ? 'right' : 'center';
+
   const themedStage = {
     '--verse-font': theme.fontFamily,
     '--verse-scale': String(theme.scale),
     '--verse-weight': String(theme.weight),
     '--verse-color': theme.color,
+    '--safe-margin': `${theme.safeMargin}%`,
+    '--stage-justify': stageJustify,
+    '--stage-align': stageAlign,
+    '--stage-text-align': stageTextAlign,
   } as React.CSSProperties;
 
   const rootClass = [
@@ -325,14 +342,14 @@ function OutputSurface() {
       )}
       {song && screen === 'live' && (
         <div className="output-stage visible output-song">
-          {song.lines.map((line, i) => (
+          {song.lines?.map((line: string, i: number) => (
             <div key={i} className="output-verse">
               {line}
             </div>
           ))}
           <div className="output-ref">
             {song.title}
-            <span className="output-version">{song.label}</span>
+            {song.label && <span className="output-version">{song.label}</span>}
           </div>
         </div>
       )}
@@ -342,6 +359,7 @@ function OutputSurface() {
             {shown.isPreview && <div className="output-preview-mark">preview</div>}
             {slide ? (
               <>
+                {!atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}
                 {slide.lines.map((line, i) => (
                   <div
                     key={line.version + i}
@@ -350,7 +368,7 @@ function OutputSurface() {
                     {line.text}
                   </div>
                 ))}
-                {slide.reference && <div className="output-ref">{slide.reference}</div>}
+                {atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}
                 {slide.total > 1 && (
                   <div className="output-slide-count">
                     {slide.index} / {slide.total}

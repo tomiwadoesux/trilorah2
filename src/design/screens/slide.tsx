@@ -82,6 +82,8 @@ export function SlideCanvas({
   const justifyContent = atBottom ? 'flex-end' : 'flex-start';
   const alignItems =
     theme.layout === 'bottom-left' ? 'flex-start' : theme.layout === 'bottom-right' ? 'flex-end' : 'center';
+  const textAlign =
+    theme.layout === 'bottom-left' ? 'left' : theme.layout === 'bottom-right' ? 'right' : 'center';
   const fontFamily = theme.font === 'serif' ? 'Georgia, "Times New Roman", serif' : 'var(--tri-font, Roboto, sans-serif)';
   const textTransform = theme.font === 'uppercase' ? 'uppercase' : undefined;
 
@@ -150,27 +152,31 @@ export function SlideCanvas({
           {guide && (
             <span
               aria-hidden
-              className="pointer-events-none absolute border border-dashed border-white/35"
+              className="pointer-events-none absolute z-10 border border-dashed border-white/40"
               style={{ inset: `${theme.safeMargin}%` }}
             >
-              <span className="absolute -top-4 left-0 rounded bg-black/45 px-1 text-[9px] lowercase text-white/65">
-                safe area
+              <span className="absolute -top-1 -left-1 h-2 w-2 border-t-2 border-l-2 border-amber-400" />
+              <span className="absolute -top-1 -right-1 h-2 w-2 border-t-2 border-r-2 border-amber-400" />
+              <span className="absolute -bottom-1 -left-1 h-2 w-2 border-b-2 border-l-2 border-amber-400" />
+              <span className="absolute -bottom-1 -right-1 h-2 w-2 border-b-2 border-r-2 border-amber-400" />
+              <span className="absolute -top-4 left-0 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-mono lowercase tracking-wide text-white/80 shadow-sm">
+                safe area · {theme.safeMargin}%
               </span>
             </span>
           )}
 
           <div
-            className="absolute inset-0 flex"
+            className="absolute flex flex-col"
             style={{
-              padding: `${theme.safeMargin}%`,
+              inset: `${theme.safeMargin}%`,
               justifyContent,
               alignItems,
-              textAlign: theme.layout === 'bottom-left' ? 'left' : 'center',
+              textAlign,
             }}
           >
             {words ? (
               <div
-                className="max-w-[92%] text-white"
+                className="flex max-w-[92%] flex-col text-white"
                 style={{
                   fontFamily,
                   fontSize: `${Math.max(17, 27 + theme.size * 2)}px`,
@@ -178,29 +184,24 @@ export function SlideCanvas({
                   lineHeight: 1.2,
                   textTransform,
                   textShadow: `0 2px ${Math.round(5 + theme.shadow / 7)}px rgb(0 0 0 / ${Math.min(0.92, 0.25 + theme.shadow / 110)})`,
+                  alignItems: alignItems === 'flex-start' ? 'flex-start' : alignItems === 'flex-end' ? 'flex-end' : 'center',
                 }}
               >
-                {/*
-                  The reference only when the slide carries one. buildVerseSlides
-                  decides that — referenceMode puts it on the first slide, the
-                  last, every one, or none — and a renderer that printed it
-                  regardless would be showing the operator a slide the
-                  projector is not going to draw.
-                */}
-                {slide.reference && (
-                  <p className="m-0 text-[0.46em] font-semibold tracking-[0.08em] opacity-75">{slide.reference}</p>
+                {!atBottom && slide.reference && (
+                  <p className="m-0 mb-[0.45em] text-[0.46em] font-semibold tracking-[0.08em] opacity-75">{slide.reference}</p>
                 )}
-                {/* One paragraph per translation. A parallel reading is two
-                    lines here and two lines on the wall. */}
                 {slide.lines.map((line, i) => (
                   <p
                     key={`${line.version}-${i}`}
-                    className={slide.reference || i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}
+                    className={(!atBottom && slide.reference) || i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}
                     style={{ fontSize: `${Math.max(0.72, 1 + theme.verseSize * 0.08)}em` }}
                   >
                     {line.text}
                   </p>
                 ))}
+                {atBottom && slide.reference && (
+                  <p className="m-0 mt-[0.45em] text-[0.46em] font-semibold tracking-[0.08em] opacity-75">{slide.reference}</p>
+                )}
               </div>
             ) : screen === 'live' && empty ? (
               /* Not styled like scripture: an empty stage is chrome talking

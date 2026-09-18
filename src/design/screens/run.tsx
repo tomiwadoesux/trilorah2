@@ -97,6 +97,8 @@ interface RunValue {
   remove: (segmentKey: string, itemKey: string) => void;
   /** Rewrite one item's label — how a note is edited in place. */
   updateItem: (segmentKey: string, itemKey: string, label: string) => void;
+  /** Populate standard Sunday order of service. */
+  loadSundayTemplate: () => void;
 }
 
 const RunContext = createContext<RunValue | null>(null);
@@ -271,9 +273,56 @@ export function RunProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const loadSundayTemplate = useCallback(() => {
+    const template = [
+      { id: 'welcome', label: 'welcome & call to worship', items: [{ source: 'note' as const, label: 'opening prayer & welcome' }] },
+      { id: 'worship', label: 'praise & worship', items: [{ source: 'note' as const, label: '3-4 songs led by worship team' }] },
+      { id: 'announcements', label: 'announcements & offering', items: [{ source: 'note' as const, label: 'tithes, offering & welcome guests' }] },
+      { id: 'reading', label: 'scripture reading', items: [{ source: 'note' as const, label: 'congregational scripture reading' }] },
+      { id: 'sermon', label: 'sermon / message', items: [{ source: 'note' as const, label: 'main preaching & scriptures' }] },
+      { id: 'altar-call', label: 'altar call & benediction', items: [{ source: 'note' as const, label: 'ministry time & closing blessing' }] },
+    ];
+    const newSegments: RunSegment[] = template.map((t) => ({
+      key: `${t.id}-${(seq.current += 1)}`,
+      type: t.id,
+      label: t.label,
+      items: t.items.map((it) => ({
+        key: `note-${(seq.current += 1)}`,
+        source: it.source,
+        label: it.label,
+      })),
+    }));
+    setSegments(newSegments);
+    setOpen(newSegments.map((s) => s.key));
+  }, []);
+
   const value = useMemo(
-    () => ({ segments, addSegments, removeSegment, isOpen, toggleOpen, queue, queueMany, dropInto, remove, updateItem }),
-    [segments, addSegments, removeSegment, isOpen, toggleOpen, queue, queueMany, dropInto, remove, updateItem],
+    () => ({
+      segments,
+      addSegments,
+      removeSegment,
+      isOpen,
+      toggleOpen,
+      queue,
+      queueMany,
+      dropInto,
+      remove,
+      updateItem,
+      loadSundayTemplate,
+    }),
+    [
+      segments,
+      addSegments,
+      removeSegment,
+      isOpen,
+      toggleOpen,
+      queue,
+      queueMany,
+      dropInto,
+      remove,
+      updateItem,
+      loadSundayTemplate,
+    ],
   );
 
   return <RunContext.Provider value={value}>{children}</RunContext.Provider>;

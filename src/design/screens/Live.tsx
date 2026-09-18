@@ -26,6 +26,7 @@ import {
   SlideThumb,
   PlusIcon,
   PlayIcon,
+  CheckIcon,
   slideBackdrop,
   type BackdropStyle,
   BACKDROP_BY_CONTENT,
@@ -1275,29 +1276,511 @@ function sectionId(song: Song, verse: SongVerse): string {
  * the screen — which is the only rule that makes one field mean two things
  * without confusing anybody.
  */
+interface EditableSlide {
+  id: string;
+  label: string;
+  lines: string[];
+}
+
+function SongSlideEditor({
+  song,
+  onSave,
+  onCancel,
+}: {
+  song: Song;
+  onSave: (updated: Song) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState(song.title);
+  const [author, setAuthor] = useState(song.author);
+  const [slides, setSlides] = useState<EditableSlide[]>(() =>
+    song.verses.map((v, i) => ({
+      id: v.id || `v-${i}`,
+      label: v.label || `Verse ${i + 1}`,
+      lines: [...v.lines],
+    })),
+  );
+  const [initialJson] = useState(() =>
+    JSON.stringify({
+      title: song.title,
+      author: song.author,
+      slides: song.verses.map((v) => ({ label: v.label, lines: v.lines })),
+    }),
+  );
+
+  const currentJson = JSON.stringify({
+    title,
+    author,
+    slides: slides.map((s) => ({ label: s.label, lines: s.lines })),
+  });
+  const isDirty = currentJson !== initialJson;
+
+  const handleReset = () => {
+    const init = JSON.parse(initialJson);
+    setTitle(init.title);
+    setAuthor(init.author);
+    setSlides(
+      init.slides.map((s: any, i: number) => ({
+        id: `v-${i}`,
+        label: s.label,
+        lines: s.lines,
+      })),
+    );
+  };
+
+  const handleSave = () => {
+    if (!isDirty) return;
+    onSave({
+      id: song.id,
+      title: title.trim() || 'Untitled Song',
+      author: author.trim(),
+      verses: slides.map((s, i) => ({
+        id: `${song.id}:${i}`,
+        label: s.label.trim() || `Slide ${i + 1}`,
+        lines: s.lines.map((l) => l.trim()).filter(Boolean),
+      })),
+    });
+  };
+
+  const moveSlide = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= slides.length) return;
+    setSlides((prev) => {
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      return next;
+    });
+  };
+
+  const deleteSlide = (index: number) => {
+    if (slides.length <= 1) return;
+    setSlides((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const addSlide = () => {
+    setSlides((prev) => [
+      ...prev,
+      {
+        id: `v-${Date.now()}`,
+        label: `Verse ${prev.length + 1}`,
+        lines: [''],
+      },
+    ]);
+  };
+
+  return (
+    <div className="flex h-full w-full flex-col overflow-hidden bg-[rgb(12_17_19_/_0.98)] text-[var(--tri-ink)]">
+      {/* Top Bar with Cancel / Back button */}
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            title="back to songs"
+            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[12px] font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <ChevronDownIcon size={12} className="rotate-90" />
+            <span>back</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+              Slide Editor
+            </span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Song title..."
+              className="rounded bg-transparent px-1.5 py-0.5 text-[14px] font-medium text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={addSlide}
+          className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-white/15"
+        >
+          <PlusIcon size={12} />
+          <span>add slide</span>
+        </button>
+      </div>
+
+      {/* Slide Boxes Per Page */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {slides.map((slide, idx) => (
+            <div
+              key={slide.id}
+              className="flex flex-col rounded-xl border border-white/10 bg-white/[0.04] p-3 shadow-md backdrop-blur-sm transition-all hover:border-white/20"
+            >
+              <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-mono text-white/50">
+                    #{idx + 1}
+                  </span>
+                  <input
+                    value={slide.label}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSlides((prev) =>
+                        prev.map((s, i) => (i === idx ? { ...s, label: val } : s)),
+                      );
+                    }}
+                    placeholder="e.g. Verse 1"
+                    className="w-24 rounded bg-transparent px-1 text-[12px] font-semibold text-white/90 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    title="move slide left / up"
+                    disabled={idx === 0}
+                    onClick={() => moveSlide(idx, -1)}
+                    className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-20"
+                  >
+                    <ChevronDownIcon size={10} className="rotate-90" />
+                  </button>
+                  <button
+                    type="button"
+                    title="move slide right / down"
+                    disabled={idx === slides.length - 1}
+                    onClick={() => moveSlide(idx, 1)}
+                    className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-20"
+                  >
+                    <ChevronDownIcon size={10} className="-rotate-90" />
+                  </button>
+                  <button
+                    type="button"
+                    title="delete slide"
+                    onClick={() => deleteSlide(idx)}
+                    className="rounded p-1 text-rose-400/60 hover:bg-rose-500/20 hover:text-rose-300"
+                  >
+                    <TrashIcon size={12} />
+                  </button>
+                </div>
+              </div>
+
+              <textarea
+                value={slide.lines.join('\n')}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setSlides((prev) =>
+                    prev.map((s, i) => (i === idx ? { ...s, lines: text.split('\n') } : s)),
+                  );
+                }}
+                rows={5}
+                placeholder="Slide lyrics here..."
+                className="w-full resize-none rounded-lg border border-white/5 bg-black/40 p-2.5 font-sans text-[12px] leading-relaxed text-white/90 placeholder:text-white/20 focus:border-emerald-500/50 focus:outline-none"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom Action Bar */}
+      <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-[rgb(10_14_16_/_0.95)] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] text-white/50">
+            {slides.length} slide{slides.length === 1 ? '' : 's'}
+          </span>
+          <span className="text-white/20">·</span>
+          <span
+            className={cx(
+              'text-[11px] font-mono lowercase',
+              isDirty ? 'text-amber-300' : 'text-white/30',
+            )}
+          >
+            {isDirty ? 'unsaved edits' : 'all changes saved'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Save Button: Green linear gradient, starts dimmed until dirty */}
+          <button
+            type="button"
+            disabled={!isDirty}
+            onClick={handleSave}
+            style={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            }}
+            className={cx(
+              'flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-md transition-all duration-200',
+              !isDirty
+                ? 'opacity-40 cursor-not-allowed saturate-50'
+                : 'opacity-100 hover:brightness-110 hover:shadow-emerald-500/20 active:scale-[0.98]',
+            )}
+          >
+            <CheckIcon size={13} />
+            <span>save changes</span>
+          </button>
+
+          {/* Reset Button: Yellow linear gradient, slides out with CSS transition when dirty */}
+          <div
+            style={{
+              transition: 'all 280ms cubic-bezier(0.16, 1, 0.3, 1)',
+              maxWidth: isDirty ? '120px' : '0px',
+              opacity: isDirty ? 1 : 0,
+              transform: isDirty ? 'translateX(0)' : 'translateX(-12px)',
+              pointerEvents: isDirty ? 'auto' : 'none',
+            }}
+            className="overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              }}
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-[13px] font-semibold text-black shadow-md hover:brightness-110 active:scale-[0.98] transition-transform"
+            >
+              <ResetIcon size={13} />
+              <span>reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddSongModal({
+  isOpen,
+  onClose,
+  onAddSong,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddSong: (newSong: Song) => void;
+}) {
+  const [tab, setTab] = useState<'youtube' | 'paste' | 'file'>('youtube');
+  const [ytUrl, setYtUrl] = useState('');
+  const [ytLoading, setYtLoading] = useState(false);
+  const [ytError, setYtError] = useState<string | null>(null);
+
+  const [pasteTitle, setPasteTitle] = useState('');
+  const [pasteAuthor, setPasteAuthor] = useState('');
+  const [pasteText, setPasteText] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleFetchYoutube = async () => {
+    if (!ytUrl.trim()) return;
+    setYtLoading(true);
+    setYtError(null);
+    try {
+      const api = window.api;
+      if (!api?.fetchYoutubeTranscript) {
+        throw new Error('YouTube caption fetcher not available in this environment');
+      }
+      const res = await api.fetchYoutubeTranscript(ytUrl.trim());
+      if (!res?.success || !res.lines || res.lines.length === 0) {
+        throw new Error(res?.error || 'No English or suitable captions found for this video');
+      }
+
+      const stanzas: { label: string; lines: string[] }[] = [];
+      let currentLines: string[] = [];
+      let stanzaIndex = 1;
+
+      for (let i = 0; i < res.lines.length; i++) {
+        currentLines.push(res.lines[i].text);
+        if (currentLines.length >= 4 || i === res.lines.length - 1) {
+          stanzas.push({
+            label: stanzaIndex === 2 ? 'Chorus' : stanzaIndex === 4 ? 'Bridge' : `Verse ${stanzaIndex}`,
+            lines: [...currentLines],
+          });
+          currentLines = [];
+          stanzaIndex++;
+        }
+      }
+
+      const songId = `yt-${Date.now()}`;
+      const songTitle = res.title || 'YouTube Worship Song';
+      const newSong: Song = {
+        id: songId,
+        title: songTitle,
+        author: 'YouTube',
+        verses: stanzas.map((st, i) => ({
+          id: `${songId}:${i}`,
+          label: st.label,
+          lines: st.lines,
+        })),
+      };
+
+      onAddSong(newSong);
+      onClose();
+    } catch (err: any) {
+      setYtError(err?.message || 'Failed to fetch YouTube transcript');
+    } finally {
+      setYtLoading(false);
+    }
+  };
+
+  const handlePasteLyrics = () => {
+    if (!pasteText.trim()) return;
+    const rawSections = pasteText.split(/\n\s*\n/).filter((s) => s.trim());
+    const songId = `song-${Date.now()}`;
+    const verses: SongVerse[] = rawSections.map((sec, idx) => {
+      const lines = sec.split('\n').map((l) => l.trim()).filter(Boolean);
+      return {
+        id: `${songId}:${idx}`,
+        label: idx === 1 ? 'Chorus' : `Verse ${idx + 1}`,
+        lines,
+      };
+    });
+
+    const newSong: Song = {
+      id: songId,
+      title: pasteTitle.trim() || 'New Song',
+      author: pasteAuthor.trim() || '',
+      verses,
+    };
+
+    onAddSong(newSong);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-[rgb(16_22_24)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="flex items-center gap-2">
+            <MusicIcon size={16} className="text-emerald-400" />
+            <h3 className="text-[15px] font-semibold text-white">Add Song</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex border-b border-white/10 bg-black/20 px-5 pt-2 gap-2">
+          {(
+            [
+              { id: 'youtube', label: 'YouTube Video' },
+              { id: 'paste', label: 'Paste Lyrics' },
+              { id: 'file', label: 'Import File' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cx(
+                'border-b-2 px-3 py-2 text-[12px] font-medium transition-colors',
+                tab === t.id
+                  ? 'border-emerald-400 text-emerald-400'
+                  : 'border-transparent text-white/50 hover:text-white/80',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-5">
+          {tab === 'youtube' && (
+            <div className="flex flex-col gap-3">
+              <p className="text-[12px] leading-relaxed text-white/60">
+                Paste any YouTube worship song link. We automatically extract and format the captions into presentation slides.
+              </p>
+              <input
+                value={ytUrl}
+                onChange={(e) => setYtUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+              />
+              {ytError && (
+                <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2.5 text-[12px] text-rose-300">
+                  {ytError}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={ytLoading || !ytUrl.trim()}
+                onClick={handleFetchYoutube}
+                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-40 transition-colors"
+              >
+                {ytLoading ? 'Fetching Captions…' : 'Fetch & Generate Slides'}
+              </button>
+            </div>
+          )}
+
+          {tab === 'paste' && (
+            <div className="flex flex-col gap-3">
+              <input
+                value={pasteTitle}
+                onChange={(e) => setPasteTitle(e.target.value)}
+                placeholder="Song title (e.g. Way Maker)"
+                className="rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+              />
+              <input
+                value={pasteAuthor}
+                onChange={(e) => setPasteAuthor(e.target.value)}
+                placeholder="Artist or Author (optional)"
+                className="rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+              />
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                rows={6}
+                placeholder="Paste lyrics here. Leave a blank line between verses to split into slides."
+                className="resize-none rounded-xl border border-white/15 bg-black/40 p-3 text-[12px] leading-relaxed text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                disabled={!pasteText.trim()}
+                onClick={handlePasteLyrics}
+                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-40 transition-colors"
+              >
+                Auto-Split & Edit Slides
+              </button>
+            </div>
+          )}
+
+          {tab === 'file' && (
+            <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+              <p className="text-[12px] text-white/60">
+                Import ChordPro, OpenLyrics, or .txt lyric files directly from your computer.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (window.api?.songs?.importFiles) {
+                    const picked = await window.api.songs.importFiles();
+                    if (picked?.success && picked.songs?.length) {
+                      await window.api.songs.importCommit(picked.songs);
+                      onClose();
+                    }
+                  }
+                }}
+                className="rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-[13px] font-medium text-white hover:bg-white/20 transition-colors"
+              >
+                Choose Lyric Files…
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SongsBrowser() {
   const [openId, setOpenId] = useState<string | null>(null);
-  /* The grid's search outlives a visit to a song: search "amazing", open
-     it, come back, and the grid is still where you left it. The sheet's own
-     search does not outlive the song, which is what the key below says. */
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [query, setQuery] = useState('');
-  /* Deleted songs, by id. SONGS is a seed list in this sandbox, so a
-     delete cannot remove a row from anywhere — it hides one here, which is
-     enough for the card's button to be a real gesture rather than a dead
-     shape. Swap for the store's own delete when the library is backed. */
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
 
-  /*
-   * The library, when there is one.
-   *
-   * With an engine the grid is the song store — the same songs.json the rest
-   * of the app reads, seeded hymns included — so a song added here is there
-   * next Sunday. With no bridge it is still the seed list, which is what
-   * keeps this a reviewable sheet in a browser tab.
-   */
   const store = typeof window === 'undefined' ? undefined : window.api?.songs;
   const [stored, setStored] = useState<Song[] | null>(null);
-  const [note, setNote] = useState<string | null>(null);
+  const [note] = useState<string | null>(null);
   const refresh = useCallback(() => {
     if (!store) return;
     void store
@@ -1316,41 +1799,85 @@ function SongsBrowser() {
   }, [store]);
   useEffect(refresh, [refresh]);
 
-  /* Pick files, write them, show them. The store names likely duplicates in
-     its report rather than dropping them, so the note says what happened. */
-  const addSongs = async () => {
-    if (!store) return;
-    const picked = await store.importFiles();
-    if (!picked?.success || !picked.songs?.length) {
-      if (picked?.errors?.length) setNote(`could not read ${picked.errors.map((e) => e.file).join(', ')}`);
-      return;
-    }
-    await store.importCommit(picked.songs);
-    setNote(`added ${picked.songs.length} song${picked.songs.length === 1 ? '' : 's'}`);
-    refresh();
-  };
-
   const songs = useMemo(
     () => (stored ?? SONGS).filter((s) => !deleted.has(s.id)),
     [stored, deleted],
   );
   const open = songs.find((s) => s.id === openId);
 
-  return open ? (
-    <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} />
-  ) : (
-    <SongGrid
-      songs={songs}
-      query={query}
-      onQuery={setQuery}
-      onOpen={setOpenId}
-      onAdd={store ? () => void addSongs() : undefined}
-      note={note}
-      onDelete={(id) => {
-        setDeleted((d) => new Set(d).add(id));
-        if (store) void store.remove(id).then(refresh).catch(() => undefined);
-      }}
-    />
+  const handleSaveSong = (updated: Song) => {
+    setStored((prev) => {
+      const list = prev ?? SONGS;
+      const at = list.findIndex((s) => s.id === updated.id);
+      if (at >= 0) {
+        const next = [...list];
+        next[at] = updated;
+        return next;
+      }
+      return [updated, ...list];
+    });
+
+    if (store?.update) {
+      void store
+        .update(updated.id, {
+          title: updated.title,
+          authors: updated.author ? [updated.author] : [],
+          sections: updated.verses.map((v) => ({ label: v.label, lines: v.lines })),
+        })
+        .then(refresh)
+        .catch(() => undefined);
+    }
+    setEditingSong(null);
+  };
+
+  if (editingSong) {
+    return (
+      <SongSlideEditor
+        song={editingSong}
+        onCancel={() => setEditingSong(null)}
+        onSave={handleSaveSong}
+      />
+    );
+  }
+
+  return (
+    <>
+      <AddSongModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onAddSong={(newSong) => {
+          setStored((prev) => [newSong, ...(prev ?? [])]);
+          if (store?.add) {
+            void store
+              .add({
+                title: newSong.title,
+                authors: newSong.author ? [newSong.author] : [],
+                sections: newSong.verses.map((v) => ({ label: v.label, lines: v.lines })),
+              })
+              .then(refresh)
+              .catch(() => undefined);
+          }
+          setEditingSong(newSong);
+        }}
+      />
+      {open ? (
+        <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} />
+      ) : (
+        <SongGrid
+          songs={songs}
+          query={query}
+          onQuery={setQuery}
+          onOpen={setOpenId}
+          onEdit={setEditingSong}
+          onAdd={() => setAddModalOpen(true)}
+          note={note}
+          onDelete={(id) => {
+            setDeleted((d) => new Set(d).add(id));
+            if (store) void store.remove(id).then(refresh).catch(() => undefined);
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -1375,6 +1902,7 @@ function SongGrid({
   query,
   onQuery,
   onOpen,
+  onEdit,
   onDelete,
   onAdd,
   note,
@@ -1383,6 +1911,7 @@ function SongGrid({
   query: string;
   onQuery: (q: string) => void;
   onOpen: (id: string) => void;
+  onEdit?: (song: Song) => void;
   onDelete: (id: string) => void;
   /** Absent with no engine, which leaves the card drawn but inert. */
   onAdd?: () => void;
@@ -1473,7 +2002,7 @@ function SongGrid({
               text.
             */}
             {needle === '' ? (
-              <AddCard label="add song" hint={note ?? 'chordpro, openlyrics or .txt'} onClick={onAdd} />
+              <AddCard label="add song" hint={note ?? 'youtube, lyrics or files'} onClick={onAdd} />
             ) : null}
 
             {matches.map((song, i) => {
@@ -1640,7 +2169,8 @@ function SongGrid({
                         aria-label={`edit ${song.title}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpen(song.id);
+                          if (onEdit) onEdit(song);
+                          else onOpen(song.id);
                         }}
                         className={cx(
                           surface({ shape: 'control', interactive: true }),
@@ -2299,43 +2829,136 @@ function DetectedScripture({
  * Keyed by id so React moves the existing lines rather than redrawing them —
  * that is what makes the climb an animation and not a flicker.
  */
+type TranscriptMode = 'teleprompter' | 'thought-stream' | 'kinetic-stack';
+
 function SpokenLyrics() {
   const { spoken } = useEngine();
-  const shown = spoken.lines.slice(-5);
+  const [mode, setMode] = useState<TranscriptMode>(() => {
+    try {
+      return (localStorage.getItem('trilorah_transcript_mode') as TranscriptMode) || 'thought-stream';
+    } catch {
+      return 'thought-stream';
+    }
+  });
+
+  const selectMode = (m: TranscriptMode) => {
+    setMode(m);
+    try {
+      localStorage.setItem('trilorah_transcript_mode', m);
+    } catch {}
+  };
+
+  const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
+  const sampleLines = [
+    { id: 's-1', text: 'For God so loved the world that He gave His only begotten Son' },
+    { id: 's-2', text: 'Whoever believes in Him should not perish but have everlasting life' },
+    { id: 's-3', text: 'Let us open our hearts today as we walk in the grace of the Father' },
+  ];
+  const lines = hasRealSpeech ? spoken.lines : sampleLines;
+  const partial = hasRealSpeech ? spoken.partial : 'and receive His unconditional love...';
+  const shown = lines.slice(-5);
+
   return (
-    <div
-      className="flex h-full flex-col justify-center overflow-hidden px-3"
-      style={{
-        maskImage: 'linear-gradient(to bottom, transparent 0, black 28%, black 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 28%, black 100%)',
-      }}
-    >
-      <style>{`@keyframes tri-lyric-in { from { opacity: 0; transform: translateY(14px); } }`}</style>
-      <div className="flex flex-col justify-end gap-2.5">
-        {shown.map((line, i) => {
-          const age = shown.length - 1 - i + (spoken.partial ? 1 : 0);
-          return (
-            <p
-              key={line.id}
-              className="text-center leading-[1.5] text-[var(--tri-ink)]"
-              style={{
-                fontSize: age === 0 ? 13 : 12,
-                opacity: Math.max(0.16, 0.9 - age * 0.22),
-                transition: 'opacity 400ms var(--tri-ease-out), font-size 400ms var(--tri-ease-out)',
-                animation: 'tri-lyric-in 360ms var(--tri-ease-out) both',
-              }}
-            >
-              {line.text}
-            </p>
-          );
-        })}
-        {spoken.partial && (
-          <p className="text-center text-[13px] leading-[1.5] text-[var(--tri-ink)]">
-            {spoken.partial}
-            <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-[rgb(228_216_122_/_0.8)]" />
-          </p>
+    <div className="flex h-full flex-col justify-between overflow-hidden px-3 py-2">
+      {/* 3 options switcher pill bar */}
+      <div className="mb-2 flex shrink-0 items-center justify-center gap-1 rounded-full bg-black/40 p-0.5 border border-white/10 backdrop-blur-sm">
+        {(
+          [
+            { id: 'teleprompter', label: 'teleprompter' },
+            { id: 'thought-stream', label: 'thought stream' },
+            { id: 'kinetic-stack', label: 'kinetic stack' },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => selectMode(opt.id)}
+            className={cx(
+              'rounded-full px-2.5 py-1 text-[10px] font-medium lowercase tracking-wide transition-all',
+              mode === opt.id
+                ? 'bg-[var(--tri-accent-yellow)] text-black font-semibold shadow-sm'
+                : 'text-[rgb(229_243_242_/_0.55)] hover:text-white',
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Mode Renderings */}
+      <div className="relative flex flex-1 flex-col justify-center overflow-hidden">
+        {mode === 'teleprompter' && (
+          <div
+            className="flex flex-col justify-end gap-2.5"
+            style={{
+              maskImage: 'linear-gradient(to bottom, transparent 0, black 25%, black 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 25%, black 100%)',
+            }}
+          >
+            {shown.map((line, i) => {
+              const age = shown.length - 1 - i + (partial ? 1 : 0);
+              return (
+                <p
+                  key={line.id}
+                  className="text-center leading-[1.5] text-[var(--tri-ink)]"
+                  style={{
+                    fontSize: age === 0 ? 13 : 12,
+                    opacity: Math.max(0.18, 0.9 - age * 0.22),
+                    transition: 'opacity 400ms var(--tri-ease-out), font-size 400ms var(--tri-ease-out)',
+                  }}
+                >
+                  {line.text}
+                </p>
+              );
+            })}
+            {partial && (
+              <p className="text-center text-[13px] leading-[1.5] text-[var(--tri-accent-yellow)] font-medium">
+                {partial}
+                <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-[rgb(228_216_122_/_0.8)]" />
+              </p>
+            )}
+          </div>
+        )}
+
+        {mode === 'thought-stream' && (
+          <div className="flex flex-col justify-center overflow-y-auto px-1 text-center">
+            <div className="text-[13px] leading-[1.65] text-[var(--tri-ink)]">
+              {shown.map((line) => (
+                <span key={line.id} className="opacity-75 transition-opacity duration-300">
+                  {line.text}.{' '}
+                </span>
+              ))}
+              {partial && (
+                <span className="font-medium text-[var(--tri-accent-yellow)] drop-shadow-sm">
+                  {partial}
+                  <span className="ml-1 inline-block h-[0.9em] w-[2px] translate-y-[1px] animate-pulse bg-[var(--tri-accent-yellow)]" />
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {mode === 'kinetic-stack' && (
+          <div className="flex flex-col items-center justify-center gap-3 text-center">
+            {shown.length > 1 && (
+              <p className="text-[11px] font-normal leading-snug text-white/40 line-clamp-2 transition-all duration-300">
+                {shown[shown.length - (partial ? 1 : 2)]?.text}
+              </p>
+            )}
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 shadow-lg backdrop-blur-md">
+              <p className="text-[14px] font-medium leading-relaxed tracking-wide text-[var(--tri-ink)]">
+                {partial || shown[shown.length - 1]?.text}
+              </p>
+            </div>
+          </div>
         )}
       </div>
+
+      {!hasRealSpeech && (
+        <span className="mt-1 text-center text-[9px] lowercase text-white/30">
+          preview mode · speaks live on speech
+        </span>
+      )}
     </div>
   );
 }
@@ -3014,16 +3637,6 @@ function useServiceLog(stateLabel: string) {
 }
 
 
-/** Two visible rows; a third is rendered so it can be clipped as it goes. */
-const LOG_ROWS = 2;
-
-interface LogRow {
-  key: string;
-  text: string;
-  /** An action row is the way out of the line above it, not an event. */
-  isAction: boolean;
-}
-
 /**
  * The bar. Bottom-anchored inside a fixed two-row window: a new line
  * appears at the bottom and the one above it moves up by exactly one row,
@@ -3036,92 +3649,33 @@ interface LogRow {
  * two-line log is dimming half the log.
  */
 function ServiceLogBar({ entries, onAction }: { entries: LogEntry[]; onAction: () => void }) {
-  const rows = useMemo<LogRow[]>(
-    () =>
-      entries.flatMap((e) =>
-        e.action
-          ? [
-              { key: `${e.id}`, text: e.text, isAction: false },
-              { key: `${e.id}-do`, text: e.action.label, isAction: true },
-            ]
-          : [{ key: `${e.id}`, text: e.text, isAction: false }],
-      ),
-    [entries],
-  );
-
-  const shown = rows.slice(-(LOG_ROWS + 1));
-  const newest = shown[shown.length - 1]?.key ?? '';
+  const latest = entries[entries.length - 1];
+  const text = latest?.text ?? 'system ready';
+  const hasAction = Boolean(latest?.action);
 
   return (
     <div
-      className="tri-rounded-control relative min-w-0 flex-1"
+      className="tri-rounded-control relative flex min-w-0 flex-1 items-center justify-between overflow-hidden bg-[rgb(255_255_255_/_0.03)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink)]"
       style={{
         ...EDGE,
-        /*
-         * Leading, not layout. Splitting the bar's height in two gave each
-         * row half of 46px and the pair read as two unrelated lines with a
-         * gap between them — a log is one block of text, and consecutive
-         * lines of it belong close enough to be read as consecutive. So
-         * the row is sized off the TYPE (5px of leading on the type size)
-         * and the resulting two-row block is centred in the bar instead.
-         */
-        ['--tri-log-row' as string]: 'calc(var(--tri-size-xs) + 5px)',
-        /*
-         * One inset, all four sides. The two-row block is centred, so
-         * whatever is left over above it is the gap — and the text is
-         * held off the left edge by exactly that same figure rather than
-         * by a hand-typed 8px that only matched at one density tier. The
-         * line then sits in the box evenly, which is the only reason the
-         * gap is worth deriving at all.
-         */
-        ['--tri-log-gap' as string]:
-          'calc((var(--tri-topbar-h) - var(--tri-log-row) * 2) / 2)',
+        height: 'var(--tri-topbar-h)',
       }}
     >
-      {/*
-        The window is its own box, EXACTLY two rows tall and centred in
-        the bar. Both halves matter: the stack renders a third row on
-        purpose — the one on its way out — and a window of exactly two is
-        what holds it out of sight until the rise carries it through
-        (clip on the outer box instead and a 2px sliver of it shows above
-        the top line, which looks like a rendering fault and is one).
-      */}
-      <div
-        className="absolute top-1/2 -translate-y-1/2 overflow-hidden"
-        style={{
-          left: 'var(--tri-log-gap)',
-          right: 'var(--tri-log-gap)',
-          height: 'calc(var(--tri-log-row) * 2)',
-        }}
-      >
-        <div key={newest} className="tri-log-stack absolute inset-x-0 bottom-0 flex flex-col">
-          {shown.map((row) => {
-            /* One row shape for both kinds, so the text starts on the same
-               pixel whether the line is an event or the way out of one. */
-            const common =
-              'flex h-[var(--tri-log-row)] shrink-0 items-center gap-2 text-[length:var(--tri-size-xs)] leading-none lowercase text-[var(--tri-accent-yellow)]';
-            return row.isAction ? (
-              <div key={row.key} className={common}>
-                <button
-                  type="button"
-                  onClick={onAction}
-                  className={cx(
-                    'flex items-center gap-1 leading-none underline underline-offset-2',
-                    'transition-[text-decoration-thickness] hover:decoration-[1.5px]',
-                  )}
-                >
-                  <span aria-hidden>←</span>
-                  {row.text}
-                </button>
-              </div>
-            ) : (
-              <div key={row.key} className={common}>
-                <span className="min-w-0 flex-1 truncate">{row.text}</span>
-              </div>
-            );
-          })}
-        </div>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400/85 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+        <span className="min-w-0 truncate tracking-wide text-[rgb(229_243_242_/_0.85)]">
+          {text}
+        </span>
       </div>
+      {hasAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium text-[var(--tri-accent-yellow)] underline underline-offset-2 transition-colors hover:text-white"
+        >
+          {latest.action?.label ?? 'switch to manual'}
+        </button>
+      )}
     </div>
   );
 }
@@ -3850,7 +4404,8 @@ function LiveBody({ state }: { state?: string }) {
                   label=""
                   tone="ash"
                   icon={<HistoryIcon size={12} />}
-                  title="history"
+                  title="load Sunday service order"
+                  onClick={() => run.loadSundayTemplate()}
                 />
               </div>
             }

@@ -273,6 +273,9 @@ contextBridge.exposeInMainWorld('api', {
 
   // Themes — native background image picker (copies into userData)
   pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
+  pickMediaFile: () => ipcRenderer.invoke('pick-media-file'),
+  fetchYoutubeTranscript: (url: string) => ipcRenderer.invoke('fetch-youtube-transcript', url),
+  getDisplaysStatus: () => ipcRenderer.invoke('get-displays-status'),
   // Stock backgrounds (Pixabay / Pexels), searched from the media tab
   getStockProviders: () => ipcRenderer.invoke('get-stock-providers'),
   searchStock: (params: any) => ipcRenderer.invoke('search-stock', params),
@@ -280,7 +283,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Media display on outputs + theme repaint
   showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),
-  // Words on the projector that are not a verse (songs). See shared/liveContent.ts.
+  // Words on the projector that are not a verse (songs/slides). See shared/liveContent.ts.
   pushLiveContent: (content: LiveContent) => ipcRenderer.invoke('push-live-content', content),
   getLiveContent: () => ipcRenderer.invoke('get-live-content'),
   onLiveContent: (callback: (content: LiveContent) => void) => {

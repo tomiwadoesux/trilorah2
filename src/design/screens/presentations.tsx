@@ -212,6 +212,133 @@ const DECK_SEED: Deck[] = [
   },
 ];
 
+interface QuickSlideModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (deck: Deck) => void;
+}
+
+function QuickSlideModal({ isOpen, onClose, onCreate }: QuickSlideModalProps) {
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [bodyText, setBodyText] = useState('');
+  const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
+
+  if (!isOpen) return null;
+
+  const handleCreate = () => {
+    if (!title.trim()) return;
+    const bullets = bodyText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const newDeck: Deck = {
+      title: title.trim(),
+      pages: 1,
+      rendered: 1,
+      excerpt: subtitle.trim() || 'quick presentation slide',
+      sample: [title.trim(), subtitle.trim()].filter(Boolean),
+      spec: {
+        title: title.trim(),
+        subtitle: subtitle.trim() || undefined,
+        sections: bullets.length > 0 ? [{ heading: '', bullets }] : [],
+      },
+    };
+
+    onCreate(newDeck);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/15 bg-[rgb(16_22_24)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <h3 className="text-[15px] font-semibold text-white">Quick Slide Maker</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3.5 p-5">
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
+              Slide Header / Title
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Welcome to Church"
+              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
+              Subheader (optional)
+            </label>
+            <input
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="e.g. Sunday Morning Service · 10:00 AM"
+              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
+              Text Alignment
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['left', 'center', 'right'] as const).map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAlign(a)}
+                  className={cx(
+                    'rounded-lg border py-1.5 text-[12px] font-medium capitalize transition-colors',
+                    align === a
+                      ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                      : 'border-white/10 bg-white/5 text-white/60 hover:text-white',
+                  )}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
+              Bullets or Announcement Notes (optional)
+            </label>
+            <textarea
+              value={bodyText}
+              onChange={(e) => setBodyText(e.target.value)}
+              rows={3}
+              placeholder="Enter bullet points (one per line)..."
+              className="w-full resize-none rounded-xl border border-white/15 bg-black/40 p-3 text-[12px] leading-relaxed text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <button
+            type="button"
+            disabled={!title.trim()}
+            onClick={handleCreate}
+            className="mt-2 flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-40 transition-colors shadow-md"
+          >
+            Create Slide
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const DECKS = DECK_SEED.map((deck, i) => ({ ...deck, id: `deck-${i}`, seed: i }));
 type LoadedDeck = (typeof DECKS)[number];
 
@@ -219,6 +346,32 @@ export function SlidesBrowser() {
   const drag = useDrag();
   const [query, setQuery] = useState('');
   const [importNote, setImportNote] = useState<string | null>(null);
+  const [quickModalOpen, setQuickModalOpen] = useState(false);
+  const [customDecks, setCustomDecks] = useState<LoadedDeck[]>(() => {
+    try {
+      const raw = localStorage.getItem('trilorah_custom_presentation_decks');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const allDecks = useMemo(() => [...customDecks, ...DECKS], [customDecks]);
+
+  const handleCreateQuickDeck = (deck: Deck) => {
+    const loaded: LoadedDeck = {
+      ...deck,
+      id: `custom-deck-${Date.now()}`,
+      seed: Math.floor(Math.random() * 100),
+    };
+    setCustomDecks((prev) => {
+      const updated = [loaded, ...prev];
+      try {
+        localStorage.setItem('trilorah_custom_presentation_decks', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
 
   /* Which page each card is showing, once paged off its first. Sparse and
      keyed by deck, exactly as the songs grid keeps its verses: filter the
@@ -232,17 +385,10 @@ export function SlidesBrowser() {
       return next === cur ? m : { ...m, [deck.id]: next };
     });
 
-  /*
-   * Searched on everything the deck says about itself, not just its name.
-   * A file called "Sunday Bulletin — 31 Aug" is found by "picnic", because
-   * that is what the operator remembers about it — the same reason the song
-   * grid searches lyrics. What makes it possible is that the import OCRs
-   * every page, so the words on the slides are already in hand.
-   */
   const needle = query.trim().toLowerCase();
   const matches = useMemo(
     () =>
-      DECKS.filter((d) => {
+      allDecks.filter((d) => {
         if (needle === '') return true;
         const hay = [
           d.title,
@@ -256,7 +402,7 @@ export function SlidesBrowser() {
           .toLowerCase();
         return hay.includes(needle);
       }),
-    [needle],
+    [needle, allDecks],
   );
 
   const sel = useLibrarySelection({
@@ -268,60 +414,60 @@ export function SlidesBrowser() {
   });
 
   return (
-    <LibraryBrowser
-      framed
-      search={
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="type a deck name or anything written on a slide..."
-        />
-      }
-    >
-      <LibraryPane header={false}>
-        {matches.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-5">
-            <p className="text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.38)]">
-              nothing matches
-            </p>
-          </div>
-        ) : (
-          <div ref={sel.listRef}>
-            {/* Five across, fixed — the songs grid's argument, unchanged:
-                the fourth deck is always fourth on the top row. */}
-            <div className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4 pb-5">
-              {/* The songs grid's leading card, with a different verb. It
-                  is an import rather than a create, so it says which files
-                  it will take — a sentence that is load-bearing on a machine
-                  with no LibreOffice, where PDF is the format that always
-                  works. */}
-              {needle === '' ? (
-                <AddCard
-                  label="import slides"
-                  hint={importNote ?? 'pptx, ppt or odp'}
-                  onClick={() => {
-                    /* The engine's own importer: it converts the deck to
-                       images (LibreOffice does the conversion) and keeps it
-                       in the MEDIA tab's library, where its slides can be
-                       pushed today. The note carries whatever it said —
-                       a missing converter is something the operator can fix,
-                       a silent nothing is not. */
-                    setImportNote('importing…');
-                    void window.api
-                      ?.importPresentation()
-                      .then((res) =>
-                        setImportNote(
-                          res?.success
-                            ? `imported ${res.data?.slides?.length ?? 0} slides — open them in the MEDIA tab`
-                            : res?.error === 'Cancelled'
-                              ? null
-                              : (res?.error ?? 'import failed'),
-                        ),
-                      )
-                      .catch(() => setImportNote('import failed'));
-                  }}
-                />
-              ) : null}
+    <>
+      <QuickSlideModal
+        isOpen={quickModalOpen}
+        onClose={() => setQuickModalOpen(false)}
+        onCreate={handleCreateQuickDeck}
+      />
+      <LibraryBrowser
+        framed
+        search={
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="type a deck name or anything written on a slide..."
+          />
+        }
+      >
+        <LibraryPane header={false}>
+          {matches.length === 0 ? (
+            <div className="flex h-full items-center justify-center px-5">
+              <p className="text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.38)]">
+                nothing matches
+              </p>
+            </div>
+          ) : (
+            <div ref={sel.listRef}>
+              <div className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4 pb-5">
+                {needle === '' ? (
+                  <>
+                    <AddCard
+                      label="quick slide"
+                      hint="header, subheader & layout"
+                      onClick={() => setQuickModalOpen(true)}
+                    />
+                    <AddCard
+                      label="import slides"
+                      hint={importNote ?? 'pptx, ppt or odp'}
+                      onClick={() => {
+                        setImportNote('importing…');
+                        void window.api
+                          ?.importPresentation()
+                          .then((res) =>
+                            setImportNote(
+                              res?.success
+                                ? `imported ${res.data?.slides?.length ?? 0} slides — open them in the MEDIA tab`
+                                : res?.error === 'Cancelled'
+                                  ? null
+                                  : (res?.error ?? 'import failed'),
+                            ),
+                          )
+                          .catch(() => setImportNote('import failed'));
+                      }}
+                    />
+                  </>
+                ) : null}
 
               {matches.map((deck, i) => {
                 const at = pageOf(deck);
@@ -422,5 +568,6 @@ export function SlidesBrowser() {
         )}
       </LibraryPane>
     </LibraryBrowser>
-  );
+  </>
+);
 }

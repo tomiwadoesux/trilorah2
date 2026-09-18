@@ -28,4 +28,15 @@ export interface LiveSong {
   lines: string[]
 }
 
-export type LiveContent = LiveSong
+export interface LiveSlide {
+  kind: 'slide'
+  title: string
+  subtitle?: string
+  align?: 'left' | 'center' | 'right'
+  body?: string
+  label?: string
+  lines?: string[]
+  path?: string
+}
+
+export type LiveContent = LiveSong | LiveSlide

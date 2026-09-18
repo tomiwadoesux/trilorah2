@@ -507,7 +507,7 @@ export function DragProvider({
    bookkeeping (key, timer, position) must not land in the run. Spelled out
    as an omit rather than a pick so a new content field is not silently lost
    the way `lines` and `path` once were. */
-const stripParked = ({ key: _key, left: _left, at: _at, ...item }: Parked): DragItem => item;
+const stripParked = ({ key: _key, left: _left, x: _x, y: _y, ...item }: Parked): DragItem => item;
 
 /* ------------------------------------------------------------------ */
 /* The layer                                                           */

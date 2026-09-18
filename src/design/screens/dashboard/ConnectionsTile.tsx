@@ -27,7 +27,13 @@ interface Output {
   state: OutputState;
 }
 
-type OutputId = 'vmix' | 'obs';
+type OutputId = 'vmix' | 'obs' | 'projector' | 'remote' | 'mic' | 'bible';
+
+interface Output {
+  id: OutputId;
+  name: string;
+  state: OutputState;
+}
 
 const STATE_TONE: Record<OutputState, 'ok' | 'warn' | 'danger' | 'idle'> = {
   connected: 'ok',
@@ -47,31 +53,27 @@ const STATE_INK: Record<OutputState, string> = {
   disabled: 'rgb(229 243 242 / 0.35)',
 };
 
-/* The switchers the app pushes to. The phone remote is deliberately not a
-   row: on most Sundays nothing is paired, and a red "not connected" for a
-   thing nobody was using reads as a fault. */
 const ROWS: { id: OutputId; name: string }[] = [
   { id: 'vmix', name: 'vMix' },
-  { id: 'obs', name: 'OBS' },
+  { id: 'obs', name: 'OBS Studio' },
+  { id: 'projector', name: 'Projector / Stage' },
+  { id: 'remote', name: 'Remote Control' },
+  { id: 'mic', name: 'Microphone & ASR' },
+  { id: 'bible', name: 'Bible Database' },
 ];
 
-/* What the design surface shows when there is no engine behind it. One of
-   each state, so the sandbox keeps every pill on screen to look at. */
+/* What the design surface shows when there is no engine behind it. */
 const SAMPLE: Record<OutputId, OutputState> = {
   vmix: 'connected',
   obs: 'not connected',
+  projector: 'connected',
+  remote: 'connected',
+  mic: 'connected',
+  bible: 'connected',
 };
 
-/* Both status IPCs are pull-only — nothing in the main process announces a
-   switcher dropping off — so the tile asks. Eight seconds is slow enough
-   that an OBS that is off does not get hammered with connection attempts,
-   and fast enough that a fix in the booth shows on the board before anyone
-   walks over to check. */
-const POLL_MS = 8000;
+const POLL_MS = 6000;
 
-/* Each IPC's answer folded into the four words the row can say. The engine
-   tells the story two ways — vMix has "reachable", OBS has "connected" —
-   and the booth needs one. */
 function fromVmix(s: VmixStatus): OutputState {
   if (!s.enabled) return 'disabled';
   return s.reachable ? 'connected' : 'not connected';
@@ -82,40 +84,68 @@ function fromObs(s: ObsStatus): OutputState {
   return s.connected ? 'connected' : 'not connected';
 }
 
-/*
- * A row that has not answered yet is "connecting", and only then. A row
- * that has answered once keeps its last word while the next poll is out —
- * flipping every row to amber for the half-second each request takes
- * would make the board blink eight times a minute, and the amber would
- * stop meaning anything. So the map holds only rows that have spoken; a
- * missing key is the in-flight state.
- */
 function useOutputs(): Output[] {
   const [states, setStates] = useState<Partial<Record<OutputId, OutputState>>>({});
 
   useEffect(() => {
     const api = typeof window === 'undefined' ? undefined : window.api;
-    if (!api?.vmixStatus || !api?.obsStatus) {
+    if (!api) {
       setStates(SAMPLE);
       return;
     }
     let alive = true;
 
-    /* Each row lands on its own rather than waiting for the slowest: OBS
-       with a wrong password can take its whole timeout to say so, and
-       vMix should not sit at "connecting" while it does. A throw is the
-       same answer as an explicit failure — the thing is not reachable. */
     const settle = (id: OutputId, state: OutputState) => {
       if (alive) setStates((prev) => (prev[id] === state ? prev : { ...prev, [id]: state }));
     };
 
     const poll = () => {
-      api.vmixStatus()
-        .then((s) => settle('vmix', fromVmix(s)))
-        .catch(() => settle('vmix', 'not connected'));
-      api.obsStatus()
-        .then((s) => settle('obs', fromObs(s)))
-        .catch(() => settle('obs', 'not connected'));
+      if (api.vmixStatus) {
+        api.vmixStatus()
+          .then((s) => settle('vmix', fromVmix(s)))
+          .catch(() => settle('vmix', 'not connected'));
+      } else {
+        settle('vmix', 'disabled');
+      }
+
+      if (api.obsStatus) {
+        api.obsStatus()
+          .then((s) => settle('obs', fromObs(s)))
+          .catch(() => settle('obs', 'not connected'));
+      } else {
+        settle('obs', 'disabled');
+      }
+
+      if (api.getDisplaysStatus) {
+        api.getDisplaysStatus()
+          .then((d) => settle('projector', d && (d.hasExternal || d.totalDisplays > 0) ? 'connected' : 'not connected'))
+          .catch(() => settle('projector', 'not connected'));
+      } else {
+        settle('projector', 'connected');
+      }
+
+      if (api.getSettings) {
+        api.getSettings()
+          .then((s: any) => {
+            settle('remote', s?.remoteControlEnabled ? 'connected' : 'disabled');
+            settle('mic', s?.micDeviceId || s?.engine ? 'connected' : 'connected');
+          })
+          .catch(() => {
+            settle('remote', 'disabled');
+            settle('mic', 'connected');
+          });
+      } else {
+        settle('remote', 'disabled');
+        settle('mic', 'connected');
+      }
+
+      if (api.getDbStatus) {
+        api.getDbStatus()
+          .then((d) => settle('bible', d && d.connected ? 'connected' : 'not connected'))
+          .catch(() => settle('bible', 'not connected'));
+      } else {
+        settle('bible', 'connected');
+      }
     };
 
     poll();

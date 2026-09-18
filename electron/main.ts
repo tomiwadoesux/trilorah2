@@ -61,6 +61,7 @@ import { FolderIndex } from './library/folders'
 import { presetForReference } from './media/presetPicker'
 import { parseSong } from './songs/import'
 import type { ImportedSong } from './songs/import'
+import { fetchYoutubeLyrics } from './songs/youtube'
 import { SongStore } from './songs/store'
 // --- 2026-09-08 EasyWorship parity pass (BUILD-MAP 2.10–2.13) ---
 import { AlertManager, type AlertTarget } from './alerts/alerts'
@@ -1501,9 +1502,9 @@ ipcMain.handle('request-mic-permission', async () => {
 let currentLiveContent: LiveContent | null = null
 
 ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
-  if (!content || typeof content !== 'object' || content.kind !== 'song') return { success: false }
+  if (!content || typeof content !== 'object' || (content.kind !== 'song' && content.kind !== 'slide')) return { success: false }
   currentLiveContent = content
-  console.log(`🎵 Live: ${content.title} — ${content.label}`)
+  console.log(`🎵 Live: ${content.kind === 'song' ? `${content.title} — ${content.label}` : content.title}`)
   screen.onContentPushed()
   broadcastToWindows('on-live-content', content)
   return { success: true }
@@ -1684,6 +1685,63 @@ ipcMain.handle('pick-background-image', async () => {
     return { success: true, url, src: displaySrc }
   } catch (e: any) {
     return { success: false, error: e?.message ?? 'could not copy image' }
+  }
+})
+
+// Pick any media file (image or video), save locally to userData/media, and return accessible URL
+ipcMain.handle('pick-media-file', async () => {
+  if (!mainWindow) return { success: false, error: 'No window' }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose Photo or Video',
+    filters: [
+      { name: 'Media Files', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mov', 'webm'] },
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      { name: 'Videos', extensions: ['mp4', 'mov', 'webm'] }
+    ],
+    properties: ['openFile']
+  })
+  if (result.canceled || result.filePaths.length === 0) {
+    return { success: false, canceled: true }
+  }
+  try {
+    const src = result.filePaths[0]
+    const dir = path.join(app.getPath('userData'), 'media')
+    fs.mkdirSync(dir, { recursive: true })
+    const ext = path.extname(src).toLowerCase()
+    const isVideo = ['.mp4', '.mov', '.webm'].includes(ext)
+    const dest = path.join(dir, `media-${Date.now()}${ext}`)
+    fs.copyFileSync(src, dest)
+    const posix = dest.split(path.sep).join('/')
+    const url = `file://${posix}`
+    const displaySrc = `local-media://file${posix.startsWith('/') ? '' : '/'}${posix}`
+    const name = path.basename(src, ext)
+    return {
+      success: true,
+      url,
+      src: displaySrc,
+      kind: isVideo ? 'video' : 'photo',
+      name
+    }
+  } catch (e: any) {
+    return { success: false, error: e?.message ?? 'could not copy media file' }
+  }
+})
+
+// Fetch YouTube transcripts/captions and auto-segment into song sections
+ipcMain.handle('fetch-youtube-transcript', async (_event, url: string) => {
+  return await fetchYoutubeLyrics(url)
+})
+
+// Real display status for connections tile
+ipcMain.handle('get-displays-status', () => {
+  const all = electronScreen.getAllDisplays()
+  const primary = electronScreen.getPrimaryDisplay()
+  const externals = all.filter((d) => d.id !== primary.id)
+  return {
+    totalDisplays: all.length,
+    hasExternal: externals.length > 0,
+    primary: { id: primary.id, bounds: primary.bounds },
+    externals: externals.map((e) => ({ id: e.id, bounds: e.bounds }))
   }
 })
 
@@ -2003,7 +2061,9 @@ const THEME_KEYS = new Set([
   // Stage monitor slots repaint the same way.
   'stageShowVerseText',
   'stageShowTimer',
-  'stageShowElapsed'
+  'stageShowElapsed',
+  'verseLayout',
+  'safeMargin',
 ])
 
 ipcMain.handle('set-setting', (_event, { key, value }) => {
