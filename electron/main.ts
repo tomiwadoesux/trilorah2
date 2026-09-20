@@ -1048,18 +1048,62 @@ const outputWindows: Record<string, BrowserWindow | null> = {
   third: null
 }
 
-function createOutputWindow(id: string, title: string) {
-  if (outputWindows[id]) {
-    outputWindows[id]?.focus()
-    return
-  }
-  // The projector gets the external screen. See output/displays.ts.
-  const placement = placeOutput(
+/** Where this output belongs right now, per the operator's choice and what
+ *  is actually plugged in. Read fresh every time: displays come and go, and
+ *  so does the setting. */
+function placementFor(id: string) {
+  return placeOutput(
     id,
     electronScreen.getAllDisplays(),
     electronScreen.getPrimaryDisplay().id,
     getSetting('outputDisplays') as Partial<Record<string, number>>
   )
+}
+
+/**
+ * Put an already-open output where it now belongs.
+ *
+ * Choosing a screen in Settings used to do nothing at all while the
+ * projector was open: the placement was read only inside the constructor,
+ * and nothing in the app ever moved a window afterwards. So the operator
+ * picked "Display 2", watched the picture stay where it was, and reasonably
+ * concluded the setting was broken.
+ *
+ * Fullscreen has to come off before a move and go back on after — a
+ * fullscreen window on macOS owns its Space and ignores setBounds, which is
+ * the failure that looks like the move "half worked".
+ */
+function moveOutputToItsDisplay(id: string): boolean {
+  const win = outputWindows[id]
+  if (!win || win.isDestroyed()) return false
+  const placement = placementFor(id)
+  const bounds = placement.display?.bounds
+  const wasFullscreen = win.isFullScreen()
+  if (wasFullscreen) win.setFullScreen(false)
+  if (bounds) win.setBounds(bounds)
+  else win.setBounds({ ...win.getBounds(), width: 1280, height: 720 })
+  if (placement.fullscreen) {
+    // A beat for the unfullscreen to land, or the window fullscreens on the
+    // display it was leaving.
+    setTimeout(() => !win.isDestroyed() && win.setFullScreen(true), 120)
+  }
+  console.log(
+    `🖥️ Output "${id}" moved → ${placement.display ? `display ${placement.display.id}${placement.fullscreen ? ', fullscreen' : ''}` : 'windowed on primary'}`
+  )
+  return true
+}
+
+function createOutputWindow(id: string, title: string) {
+  if (outputWindows[id]) {
+    // Already open: honour whatever screen it is meant to be on now, rather
+    // than only raising it. Pressing the projector button again is how an
+    // operator asks for exactly this.
+    moveOutputToItsDisplay(id)
+    outputWindows[id]?.focus()
+    return
+  }
+  // The projector gets the external screen. See output/displays.ts.
+  const placement = placementFor(id)
   const onDisplay = placement.display?.bounds
   const win = new BrowserWindow({
     ...(onDisplay
@@ -2137,6 +2181,12 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
       if (!win.isDestroyed()) win.webContents.send('on-theme-changed')
     })
   }
+  // Choosing a screen moves the picture NOW. Saving a setting and waiting
+  // for the next launch is not what "choose screen" means to an operator
+  // standing in front of a congregation.
+  if (key === 'outputDisplays') {
+    for (const id of Object.keys(outputWindows)) moveOutputToItsDisplay(id)
+  }
   return true
 })
 
@@ -2662,7 +2712,32 @@ function safeProtocol(url: string): string {
 
 app.on('web-contents-created', (_event, contents) => guardNavigation(contents))
 
+/**
+ * Follow the hardware.
+ *
+ * A projector unplugged mid-service leaves its window stranded on a display
+ * that no longer exists — Electron parks it somewhere arbitrary, usually
+ * half off the laptop screen. Plugging one back in should equally put the
+ * picture back where it belongs without the operator touching anything.
+ * Debounced because macOS emits several of these while a display wakes.
+ */
+let displayShuffleTimer: NodeJS.Timeout | null = null
+function onDisplaysChanged(): void {
+  if (displayShuffleTimer) clearTimeout(displayShuffleTimer)
+  displayShuffleTimer = setTimeout(() => {
+    displayShuffleTimer = null
+    const open = Object.keys(outputWindows).filter((id) => outputWindows[id])
+    if (open.length === 0) return
+    console.log(`🖥️ Displays changed — replacing ${open.length} output window(s)`)
+    for (const id of open) moveOutputToItsDisplay(id)
+  }, 700)
+}
+
 app.whenReady().then(() => {
+  electronScreen.on('display-added', onDisplaysChanged)
+  electronScreen.on('display-removed', onDisplaysChanged)
+  electronScreen.on('display-metrics-changed', onDisplaysChanged)
+
   // Chromium asks the app before handing a renderer the microphone, and with
   // no handler installed it denies — silently, and only in production, because
   // a file:// origin is opaque where the dev server's http://localhost is not.
