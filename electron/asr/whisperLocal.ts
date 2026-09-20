@@ -20,7 +20,7 @@ import { app } from 'electron'
 import { getSetting } from '../data/settings'
 import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
 import { emitMicRequest, emitMicStop } from '../emitters'
-import { cleanWhisperStdout, whisperArgs } from './whisperOutput'
+import { cleanWhisperStdout, explainWhisperFailure, whisperArgs } from './whisperOutput'
 
 let usingWindowMic = false
 
@@ -106,6 +106,12 @@ export async function ensureWhisperModel(
       out.end(() => resolve())
       out.on('error', reject)
     })
+    // A connection that drops mid-download ends the stream without an error.
+    // Renaming that into place would leave a truncated model that whisper
+    // refuses to load on every chunk, for ever, with nothing to say why.
+    if (total > 0 && received !== total) {
+      throw new Error(`speech model download was cut short (${received} of ${total} bytes)`)
+    }
     fs.renameSync(tmp, dest)
     console.log(`✅ Whisper model downloaded: ${dest}`)
     return dest
@@ -132,7 +138,16 @@ export function findWhisperModel(): string | null {
   ]
   for (const name of candidates) {
     const p = path.join(dir, name)
-    if (fs.existsSync(p)) return p
+    if (!fs.existsSync(p)) continue
+    // The smallest real model (tiny) is ~75 MB. Anything far below that is a
+    // download that was cut short by an earlier build, before the size check
+    // existed. Remove it so the next Start Listening fetches a whole one.
+    if (fs.statSync(p).size < 30 * 1024 * 1024) {
+      console.warn(`⚠️ Discarding truncated speech model: ${p}`)
+      try { fs.unlinkSync(p) } catch { /* in use or already gone */ }
+      continue
+    }
+    return p
   }
   return null
 }
@@ -294,7 +309,12 @@ async function transcribeChunk(
         }),
         // cwd beside the binary: on Windows that is where whisper.dll lives.
         { cwd: path.dirname(binary), timeout: 60_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true },
-        (err, out) => (err ? reject(err) : resolve(out))
+        (err, out, stderr) => {
+          if (!err) return resolve(out)
+          const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
+          console.error('❌ whisper.cpp exited:', e.code, e.signal, String(stderr).slice(-600))
+          reject(new Error(explainWhisperFailure({ code: e.code, signal: e.signal, killed: e.killed, stderr: String(stderr) })))
+        }
       )
     })
     const text = cleanWhisperStdout(stdout)

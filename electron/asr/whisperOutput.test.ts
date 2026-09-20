@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cleanWhisperStdout, whisperArgs } from './whisperOutput'
+import { cleanWhisperStdout, explainWhisperFailure, whisperArgs } from './whisperOutput'
 
 describe('cleanWhisperStdout — only what was said', () => {
   it('joins segments into one line', () => {
@@ -41,5 +41,30 @@ describe('whisperArgs', () => {
     expect(whisperArgs({ modelPath: 'm.bin', wavPath: 'c.wav', language: 'en', threads: 4 })).toEqual([
       '-nt', '-l', 'en', '-t', '4', '-m', 'm.bin', '-f', 'c.wav'
     ])
+  })
+})
+
+describe('explainWhisperFailure — a reason, not a command line', () => {
+  it('names a missing runtime DLL', () => {
+    expect(explainWhisperFailure({ code: 0xc0000135 })).toMatch(/Visual C\+\+ runtime/)
+    // Node hands the NTSTATUS over as a signed 32-bit number on some paths.
+    expect(explainWhisperFailure({ code: 0xc0000135 | 0 })).toMatch(/Visual C\+\+ runtime/)
+  })
+  it('names a processor the binary cannot run on', () => {
+    expect(explainWhisperFailure({ code: 0xc000001d })).toMatch(/processor/)
+  })
+  it('names a timeout', () => {
+    expect(explainWhisperFailure({ killed: true, signal: 'SIGTERM' })).toMatch(/took too long/)
+  })
+  it('names a missing binary', () => {
+    expect(explainWhisperFailure({ code: 'ENOENT' })).toMatch(/missing from this install/)
+  })
+  it('otherwise shows the code and the last thing the program said', () => {
+    const msg = explainWhisperFailure({ code: 1, stderr: 'loading model\nerror: failed to open model file\n' })
+    expect(msg).toContain('0x1')
+    expect(msg).toContain('failed to open model file')
+  })
+  it('never echoes the command line', () => {
+    expect(explainWhisperFailure({ code: 3 })).not.toMatch(/main\.exe|\.wav|AppData/)
   })
 })

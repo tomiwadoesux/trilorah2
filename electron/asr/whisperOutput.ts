@@ -36,3 +36,43 @@ export function cleanWhisperStdout(stdout: string): string {
 export function whisperArgs(opts: { modelPath: string; wavPath: string; language: string; threads: number }): string[] {
   return ['-nt', '-l', opts.language, '-t', String(opts.threads), '-m', opts.modelPath, '-f', opts.wavPath]
 }
+
+/**
+ * Why the whisper program failed, in words an operator can act on.
+ *
+ * Node reports a failed child process as "Command failed: <the whole command
+ * line>" and nothing else — which is what reached the first Windows tester:
+ * a screenful of paths and no reason. The reason is in the exit code and the
+ * program's stderr, so it is assembled here.
+ *
+ * Windows reports a crash-at-launch as an NTSTATUS in the exit code. Two are
+ * worth naming because each has a different fix and neither is the user's
+ * fault: a missing runtime DLL, and a CPU without the instructions the
+ * prebuilt binary was compiled for.
+ */
+export function explainWhisperFailure(f: {
+  code?: number | string | null
+  signal?: string | null
+  killed?: boolean
+  stderr?: string
+}): string {
+  const code = typeof f.code === 'number' ? f.code >>> 0 : null
+  if (f.killed || f.signal === 'SIGTERM') {
+    return 'Offline speech took too long on this computer and was stopped. A smaller speech model (Settings → Audio & speech) or a Deepgram key will keep up.'
+  }
+  if (code === 0xc0000135) {
+    return 'Offline speech could not start: a Windows system file it needs is missing (the Microsoft Visual C++ runtime). Reinstalling Trilorah restores it.'
+  }
+  if (code === 0xc000001d) {
+    return "Offline speech cannot run on this computer's processor. Add a Deepgram key in Settings → Audio & speech to use online speech instead."
+  }
+  if (f.code === 'ENOENT') return 'The offline speech engine is missing from this install. Reinstalling Trilorah restores it.'
+  const tail = (f.stderr ?? '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(-2)
+    .join(' · ')
+  const where = code === null ? String(f.code ?? 'unknown') : `0x${code.toString(16)}`
+  return `Offline speech failed (code ${where})${tail ? `: ${tail}` : '.'}`
+}

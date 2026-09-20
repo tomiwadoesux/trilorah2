@@ -72,7 +72,30 @@ jobs:
           Expand-Archive whisper-bin.zip -DestinationPath whisper-bin -Force
           Copy-Item whisper-bin/main.exe, whisper-bin/whisper.dll, whisper-bin/SDL2.dll -Destination $dest
           if (-not (Test-Path "$dest/main.exe")) { throw "main.exe did not land in $dest" }
-          & "$dest/main.exe" --help | Select-Object -First 3
+
+          # main.exe links the Visual C++ runtime dynamically. Electron does not
+          # need it, so a fresh church laptop often has never had it installed,
+          # and main.exe then dies at launch with 0xC0000135 and no message.
+          # Microsoft permits shipping these DLLs beside the program that uses
+          # them ("app-local deployment"); Windows looks there first.
+          foreach ($dll in 'vcruntime140.dll','vcruntime140_1.dll','msvcp140.dll','vcomp140.dll') {
+            $src = Join-Path $env:SystemRoot "System32/$dll"
+            if (Test-Path $src) { Copy-Item $src -Destination $dest; Write-Host "bundled $dll" }
+          }
+
+          # Prove the whole chain on Windows, not just that the file exists:
+          # load a real model, read a real recording, get the words back.
+          Invoke-WebRequest -Uri "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin" -OutFile tiny.bin
+          Invoke-WebRequest -Uri "https://github.com/ggerganov/whisper.cpp/raw/v1.5.4/samples/jfk.wav" -OutFile jfk.wav
+          $model = (Resolve-Path tiny.bin).Path; $wav = (Resolve-Path jfk.wav).Path
+          Push-Location $dest
+          $out = & ./main.exe -nt -l en -t 4 -m $model -f $wav 2>$null
+          $code = $LASTEXITCODE
+          Pop-Location
+          Write-Host "exit=$code  heard: $out"
+          if ($code -ne 0) { throw "main.exe exited with $code" }
+          if ("$out" -notmatch 'country') { throw "transcript did not contain the expected words" }
+          Remove-Item tiny.bin, jfk.wav
 
       - run: npm run build
 
@@ -92,6 +115,8 @@ jobs:
             "$r/bible_index.json",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/main.exe",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/whisper.dll",
+            "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/vcruntime140.dll",
+            "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/msvcp140.dll",
             "$r/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
           )
           $missing = $need | Where-Object { -not (Test-Path $_) }
