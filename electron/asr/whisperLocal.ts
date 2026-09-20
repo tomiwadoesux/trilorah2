@@ -14,11 +14,13 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn, type ChildProcess } from 'node:child_process'
+import os from 'node:os'
+import { spawn, execFile, type ChildProcess } from 'node:child_process'
 import { app } from 'electron'
 import { getSetting } from '../data/settings'
 import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
 import { emitMicRequest, emitMicStop } from '../emitters'
+import { cleanWhisperStdout, whisperArgs } from './whisperOutput'
 
 let usingWindowMic = false
 
@@ -271,20 +273,31 @@ async function transcribeChunk(
   const wavPath = path.join(app.getPath('temp'), `trilorah-chunk-${Date.now()}.wav`)
   try {
     fs.writeFileSync(wavPath, Buffer.concat([wavHeader(pcm.length), pcm]))
-    // whisper-node is CJS with loose typings; import lazily so the app
-    // boots even if the native binary isn't built on this machine.
-    const mod: any = await import('whisper-node')
-    const whisper = mod.whisper ?? mod.default?.whisper ?? mod.default ?? mod
-    const result = await whisper(wavPath, {
-      modelPath,
-      whisperOptions: {
-        language: (getSetting('asrLanguage') || 'en-US').split('-')[0],
-        word_timestamps: false
-      }
+    // The whisper.cpp program is run directly, not through the whisper-node
+    // wrapper. The wrapper's shell.js runs at import, shells out to `make`
+    // when it cannot find the binary, and calls process.exit(1) when that
+    // fails — which took the whole app down on Windows. It also `cd`s the
+    // entire main process into its own folder. Spawning the binary ourselves
+    // is the same five flags, works identically on Windows (main.exe), and
+    // cannot exit anything but itself.
+    const binary = whisperBinaryPath()
+    if (!binary) throw new Error('the offline speech engine is missing from this install')
+    const stdout = await new Promise<string>((resolve, reject) => {
+      execFile(
+        binary,
+        whisperArgs({
+          modelPath,
+          wavPath,
+          language: (getSetting('asrLanguage') || 'en-US').split('-')[0],
+          // Leave cores for the app and the projector; whisper scales poorly past 4 anyway.
+          threads: Math.max(1, Math.min(4, os.cpus().length - 2))
+        }),
+        // cwd beside the binary: on Windows that is where whisper.dll lives.
+        { cwd: path.dirname(binary), timeout: 60_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true },
+        (err, out) => (err ? reject(err) : resolve(out))
+      )
     })
-    const text = Array.isArray(result)
-      ? result.map((r: any) => r.speech ?? r.text ?? '').join(' ').trim()
-      : String(result ?? '').trim()
+    const text = cleanWhisperStdout(stdout)
     if (text) {
       console.log(`📝 Whisper: ${text}`)
       onText(text.toLowerCase(), true)

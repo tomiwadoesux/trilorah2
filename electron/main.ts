@@ -760,6 +760,13 @@ function startASR(deviceLabel?: string) {
   if (isListening) return
   activeASR = resolveASRProvider(getSetting('asrProvider'))
   console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
+  // Both of these BEFORE start(), never after. A provider that cannot run at
+  // all — no Deepgram key, or no whisper binary, which is every Windows PC —
+  // reports its error synchronously, from inside start(). Setting the status
+  // and the guard afterwards overwrote that error with "Connecting..." and
+  // re-armed the guard the error handler had just released: the pill sat on
+  // "connecting" forever and the button went dead.
+  isListening = true
   emitASRStatus('Connecting...')
   activeASR.start(
     // onText callback
@@ -841,10 +848,8 @@ function startASR(deviceLabel?: string) {
     // 'Listening...' once it is really capturing.
     (message) => emitASRStatus(message)
   )
-  // Guards re-entry from here on. The status pill is left to the provider,
-  // which is the only thing that knows whether audio is actually flowing.
-  isListening = true
-  emitASRStatus('Connecting...')
+  // The status pill is left to the provider from here: it is the only thing
+  // that knows whether audio is actually flowing.
 }
 
 function stopASR() {

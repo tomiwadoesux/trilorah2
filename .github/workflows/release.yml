@@ -54,10 +54,25 @@ jobs:
 
       # Offline speech. whisper-node ships source, not a binary; without this
       # the Mac build has no local recogniser. Windows has no `make`, so there
-      # the app asks for a Deepgram key instead (see whisperBinaryPath()).
+      # its binary is fetched in the next step instead.
       - name: Compile whisper.cpp (macOS)
         if: runner.os == 'macOS'
         run: make -C node_modules/whisper-node/lib/whisper.cpp main
+
+      # Offline speech on Windows. There is no `make` here, so instead of
+      # compiling, take the whisper.cpp project's own prebuilt binary — same
+      # 1.5.x line the macOS build compiles, same command-line flags. The app
+      # runs it directly (electron/asr/whisperLocal.ts → whisperBinaryPath()).
+      - name: Fetch whisper.cpp (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dest = "node_modules/whisper-node/lib/whisper.cpp"
+          Invoke-WebRequest -Uri "https://github.com/ggerganov/whisper.cpp/releases/download/v1.5.4/whisper-bin-x64.zip" -OutFile whisper-bin.zip
+          Expand-Archive whisper-bin.zip -DestinationPath whisper-bin -Force
+          Copy-Item whisper-bin/main.exe, whisper-bin/whisper.dll, whisper-bin/SDL2.dll -Destination $dest
+          if (-not (Test-Path "$dest/main.exe")) { throw "main.exe did not land in $dest" }
+          & "$dest/main.exe" --help | Select-Object -First 3
 
       - run: npm run build
 

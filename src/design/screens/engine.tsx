@@ -74,6 +74,10 @@ interface Detection {
 export interface EngineValue {
   caps: EngineCaps;
   asr: AsrStatus;
+  /** The engine's own sentence behind `asr` — "Error: add a Deepgram key…",
+      "Downloading speech model — 40%". The state says THAT something is
+      wrong; this is the only thing that says WHAT, and how to fix it. */
+  asrMessage: string;
   /** Last mic level the engine reported, in its own units. */
   level: number;
   /** Newest last, capped. The sermon transcript as it arrives. */
@@ -212,6 +216,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     resolver: 'unknown',
   });
   const [asr, setAsr] = useState<AsrStatus>('idle');
+  const [asrMessage, setAsrMessage] = useState('');
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState<string[]>([]);
   const [spoken, setSpoken] = useState<{ lines: { id: number; text: string }[]; partial: string }>({
@@ -281,6 +286,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
            "start listening" while the engine WAS listening and the operator
            pressed it a second time to make it look right. Folded here. */
         const t = s.toLowerCase();
+        setAsrMessage(s.replace(/^error:\s*/i, ''));
         setAsr(
           t.startsWith('listening')
             ? 'listening'
@@ -546,6 +552,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     () => ({
       caps,
       asr,
+      asrMessage,
       level,
       transcript,
       spoken,
@@ -564,6 +571,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     [
       caps,
       asr,
+      asrMessage,
       level,
       transcript,
       spoken,
@@ -596,6 +604,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 const DEAD: EngineValue = {
   caps: { bridge: false, db: false, outputs: false, resolver: 'no' },
   asr: 'idle',
+  asrMessage: '',
   level: 0,
   transcript: [],
   spoken: { lines: [], partial: '' },

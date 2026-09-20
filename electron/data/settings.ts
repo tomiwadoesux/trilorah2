@@ -56,7 +56,9 @@ export const defaults = {
   givingBankInfo: '',
   givingCustomUrl: '',
   givingNote: '',
-  publicWebUrl: 'http://localhost:3003',
+  // Where the companion page is served. It is encoded into a QR that phones
+  // scan, so it must be an address a PHONE can reach — never localhost.
+  publicWebUrl: 'https://trilorah.com',
   accountSlug: '',
   defaultBackgroundUrl: '',
   backgroundFit: 'cover' as 'cover' | 'contain' | 'fill',
@@ -218,6 +220,11 @@ export function getStore(): StoreModule<Settings> {
   if (!store) {
     store = new Store({ defaults })
     migrateServiceSchedule(store)
+    // The old default was the developer's own machine. Any install that still
+    // holds it has a QR that opens nothing on a congregant's phone.
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(String(store.get('publicWebUrl') ?? ''))) {
+      store.set('publicWebUrl', defaults.publicWebUrl)
+    }
     if (!store.get('deepgramApiKey') && process.env.DEEPGRAM_API_KEY) {
       store.set('deepgramApiKey', process.env.DEEPGRAM_API_KEY)
     }

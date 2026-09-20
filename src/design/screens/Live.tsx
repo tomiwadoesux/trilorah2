@@ -1558,7 +1558,14 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
       .list()
       .then((list) =>
         setStored(
-          list.map((song) => ({
+          /* Newest first. The store hands songs back in the order they were
+             added, which put a song imported a moment ago at the very bottom
+             of the grid, under every seeded hymn — the one place the operator
+             who just added it will not look. The seeded hymns all share one
+             timestamp, so they keep their own order behind it (sort is stable). */
+          [...list]
+            .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+            .map((song) => ({
             id: song.id,
             title: song.title,
             author: (song.authors ?? []).join(', '),
@@ -3546,7 +3553,7 @@ function ListenControl() {
       : asr === 'listening'
         ? 'listening'
         : asr === 'error'
-          ? 'engine error'
+          ? "can't listen — see why"
           : 'start listening';
 
   return (
@@ -4369,6 +4376,26 @@ function LiveBody({ state }: { state?: string }) {
      for itself, and the one action any line offers lands back here. */
   const log = useServiceLog(stateLabel);
   const say = log.say;
+  /* When listening fails the engine says why in a full sentence ("add a
+     Deepgram key in Settings…"). The button has room for three words, so the
+     sentence goes to the log, where there is room to read it. */
+  useEffect(() => {
+    if (engine.asr === 'error' && engine.asrMessage) say({ text: engine.asrMessage });
+  }, [engine.asr, engine.asrMessage, say]);
+  /* What the OPERATOR does to the wall belongs in the record too. The log used
+     to speak only for the engine — a verse caught, a command heard — so on a
+     service run by hand, or with the microphone off, it sat silent and read
+     as broken. Keyed on the live item's identity, not the object, so stepping
+     slides inside one reading does not chatter. */
+  const onWall = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
+  const wasOnWall = useRef(onWall);
+  useEffect(() => {
+    if (wasOnWall.current === onWall) return;
+    const had = wasOnWall.current;
+    wasOnWall.current = onWall;
+    if (projector.live) say({ text: `on the wall: ${projector.live.label}` });
+    else if (had) say({ text: 'wall cleared' });
+  }, [onWall, projector.live, say]);
   const goManual = useCallback(() => say({ text: "suggestions off — you're driving" }), [say]);
 
   const [songAddRequest, setSongAddRequest] = useState(0);
