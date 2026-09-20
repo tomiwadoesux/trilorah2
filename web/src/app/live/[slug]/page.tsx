@@ -12,11 +12,15 @@ export default async function LivePage({
   const { slug } = await params;
   const supabase = await createClient();
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("id, name, slug, giving_methods")
-    .eq("slug", slug)
-    .maybeSingle();
+  // Through a function, not the table: `accounts` has no anonymous read policy
+  // (it holds every church's giving details), so a direct select from a
+  // congregant's phone returned nothing and this page was a 404 for everyone.
+  // public_account_by_slug returns only these four columns, for one slug.
+  const { data: rows } = await supabase.rpc("public_account_by_slug", { p_slug: slug });
+  const account = (Array.isArray(rows) ? rows[0] : rows) as
+    | { id: string; name: string; slug: string; giving_methods: Record<string, string> }
+    | null
+    | undefined;
 
   if (!account) notFound();
 
