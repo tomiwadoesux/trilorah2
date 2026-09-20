@@ -125,7 +125,7 @@ function QueuedItemRow({
         lines: item.lines,
       });
     } else if (item.path && (item.source === 'media' || item.source === 'presentation')) {
-      projector.send({ source: item.source, id: item.label, label: item.label, path: item.path });
+      projector.send({ source: item.source, id: item.label, label: item.label, path: item.path, mediaKind: item.mediaKind });
     }
   };
 

@@ -361,6 +361,15 @@ export function MusicIcon({ size = 14, className }: IconProps) {
  * Nudged a half-unit right of centre: a triangle's optical centre is behind
  * its own centroid, and drawn on the box centre it reads as sitting left.
  */
+export function PauseIcon({ size = 12, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  );
+}
+
 export function PlayIcon({ size = 12, className }: IconProps) {
   return (
     <svg

@@ -281,7 +281,13 @@ contextBridge.exposeInMainWorld('api', {
   downloadStock: (payload: any) => ipcRenderer.invoke('download-stock', payload),
 
   // Media display on outputs + theme repaint
-  showMedia: (imagePath: string) => ipcRenderer.invoke('show-media', imagePath),
+  showMedia: (imagePath: string, kind?: 'photo' | 'video') => ipcRenderer.invoke('show-media', imagePath, kind),
+  mediaControl: (action: { type: string; value?: number | boolean }) => ipcRenderer.invoke('media-control', action),
+  onMediaControl: (callback: (action: { type: string; value?: number | boolean }) => void) => {
+    const subscription = (_event: IpcRendererEvent, a: { type: string; value?: number | boolean }) => callback(a)
+    ipcRenderer.on('on-media-control', subscription)
+    return () => ipcRenderer.removeListener('on-media-control', subscription)
+  },
   // Words on the projector that are not a verse (songs/slides). See shared/liveContent.ts.
   pushLiveContent: (content: LiveContent) => ipcRenderer.invoke('push-live-content', content),
   getLiveContent: () => ipcRenderer.invoke('get-live-content'),
@@ -293,8 +299,8 @@ contextBridge.exposeInMainWorld('api', {
   clearMedia: () => ipcRenderer.invoke('clear-media'),
   showQr: () => ipcRenderer.invoke('show-qr'),
   getQrSvg: (size?: number) => ipcRenderer.invoke('get-qr-svg', size),
-  onShowMedia: (callback: (imagePath: string) => void) => {
-    const subscription = (_event: IpcRendererEvent, p: string) => callback(p)
+  onShowMedia: (callback: (imagePath: string, kind?: 'photo' | 'video') => void) => {
+    const subscription = (_event: IpcRendererEvent, p: string, kind?: 'photo' | 'video') => callback(p, kind)
     ipcRenderer.on('on-show-media', subscription)
     return () => ipcRenderer.removeListener('on-show-media', subscription)
   },

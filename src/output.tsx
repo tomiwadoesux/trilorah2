@@ -4,7 +4,7 @@ import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { buildVerseSlides, type VerseSlide } from '../shared/verseDisplay';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
-import { toDisplayUrl } from '../shared/mediaUrl';
+import { fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
 import type { LiveContent } from '../shared/liveContent';
 import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
 import './output.css';
@@ -166,6 +166,10 @@ function OutputSurface() {
   const [shown, setShown] = useState<Shown | null>(null);
   const [visible, setVisible] = useState(false);
   const [media, setMedia] = useState<string | null>(null); // data URL
+  // A video is streamed (local-media://), never base64'd like a picture: a
+  // clip is hundreds of megabytes and would not survive the trip over IPC.
+  const [video, setVideo] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   // A song section. One of verse / media / song is up at a time: each arrival
   // takes the other two down, mirroring what main remembers as live.
   const [song, setSong] = useState<LiveContent | null>(null);
@@ -203,6 +207,7 @@ function OutputSurface() {
 
     const display = (detection: VerseDetection, isPreview: boolean) => {
       setMedia(null); // scripture supersedes a slide
+      setVideo(null);
       setSong(null);
       setShown({ detection, slides: null, isPreview });
       setVisible(true);
@@ -259,6 +264,7 @@ function OutputSurface() {
       api.onShowCleanBackground(() => {
         setVisible(false);
         setMedia(null);
+        setVideo(null);
         setSong(null);
       }),
       api.onThemeChanged?.(loadTheme),
@@ -271,12 +277,34 @@ function OutputSurface() {
         if (cmd.command === 'slide-next') setSlideIndex((i) => i + 1);
         if (cmd.command === 'slide-previous') setSlideIndex((i) => Math.max(0, i - 1));
       }),
+      api.onMediaControl?.((action) => {
+        const v = videoRef.current;
+        if (!v) return;
+        if (action.type === 'play') void v.play().catch(() => undefined);
+        else if (action.type === 'pause') v.pause();
+        else if (action.type === 'toggle') v.paused ? void v.play().catch(() => undefined) : v.pause();
+        else if (action.type === 'restart') {
+          v.currentTime = 0;
+          void v.play().catch(() => undefined);
+        } else if (action.type === 'volume' && typeof action.value === 'number') {
+          v.volume = Math.min(1, Math.max(0, action.value));
+        } else if (action.type === 'loop') v.loop = Boolean(action.value);
+      }),
       api.onLiveContent?.((content) => {
         setVisible(false);
         setMedia(null);
+        setVideo(null);
         setSong(content);
       }),
-      api.onShowMedia?.((imagePath) => {
+      api.onShowMedia?.((imagePath, kind) => {
+        if (kind === 'video') {
+          setVisible(false);
+          setSong(null);
+          setMedia(null);
+          setVideo(fileToDisplayUrl(imagePath));
+          return;
+        }
+        setVideo(null);
         void api.readImageDataUrl(imagePath).then((dataUrl) => {
           if (dataUrl) {
             setVisible(false); // slide replaces scripture
@@ -486,6 +514,23 @@ function OutputSurface() {
       {media && screen === 'live' && (
         <div className="output-media">
           <img src={media} alt="" />
+        </div>
+      )}
+      {video && screen === 'live' && (
+        <div className="output-media">
+          {/* Sound from ONE window only. Every output gets the same broadcast,
+              and three windows each playing the soundtrack is three copies a
+              few milliseconds apart — an echo through the house PA. The main
+              output carries the audio; the stream and stage copies are mute.
+              When it ends it rests on its last frame; the operator clears it. */}
+          <video
+            ref={videoRef}
+            key={video}
+            src={video}
+            autoPlay
+            playsInline
+            muted={outputId !== 'main'}
+          />
         </div>
       )}
       {song && screen === 'live' && (

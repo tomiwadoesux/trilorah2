@@ -82,6 +82,7 @@ export interface DragItem {
   songId?: string;
   /** Media and slides: the file, so the row can show it on the wall. */
   path?: string;
+  mediaKind?: 'photo' | 'video';
 }
 
 /*

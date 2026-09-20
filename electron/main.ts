@@ -69,6 +69,7 @@ import { AlertManager, type AlertTarget } from './alerts/alerts'
 import { fillTokens, hasUnfilledTokens, parseTokens } from './alerts/tokens'
 import { TimerStore } from './engine/timers'
 import { ScreenStateMachine, roleFor, ROLE_TITLES, isScreenState } from './output/outputState'
+import { Readable } from 'node:stream'
 import { placeOutput } from './output/displays'
 import type { LiveContent } from '../shared/liveContent'
 import { searchBible } from './data/bibleSearch'
@@ -198,6 +199,11 @@ function getMimeType(filePath: string): string {
   if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg'
   if (extension === '.webp') return 'image/webp'
   if (extension === '.gif') return 'image/gif'
+  if (extension === '.mp4' || extension === '.m4v') return 'video/mp4'
+  if (extension === '.mov') return 'video/quicktime'
+  if (extension === '.webm') return 'video/webm'
+  if (extension === '.mp3') return 'audio/mpeg'
+  if (extension === '.wav') return 'audio/wav'
   return 'application/octet-stream'
 }
 
@@ -1048,7 +1054,11 @@ function createOutputWindow(id: string, title: string) {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      // Nobody ever clicks inside the projector window, so Chromium's
+      // "a user gesture is needed before sound" rule would leave every
+      // video silent there, permanently.
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
   console.log(
@@ -1519,12 +1529,24 @@ ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
 
 ipcMain.handle('get-live-content', () => currentLiveContent)
 
-ipcMain.handle('show-media', (_event, imagePath: string) => {
+ipcMain.handle('show-media', (_event, imagePath: string, kind?: 'photo' | 'video') => {
   currentLiveContent = null
-  console.log(`🖼️ Showing media on output: ${path.basename(imagePath)}`)
+  // Trust the extension over the caller: a row dragged in before `kind`
+  // existed carries none, and a video sent down the image path shows nothing.
+  const isVideo = kind === 'video' || /\.(mp4|m4v|mov|webm)$/i.test(imagePath)
+  console.log(`${isVideo ? '🎬' : '🖼️'} Showing media on output: ${path.basename(imagePath)}`)
+  screen.onContentPushed()
   BrowserWindow.getAllWindows().forEach((win) => {
-    if (!win.isDestroyed()) win.webContents.send('on-show-media', imagePath)
+    if (!win.isDestroyed()) win.webContents.send('on-show-media', imagePath, isVideo ? 'video' : 'photo')
   })
+  return { success: true }
+})
+
+// Play / pause / restart / volume for a video on the wall. Broadcast like the
+// media itself; the output windows decide what it means for them.
+ipcMain.handle('media-control', (_event, action: { type: 'play' | 'pause' | 'toggle' | 'restart' | 'volume' | 'loop'; value?: number | boolean }) => {
+  if (!action || typeof action.type !== 'string') return { success: false }
+  broadcastToWindows('on-media-control', action)
   return { success: true }
 })
 
@@ -2631,14 +2653,34 @@ app.whenReady().then(() => {
         return new Response('Not found', { status: 404 })
       }
       const mimeType = getMimeType(filePath)
-      const buffer = fs.readFileSync(filePath)
-      return new Response(buffer, {
-        status: 200,
-        headers: {
-          'content-type': mimeType,
-          'cache-control': 'public, max-age=31536000'
+      const size = fs.statSync(filePath).size
+      /*
+       * Streamed, and Range-aware. This used to readFileSync the whole file
+       * into one Response, which is fine for a 300 KB background and hopeless
+       * for a video: a 400 MB clip became 400 MB of main-process memory per
+       * window, and with no Range support Chromium could neither seek nor —
+       * for an .mp4 whose index sits at the END of the file — start playing
+       * at all. A <video> asks for byte ranges; answer them.
+       */
+      const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') ?? '')
+      // allow-origin: the app draws a video's first frame to a canvas for its
+      // thumbnail, and a canvas fed from another origin without this is tainted.
+      const common = { 'content-type': mimeType, 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000', 'access-control-allow-origin': '*' }
+      if (range && size > 0) {
+        const suffix = range[1] === '' && range[2] !== ''
+        const start = suffix ? Math.max(0, size - Number(range[2])) : Number(range[1] || 0)
+        const end = suffix || range[2] === '' ? size - 1 : Math.min(size - 1, Number(range[2]))
+        if (start > end || start >= size) {
+          return new Response(null, { status: 416, headers: { 'content-range': `bytes */${size}` } })
         }
-      })
+        const body = Readable.toWeb(fs.createReadStream(filePath, { start, end })) as unknown as ReadableStream
+        return new Response(body, {
+          status: 206,
+          headers: { ...common, 'content-range': `bytes ${start}-${end}/${size}`, 'content-length': String(end - start + 1) }
+        })
+      }
+      const body = Readable.toWeb(fs.createReadStream(filePath)) as unknown as ReadableStream
+      return new Response(body, { status: 200, headers: { ...common, 'content-length': String(size) } })
     } catch (error) {
       console.error('❌ local-media protocol error:', error)
       return new Response('Bad request', { status: 400 })

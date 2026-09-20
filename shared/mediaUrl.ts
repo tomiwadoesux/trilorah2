@@ -29,3 +29,24 @@ export function toDisplayUrl(url: string | null | undefined): string {
   const posix = url.replace(/^file:\/+/, '/')
   return `local-media://file${posix}`
 }
+
+/**
+ * The same, for a value that may also be a bare filesystem path.
+ *
+ * Kept apart from toDisplayUrl on purpose: that one is fed theme and stock
+ * URLs, where a leading "/" means "from the app's own web root", and turning
+ * those into file lookups would break every bundled image. This one is for
+ * media the OPERATOR put on the wall, where a leading "/" or "C:\" can only
+ * be a file on disk — a run-of-service row saved by an older build carries
+ * exactly that, and handed to a <video> as-is it resolves against
+ * http://localhost and plays nothing.
+ */
+export function fileToDisplayUrl(pathOrUrl: string | null | undefined): string {
+  if (!pathOrUrl) return ''
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(pathOrUrl) || pathOrUrl.startsWith('data:') || pathOrUrl.startsWith('blob:')) {
+    return toDisplayUrl(pathOrUrl)
+  }
+  const posix = pathOrUrl.replace(/\\/g, '/')
+  const abs = posix.startsWith('/') ? posix : `/${posix}`
+  return `local-media://file${abs.split('/').map(encodeURIComponent).join('/').replace(/%3A/gi, ':')}`
+}

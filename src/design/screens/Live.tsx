@@ -24,6 +24,7 @@ import {
   SlideThumb,
   PlusIcon,
   PlayIcon,
+  PauseIcon,
   slideBackdrop,
   type BackdropStyle,
   BACKDROP_BY_CONTENT,
@@ -68,7 +69,7 @@ import {
 } from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
-import { addMedia, mediaSrc, useMediaLibrary, type MediaSource, type ThemeMedia } from './mediaLibrary';
+import { addMedia, mediaSrc, useMediaLibrary, videoLength, videoPoster, type MediaSource, type ThemeMedia } from './mediaLibrary';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
@@ -712,6 +713,7 @@ const SERVICE_MEDIA: ServiceMedia[] = [
 function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
   const [view, setView] = useState<MediaView>('themes');
   const drag = useDrag();
+  const projector = useProjector();
 
   /*
    * Opens on the shelf holding whatever is on the projector, not on a fixed
@@ -741,22 +743,47 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
      background. It lands on the local shelf and is selected, the same as a
      stock pick. */
   const addLocal = () => {
-    void window.api?.pickBackgroundImage?.().then((res) => {
+    /* One picker for stills AND clips. The engine has had a video-capable
+       picker for a while; nothing called it, so "add" could only ever bring
+       in a picture. A still becomes the projector's background, as before. A
+       clip does not — a video is something you play, not a wallpaper — so it
+       lands on the shelf with a frame of itself for a face and waits to be
+       staged. Either way the engine copies the file into the app's own
+       folder, so it is still there next Sunday with the USB stick gone. */
+    const api = window.api;
+    if (!api?.pickMediaFile) {
+      void api?.pickBackgroundImage?.().then((res) => {
+        if (!res?.success || !res.url) return;
+        const name = decodeURIComponent(res.url.split('/').pop() ?? 'background');
+        const media = { id: `local:${res.url}`, label: name.replace(/\.[a-z0-9]+$/i, ''), detail: 'from this laptop', seed: 4, style: 'smoke' as const, source: 'local' as const, url: res.src ?? res.url, kind: 'photo' as const };
+        addMedia(media);
+        setShelf('local');
+        onSelect(media.id);
+      });
+      return;
+    }
+    void api.pickMediaFile().then(async (res) => {
       if (!res?.success || !res.url) return;
-      const name = decodeURIComponent(res.url.split('/').pop() ?? 'background');
-      const media = {
+      const src = res.src ?? res.url;
+      const isVideo = res.kind === 'video';
+      const [poster, length] = isVideo ? await Promise.all([videoPoster(src), videoLength(src)]) : [undefined, undefined];
+      const media: ThemeMedia = {
         id: `local:${res.url}`,
-        label: name.replace(/\.[a-z0-9]+$/i, ''),
-        detail: 'from this laptop',
+        label: res.name ?? 'media',
+        detail: isVideo ? `video${length ? ` · ${length}` : ''} · from this laptop` : 'from this laptop',
         seed: 4,
-        style: 'smoke' as const,
-        source: 'local' as const,
-        url: res.src ?? res.url,
-        kind: 'photo' as const,
+        style: 'smoke',
+        source: 'local',
+        url: src,
+        poster,
+        kind: isVideo ? 'video' : 'photo',
       };
       addMedia(media);
       setShelf('local');
-      onSelect(media.id);
+      if (!isVideo) {
+        void api.setSetting?.('defaultBackgroundUrl', res.url);
+        onSelect(media.id);
+      }
     });
   };
 
@@ -906,6 +933,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
                     label: media.label,
                     preview: mediaSrc(media),
                     path: media.url,
+                    mediaKind: media.kind ?? 'photo',
                   }))
                 : {})}
             >
@@ -914,8 +942,22 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
                 label={media.label}
                 detail={media.detail}
                 selected={selected === media.id}
-                badge={selected === media.id ? 'in use' : null}
-                onClick={() => onSelect(media.id)}
+                badge={media.kind === 'video' ? 'video' : selected === media.id ? 'in use' : null}
+                /* A still is a background: clicking chooses it. A clip is
+                   staged instead — it shows in PREVIEW and only "go live"
+                   plays it on the wall, the same two steps as a verse. */
+                onClick={() =>
+                  media.kind === 'video' && media.url
+                    ? projector.stage({
+                        source: 'media',
+                        id: media.id,
+                        label: media.label,
+                        path: media.url,
+                        mediaKind: 'video',
+                        origin: 'operator',
+                      })
+                    : onSelect(media.id)
+                }
               />
             </div>
           ))}
@@ -3984,6 +4026,10 @@ function Stage({
    * replaces it by definition.
    */
   const [qrUp, setQrUp] = useState(false);
+  /* Whether the clip on the wall is paused, as far as this window knows. */
+  const [videoPaused, setVideoPaused] = useState(false);
+  const liveKey = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
+  useEffect(() => setVideoPaused(false), [liveKey]);
   useEffect(() => {
     const api = window.api;
     if (!api) return;
@@ -4177,6 +4223,35 @@ function Stage({
               total={live?.slides?.length ?? 0}
               onStep={(d) => projector.stepSlide(d)}
             />
+            {/* A clip on the wall gets a transport. Only then: a pause button
+                beside a verse is a button that does nothing. The projector
+                window owns the <video>, so these are messages to it — the
+                paused flag here is this window's own best guess, flipped on
+                press and reset whenever a different thing goes live. */}
+            {live?.mediaKind === 'video' ? (
+              <>
+                <Button
+                  label=""
+                  tone="ash"
+                  icon={videoPaused ? <PlayIcon size={12} /> : <PauseIcon size={12} />}
+                  title={videoPaused ? 'play the video' : 'pause the video'}
+                  onClick={() => {
+                    void window.api?.mediaControl?.({ type: videoPaused ? 'play' : 'pause' });
+                    setVideoPaused((p) => !p);
+                  }}
+                />
+                <Button
+                  label=""
+                  tone="ash"
+                  icon={<ResetIcon size={13} />}
+                  title="play the video again from the start"
+                  onClick={() => {
+                    void window.api?.mediaControl?.({ type: 'restart' });
+                    setVideoPaused(false);
+                  }}
+                />
+              </>
+            ) : null}
             {/* Clear drops the words and keeps the picture — the app's own
                 meaning of the word, not a blank screen. */}
             <Button

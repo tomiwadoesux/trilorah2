@@ -105,3 +105,64 @@ export function mediaSrc(media: ThemeMedia): string {
   }
   return toDisplayUrl(media.url) || slideBackdrop(media.seed, media.style);
 }
+
+/**
+ * A still for a video's card, taken from the video itself.
+ *
+ * A video cannot sit in an <img>, so without this an imported clip shows as a
+ * broken picture. One frame, a second in (the first is so often black), drawn
+ * small: it lives in localStorage with the rest of the shelf, and a 320px
+ * JPEG is ~15 KB where the clip is hundreds of megabytes. Resolves undefined
+ * rather than rejecting — a clip with no readable frame still imports, it
+ * just wears the procedural wash.
+ */
+export function videoPoster(src: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    const done = (out?: string) => {
+      v.removeAttribute('src');
+      v.load();
+      resolve(out);
+    };
+    const timer = window.setTimeout(() => done(), 8000);
+    v.crossOrigin = 'anonymous';
+    v.muted = true;
+    v.preload = 'auto';
+    v.addEventListener('loadedmetadata', () => {
+      v.currentTime = Math.min(1, (v.duration || 2) / 2);
+    });
+    v.addEventListener('seeked', () => {
+      window.clearTimeout(timer);
+      try {
+        const w = 320;
+        const h = Math.max(1, Math.round((w * v.videoHeight) / Math.max(1, v.videoWidth)));
+        const c = document.createElement('canvas');
+        c.width = w;
+        c.height = h;
+        c.getContext('2d')?.drawImage(v, 0, 0, w, h);
+        done(c.toDataURL('image/jpeg', 0.72));
+      } catch {
+        done();
+      }
+    });
+    v.addEventListener('error', () => {
+      window.clearTimeout(timer);
+      done();
+    });
+    v.src = src;
+  });
+}
+
+/** "2:07" for a clip's badge. */
+export function videoLength(src: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.addEventListener('loadedmetadata', () => {
+      const s = Math.round(v.duration || 0);
+      resolve(s > 0 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : undefined);
+    });
+    v.addEventListener('error', () => resolve(undefined));
+    v.src = src;
+  });
+}

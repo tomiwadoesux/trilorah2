@@ -39,6 +39,7 @@ export interface QueueItem {
   title?: string;
   section?: string;
   path?: string;
+  mediaKind?: 'photo' | 'video';
   /** Song: the library id, so "edit song" finds it after a rename. Optional
       — a row made from the segment's own + menu has only a title. */
   songId?: string;

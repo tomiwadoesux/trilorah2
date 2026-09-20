@@ -642,7 +642,10 @@ interface WindowApi {
   ): Promise<({ success: true } & StockSearchResult) | { success: false; error: string }>;
   /** `url` is file:// (what the theme stores); `src` is local-media:// (what an <img> can load). */
   downloadStock?(payload: { item: StockItem; apply?: boolean }): Promise<{ success: boolean; url?: string; src?: string; error?: string }>;
-  showMedia?(imagePath: string): Promise<{ success: boolean }>;
+  showMedia?(imagePath: string, kind?: 'photo' | 'video'): Promise<{ success: boolean }>;
+  /** Transport for a video on the wall. `volume` takes 0–1, `loop` a boolean. */
+  mediaControl?(action: { type: 'play' | 'pause' | 'toggle' | 'restart' | 'volume' | 'loop'; value?: number | boolean }): Promise<{ success: boolean }>;
+  onMediaControl?(callback: (action: { type: string; value?: number | boolean }) => void): Unsubscribe;
   clearMedia?(): Promise<{ success: boolean }>;
   /** Render the companion QR (publicWebUrl + accountSlug) on every open output. */
   showQr?(): Promise<{ success: boolean; url?: string; error?: string }>;
@@ -657,7 +660,7 @@ interface WindowApi {
     svg?: string | null;
     error?: string;
   }>;
-  onShowMedia?(callback: (imagePath: string) => void): Unsubscribe;
+  onShowMedia?(callback: (imagePath: string, kind?: 'photo' | 'video') => void): Unsubscribe;
   /** Words on the projector that are not a verse (a song section). A push
       takes any verse or picture down; a verse push or clear takes it down. */
   pushLiveContent?(content: LiveContent): Promise<{ success: boolean }>;

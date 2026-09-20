@@ -134,6 +134,14 @@ body {
   object-fit: contain;
 }
 
+/* A video fills the wall the way a slide does: whole frame, letterboxed. */
+.output-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
 .output-version {
   margin-left: 0.9em;
   font-variant-caps: normal;
