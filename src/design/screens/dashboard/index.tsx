@@ -1,5 +1,4 @@
 import { PreachingTile } from './PreachingTile';
-import { Panel } from '../parts';
 import { TimersTile } from './TimersTile';
 import { ConnectedTile } from './ConnectedTile';
 import { PreacherStatsTile } from './PreacherStatsTile';
@@ -27,31 +26,32 @@ export function DashboardBento() {
   const root = useViewEnter<HTMLDivElement>();
   return (
     <div ref={root} className="flex min-h-0 flex-1 flex-col gap-[var(--tri-gap)]">
-      {/* Top band: the transcript, the service timer on a card of its own,
-          and the second half of the old chart slot still waiting to be given
-          something to hold. The timer used to share the transcript card
-          behind a toggle — two things the booth watches at once cannot take
-          turns in one box. */}
+      {/* Top band: the transcript, the service timer, and the QR the room
+          scans. The three things a booth looks up at — what is being said,
+          how long is left, and the code on the projector — now sit on one
+          line instead of the QR being buried two bands down. */}
       <div className="flex min-h-0 basis-0 grow-[312] gap-[var(--tri-gap)]">
         <PreachingTile className="basis-0 grow-[345]" />
         <TimersTile className="basis-0 grow-[407]" />
-        <Panel className="basis-0 grow-[407]" />
+        <CompanionTile className="basis-0 grow-[407]" />
       </div>
 
       {/* The middle band. Its two columns keep their own vertical rhythm —
           the left splits 105/236, the right 259/82 — so this is a band of
           two stacks rather than a row of four cells. */}
-      <div className="flex min-h-0 basis-0 grow-[351] gap-[var(--tri-gap)]">
-        <div className="flex min-w-0 basis-0 grow-[623] flex-col gap-[var(--tri-gap)]">
-          <ReadinessTile className="basis-0 grow-[105]" />
-          <div className="flex min-h-0 basis-0 grow-[236] gap-[var(--tri-gap)]">
-            <VoiceCommandsTile className="basis-0 grow-[312]" />
-            <ConnectedTile className="basis-0 grow-[303]" />
-          </div>
+      {/* With the QR gone up to the first row this band is one wide stack:
+          readiness across the top, then the three working cards side by side.
+          Giving keeps its own short height — a strip of payment chips
+          stretched to a full band would be mostly empty card — and sits
+          above them rather than leaving a column-sized hole. */}
+      <div className="flex min-h-0 basis-0 grow-[351] flex-col gap-[var(--tri-gap)]">
+        <div className="flex shrink-0 gap-[var(--tri-gap)]">
+          <ReadinessTile className="min-w-0 basis-0 grow-[623]" />
+          <GivingTile className="h-[var(--tri-bar-h)] basis-0 grow-[535] shrink-0" />
         </div>
-        <div className="flex min-w-0 basis-0 grow-[535] flex-col gap-[var(--tri-gap)]">
-          <CompanionTile className="basis-0 grow-[259]" />
-          <GivingTile className="basis-0 grow-[82]" />
+        <div className="flex min-h-0 flex-1 gap-[var(--tri-gap)]">
+          <VoiceCommandsTile className="basis-0 grow-[312]" />
+          <ConnectedTile className="basis-0 grow-[303]" />
         </div>
       </div>
 

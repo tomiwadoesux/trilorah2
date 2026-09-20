@@ -76,8 +76,12 @@ export function CompanionTile({ className }: { className?: string }) {
 
     /* The engine renders the code, so the tile shows the same one the
        projector does rather than a second drawing of the same link. */
+    /* Asked for at a generous size and then scaled to the card by CSS: the
+       square now sizes itself off the tile's height, so a code rendered at
+       the old fixed 148 would be resampled upward on a tall card. An SVG
+       costs the same either way. */
     void api
-      .getQrSvg?.(148)
+      .getQrSvg?.(320)
       .then((res) => {
         if (!alive) return;
         setLink(res?.url ?? null);
@@ -137,53 +141,85 @@ export function CompanionTile({ className }: { className?: string }) {
               onNo={() => setConfirm(false)}
             />
           )}
-          <div className="flex h-full min-h-0 items-stretch gap-[var(--tri-gap)]">
+          {/*
+            Two columns that actually line up.
+            
+            The code used to be a fixed 148px square beside a column that
+            spread its own contents with justify-between, so the two halves
+            agreed on nothing: the eyebrow floated above the code's top edge,
+            the button below its bottom, and the card read as two unrelated
+            things sharing a box. Now the square sizes itself off the card's
+            own height and the column beside it is a plain stack — heading,
+            link, then the controls pushed to the foot — so both sides start
+            on one line and end on another.
+          */}
+          <div className="flex h-full min-h-0 items-stretch gap-4">
             {/* The code is the door: press it and the tile opens. The
                 controls beside it act without opening anything. */}
-            <button type="button" onClick={onOpen} title="open companion settings" className="flex min-h-0 shrink-0 items-center justify-center">
+            <button
+              type="button"
+              onClick={onOpen}
+              title="open companion settings"
+              className="tri-rounded-control group relative flex aspect-square h-full max-h-[168px] min-h-0 shrink-0 items-center justify-center self-center overflow-hidden border border-white/10 bg-white/[0.04] transition-colors hover:border-white/20"
+            >
               {/* The engine's own SVG — scannable, and the same code the
                   projector shows. Nothing is drawn without a real link: a
-                  code built from a placeholder is one someone will scan. */}
+                  code built from a placeholder is one someone will scan, so
+                  the empty state SAYS it is empty rather than leaving a hole
+                  the eye reads as a failed image. */}
               {qrSvg ? (
                 <span
-                  className="tri-rounded-control block overflow-hidden"
-                  style={{ width: 148, height: 148 }}
+                  className="block h-full w-full [&>svg]:h-full [&>svg]:w-full"
                   dangerouslySetInnerHTML={{ __html: qrSvg }}
                 />
               ) : (
-                <div style={{ width: 148, height: 148 }} />
+                <span className="px-3 text-center text-[length:var(--tri-size-eyebrow)] leading-relaxed text-[rgb(229_243_242_/_0.35)]">
+                  no code yet
+                </span>
               )}
             </button>
-            <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 py-0.5">
+
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
               <div className="min-w-0">
-                <p className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">companion</p>
+                <p className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">
+                  companion
+                </p>
                 <p className="mt-1 truncate font-mono text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.7)]">
                   {link ? link.replace(/^https?:\/\//, '') : 'no link yet'}
                 </p>
                 {note && (
-                  <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(234_199_198_/_0.75)]">{note}</p>
+                  <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(234_199_198_/_0.75)]">
+                    {note}
+                  </p>
                 )}
               </div>
-              <SegmentedControl
-                size="sm"
-                value={mode}
-                options={[
-                  { id: 'anyone', label: 'anyone' },
-                  { id: 'wifi-only', label: 'wifi only' },
-                ]}
-                onChange={(m) => setMode(m as typeof mode)}
-              />
-              <button
-                type="button"
-                onClick={() => (live ? clearFromLive() : setConfirm(true))}
-                className={cx(
-                  surface({ tone: live ? 'gold' : 'default', shape: 'control', interactive: true }),
-                  'tri-label flex min-h-[var(--tri-control-h)] items-center justify-center lowercase',
-                  live ? 'text-[rgb(228_216_122_/_0.95)]' : 'text-[var(--tri-ink)]',
-                )}
-              >
-                {live ? 'on the projector · clear' : 'show on live'}
-              </button>
+
+              {/* The two controls sit together under the link rather than
+                  being pushed to the card's floor: the square is capped, so
+                  the column centres against IT and a foot-anchored stack
+                  would drift away from the thing it belongs to. */}
+              <div className="flex flex-col gap-2 pt-1">
+                <SegmentedControl
+                  size="sm"
+                  value={mode}
+                  options={[
+                    { id: 'anyone', label: 'anyone' },
+                    { id: 'wifi-only', label: 'wifi only' },
+                  ]}
+                  onChange={(m) => setMode(m as typeof mode)}
+                />
+                <button
+                  type="button"
+                  onClick={() => (live ? clearFromLive() : setConfirm(true))}
+                  className={cx(
+                    surface({ tone: live ? 'gold' : 'default', shape: 'control', interactive: true }),
+                    'tri-label flex min-h-[var(--tri-control-h)] items-center justify-center lowercase',
+                    live ? 'text-[rgb(228_216_122_/_0.95)]' : 'text-[var(--tri-ink)]',
+                  )}
+                >
+                  {live ? 'on the projector · clear' : 'show on live'}
+                </button>
+              </div>
             </div>
           </div>
         </Panel>
