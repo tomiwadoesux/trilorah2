@@ -79,6 +79,36 @@ jobs:
       - name: Package
         run: npx electron-builder ${{ matrix.flag }} --publish never
 
+      # An installer that builds is not an installer that works. These are the
+      # files the app cannot run without; if packaging ever drops one, fail
+      # here rather than in a church on Sunday morning.
+      - name: Verify the packaged app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $r = "release/win-unpacked/resources"
+          $need = @(
+            "$r/bible.db",
+            "$r/bible_index.json",
+            "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/main.exe",
+            "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/whisper.dll",
+            "$r/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          )
+          $missing = $need | Where-Object { -not (Test-Path $_) }
+          if ($missing) { $missing | ForEach-Object { Write-Host "MISSING: $_" }; throw "packaged app is incomplete" }
+          $need | ForEach-Object { "{0,8:N1} MB  {1}" -f ((Get-Item $_).Length / 1MB), $_ }
+
+      - name: Verify the packaged app (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          r="release/mac-arm64/Trilorah.app/Contents/Resources"
+          for f in bible.db bible_index.json \
+            app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/main \
+            app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node; do
+            [ -e "$r/$f" ] || { echo "MISSING: $r/$f"; exit 1; }
+            ls -lh "$r/$f" | awk '{print $5, $9}'
+          done
+
       - uses: actions/upload-artifact@v4
         with:
           name: trilorah-${{ runner.os }}
