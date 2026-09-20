@@ -179,10 +179,8 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
         setSlideIndex(0);
         setScreen((s) => (s === 'clear' ? 'live' : s));
       }
-      /* The preview empties on a push. It has done its job, and a staged
-         verse that stays staged after going live reads as a second copy
-         waiting to be sent. */
-      return null;
+      /* Both screens retain the verse that was pushed to live. */
+      return staged;
     });
   }, []);
 

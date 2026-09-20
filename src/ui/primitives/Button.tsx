@@ -19,7 +19,8 @@ interface ButtonProps {
   onClick?: () => void;
   /** Leading glyph — pass an icon component from ../icons. */
   icon?: ReactNode;
-  /** danger = the red set used for destructive actions. */
+  /** danger = the red set used for destructive actions. go / caution = the
+   *  two bright surfaces with dark ink — see SurfaceTone. */
   tone?: SurfaceTone;
   /**
    * Refuses the press rather than hiding from it: the button stays

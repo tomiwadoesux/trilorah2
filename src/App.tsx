@@ -49,9 +49,6 @@ function useEngineWiring() {
       api.onVersePreview((d) => showVerse(d, 'preview')),
       api.onVerseDetected((d) => {
         showVerse(d, 'live');
-        // A verse going live supersedes its own preview.
-        const p = live().preview;
-        if (p && sameRef(p.detection, d)) live().setPreview(null);
       }),
       api.onVerseAutoDismiss(() => live().setLive(null)),
       api.onShowCleanBackground(() => live().setLive(null)),
@@ -84,7 +81,6 @@ function useEngineWiring() {
             const p = live().preview;
             if (p) {
               live().setLive(p);
-              live().setPreview(null);
             }
             break;
           }

@@ -26,7 +26,7 @@ import { RowList, type Row } from '../settingsRows';
 const ROWS: Row[] = [
   { kind: 'segment', key: 'companionShareMode', label: 'Who can open the link', blurb: 'anyone — the link works from home. wifi-only — only phones on the church network.', value: 'anyone', options: ['anyone', 'wifi-only'] },
   { kind: 'text', key: 'streamUrl', label: 'Watch the stream', blurb: 'Your livestream address. Shown as a button on the companion page when set.', value: '', placeholder: 'https://youtube.com/…' },
-  { kind: 'text', key: 'qrCompanionCaption', label: 'QR caption', blurb: 'The line under the QR code on the projector.', value: 'Scan to follow live verses, transcript, and notes' },
+  { kind: 'text', key: 'qrCompanionCaption', label: 'QR caption', blurb: 'The line under the QR code on the projector.', value: "Follow along on your phone — scan to see today's verses and notes." },
   { kind: 'toggle', key: 'companionPollsEnabled', label: 'Congregation polls', blurb: 'When the app is unsure between two verses, ask the room. Their taps weigh into the choice. When to ask, and for how long, the app works out itself.', value: true },
   { kind: 'toggle', key: 'audienceTrainingEnabled', label: 'Audience training', blurb: 'Let "wrong verse" taps from the companion page feed the pastor\'s profile.', value: false },
   { kind: 'status', key: 'companionLogo', label: 'Logo on the page', blurb: 'Sent to phones for the length of a service, from this computer. Never stored anywhere else.', state: 'ok', text: 'church-logo.png · streaming' },

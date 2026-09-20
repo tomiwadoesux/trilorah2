@@ -1,29 +1,29 @@
 {
-  "ranAt": "2026-09-12T23:31:06.483Z",
-  "totalFixtures": 101,
+  "ranAt": "2026-09-20T07:06:05.959Z",
+  "totalFixtures": 103,
   "overall": {
-    "fixtures": 101,
-    "passed": 101,
-    "tp": 82,
+    "fixtures": 103,
+    "passed": 103,
+    "tp": 84,
     "fp": 0,
     "fn": 0,
     "precision": 1,
     "recall": 1,
     "falsePositiveRate": 0,
-    "medianLatencyMs": 0.015958000000011907,
+    "medianLatencyMs": 0.03037500000002069,
     "knownFailures": 0
   },
   "byLang": {
     "en": {
-      "fixtures": 65,
-      "passed": 65,
-      "tp": 49,
+      "fixtures": 67,
+      "passed": 67,
+      "tp": 51,
       "fp": 0,
       "fn": 0,
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.014082999999999402,
+      "medianLatencyMs": 0.0287919999999815,
       "knownFailures": 0
     },
     "es": {
@@ -35,7 +35,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.016479000000003907,
+      "medianLatencyMs": 0.031687499999989654,
       "knownFailures": 0
     },
     "fr": {
@@ -47,7 +47,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.03166699999999878,
+      "medianLatencyMs": 0.048749999999984084,
       "knownFailures": 0
     },
     "hi": {
@@ -59,7 +59,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.012978999999987195,
+      "medianLatencyMs": 0.027729499999992413,
       "knownFailures": 0
     },
     "pt": {
@@ -71,7 +71,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.017833999999993466,
+      "medianLatencyMs": 0.03866700000000378,
       "knownFailures": 0
     },
     "zh": {
@@ -83,7 +83,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01918799999999976,
+      "medianLatencyMs": 0.03985450000000412,
       "knownFailures": 0
     }
   },
@@ -98,19 +98,19 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01593750000000682,
+      "medianLatencyMs": 0.02729149999998981,
       "knownFailures": 0
     },
     "asr-partials": {
-      "fixtures": 1,
-      "passed": 1,
-      "tp": 1,
+      "fixtures": 3,
+      "passed": 3,
+      "tp": 3,
       "fp": 0,
       "fn": 0,
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.031334000000015294,
+      "medianLatencyMs": 0.043708000000009406,
       "knownFailures": 0
     },
     "bare-numbers": {
@@ -122,7 +122,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.012584000000003925,
+      "medianLatencyMs": 0.020167000000014923,
       "knownFailures": 0
     },
     "chapter-only": {
@@ -134,7 +134,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.018374999999991815,
+      "medianLatencyMs": 0.040334000000001424,
       "knownFailures": 0
     },
     "chunked": {
@@ -146,7 +146,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.03466599999998721,
+      "medianLatencyMs": 0.047458000000005995,
       "knownFailures": 0
     },
     "code-switch": {
@@ -158,7 +158,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.022209000000003698,
+      "medianLatencyMs": 0.053208000000012134,
       "knownFailures": 0
     },
     "colon": {
@@ -170,7 +170,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.05587500000001455,
+      "medianLatencyMs": 0.078583999999978,
       "knownFailures": 0
     },
     "compound-number": {
@@ -182,7 +182,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.032250000000004775,
+      "medianLatencyMs": 0.05016699999998764,
       "knownFailures": 0
     },
     "connector": {
@@ -194,7 +194,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.017833999999993466,
+      "medianLatencyMs": 0.04041700000001924,
       "knownFailures": 0
     },
     "digits": {
@@ -206,7 +206,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.013208000000020093,
+      "medianLatencyMs": 0.027166999999991504,
       "knownFailures": 0
     },
     "explicit": {
@@ -218,7 +218,19 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01943800000000806,
+      "medianLatencyMs": 0.03725000000001444,
+      "knownFailures": 0
+    },
+    "field-report": {
+      "fixtures": 2,
+      "passed": 2,
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "falsePositiveRate": 0,
+      "medianLatencyMs": 0.045541500000013,
       "knownFailures": 0
     },
     "hundreds": {
@@ -230,7 +242,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.022812999999999306,
+      "medianLatencyMs": 0.04172950000001663,
       "knownFailures": 0
     },
     "multi-ref": {
@@ -242,7 +254,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01937499999999659,
+      "medianLatencyMs": 0.03758399999998119,
       "knownFailures": 0
     },
     "multi-token-range-end": {
@@ -254,7 +266,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01387500000001296,
+      "medianLatencyMs": 0.032250000000004775,
       "knownFailures": 0
     },
     "narrative": {
@@ -266,7 +278,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01650000000000773,
+      "medianLatencyMs": 0.031895999999989044,
       "knownFailures": 0
     },
     "negative": {
@@ -278,7 +290,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.014374999999986926,
+      "medianLatencyMs": 0.030853999999990833,
       "knownFailures": 0
     },
     "number-words": {
@@ -290,7 +302,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01918799999999976,
+      "medianLatencyMs": 0.03985450000000412,
       "knownFailures": 0
     },
     "numbers-after-book": {
@@ -302,7 +314,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.021082999999990193,
+      "medianLatencyMs": 0.030082999999990534,
       "knownFailures": 0
     },
     "numbers-no-book": {
@@ -314,7 +326,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.014103999999989014,
+      "medianLatencyMs": 0.030603999999982534,
       "knownFailures": 0
     },
     "ordinal-book": {
@@ -326,7 +338,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.011583500000000413,
+      "medianLatencyMs": 0.02077100000001053,
       "knownFailures": 0
     },
     "ordinal-chapter": {
@@ -338,7 +350,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.030499999999989313,
+      "medianLatencyMs": 0.04895799999999895,
       "knownFailures": 0
     },
     "preamble": {
@@ -350,7 +362,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.02435400000000243,
+      "medianLatencyMs": 0.05247899999999106,
       "knownFailures": 0
     },
     "psalms": {
@@ -362,31 +374,31 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.013208000000020093,
+      "medianLatencyMs": 0.020458000000019183,
       "knownFailures": 0
     },
     "range": {
-      "fixtures": 7,
-      "passed": 7,
-      "tp": 7,
+      "fixtures": 8,
+      "passed": 8,
+      "tp": 8,
       "fp": 0,
       "fn": 0,
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.016791999999981044,
+      "medianLatencyMs": 0.027895499999985418,
       "knownFailures": 0
     },
     "tens": {
-      "fixtures": 13,
-      "passed": 13,
-      "tp": 13,
+      "fixtures": 14,
+      "passed": 14,
+      "tp": 14,
       "fp": 0,
       "fn": 0,
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.01362499999999045,
+      "medianLatencyMs": 0.02985400000000027,
       "knownFailures": 0
     },
     "verse-list": {
@@ -398,7 +410,7 @@
       "precision": 1,
       "recall": 1,
       "falsePositiveRate": 0,
-      "medianLatencyMs": 0.02435400000000243,
+      "medianLatencyMs": 0.03385350000000642,
       "knownFailures": 0
     }
   },
@@ -416,7 +428,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.45649999999997704,
+      "latencyMs": 0.7709999999999866,
       "detections": [
         {
           "book": "John",
@@ -439,7 +451,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.15849999999997522,
+      "latencyMs": 0.2762079999999969,
       "detections": [
         {
           "book": "Romans",
@@ -463,7 +475,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.03941599999998857,
+      "latencyMs": 0.061499999999995225,
       "detections": [
         {
           "book": "1 Corinthians",
@@ -486,7 +498,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.05316600000000449,
+      "latencyMs": 0.07320799999999394,
       "detections": [
         {
           "book": "Psalms",
@@ -510,7 +522,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.038792000000000826,
+      "latencyMs": 0.06204199999999105,
       "detections": [
         {
           "book": "Romans",
@@ -534,7 +546,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.03887499999999022,
+      "latencyMs": 0.06566700000001902,
       "detections": [
         {
           "book": "2 Timothy",
@@ -557,7 +569,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01895800000002623,
+      "latencyMs": 0.03037500000002069,
       "detections": [
         {
           "book": "John",
@@ -581,7 +593,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.08125000000001137,
+      "latencyMs": 0.4748339999999871,
       "detections": [
         {
           "book": "John",
@@ -611,7 +623,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.030499999999989313,
+      "latencyMs": 0.04895799999999895,
       "detections": [
         {
           "book": "John",
@@ -635,7 +647,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.027792000000005146,
+      "latencyMs": 0.043042000000014013,
       "detections": [
         {
           "book": "Psalms",
@@ -659,7 +671,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013249999999999318,
+      "latencyMs": 0.02137500000000614,
       "detections": [
         {
           "book": "1 John",
@@ -682,7 +694,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.016667000000012422,
+      "latencyMs": 0.02429100000000517,
       "detections": [
         {
           "book": "Genesis",
@@ -705,7 +717,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.022582999999997355,
+      "latencyMs": 0.03341700000001424,
       "detections": [
         {
           "book": "Matthew",
@@ -728,7 +740,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013958000000002357,
+      "latencyMs": 0.019500000000022055,
       "detections": [
         {
           "book": "Hebrews",
@@ -752,7 +764,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.03083300000000122,
+      "latencyMs": 0.04366600000000176,
       "detections": [
         {
           "book": "Ephesians",
@@ -782,7 +794,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.022792000000009693,
+      "latencyMs": 0.04166600000002063,
       "detections": [
         {
           "book": "Philippians",
@@ -806,7 +818,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.017125000000021373,
+      "latencyMs": 0.07070799999999622,
       "detections": [
         {
           "book": "Revelation",
@@ -830,7 +842,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.02041699999998059,
+      "latencyMs": 0.0348329999999919,
       "detections": [
         {
           "book": "Revelation",
@@ -854,7 +866,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.021291000000019267,
+      "latencyMs": 0.01824999999999477,
       "detections": [
         {
           "book": "Isaiah",
@@ -878,7 +890,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.012584000000003925,
+      "latencyMs": 0.017959000000018932,
       "detections": [
         {
           "book": "Jeremiah",
@@ -902,7 +914,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.017875000000003638,
+      "latencyMs": 0.02404100000001108,
       "detections": [
         {
           "book": "Proverbs",
@@ -932,7 +944,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.008250000000003865,
+      "latencyMs": 0.01500000000001478,
       "detections": [
         {
           "book": "2 Corinthians",
@@ -956,7 +968,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009917000000001508,
+      "latencyMs": 0.014333000000021912,
       "detections": [
         {
           "book": "Acts",
@@ -980,7 +992,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.012208000000015318,
+      "latencyMs": 0.019749999999987722,
       "detections": [
         {
           "book": "Acts",
@@ -1003,7 +1015,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.007542000000000826,
+      "latencyMs": 0.02312499999999318,
       "detections": [
         {
           "book": "Galatians",
@@ -1027,7 +1039,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009916000000004033,
+      "latencyMs": 0.029624999999981583,
       "detections": [
         {
           "book": "1 Peter",
@@ -1050,7 +1062,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.008957999999978483,
+      "latencyMs": 0.01362499999999045,
       "detections": [
         {
           "book": "James",
@@ -1073,7 +1085,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.016791999999981044,
+      "latencyMs": 0.02137500000000614,
       "detections": [
         {
           "book": "Romans",
@@ -1098,14 +1110,8 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.031334000000015294,
+      "latencyMs": 0.042124999999998636,
       "detections": [
-        {
-          "book": "Romans",
-          "chapter": 8,
-          "verse": null,
-          "endVerse": null
-        },
         {
           "book": "Romans",
           "chapter": 8,
@@ -1129,7 +1135,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01387500000001296,
+      "latencyMs": 0.032250000000004775,
       "detections": [
         {
           "book": "Luke",
@@ -1152,7 +1158,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009332999999998037,
+      "latencyMs": 0.013874999999984539,
       "detections": [
         {
           "book": "Mark",
@@ -1175,7 +1181,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.006875000000007958,
+      "latencyMs": 0.018291000000004942,
       "detections": [
         {
           "book": "Deuteronomy",
@@ -1199,7 +1205,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.007499999999993179,
+      "latencyMs": 0.01941600000000676,
       "detections": [
         {
           "book": "Song of Solomon",
@@ -1224,7 +1230,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.008250000000003865,
+      "latencyMs": 0.015416000000016084,
       "detections": [
         {
           "book": "1 Samuel",
@@ -1248,7 +1254,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.0071659999999837964,
+      "latencyMs": 0.012042000000008102,
       "detections": [
         {
           "book": "1 John",
@@ -1272,7 +1278,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.006875000000007958,
+      "latencyMs": 0.01099999999999568,
       "detections": [
         {
           "book": "1 John",
@@ -1295,7 +1301,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.005707999999998492,
+      "latencyMs": 0.009582999999992126,
       "detections": [
         {
           "book": "Ecclesiastes",
@@ -1319,7 +1325,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.011750000000006366,
+      "latencyMs": 0.025874999999984993,
       "detections": [
         {
           "book": "Matthew",
@@ -1343,7 +1349,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01037500000001046,
+      "latencyMs": 0.03108300000002373,
       "detections": [
         {
           "book": "Psalms",
@@ -1366,7 +1372,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.007125000000002046,
+      "latencyMs": 0.01233299999998394,
       "detections": [
         {
           "book": "Colossians",
@@ -1391,7 +1397,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.019666999999998325,
+      "latencyMs": 0.0433749999999975,
       "detections": [
         {
           "book": "John",
@@ -1415,7 +1421,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.008667000000002645,
+      "latencyMs": 0.012291000000004715,
       "detections": [
         {
           "book": "Numbers",
@@ -1439,7 +1445,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.03466599999998721,
+      "latencyMs": 0.047458000000005995,
       "detections": [
         {
           "book": "John",
@@ -1469,7 +1475,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.006583000000006223,
+      "latencyMs": 0.012708000000003494,
       "detections": [
         {
           "book": "2 Chronicles",
@@ -1492,7 +1498,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009999999999990905,
+      "latencyMs": 0.018000000000000682,
       "detections": [
         {
           "book": "Titus",
@@ -1515,7 +1521,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01937499999999659,
+      "latencyMs": 0.03758399999998119,
       "detections": [
         {
           "book": "John",
@@ -1545,7 +1551,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.018375000000020236,
+      "latencyMs": 0.029291999999998097,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1562,7 +1568,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.014082999999999402,
+      "latencyMs": 0.0287919999999815,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1579,7 +1585,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.014624999999995225,
+      "latencyMs": 0.02462499999998613,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1596,7 +1602,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.014042000000017651,
+      "latencyMs": 0.022791000000012218,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1613,7 +1619,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013958000000002357,
+      "latencyMs": 0.05612500000000864,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1630,7 +1636,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.011332999999979165,
+      "latencyMs": 0.028333000000003494,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1647,7 +1653,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.014124999999978627,
+      "latencyMs": 0.03516700000000128,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1664,7 +1670,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.015457999999995309,
+      "latencyMs": 0.03241599999998357,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1681,7 +1687,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013166000000012446,
+      "latencyMs": 0.01941600000000676,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1698,7 +1704,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.010249999999984993,
+      "latencyMs": 0.017083000000013726,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1715,7 +1721,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.023083999999983007,
+      "latencyMs": 0.048082999999991216,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1732,7 +1738,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.0161250000000166,
+      "latencyMs": 0.026125000000007503,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1749,7 +1755,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01579200000000469,
+      "latencyMs": 0.03858300000001691,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1766,7 +1772,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009375000000005684,
+      "latencyMs": 0.027040999999996984,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1783,7 +1789,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013417000000004009,
+      "latencyMs": 0.047584000000000515,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1800,7 +1806,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.006249999999994316,
+      "latencyMs": 0.009666999999978998,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1817,7 +1823,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01362499999999045,
+      "latencyMs": 0.044666000000006534,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1835,7 +1841,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.02070799999998485,
+      "latencyMs": 0.025666000000001077,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -1853,8 +1859,58 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.021457999999995536,
+      "latencyMs": 0.03449999999997999,
       "detections": [],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-field-001",
+      "lang": "en",
+      "tags": [
+        "asr-partials",
+        "tens",
+        "field-report"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.043708000000009406,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 4,
+          "verse": 21,
+          "endVerse": null
+        }
+      ],
+      "missed": [],
+      "falsePositives": []
+    },
+    {
+      "id": "en-field-002",
+      "lang": "en",
+      "tags": [
+        "asr-partials",
+        "range",
+        "field-report"
+      ],
+      "knownFailure": false,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "passed": true,
+      "latencyMs": 0.0473750000000166,
+      "detections": [
+        {
+          "book": "Romans",
+          "chapter": 4,
+          "verse": 21,
+          "endVerse": 22
+        }
+      ],
       "missed": [],
       "falsePositives": []
     },
@@ -1870,7 +1926,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.019209000000017795,
+      "latencyMs": 0.035125000000022055,
       "detections": [
         {
           "book": "John",
@@ -1894,7 +1950,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01125000000001819,
+      "latencyMs": 0.018875000000008413,
       "detections": [
         {
           "book": "1 Corinthians",
@@ -1918,7 +1974,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.014791999999999916,
+      "latencyMs": 0.027291999999988548,
       "detections": [
         {
           "book": "Psalms",
@@ -1942,7 +1998,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01362499999999045,
+      "latencyMs": 0.0347500000000025,
       "detections": [
         {
           "book": "Romans",
@@ -1965,7 +2021,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.008916999999996733,
+      "latencyMs": 0.020207999999996673,
       "detections": [
         {
           "book": "Matthew",
@@ -1989,7 +2045,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.022209000000003698,
+      "latencyMs": 0.053208000000012134,
       "detections": [
         {
           "book": "John",
@@ -2013,7 +2069,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.018166000000007898,
+      "latencyMs": 0.028624999999976808,
       "detections": [
         {
           "book": "Romans",
@@ -2037,7 +2093,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.022709000000020296,
+      "latencyMs": 0.03541699999999537,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -2054,7 +2110,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.05912499999999454,
+      "latencyMs": 0.08783400000001507,
       "detections": [
         {
           "book": "John",
@@ -2079,7 +2135,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.032250000000004775,
+      "latencyMs": 0.05016699999998764,
       "detections": [
         {
           "book": "Psalms",
@@ -2103,7 +2159,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.020375000000001364,
+      "latencyMs": 0.03133300000001782,
       "detections": [
         {
           "book": "1 Corinthians",
@@ -2127,7 +2183,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.03166699999999878,
+      "latencyMs": 0.048749999999984084,
       "detections": [
         {
           "book": "Romans",
@@ -2150,7 +2206,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.015958000000011907,
+      "latencyMs": 0.024749999999983174,
       "detections": [
         {
           "book": "Matthew",
@@ -2173,7 +2229,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.018374999999991815,
+      "latencyMs": 0.040334000000001424,
       "detections": [
         {
           "book": "Psalms",
@@ -2197,7 +2253,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.03999999999999204,
+      "latencyMs": 0.07087500000000091,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -2214,7 +2270,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.025915999999995165,
+      "latencyMs": 0.06158299999998462,
       "detections": [
         {
           "book": "John",
@@ -2239,7 +2295,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.02183299999998667,
+      "latencyMs": 0.05025000000000546,
       "detections": [
         {
           "book": "Romans",
@@ -2264,7 +2320,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.012207999999986896,
+      "latencyMs": 0.02154200000001083,
       "detections": [
         {
           "book": "Psalms",
@@ -2288,7 +2344,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.011916999999982636,
+      "latencyMs": 0.020167000000014923,
       "detections": [
         {
           "book": "1 Corinthians",
@@ -2311,7 +2367,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009916000000004033,
+      "latencyMs": 0.021750000000025693,
       "detections": [
         {
           "book": "Matthew",
@@ -2336,7 +2392,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.017833999999993466,
+      "latencyMs": 0.04041700000001924,
       "detections": [
         {
           "book": "Psalms",
@@ -2360,7 +2416,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.02075000000002092,
+      "latencyMs": 0.03866700000000378,
       "detections": [],
       "missed": [],
       "falsePositives": []
@@ -2377,7 +2433,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.016792000000009466,
+      "latencyMs": 0.028291999999993322,
       "detections": [
         {
           "book": "John",
@@ -2401,7 +2457,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.042833000000001675,
+      "latencyMs": 0.06408299999998235,
       "detections": [
         {
           "book": "John",
@@ -2425,7 +2481,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013582999999982803,
+      "latencyMs": 0.022583000000025777,
       "detections": [
         {
           "book": "Romans",
@@ -2449,7 +2505,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.007459000000011429,
+      "latencyMs": 0.019249999999999545,
       "detections": [
         {
           "book": "Psalms",
@@ -2472,7 +2528,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.009167000000019243,
+      "latencyMs": 0.03704100000001631,
       "detections": [
         {
           "book": "Matthew",
@@ -2497,7 +2553,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.012374999999991587,
+      "latencyMs": 0.027166999999991504,
       "detections": [
         {
           "book": "1 Corinthians",
@@ -2522,7 +2578,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.2827090000000112,
+      "latencyMs": 0.4545840000000112,
       "detections": [
         {
           "book": "John",
@@ -2546,7 +2602,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.12204199999999332,
+      "latencyMs": 0.18174999999999386,
       "detections": [
         {
           "book": "John",
@@ -2571,7 +2627,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.013208000000020093,
+      "latencyMs": 0.020458000000019183,
       "detections": [
         {
           "book": "Psalms",
@@ -2595,7 +2651,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.05587500000001455,
+      "latencyMs": 0.078583999999978,
       "detections": [
         {
           "book": "Romans",
@@ -2619,7 +2675,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.01754199999999173,
+      "latencyMs": 0.040334000000001424,
       "detections": [
         {
           "book": "Matthew",
@@ -2644,7 +2700,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.02083400000000779,
+      "latencyMs": 0.03937500000000682,
       "detections": [
         {
           "book": "1 Corinthians",
@@ -2669,7 +2725,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.017333000000007814,
+      "latencyMs": 0.027165999999994028,
       "detections": [
         {
           "book": "Romans",
@@ -2694,7 +2750,7 @@
       "fp": 0,
       "fn": 0,
       "passed": true,
-      "latencyMs": 0.011166000000002896,
+      "latencyMs": 0.017291999999997643,
       "detections": [
         {
           "book": "Romans",

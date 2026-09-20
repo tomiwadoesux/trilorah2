@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, motion, type Transition } from 'motion/react';
 import { cx, PlusIcon } from '../../../ui';
 
 /*
@@ -12,14 +13,22 @@ import { cx, PlusIcon } from '../../../ui';
  * the whole set, the ground darkening behind. Press the ground, or ✕, or
  * Esc, and it goes back the way it came.
  *
- * The motion is FLIP by hand — measure the tile, place a copy at exactly
- * that box, and let one CSS transition carry it to the centre. No library:
- * four tiles might do this and each one costs a single element and one
- * transition. It animates the box (left/top/width/height) rather than
- * scaling a transform, because a scaled box stretches its own text on the
- * way and settings copy read mid-flight is the whole point of the effect.
- * One element, 360ms, a soft ease — that is well within what layout can do
- * at 60fps, and it respects prefers-reduced-motion by skipping the flight.
+ * The motion is FLIP — measure the tile, place a copy at exactly that box,
+ * and carry it to the centre. It animates the box (left/top/width/height)
+ * rather than scaling a transform, because a scaled box stretches its own
+ * text and corner radius on the way; that is also why this is NOT Motion's
+ * `layoutId`, whose projection is a scale underneath (and which the
+ * sandbox's scaled artboard would throw off as well). One element, 360ms, a
+ * soft ease — well within what layout can do at 60fps.
+ *
+ * Motion drives it, on this file's clock and curve. The hand-rolled version
+ * was a four-phase state machine with a timer for the way home, and the
+ * phases were where it broke: Esc or the ground did nothing until the box
+ * had landed, a second tile could not be reached until the first had fully
+ * gone, and the home box was the one measured at lift-off even if the grid
+ * had moved since. With AnimatePresence there are no phases — open is a
+ * boolean, every change retargets from wherever the box is right now, and
+ * the way home is measured when it starts.
  *
  * Boxes are measured against the shell (`data-shell`) rather than the
  * viewport: the sandbox draws every screen inside a scaled artboard, and
@@ -27,22 +36,29 @@ import { cx, PlusIcon } from '../../../ui';
  * both the same case.
  */
 
-const FLIGHT_MS = 360;
-const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+/* Exported: the song editor and the add-song dialog open with this same
+   flight (src/design/screens/songs/FlightPopup.tsx), so there is one clock
+   and one curve for "a thing lifts off the grid and grows". */
+export const FLIGHT_MS = 360;
+export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+/* The same clock and curve in the units Motion takes. Derived, never
+   retyped — the app has one motion language and this file is its source. */
+export const EASE_BEZIER = [0.22, 1, 0.36, 1] as const;
+export const FLIGHT_S = FLIGHT_MS / 1000;
 
-interface Box {
+export interface Box {
   left: number;
   top: number;
   width: number;
   height: number;
 }
 
-function reducedMotion(): boolean {
+export function reducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** The tile's box in the shell's own coordinates, scale removed. */
-function boxInShell(el: HTMLElement, shell: HTMLElement): Box {
+export function boxInShell(el: HTMLElement, shell: HTMLElement): Box {
   const s = shell.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   const scale = s.width / shell.offsetWidth || 1;
@@ -55,7 +71,7 @@ function boxInShell(el: HTMLElement, shell: HTMLElement): Box {
 }
 
 /** Where an open tile lands: centred, capped, with room for the ground. */
-function targetBox(shell: HTMLElement, wanted: { w: number; h: number }): Box {
+export function targetBox(shell: HTMLElement, wanted: { w: number; h: number }): Box {
   const W = shell.offsetWidth;
   const H = shell.offsetHeight;
   const width = Math.min(wanted.w, W - 80);
@@ -76,59 +92,110 @@ export interface ExpandableProps {
   size?: { w: number; h: number };
 }
 
+/*
+ * Every tile that can open, so a press on the ground mid-flight can find
+ * the tile underneath it. See `retarget` below.
+ */
+const TILES = new Map<HTMLElement, () => void>();
+
+interface Flight {
+  from: Box;
+  to: Box;
+}
+
 export function Expandable({ tile, className, title, blurb, children, size = { w: 720, h: 640 } }: ExpandableProps) {
   const anchor = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<'closed' | 'opening' | 'open' | 'closing'>('closed');
-  const [from, setFrom] = useState<Box | null>(null);
-  const [to, setTo] = useState<Box | null>(null);
+  const [open, setOpen] = useState(false);
+  /* On screen at all — true from lift-off until the way home has FINISHED,
+     which is later than `open` going false. The grid tile stays dimmed for
+     exactly that long. */
+  const [flying, setFlying] = useState(false);
+  /* Landed and resting. Until then a press on the ground may be aimed at
+     another tile rather than at "close". */
+  const [settled, setSettled] = useState(false);
+  const [flight, setFlight] = useState<Flight | null>(null);
   /* The overlay is portalled into the shell, so its absolute box is in the
      shell's coordinates whatever the tile's own ancestors are positioned. */
   const [shellEl, setShellEl] = useState<HTMLElement | null>(null);
 
   const shellOf = () => anchor.current?.closest<HTMLElement>('[data-shell]') ?? null;
 
-  const open = () => {
+  const lift = () => {
     const el = anchor.current;
     const shell = shellOf();
     if (!el || !shell) return;
     setShellEl(shell);
-    setFrom(boxInShell(el, shell));
-    setTo(targetBox(shell, size));
-    setPhase('opening');
+    setFlight({ from: boxInShell(el, shell), to: targetBox(shell, size) });
+    setFlying(true);
+    setOpen(true);
   };
+  const liftRef = useRef(lift);
+  liftRef.current = lift;
 
   const close = () => {
-    if (phase !== 'open') return;
-    setPhase('closing');
+    /* Home is measured NOW. The tile never left the grid, so its box is
+       always current — the one taken at lift-off is stale the moment the
+       window is resized with a tile open. */
+    const el = anchor.current;
+    const shell = shellOf();
+    if (el && shell) setFlight((f) => (f ? { ...f, from: boxInShell(el, shell) } : f));
+    setSettled(false);
+    setOpen(false);
   };
 
-  /* The flight: one frame at the start box so the transition has
-     somewhere to leave from, then the end box. */
-  useLayoutEffect(() => {
-    if (phase === 'opening') {
-      const id = requestAnimationFrame(() => setPhase('open'));
-      return () => cancelAnimationFrame(id);
-    }
-    if (phase === 'closing') {
-      const t = setTimeout(() => setPhase('closed'), reducedMotion() ? 0 : FLIGHT_MS);
-      return () => clearTimeout(t);
-    }
-  }, [phase]);
+  useEffect(() => {
+    const el = anchor.current;
+    if (!el) return;
+    TILES.set(el, () => liftRef.current());
+    return () => void TILES.delete(el);
+  }, []);
+
+  /* A window resized with a tile open: the centre has moved, so the box
+     follows it — Motion retargets from where it is. */
+  useEffect(() => {
+    if (!open || !shellEl) return;
+    const recentre = () => setFlight((f) => (f ? { ...f, to: targetBox(shellEl, size) } : f));
+    window.addEventListener('resize', recentre);
+    return () => window.removeEventListener('resize', recentre);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, shellEl, size.w, size.h]);
 
   useEffect(() => {
-    if (phase !== 'open') return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  }, [open]);
 
-  const flying = phase !== 'closed';
-  const atTarget = phase === 'open';
-  const box = atTarget ? to : from;
-  const motion = reducedMotion() ? 'none' : `left ${FLIGHT_MS}ms ${EASE}, top ${FLIGHT_MS}ms ${EASE}, width ${FLIGHT_MS}ms ${EASE}, height ${FLIGHT_MS}ms ${EASE}, opacity ${FLIGHT_MS}ms ${EASE}`;
+  /*
+   * A press on the ground while the box is still in the air.
+   *
+   * The ground covers the grid from the first frame, so someone who pressed
+   * the wrong tile and goes straight for the right one lands on the ground
+   * instead — and used to get nothing at all until the first flight ended.
+   * Now that press sends this tile home from wherever it is and lifts the
+   * one under the pointer in the same beat. Once landed, the ground is just
+   * "close": a resting dialog that opened a different one when dismissed
+   * would be a surprise, not a convenience.
+   */
+  const onGround = (e: React.MouseEvent) => {
+    close();
+    if (settled) return;
+    for (const [el, openIt] of TILES) {
+      if (el === anchor.current) continue;
+      const r = el.getBoundingClientRect();
+      if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+        openIt();
+        break;
+      }
+    }
+  };
+
+  const still = reducedMotion();
+  const fly: Transition = still ? { duration: 0 } : { duration: FLIGHT_S, ease: EASE_BEZIER };
 
   return (
     <>
@@ -137,55 +204,86 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
       <div
         ref={anchor}
         className={cx('flex min-h-0 min-w-0 flex-col transition-opacity', className)}
-        style={{ opacity: flying ? 0.25 : 1, transitionDuration: `${FLIGHT_MS}ms` }}
+        style={{ opacity: flying ? 0.25 : 1, transitionDuration: `${still ? 0 : FLIGHT_MS}ms`, transitionTimingFunction: EASE }}
       >
-        {tile({ onOpen: open, open: flying })}
+        {tile({ onOpen: lift, open: flying })}
       </div>
 
-      {flying && box && shellEl && createPortal(
-        <>
-          {/* The ground. Its opacity rides the same clock as the box. */}
-          <button
-            type="button"
-            aria-label="close"
-            onClick={close}
-            className="absolute inset-0 z-40 bg-[rgb(0_0_0_/_0.55)]"
-            style={{ opacity: atTarget ? 1 : 0, transition: reducedMotion() ? 'none' : `opacity ${FLIGHT_MS}ms ${EASE}` }}
-          />
-          <section
-            role="dialog"
-            aria-label={title}
-            className="tri-rounded-surface absolute z-50 flex flex-col overflow-hidden bg-[#0e1413]"
-            style={{
-              ...box,
-              boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.08), 0 30px 80px rgb(0 0 0 / 0.5)',
-              transition: motion,
-            }}
-          >
-            <header className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5">
-              <div className="min-w-0">
-                <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">{title}</h2>
-                {blurb && <p className="mt-1 max-w-[520px] text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">{blurb}</p>}
-              </div>
-              <button
+      {shellEl && flight && createPortal(
+        /* `custom` reaches a child that is already leaving, which its own
+           props no longer do — that is how the way home gets the box
+           measured at close rather than the one from lift-off. */
+        <AnimatePresence custom={flight} onExitComplete={() => setFlying(false)}>
+          {open && (
+            <motion.div key="flight" className="contents" initial="home" animate="open" exit="home" custom={flight}>
+              {/* The ground. Its opacity rides the same clock as the box.
+                  On the way home it stops taking presses, so the grid under
+                  it is live again the moment close is asked for. */}
+              <motion.button
                 type="button"
-                onClick={close}
-                title="close (esc)"
-                className="grid size-[26px] shrink-0 place-items-center rounded-[7px] text-[rgb(229_243_242_/_0.5)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink)]"
+                aria-label="close"
+                tabIndex={-1}
+                onClick={onGround}
+                className="absolute inset-0 z-40 cursor-default bg-[rgb(0_0_0_/_0.55)]"
+                variants={{ home: { opacity: 0, pointerEvents: 'none' }, open: { opacity: 1, pointerEvents: 'auto' } }}
+                transition={{ ...fly, pointerEvents: { duration: 0 } }}
+              />
+              <motion.section
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
+                /* z-50 while open; a box on its way home drops under the
+                   next one lifting off so two flights never fight for the
+                   top. Both beat the ground. */
+                className="tri-rounded-surface absolute flex flex-col overflow-hidden bg-[#0e1413]"
+                style={{
+                  boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.08), 0 30px 80px rgb(0 0 0 / 0.5)',
+                }}
+                variants={{
+                  home: (f: Flight) => ({ ...f.from, zIndex: 45 }),
+                  open: (f: Flight) => ({ ...f.to, zIndex: 50 }),
+                }}
+                custom={flight}
+                /* z is a fact, not a journey: it switches on the first frame. */
+                transition={{ ...fly, zIndex: { duration: 0 } }}
+                onAnimationComplete={(name) => {
+                  if (name === 'open') setSettled(true);
+                }}
               >
-                <PlusIcon size={12} className="rotate-45" />
-              </button>
-            </header>
-            {/* The contents arrive after the box has landed, so nothing is
-                read at the wrong size. */}
-            <div
-              className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2"
-              style={{ opacity: atTarget ? 1 : 0, transition: `opacity 200ms ${EASE} ${atTarget ? FLIGHT_MS * 0.6 : 0}ms` }}
-            >
-              {children}
-            </div>
-          </section>
-        </>,
+                {/* Header and contents arrive after the box has landed and
+                    are gone before it leaves, so nothing is read — or seen
+                    rewrapping — at the wrong size. The title used to ride
+                    the whole flight and rewrap on the way. */}
+                <motion.div
+                  className="flex min-h-0 flex-1 flex-col"
+                  variants={{
+                    home: { opacity: 0, transition: still ? { duration: 0 } : { duration: 0.09, ease: EASE_BEZIER } },
+                    open: {
+                      opacity: 1,
+                      transition: still ? { duration: 0 } : { duration: 0.2, ease: EASE_BEZIER, delay: FLIGHT_S * 0.6 },
+                    },
+                  }}
+                >
+                  <header className="flex shrink-0 items-start justify-between gap-4 px-6 pt-5">
+                    <div className="min-w-0">
+                      <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">{title}</h2>
+                      {blurb && <p className="mt-1 max-w-[520px] text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">{blurb}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={close}
+                      title="close (esc)"
+                      className="grid size-[26px] shrink-0 place-items-center rounded-[7px] text-[rgb(229_243_242_/_0.5)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink)]"
+                    >
+                      <PlusIcon size={12} className="rotate-45" />
+                    </button>
+                  </header>
+                  <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">{children}</div>
+                </motion.div>
+              </motion.section>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         shellEl,
       )}
     </>

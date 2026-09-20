@@ -6,6 +6,8 @@ describe('roleFor', () => {
     expect(roleFor('main')).toBe('projector')
     expect(roleFor('alternate')).toBe('stream')
     expect(roleFor('third')).toBe('stage')
+    expect(roleFor('timer')).toBe('timer')
+    expect(roleFor('alternate', { alternate: 'timer' })).toBe('timer')
     expect(roleFor('alternate', { alternate: 'projector' })).toBe('projector')
     expect(roleFor('alternate', { alternate: 'nonsense' })).toBe('stream')
     expect(roleFor('unknown')).toBe('projector')

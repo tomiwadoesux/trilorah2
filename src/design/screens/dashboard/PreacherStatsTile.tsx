@@ -36,7 +36,16 @@ const FACTS: PreacherFact[] = [
    brighter than its neighbour reads as a mistake, not a hierarchy. */
 const MUTED = 'rgb(229 243 242 / 0.45)';
 
+/*
+ * EMPTIED at the owner's request ("remove the contents from the bg for now,
+ * we don't need them"), pending a redesign. Same Panel, same grid weight, so
+ * the band keeps its proportions; the old face is PreacherStatsTileFull.
+ */
 export function PreacherStatsTile({ className }: { className?: string }) {
+  return <Panel className={className} />;
+}
+
+export function PreacherStatsTileFull({ className }: { className?: string }) {
   return (
     <Panel className={className} bodyClass="pt-3">
       <div

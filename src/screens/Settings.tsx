@@ -325,6 +325,83 @@ function MicDevicePicker() {
   );
 }
 
+function DisplayAssignmentSection() {
+  const settings = useAppStore((s) => s.settings);
+  const [displays, setDisplays] = useState<{
+    totalDisplays: number;
+    hasExternal: boolean;
+    primary: { id: number; bounds: { width: number; height: number } };
+    externals: Array<{ id: number; bounds: { width: number; height: number } }>;
+  } | null>(null);
+
+  useEffect(() => {
+    void window.api?.getDisplaysStatus?.().then((d) => setDisplays(d ?? null));
+  }, []);
+
+  const outputDisplays = (settings?.outputDisplays as Record<string, number> | undefined) || {};
+
+  const setOutputDisplay = (outputId: string, displayId: number | undefined) => {
+    const next = { ...outputDisplays };
+    if (displayId === undefined) {
+      delete next[outputId];
+    } else {
+      next[outputId] = displayId;
+    }
+    save('outputDisplays', next);
+  };
+
+  const options: Array<{ label: string; id: number | undefined }> = [
+    { label: 'Auto (order connected)', id: undefined },
+  ];
+  if (displays) {
+    options.push({
+      label: `Display 1: Primary (${displays.primary.bounds.width}×${displays.primary.bounds.height})`,
+      id: displays.primary.id,
+    });
+    displays.externals.forEach((ext, idx) => {
+      options.push({
+        label: `Display ${idx + 2}: External HDMI (${ext.bounds.width}×${ext.bounds.height})`,
+        id: ext.id,
+      });
+    });
+  }
+
+  const renderSelect = (outputId: string, label: string) => {
+    const current = outputDisplays[outputId];
+    return (
+      <Row label={label}>
+        <select
+          value={current !== undefined ? String(current) : ''}
+          onChange={(e) => {
+            const val = e.target.value ? Number(e.target.value) : undefined;
+            setOutputDisplay(outputId, val);
+          }}
+          className="text-sm"
+        >
+          {options.map((opt, idx) => (
+            <option key={opt.id !== undefined ? String(opt.id) : `auto-${idx}`} value={opt.id !== undefined ? String(opt.id) : ''}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </Row>
+    );
+  };
+
+  return (
+    <div className="space-y-3 pt-2">
+      {renderSelect('main', 'main verses screen')}
+      {renderSelect('timer', 'dedicated timer screen')}
+      {renderSelect('third', 'stage monitor screen')}
+      {displays && displays.externals.length === 0 && (
+        <p className="max-w-xl text-xs leading-relaxed text-amber-500/80">
+          No external HDMI displays currently detected. Plug in your HDMI screens and outputs will automatically map.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function Section({ title, children, dataTour }: { title: string; children: ReactNode; dataTour?: string }) {
   return (
     <section data-tour={dataTour} className="space-y-4 border-t border-hairline pt-8 first:border-t-0 first:pt-0">
@@ -477,11 +554,11 @@ export function Settings() {
           wide
         />
         <NumberSetting label="alert duration" settingKey="alertDefaultSeconds" suffix="seconds" />
+        <DisplayAssignmentSection />
         <p className="max-w-xl text-xs leading-relaxed text-neutral-500">
-          STREAM is a transparent window: add it to OBS / vMix as a window capture with “allow
-          transparency” and the verse rides over your camera as a lower third. STAGE is the
-          confidence monitor for the pulpit. Roles can be re-assigned per window in the engine
-          setting <code>outputRoles</code>.
+          STREAM is a transparent window for OBS / vMix. STAGE is the confidence monitor for the pulpit.
+          TIMER is a dedicated full-screen clock and countdown display for your HDMI stage/wall monitor.
+          Outputs can be mapped directly to your connected physical screens above.
         </p>
       </Section>
 

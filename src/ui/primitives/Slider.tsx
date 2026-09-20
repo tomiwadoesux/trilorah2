@@ -90,6 +90,13 @@ interface SliderProps {
   /** Tick marks drawn along the track. Figma drew seven. */
   ticks?: number;
   disabled?: boolean;
+  /**
+   * The value is being dragged from somewhere else — a handle on a canvas,
+   * say — and this slider is only reporting it. Skips the travel animation
+   * for the same reason the slider's own drag does: a handle easing toward
+   * where the hand was 200ms ago reads as lag, not as polish.
+   */
+  immediate?: boolean;
   className?: string;
 }
 
@@ -102,6 +109,7 @@ export function Slider({
   step = 1,
   ticks = 9,
   disabled = false,
+  immediate = false,
   className = '',
 }: SliderProps) {
   const span = max - min || 1;
@@ -118,7 +126,7 @@ export function Slider({
   // track, an arrow key, a change from elsewhere — is worth watching travel.
   const shown = useAnimatedNumber(value, {
     duration: SLIDE_MS,
-    immediate: mode === 'dragging',
+    immediate: immediate || mode === 'dragging',
   });
 
   const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / span) * 100));

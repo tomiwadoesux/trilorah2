@@ -30,7 +30,7 @@ export interface Placement {
 }
 
 /** Output ids in the order they claim external displays. */
-export const OUTPUT_ORDER = ['main', 'alternate', 'third'] as const
+export const OUTPUT_ORDER = ['main', 'alternate', 'third', 'fourth', 'fifth', 'timer'] as const
 
 export function placeOutput(
   outputId: string,

@@ -7,6 +7,8 @@
  * takes the colour of the text beside it and can be recoloured per use.
  */
 
+import type { ReactNode } from 'react';
+
 interface IconProps {
   /** Rendered box in px. Figma uses 17 for settings, 16 for trash. */
   size?: number;
@@ -390,6 +392,217 @@ export function MicIcon({ size = 14, className }: IconProps) {
         strokeWidth="1.4"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+/** Import/Upload tray icon with downward arrow */
+export function ImportIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M2.5 10.5v2.25a.75.75 0 0 0 .75.75h9.5a.75.75 0 0 0 .75-.75V10.5" />
+      <path d="M8 2.5v7.5" />
+      <path d="M5 7L8 10L11 7" />
+    </svg>
+  );
+}
+
+/** Presentation / Slides deck easel icon */
+export function PresentationIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <rect x="2" y="2.5" width="12" height="9" rx="1.5" />
+      <path d="M5.5 14.5L8 11.5L10.5 14.5" />
+      <path d="M8 11.5v3" />
+    </svg>
+  );
+}
+
+/*
+ * QR — three finder squares and a scatter of modules. Drawn, not a Figma
+ * export: the file has no code glyph.
+ *
+ * The three cornered squares are what make a QR read as a QR at 13px; real
+ * module noise at that size is grey mush, so the fourth quadrant carries just
+ * enough dots to say "data" and no more. 1.4 stroke, the same weight as the
+ * other drawn glyphs, so it sits in a row with them without looking bolder.
+ */
+export function QrIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <rect x="2" y="2" width="4.6" height="4.6" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="9.4" y="2" width="4.6" height="4.6" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="2" y="9.4" width="4.6" height="4.6" rx="1" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="9.1" y="9.1" width="1.9" height="1.9" rx="0.4" fill="currentColor" />
+      <rect x="12.4" y="9.1" width="1.9" height="1.9" rx="0.4" fill="currentColor" />
+      <rect x="10.75" y="10.75" width="1.9" height="1.9" rx="0.4" fill="currentColor" />
+      <rect x="9.1" y="12.4" width="1.9" height="1.9" rx="0.4" fill="currentColor" />
+      <rect x="12.4" y="12.4" width="1.9" height="1.9" rx="0.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+/*
+ * The tab dock and the song editor — drawn, not Figma exports, to the same
+ * 1.5px stroke on a 16 box as the import tray above.
+ */
+function Stroke16({ size = 14, className, children }: IconProps & { children: ReactNode }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      {children}
+    </svg>
+  );
+}
+
+/** Globe — the stock / universal shelf. */
+export function GlobeIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M2 8h12M8 2c1.9 1.7 2.8 3.7 2.8 6S9.9 12.3 8 14c-1.9-1.7-2.8-3.7-2.8-6S6.1 3.7 8 2Z" />
+    </Stroke16>
+  );
+}
+
+/** Laptop — what is on this computer, the local shelf. */
+export function LaptopIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <rect x="3" y="3.2" width="10" height="7" rx="1.2" />
+      <path d="M1.6 12.8h12.8" />
+    </Stroke16>
+  );
+}
+
+/** Close — a drawn ✕, so a dialog does not borrow a rotated plus. */
+export function CloseIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </Stroke16>
+  );
+}
+
+/** Split — one slide cut into two. */
+export function SplitIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <path d="M2.5 8h2M7 8h2M11.5 8h2" />
+      <rect x="3.5" y="2" width="9" height="3.6" rx="1" />
+      <rect x="3.5" y="10.4" width="9" height="3.6" rx="1" />
+    </Stroke16>
+  );
+}
+
+/** Merge — this slide and the next, joined. */
+export function MergeIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <path d="M4 2.5c0 3 4 3 4 6M12 2.5c0 3-4 3-4 6M8 8.5v5M6 11.5l2 2 2-2" />
+    </Stroke16>
+  );
+}
+
+/** Two stacked sheets — duplicate. */
+export function CopyIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.6" />
+      <path d="M10.5 3.5v-.2c0-.7-.6-1.3-1.3-1.3H3.8c-.7 0-1.3.6-1.3 1.3v5.4c0 .7.6 1.3 1.3 1.3h.2" />
+    </Stroke16>
+  );
+}
+
+/** Arrow — the one a card grows on hover, and "move" in the editor. Points right. */
+export function ArrowIcon(props: IconProps) {
+  return (
+    <Stroke16 {...props}>
+      <path d="M3 8h10M9 4l4 4-4 4" />
+    </Stroke16>
+  );
+}
+
+/*
+ * Segment marks — drawn, not Figma exports: the file has no glyphs for the
+ * parts of a service yet. Same 16 box and 1.4 stroke as the rest of the
+ * drawn set, so they sit beside BookIcon and MusicIcon without a seam.
+ */
+
+/** Clock — a time on the programme; pre-service, which is a countdown. */
+export function ClockIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <circle cx="8" cy="8" r="5.8" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8 4.8V8l2.1 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Pressed palms, reduced to the arch they make. */
+export function PrayerIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M8 2 5 8.6v2.9L6.9 14h2.2l1.9-2.5V8.6L8 2Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M8 2v12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** A wrapped box — the offering. */
+export function GiftIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M3 6.6h10v6.6H3V6.6Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M2.2 4.2h11.6v2.4H2.2V4.2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M8 4.2v9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** A chalice — communion. */
+export function CupIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path d="M4.4 2.4h7.2c0 3.2-1.5 5.2-3.6 5.2S4.4 5.600 4.4 2.4Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M8 7.600v5M5.400 13.400h5.200" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }

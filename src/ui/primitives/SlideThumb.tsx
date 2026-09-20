@@ -298,7 +298,10 @@ export function SlideThumb({
         there is always on a letter. The card teaches that it opens the
         same way it teaches that it pages: by answering the pointer.
       */}
-      <button
+      {/* Only where it does something. A grid that edits from its own
+          caption row (songs) passes no onEdit, and a pencil that answers
+          the pointer and then ignores the click is worse than none. */}
+      {onEdit ? <button
         type="button"
         onClick={onEdit}
         aria-label={`edit ${label}`}
@@ -309,7 +312,7 @@ export function SlideThumb({
         )}
       >
         <PencilIcon size={11} />
-      </button>
+      </button> : null}
 
       {showCaption ? (
         <span

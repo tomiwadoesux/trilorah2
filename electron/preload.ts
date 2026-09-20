@@ -274,7 +274,6 @@ contextBridge.exposeInMainWorld('api', {
   // Themes — native background image picker (copies into userData)
   pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
   pickMediaFile: () => ipcRenderer.invoke('pick-media-file'),
-  fetchYoutubeTranscript: (url: string) => ipcRenderer.invoke('fetch-youtube-transcript', url),
   getDisplaysStatus: () => ipcRenderer.invoke('get-displays-status'),
   // Stock backgrounds (Pixabay / Pexels), searched from the media tab
   getStockProviders: () => ipcRenderer.invoke('get-stock-providers'),
@@ -432,7 +431,11 @@ contextBridge.exposeInMainWorld('api', {
     importText: (text: string, filename?: string) =>
       ipcRenderer.invoke('songs-import-text', { text, filename }),
     importFiles: () => ipcRenderer.invoke('songs-import-file'),
-    importCommit: (songs: ImportedSong[]) => ipcRenderer.invoke('songs-import-commit', { songs })
+    importCommit: (songs: ImportedSong[]) => ipcRenderer.invoke('songs-import-commit', { songs }),
+    // Online sources. All three resolve to `{ ok }` results and never reject.
+    searchLyrics: (query: string) => ipcRenderer.invoke('lyrics-search', { query }),
+    getLyrics: (id: number) => ipcRenderer.invoke('lyrics-get', { id }),
+    youtubeCaptions: (url: string) => ipcRenderer.invoke('youtube-captions', { url })
   },
   // Evals (item 25)
   exportEvalFixtures: () => ipcRenderer.invoke('evals-export-fixtures')

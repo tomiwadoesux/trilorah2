@@ -126,6 +126,9 @@ interface ScheduleImportResult {
   canceled: boolean;
   success?: boolean;
   entries?: ScheduleEntry[];
+  /** Every row of the scan, unknown ones included (type null) — see
+      shared/runOfServiceParse.ts. `entries` is only the rows we could type. */
+  rows?: import('../../shared/runOfServiceParse').ParsedRow[];
   unmatchedLines?: string[];
   rawText?: string;
   error?: string;
@@ -418,6 +421,10 @@ type SongOrigin = import('../../shared/types').SongOrigin;
 type SongPatch = import('../../shared/types').SongPatch;
 type SongDuplicate = import('../../shared/types').SongDuplicate;
 type SongImportResult = import('../../shared/types').SongImportResult;
+type LyricsHit = import('../../electron/songs/lyricsSearch').LyricsHit;
+type LyricsSearchResult = import('../../electron/songs/lyricsSearch').LyricsSearchResult;
+type LyricsGetResult = import('../../electron/songs/lyricsSearch').LyricsGetResult;
+type YoutubeCaptionsResult = import('../../electron/songs/youtubeCaptions').YoutubeCaptionsResult;
 
 /**
  * What `importFiles()` returns — parsed only; nothing has reached the library
@@ -462,6 +469,22 @@ interface SongsApi {
    * back named in the report rather than dropped, for the operator to settle.
    */
   importCommit(songs: ImportedSong[]): Promise<SongImportResult>;
+  /**
+   * LRCLIB search. Never rejects: no connection and no matches both come back
+   * as `{ ok: false, reason, message }`, with a `message` fit to show as-is.
+   * Hits are already de-duplicated and all have lyrics; at most 25.
+   */
+  searchLyrics(query: string): Promise<LyricsSearchResult>;
+  /** The words for one hit, as plain text with blank lines between stanzas — feed it to `importText`. */
+  getLyrics(id: number): Promise<LyricsGetResult>;
+  /**
+   * Lyrics from a video's captions; takes any YouTube link or a bare id.
+   * `trackKind: 'auto'` means speech recognition wrote them: expect wrong
+   * words, no punctuation and arbitrary line breaks, and say so before the
+   * operator puts them on a wall. Rides on undocumented YouTube endpoints —
+   * treat `reason: 'error'` as "YouTube changed", and keep paste one click away.
+   */
+  youtubeCaptions(url: string): Promise<YoutubeCaptionsResult>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -611,14 +634,6 @@ interface WindowApi {
   /** `url` is file:// (what the setting stores); `src` is local-media:// (what an <img> can load). */
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
   pickMediaFile?(): Promise<{ success: boolean; url?: string; src?: string; kind?: 'video' | 'photo'; name?: string; canceled?: boolean; error?: string }>;
-  fetchYoutubeTranscript?(url: string): Promise<{
-    success: boolean;
-    title?: string;
-    author?: string;
-    lines?: Array<{ startMs: number; durMs: number; text: string }>;
-    song?: any;
-    error?: string;
-  }>;
   getDisplaysStatus?(): Promise<{ totalDisplays: number; hasExternal: boolean; primary: { id: number; bounds: any }; externals: Array<{ id: number; bounds: any }> }>;
   // Stock backgrounds — electron/media/stockImages.ts
   getStockProviders?(): Promise<StockProvider[]>;
@@ -715,6 +730,8 @@ interface TimerSnapshot {
   remainingMs: number;
   overrunning: boolean;
   display: string;
+  durationSec?: number;
+  extraSec?: number;
 }
 
 interface TimerRecord {
@@ -722,6 +739,7 @@ interface TimerRecord {
   name: string;
   kind: TimerKind;
   durationSec?: number;
+  extraSec?: number;
   targetTime?: string;
   overrun: boolean;
   state: TimerState;
@@ -735,8 +753,8 @@ interface AlertTokenSlot {
 }
 
 type ScreenState = 'live' | 'clear' | 'black' | 'logo';
-type OutputRole = 'projector' | 'stream' | 'stage';
-type AlertTarget = 'all' | 'projector' | 'stream' | 'stage';
+type OutputRole = 'projector' | 'stream' | 'stage' | 'timer';
+type AlertTarget = 'all' | 'projector' | 'stream' | 'stage' | 'timer';
 
 interface ScreenAlert {
   id: string;

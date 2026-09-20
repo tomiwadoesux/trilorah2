@@ -16,6 +16,9 @@ export const defaults = {
    *  dismiss, the 30 s worship auto-clear). Off: the screen changes only when
    *  an operator pushes, clears or blacks it. */
   autoScreenActions: false,
+  /** How words arrive on the projector (shared/textTransitions.ts). */
+  textTransition: 'fade',
+  textTransitionMs: 450,
   autoDisplayTimeout: 15,
   falsePositiveFilterEnabled: true,
   defaultFontSize: 1,
@@ -58,7 +61,7 @@ export const defaults = {
   defaultBackgroundUrl: '',
   backgroundFit: 'cover' as 'cover' | 'contain' | 'fill',
   backgroundPosition: 'center' as 'center' | 'top' | 'bottom',
-  qrCompanionCaption: 'Scan to follow live verses, transcript, and notes',
+  qrCompanionCaption: "Follow along on your phone — scan to see today's verses and notes.",
   churchName: '',
   churchLogoUrl: '',
   accentId: 'green',
@@ -125,10 +128,10 @@ export const defaults = {
   // --- 2026-09-08 EasyWorship parity pass (BUILD-MAP 2.10–2.13) ---
   // Which job each output window does; ids are the three windows main.ts
   // opens (main / alternate / third). See electron/output/outputState.ts.
-  outputRoles: {} as Partial<Record<'main' | 'alternate' | 'third', 'projector' | 'stream' | 'stage'>>,
+  outputRoles: {} as Partial<Record<string, 'projector' | 'stream' | 'stage' | 'timer'>>,
   /** Operator's display choice per output, by Electron display id. Unset →
    *  externals are handed out in order (output/displays.ts). */
-  outputDisplays: {} as Partial<Record<'main' | 'alternate' | 'third', number>>,
+  outputDisplays: {} as Partial<Record<string, number>>,
   // Stream output: lower-third band for OBS/vMix capture, or the full
   // projector look on a transparent canvas.
   streamLayout: 'lower-third' as 'lower-third' | 'full',
@@ -168,7 +171,10 @@ export const defaults = {
   // Stage confidence monitor: what the preacher sees beside the verse.
   stageShowVerseText: true,
   stageShowTimer: '',
-  stageShowElapsed: true
+  stageShowElapsed: true,
+  // Unsaved song-editor work, keyed by song id (shared/songDraft.ts). Opaque
+  // to the main process; the LIVE screen reads and writes it whole.
+  songDrafts: {} as Record<string, unknown>
 }
 
 export type Settings = typeof defaults

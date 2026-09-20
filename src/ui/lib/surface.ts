@@ -21,8 +21,14 @@ import { cx } from './cx';
  *   gold     the accent as a surface: now, live, look here first
  *   indigo   a second voice that is not a warning
  *   danger   red, destructive actions only
+ *
+ * And the two bright ones, where the surface is lit and the ink is dark —
+ * see the note on --tri-go-* in tokens.css for why there are exactly two:
+ *
+ *   go       mint. The act that reaches the room: go live.
+ *   caution  gold. The act that takes something back: reset.
  */
-export type SurfaceTone = 'default' | 'ash' | 'gold' | 'indigo' | 'danger';
+export type SurfaceTone = 'default' | 'ash' | 'gold' | 'indigo' | 'danger' | 'go' | 'caution';
 
 /**
  * control = buttons and small controls (tighter radius).
@@ -67,6 +73,7 @@ export function surface({
 
 /** The ink tone that belongs with a surface tone. */
 export function toneClass(tone: SurfaceTone = 'default'): string {
+  if (tone === 'go' || tone === 'caution') return 'tri-tone-bright';
   return tone === 'danger' ? 'tri-tone-danger' : 'tri-tone';
 }
 

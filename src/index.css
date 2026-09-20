@@ -17,11 +17,11 @@
   --color-canvas: #0a0a0a;
 
   /*
-   * Roboto is the interface face, everywhere — the same one the Trilorah
-   * components use (--tri-font), so chrome and components never disagree.
-   * The rest of the stack only covers the moment before the webfont lands.
+   * Roboto is the interface face from Google Fonts for all texts,
+   * except h1, h2 which are headers (leaving h3 blank for now).
    */
-  --font-ui: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: 'Roboto', sans-serif;
+  --font-sans: 'Roboto', sans-serif;
 
   /* Scripture stays a serif: it is read from a projector, not a screen. */
   --font-scripture: Georgia, "Times New Roman", serif;
@@ -35,19 +35,60 @@
  */
 :root {
   --font-scripture-weight: 600;
+  --tri-font: 'Roboto', sans-serif;
 }
 
 @layer base {
   html {
     background-color: var(--color-paper);
+    font-family: 'Roboto', sans-serif;
   }
 
   body {
     margin: 0;
     background-color: var(--color-paper);
     color: var(--color-ink);
-    font-family: var(--font-ui);
+    font-family: 'Roboto', sans-serif;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* All texts, except h1 and h2 (headers) and leaving h3 blank for now, use Roboto from Google Fonts */
+  :where(*:not(h1):not(h2):not(h3)) {
+    font-family: 'Roboto', sans-serif;
+  }
+
+  p,
+  span,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  li,
+  ul,
+  ol,
+  a,
+  th,
+  td,
+  small,
+  strong,
+  b,
+  em,
+  i,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Roboto', sans-serif;
+  }
+
+  /* Headers h1 and h2 are preserved (not forced to Roboto) */
+  h1,
+  h2 {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  /* h3 is left blank for now per user instruction */
+  h3 {
   }
 
   /* Every scripture surface, in-app and on the projector sheet. */

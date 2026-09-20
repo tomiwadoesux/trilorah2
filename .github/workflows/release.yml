@@ -1,0 +1,92 @@
+# Builds the installers churches download.
+#
+# Runs when a version tag is pushed (git tag v0.3.0 && git push origin v0.3.0),
+# or by hand from the Actions tab. Windows and macOS each build on their own
+# machine because the app carries native code (better-sqlite3, whisper.cpp)
+# that has to be compiled on the platform it will run on — which is why the
+# .exe cannot be produced from a Mac.
+#
+# Unsigned on both platforms for now. Windows shows "Windows protected your
+# PC" (More info → Run anyway); macOS needs right-click → Open the first time.
+# A code-signing certificate removes both, and slots in here as secrets later.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flag: --win
+          - os: macos-latest
+            flag: --mac
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # bible.db and its index are far too large for git, so they are rebuilt
+      # here from the same public-domain sources the developer machine used.
+      # Without this step the installer ships an app with no Bible in it.
+      - name: Build the Bible database
+        run: |
+          npm run bible:build
+          npm run bible:index
+          npm run bible:fts
+
+      # Offline speech. whisper-node ships source, not a binary; without this
+      # the Mac build has no local recogniser. Windows has no `make`, so there
+      # the app asks for a Deepgram key instead (see whisperBinaryPath()).
+      - name: Compile whisper.cpp (macOS)
+        if: runner.os == 'macOS'
+        run: make -C node_modules/whisper-node/lib/whisper.cpp main
+
+      - run: npm run build
+
+      - name: Package
+        run: npx electron-builder ${{ matrix.flag }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trilorah-${{ runner.os }}
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: installers/*
+          generate_release_notes: true
+          body: |
+            **Windows:** download the `.exe`. Windows will say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
+
+            **Mac (Apple Silicon):** download the `.dmg`. The first time, **right-click the app → Open**.

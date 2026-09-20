@@ -27,11 +27,45 @@ body {
   padding: 0;
   text-align: var(--stage-text-align, center);
   opacity: 0;
-  transition: opacity 450ms ease;
+  transition: opacity var(--tx-ms, 450ms) ease;
 }
 
 .output-stage.visible {
   opacity: 1;
+}
+
+/*
+ * The entrance. `.output-enter` wraps whatever is showing and is re-mounted
+ * (React key) when the words change, which replays the keyframes — so one
+ * rule covers a verse going up, the next slide of a reading, and a new song
+ * section. It borrows the stage's own alignment so wrapping changes nothing
+ * about where the words sit. Leaving is the stage's opacity fade above.
+ *
+ * Opacity plus one transform or filter each: compositor-only, no layout.
+ */
+.output-enter {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  max-width: 100%;
+  animation-duration: var(--tx-ms, 450ms);
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+.output-stage { align-items: var(--stage-align, center); }
+.tx-fade .output-enter { animation-name: tx-fade; }
+.tx-rise .output-enter { animation-name: tx-rise; }
+.tx-blur .output-enter { animation-name: tx-blur; }
+.tx-zoom .output-enter { animation-name: tx-zoom; }
+.tx-cut .output-enter { animation: none; }
+
+@keyframes tx-fade { from { opacity: 0; } }
+@keyframes tx-rise { from { opacity: 0; transform: translateY(1.6vh); } }
+@keyframes tx-blur { from { opacity: 0; filter: blur(14px); } }
+@keyframes tx-zoom { from { opacity: 0; transform: scale(0.965); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .output-enter { animation-name: tx-fade !important; }
 }
 
 /* Theme variables come from the Themes tab (set inline by output.tsx). */
@@ -348,3 +382,119 @@ body {
 .output-stage-timer.overrunning {
   color: #ff6b6b;
 }
+
+/* ------------------------------------------------------------------ */
+/* Dedicated Full-Screen HDMI Timer Output (role-timer)                */
+/* ------------------------------------------------------------------ */
+
+.role-timer {
+  background: #080808;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 5vh 6vw;
+  box-sizing: border-box;
+  user-select: none;
+  overflow: hidden;
+}
+
+.timer-screen-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.timer-screen-title {
+  font-family: 'Share Tech Mono', 'Orbitron', monospace;
+  font-size: clamp(1.2rem, 2.6vw, 3.2vw);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.timer-screen-clock {
+  font-family: 'Share Tech Mono', 'Orbitron', monospace;
+  font-size: clamp(1.4rem, 3vw, 3.8vw);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-screen-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+}
+
+.timer-screen-target-top {
+  font-family: 'Share Tech Mono', 'Orbitron', monospace;
+  font-size: clamp(1.6rem, 3.8vw, 5vw);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 1.5vh;
+  text-transform: uppercase;
+}
+
+.timer-screen-digits {
+  font-family: 'Orbitron', 'Share Tech Mono', monospace;
+  font-size: clamp(5rem, 18vw, 24vw);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  transition: color 400ms ease, text-shadow 400ms ease;
+}
+
+.timer-screen-overtime-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: clamp(1.1rem, 2.2vw, 2.8vw);
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 999px;
+  padding: 0.6vh 2.5vw;
+  margin-top: 2.5vh;
+}
+
+.timer-screen-extension-badge {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: clamp(1rem, 2vw, 2.4vw);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 999px;
+  padding: 0.4vh 1.8vw;
+  margin-top: 2vh;
+}
+
+.timer-screen-bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: clamp(0.9rem, 1.8vw, 2.2vw);
+  color: rgba(255, 255, 255, 0.4);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.timer-screen-verse-cue {
+  font-family: var(--verse-font, Georgia, serif);
+  font-size: clamp(1rem, 2vw, 2.6vw);
+  color: rgba(255, 255, 255, 0.65);
+}
+

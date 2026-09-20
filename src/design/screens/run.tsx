@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { defaultSegments, type PlannedSegment } from '../../../shared/runPlan';
 
 /*
  * The run of service — segments, and what is queued inside each.
@@ -38,6 +39,9 @@ export interface QueueItem {
   title?: string;
   section?: string;
   path?: string;
+  /** Song: the library id, so "edit song" finds it after a rename. Optional
+      — a row made from the segment's own + menu has only a title. */
+  songId?: string;
 }
 
 /*
@@ -74,15 +78,24 @@ export interface RunSegment {
    * is offered first and constrains nothing.
    */
   items: QueueItem[];
+  /** The plan, when there is one — a scanned programme or the default run
+      states them; a segment picked from the + menu has neither. Minutes
+      from midnight, and minutes. */
+  startMin?: number;
+  durationMin?: number;
 }
 
 /* ------------------------------------------------------------------ */
 
 interface RunValue {
   segments: RunSegment[];
-  addSegments: (picked: { id: string; label: string }[]) => void;
+  addSegments: (picked: PlannedSegment[]) => void;
   /** Take a whole segment out of the run, queued contents and all. */
   removeSegment: (key: string) => void;
+  renameSegment: (key: string, label: string) => void;
+  /** Change what kind of segment it is. The label follows only if it was
+      still the old type's stock label — a name someone typed is theirs. */
+  setSegmentType: (key: string, type: { id: string; label: string }, previousStockLabel?: string) => void;
 
   /** Expanded segments. Collapsed is the resting state — see the rail. */
   isOpen: (key: string) => boolean;
@@ -97,7 +110,9 @@ interface RunValue {
   remove: (segmentKey: string, itemKey: string) => void;
   /** Rewrite one item's label — how a note is edited in place. */
   updateItem: (segmentKey: string, itemKey: string, label: string) => void;
-  /** Populate standard Sunday order of service. */
+  /** Merge fields into one item — a song row after its song was edited. */
+  patchItem: (segmentKey: string, itemKey: string, patch: Partial<Omit<QueueItem, 'key'>>) => void;
+  /** Replace the run with the default order of service (shared DEFAULT_RUN). */
   loadSundayTemplate: () => void;
 }
 
@@ -130,17 +145,35 @@ export function RunProvider({ children }: { children: ReactNode }) {
     setOpen((prev) => (prev.includes(key) ? prev : [...prev, key]));
   });
 
-  const addSegments = useCallback((picked: { id: string; label: string }[]) => {
-    setSegments((prev) => [
-      ...prev,
-      ...picked.map((p) => ({
-        key: `${p.id}-${(seq.current += 1)}`,
-        type: p.id,
-        label: p.label,
-        items: [],
-      })),
-    ]);
+  const make = (p: PlannedSegment): RunSegment => ({
+    key: `${p.id}-${(seq.current += 1)}`,
+    type: p.id,
+    label: p.label,
+    items: [],
+    ...(p.startMin !== undefined ? { startMin: p.startMin } : {}),
+    ...(p.durationMin !== undefined ? { durationMin: p.durationMin } : {}),
+  });
+
+  const addSegments = useCallback((picked: PlannedSegment[]) => {
+    setSegments((prev) => [...prev, ...picked.map(make)]);
   }, []);
+
+  const renameSegment = useCallback((key: string, label: string) => {
+    setSegments((prev) => prev.map((s) => (s.key === key ? { ...s, label } : s)));
+  }, []);
+
+  const setSegmentType = useCallback(
+    (key: string, type: { id: string; label: string }, previousStockLabel?: string) => {
+      setSegments((prev) =>
+        prev.map((s) =>
+          s.key === key
+            ? { ...s, type: type.id, label: previousStockLabel !== undefined && s.label === previousStockLabel ? type.label : s.label }
+            : s,
+        ),
+      );
+    },
+    [],
+  );
 
   const removeSegment = useCallback((key: string) => {
     setSegments((prev) => prev.filter((s) => s.key !== key));
@@ -273,27 +306,33 @@ export function RunProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const patchItem = useCallback(
+    (segmentKey: string, itemKey: string, patch: Partial<Omit<QueueItem, 'key'>>) => {
+      setSegments((prev) =>
+        prev.map((s) =>
+          s.key === segmentKey
+            ? { ...s, items: s.items.map((it) => (it.key === itemKey ? { ...it, ...patch } : it)) }
+            : s,
+        ),
+      );
+    },
+    [],
+  );
+
+  /*
+   * The default order of service — shared/serviceAliases.ts DEFAULT_RUN, by
+   * way of shared/runPlan.ts, so the rail, the engine and the research
+   * behind the order are one list.
+   *
+   * It used to be a list typed out here, with a 'reading' type that exists
+   * nowhere else and offering before the sermon. It also arrived stuffed
+   * with placeholder notes and every card open, which pushed the second
+   * half of the service off a 1280 rail. Now it is seven closed cards with
+   * their planned minutes and nothing inside: a skeleton to hang things on.
+   */
   const loadSundayTemplate = useCallback(() => {
-    const template = [
-      { id: 'welcome', label: 'welcome & call to worship', items: [{ source: 'note' as const, label: 'opening prayer & welcome' }] },
-      { id: 'worship', label: 'praise & worship', items: [{ source: 'note' as const, label: '3-4 songs led by worship team' }] },
-      { id: 'announcements', label: 'announcements & offering', items: [{ source: 'note' as const, label: 'tithes, offering & welcome guests' }] },
-      { id: 'reading', label: 'scripture reading', items: [{ source: 'note' as const, label: 'congregational scripture reading' }] },
-      { id: 'sermon', label: 'sermon / message', items: [{ source: 'note' as const, label: 'main preaching & scriptures' }] },
-      { id: 'altar-call', label: 'altar call & benediction', items: [{ source: 'note' as const, label: 'ministry time & closing blessing' }] },
-    ];
-    const newSegments: RunSegment[] = template.map((t) => ({
-      key: `${t.id}-${(seq.current += 1)}`,
-      type: t.id,
-      label: t.label,
-      items: t.items.map((it) => ({
-        key: `note-${(seq.current += 1)}`,
-        source: it.source,
-        label: it.label,
-      })),
-    }));
-    setSegments(newSegments);
-    setOpen(newSegments.map((s) => s.key));
+    setSegments(defaultSegments().map(make));
+    setOpen([]);
   }, []);
 
   const value = useMemo(
@@ -301,6 +340,9 @@ export function RunProvider({ children }: { children: ReactNode }) {
       segments,
       addSegments,
       removeSegment,
+      renameSegment,
+      setSegmentType,
+      patchItem,
       isOpen,
       toggleOpen,
       queue,
@@ -314,6 +356,9 @@ export function RunProvider({ children }: { children: ReactNode }) {
       segments,
       addSegments,
       removeSegment,
+      renameSegment,
+      setSegmentType,
+      patchItem,
       isOpen,
       toggleOpen,
       queue,

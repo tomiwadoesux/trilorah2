@@ -52,3 +52,18 @@
 [data-gallery-chrome] {
   font-size: 14px;
 }
+
+/* All texts, except h1 and h2 (headers) and leaving h3 blank for now, use Roboto from Google Fonts */
+:where(*:not(h1):not(h2):not(h3)) {
+  font-family: 'Roboto', sans-serif;
+}
+
+h1,
+h2 {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+h3 {
+  /* Blank for now per user instruction */
+}
+

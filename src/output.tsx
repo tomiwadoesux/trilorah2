@@ -1,10 +1,12 @@
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { buildVerseSlides, type VerseSlide } from '../shared/verseDisplay';
 import { formatTimerDisplay } from '../shared/timerDisplay';
+import { getTimerColor } from '../shared/timerColor';
 import { toDisplayUrl } from '../shared/mediaUrl';
 import type { LiveContent } from '../shared/liveContent';
+import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
 import './output.css';
 
 /**
@@ -60,6 +62,9 @@ interface Theme {
   stageShowTimer: string;
   verseLayout: string;
   safeMargin: number;
+  /** How words arrive on the wall. See TEXT_TRANSITIONS in shared/textTransitions.ts. */
+  textTransition: TextTransition;
+  textTransitionMs: number;
 }
 
 const FONT_PRESETS: Record<string, string> = {
@@ -95,6 +100,8 @@ const DEFAULT_THEME: Theme = {
   stageShowTimer: '',
   verseLayout: 'top',
   safeMargin: 7,
+  textTransition: 'fade',
+  textTransitionMs: 450,
 };
 
 function themeFromSettings(s: Record<string, unknown>): Theme {
@@ -132,6 +139,8 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     stageShowTimer: typeof s.stageShowTimer === 'string' ? s.stageShowTimer : '',
     verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'top',
     safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 7,
+    textTransition: isTextTransition(s.textTransition) ? s.textTransition : 'fade',
+    textTransitionMs: clampTransitionMs(s.textTransitionMs),
   };
 }
 
@@ -167,9 +176,10 @@ function OutputSurface() {
   // Stage only: the verse awaiting approval and the engine's queue.
   const [upNext, setUpNext] = useState<VerseDetection | null>(null);
   const [queue, setQueue] = useState<VerseQueueItem[]>([]);
-  // Which slice of a multi-slide reading is showing, and the live timers.
   const [slideIndex, setSlideIndex] = useState(0);
   const [timers, setTimers] = useState<TimerSnapshot[]>([]);
+  const takenAt = useRef(Date.now());
+  const [, setTimerTick] = useState(0);
 
   useEffect(() => {
     const api = window.api;
@@ -183,7 +193,11 @@ function OutputSurface() {
     void api.getScreenState?.().then((s) => s && setScreen(s)).catch(() => undefined);
     void api.getAlert?.().then((a) => setAlert(a ?? null)).catch(() => undefined);
     void api.getVerseQueue?.().then((q) => setQueue(q ?? [])).catch(() => undefined);
-    void api.listTimers?.().then((t) => setTimers(t ?? [])).catch(() => undefined);
+    const takeTimers = (t: TimerSnapshot[]) => {
+      takenAt.current = Date.now();
+      setTimers(t ?? []);
+    };
+    void api.listTimers?.().then((t) => takeTimers(t ?? [])).catch(() => undefined);
     // Opened mid-service: pick up whatever song is already on the wall.
     void api.getLiveContent?.().then((c) => c && setSong(c)).catch(() => undefined);
 
@@ -251,7 +265,7 @@ function OutputSurface() {
       api.onScreenState?.((s) => setScreen(s)),
       api.onAlert?.((a) => setAlert(a)),
       api.onQueueUpdated?.((q) => setQueue(q)),
-      api.onTimers?.((t) => setTimers(t)),
+      api.onTimers?.((t) => takeTimers(t ?? [])),
       // The engine's next/previous voice commands walk multi-slide readings.
       api.onExternalCommand?.((cmd) => {
         if (cmd.command === 'slide-next') setSlideIndex((i) => i + 1);
@@ -280,8 +294,16 @@ function OutputSurface() {
 
   const isStage = role === 'stage';
   const isStream = role === 'stream';
-  const clock = useClock(isStage && theme.stageShowClock);
-  const showAlert = alert && (alert.target === 'all' || alert.target === role);
+  const isTimer = role === 'timer';
+
+  useEffect(() => {
+    if (!isTimer) return;
+    const interval = window.setInterval(() => setTimerTick((n) => n + 1), 1000);
+    return () => window.clearInterval(interval);
+  }, [isTimer]);
+
+  const clock = useClock((isStage && theme.stageShowClock) || isTimer);
+  const showAlert = alert && (alert.target === 'all' || alert.target === role || (isTimer && alert.target === 'stage'));
   // Stream never paints the theme background: the capture wants alpha.
   const paintBackground = !isStream && theme.backgroundUrl;
   const contentVisible = visible && screen === 'live';
@@ -307,6 +329,7 @@ function OutputSurface() {
     '--verse-weight': String(theme.weight),
     '--verse-color': theme.color,
     '--safe-margin': `${theme.safeMargin}%`,
+    '--tx-ms': `${theme.textTransition === 'cut' ? 0 : theme.textTransitionMs}ms`,
     '--stage-justify': stageJustify,
     '--stage-align': stageAlign,
     '--stage-text-align': stageTextAlign,
@@ -317,9 +340,134 @@ function OutputSurface() {
     `role-${role}`,
     `screen-${screen}`,
     isStream ? `layout-${theme.streamLayout}` : '',
+    `tx-${theme.textTransition}`,
   ]
     .filter(Boolean)
     .join(' ');
+
+  if (isTimer) {
+    const activeTimer = timers.find((t) => t.state === 'running') ?? timers[0] ?? null;
+    const drift = activeTimer && activeTimer.state === 'running' ? Date.now() - takenAt.current : 0;
+    const ms = activeTimer
+      ? activeTimer.state !== 'running'
+        ? activeTimer.remainingMs
+        : activeTimer.kind === 'elapsed'
+          ? activeTimer.remainingMs + drift
+          : activeTimer.remainingMs - drift
+      : 0;
+    const totalMs = activeTimer && activeTimer.durationSec ? activeTimer.durationSec * 1000 : 0;
+    const color = activeTimer ? getTimerColor(ms, totalMs) : '#22c55e';
+    const isOverrun = Boolean(activeTimer && (activeTimer.overrunning || (activeTimer.kind === 'countdown' && ms < 0)));
+    const targetDisplay = totalMs > 0 ? formatTimerDisplay(totalMs) : null;
+    const activeDisplay = activeTimer ? (activeTimer.state === 'running' ? formatTimerDisplay(ms) : activeTimer.display) : null;
+
+    return (
+      <div className={`output-root role-timer screen-${screen}`}>
+        {/* Top bar: Timer title + Sanctuary clock */}
+        <div className="timer-screen-topbar">
+          <div className="timer-screen-title">
+            {activeTimer ? activeTimer.name : 'SANCTUARY TIMER'}
+          </div>
+          <div className="timer-screen-clock">
+            {clock}
+          </div>
+        </div>
+
+        {/* Center: Giant Countdown Display */}
+        <div className="timer-screen-center">
+          {activeTimer ? (
+            isOverrun ? (
+              <>
+                {targetDisplay && (
+                  <div className="timer-screen-target-top">
+                    TARGET: {targetDisplay}
+                  </div>
+                )}
+                <div
+                  className="timer-screen-digits"
+                  style={{ color: '#ef4444', textShadow: '0 0 35px rgba(239, 68, 68, 0.6)' }}
+                >
+                  {activeDisplay}
+                </div>
+                <div className="timer-screen-overtime-label">
+                  OVERTIME EXCEEDED
+                </div>
+              </>
+            ) : (
+              <>
+                <div
+                  className="timer-screen-digits"
+                  style={{ color, textShadow: `0 0 30px ${color}60` }}
+                >
+                  {activeDisplay}
+                </div>
+                {targetDisplay && (
+                  <div className="timer-screen-target-top" style={{ marginTop: '2vh', fontSize: 'clamp(1.2rem, 2.5vw, 3.2vw)' }}>
+                    OF {targetDisplay}
+                  </div>
+                )}
+                {activeTimer.extraSec && activeTimer.extraSec > 0 && (
+                  <div className="timer-screen-extension-badge">
+                    +{Math.round(activeTimer.extraSec / 60)} MIN EXTENSION
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            <>
+              <div
+                className="timer-screen-digits"
+                style={{ color: '#22c55e', textShadow: '0 0 30px rgba(34, 197, 94, 0.4)' }}
+              >
+                {clock}
+              </div>
+              <div className="timer-screen-target-top" style={{ marginTop: '2vh', letterSpacing: '0.25em' }}>
+                STANDBY · SERVICE READY
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Bottom bar: Live cue pill or status */}
+        <div className="timer-screen-bottombar">
+          <div className="timer-screen-verse-cue">
+            {shown && shown.detection ? (
+              <span>LIVE: {formatRef(shown.detection)} {shown.detection.version || ''}</span>
+            ) : (
+              <span>STAGE TIMER</span>
+            )}
+          </div>
+          <div>
+            {activeTimer ? (
+              <span style={{ textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: 600 }}>
+                {activeTimer.state}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Black / logo overlays */}
+        <div className={`output-black ${screen === 'black' || screen === 'logo' ? 'visible' : ''}`}>
+          {screen === 'logo' && (
+            <div className="output-logo">
+              {theme.logoUrl ? (
+                <img src={theme.logoUrl} alt="" />
+              ) : (
+                <div className="output-logo-name">{theme.churchName || 'Trilorah'}</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Message alerts (nursery / stage alert) */}
+        <div className={`output-alert ${showAlert ? 'visible' : ''}`} aria-live="polite">
+          {alert && <span className="output-alert-text">{alert.text}</span>}
+        </div>
+
+        {!window.api && <div className="output-disconnected">output · engine not connected</div>}
+      </div>
+    );
+  }
 
   return (
     <div className={rootClass} style={themedStage}>
@@ -342,6 +490,9 @@ function OutputSurface() {
       )}
       {song && screen === 'live' && (
         <div className="output-stage visible output-song">
+          {/* Keyed by what is showing, so each new section re-mounts and the
+              entrance plays again; the same section re-sent does not. */}
+          <div className="output-enter" key={`${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
           {song.lines?.map((line: string, i: number) => (
             <div key={i} className="output-verse">
               {line}
@@ -351,11 +502,12 @@ function OutputSurface() {
             {song.title}
             {song.label && <span className="output-version">{song.label}</span>}
           </div>
+          </div>
         </div>
       )}
       <div className={`output-stage ${contentVisible ? 'visible' : ''}`}>
         {shown && (
-          <>
+          <div className="output-enter" key={`${formatRef(shown.detection)}|${slideIndex}`}>
             {shown.isPreview && <div className="output-preview-mark">preview</div>}
             {slide ? (
               <>
@@ -385,7 +537,7 @@ function OutputSurface() {
                 )}
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
 

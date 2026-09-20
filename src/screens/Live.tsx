@@ -329,6 +329,7 @@ function OutputPanel() {
         <TextButton label="MAIN" onClick={() => window.api?.openOutput('main')} disabled={!hasEngine()} />
         <TextButton label="STREAM" onClick={() => window.api?.openOutput('alternate')} disabled={!hasEngine()} />
         <TextButton label="STAGE" onClick={() => window.api?.openOutput('third')} disabled={!hasEngine()} />
+        <TextButton label="TIMER" onClick={() => window.api?.openOutput('timer')} disabled={!hasEngine()} />
         <span className="ml-auto flex items-baseline gap-x-3">
           <TextButton label={qrShown ? 'HIDE QR' : 'SHOW QR'} primary={qrShown} onClick={() => void toggleQr()} disabled={!hasEngine()} />
           {qrNote && <span className="text-[10px] text-neutral-400">{qrNote}</span>}

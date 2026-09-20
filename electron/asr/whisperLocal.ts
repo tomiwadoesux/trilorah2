@@ -160,6 +160,19 @@ export function startWhisperLocal(
   deviceLabel?: string,
   onStatus?: (message: string) => void
 ): void {
+  // Must come before ANYTHING touches the whisper-node package. Its shell.js
+  // runs at import: if the compiled whisper.cpp binary is missing it tries
+  // `make`, and when that fails it calls process.exit(1) — the whole app
+  // vanishes, with no message, on the first press of Start Listening. That is
+  // every Windows install (no `make`, no binary), so say so instead of dying.
+  if (!whisperBinaryPath()) {
+    onError?.(
+      new Error(
+        'Offline speech is not available on this computer yet. Add a Deepgram key in Settings → Audio & speech, then press Start Listening again.'
+      )
+    )
+    return
+  }
   const modelPath = findWhisperModel()
   if (!modelPath) {
     // First run: fetch the model, then start for real. The status callback
@@ -167,7 +180,6 @@ export function startWhisperLocal(
     void ensureWhisperModel(onStatus ?? (() => undefined)).then((downloaded) => {
       if (downloaded) {
         startWhisperLocal(onText, onError, deviceLabel, onStatus)
-        onStatus?.('Listening...')
       } else {
         onError?.(
           new Error(
@@ -199,6 +211,10 @@ export function startWhisperLocal(
     usingWindowMic = true
     setAudioSink(accumulate)
     emitMicRequest({ sampleRate: SAMPLE_RATE, deviceLabel })
+    // The model is loaded and the mic has been asked for: this is the moment
+    // the app is listening. Said here, for both the first-run download path
+    // and the ordinary one, because the caller no longer says it on faith.
+    onStatus?.('Listening...')
     return
   }
 
@@ -213,6 +229,8 @@ export function startWhisperLocal(
     { stdio: ['ignore', 'pipe', 'pipe'], env: spawnEnv }
   )
   micProcess.stdout?.on('data', accumulate)
+  // First bytes off the mic, not the spawn, are the proof it is capturing.
+  micProcess.stdout?.once('data', () => onStatus?.('Listening...'))
   micProcess.stderr?.on('data', (data: Buffer) => {
     const msg = data.toString()
     if (msg.toLowerCase().includes('fail') || msg.toLowerCase().includes('error')) {
@@ -223,6 +241,24 @@ export function startWhisperLocal(
     console.error('❌ Mic process error (is SoX installed? `brew install sox`):', err.message)
     onError?.(err)
   })
+}
+
+/** The compiled whisper.cpp binary, wherever this build keeps it, or null.
+ *  Packaged: unpacked beside app.asar (see asarUnpack in electron-builder.yml).
+ *  Development: the project's own node_modules. */
+export function whisperBinaryPath(): string | null {
+  const exe = process.platform === 'win32' ? 'main.exe' : 'main'
+  const rel = path.join('node_modules', 'whisper-node', 'lib', 'whisper.cpp', exe)
+  const roots = [
+    process.resourcesPath ? path.join(process.resourcesPath, 'app.asar.unpacked') : '',
+    app.getAppPath(),
+    process.cwd()
+  ].filter(Boolean)
+  for (const root of roots) {
+    const candidate = path.join(root, rel)
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return null
 }
 
 async function transcribeChunk(

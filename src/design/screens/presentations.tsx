@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
-import { AddCard, BACKDROP_BY_CONTENT, SearchField, SlideThumb, cx } from '../../ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { BACKDROP_BY_CONTENT, Button, ImportIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, cx } from '../../ui';
+import { FlightPopup } from './songs/FlightPopup';
+import { DOCK_CLEARANCE, TabDock } from './songs/TabDock';
 import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
 import { useDrag } from './drag';
 import { deckPage, type DeckPageSpec } from './deckPage';
@@ -224,7 +226,18 @@ function QuickSlideModal({ isOpen, onClose, onCreate }: QuickSlideModalProps) {
   const [bodyText, setBodyText] = useState('');
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
 
-  if (!isOpen) return null;
+  const titleRef = useRef<HTMLInputElement>(null);
+  /* Each open starts clean. */
+  useEffect(() => {
+    if (!isOpen) return;
+    setTitle('');
+    setSubtitle('');
+    setBodyText('');
+    setAlign('center');
+    /* The caret goes to the title once the box has landed. */
+    const t = setTimeout(() => titleRef.current?.focus(), 380);
+    return () => clearTimeout(t);
+  }, [isOpen]);
 
   const handleCreate = () => {
     if (!title.trim()) return;
@@ -250,92 +263,53 @@ function QuickSlideModal({ isOpen, onClose, onCreate }: QuickSlideModalProps) {
     onClose();
   };
 
+  const input =
+    'tri-rounded-control w-full border-0 bg-[rgb(0_0_0_/_0.20)] px-3.5 text-[length:var(--tri-control-size)] text-[var(--tri-ink)] placeholder:text-[rgb(229_243_242_/_0.34)] focus:outline-none focus:shadow-[inset_0_0_0_var(--tri-border)_rgb(var(--tri-go-2)_/_0.45)]';
+
+  /* The brand's own opening, fields and buttons — see songs/FlightPopup. */
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/15 bg-[rgb(16_22_24)] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <h3 className="text-[15px] font-semibold text-white">Quick Slide Maker</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white"
-          >
-            ✕
-          </button>
+    <FlightPopup
+      open={isOpen}
+      size={{ w: 520, h: 500 }}
+      label="quick slide"
+      onRequestClose={onClose}
+      header={
+        <div>
+          <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">quick slide</h2>
+          <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">
+            a title, a line under it, and a few points. it joins your decks as a one-page slide.
+          </p>
         </div>
-
-        <div className="flex flex-col gap-3.5 p-5">
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
-              Slide Header / Title
-            </label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Welcome to Church"
-              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
-              Subheader (optional)
-            </label>
-            <input
-              value={subtitle}
-              onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="e.g. Sunday Morning Service · 10:00 AM"
-              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
-              Text Alignment
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['left', 'center', 'right'] as const).map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => setAlign(a)}
-                  className={cx(
-                    'rounded-lg border py-1.5 text-[12px] font-medium capitalize transition-colors',
-                    align === a
-                      ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
-                      : 'border-white/10 bg-white/5 text-white/60 hover:text-white',
-                  )}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-white/60">
-              Bullets or Announcement Notes (optional)
-            </label>
-            <textarea
-              value={bodyText}
-              onChange={(e) => setBodyText(e.target.value)}
-              rows={3}
-              placeholder="Enter bullet points (one per line)..."
-              className="w-full resize-none rounded-xl border border-white/15 bg-black/40 p-3 text-[12px] leading-relaxed text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-            />
-          </div>
-
-          <button
-            type="button"
-            disabled={!title.trim()}
-            onClick={handleCreate}
-            className="mt-2 flex items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-40 transition-colors shadow-md"
-          >
-            Create Slide
-          </button>
-        </div>
+      }
+      footer={
+        <footer className="flex shrink-0 justify-end px-6 pb-5">
+          <Button label="create slide" tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim()} onClick={handleCreate} />
+        </footer>
+      }
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-4 pt-4">
+        <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="title — welcome to church" aria-label="slide title" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
+        <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="line under it (optional) — sunday service · 10:00" aria-label="subtitle" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
+        <SegmentedControl
+          label="alignment"
+          size="sm"
+          options={[
+            { id: 'left', label: 'left' },
+            { id: 'center', label: 'centre' },
+            { id: 'right', label: 'right' },
+          ]}
+          value={align}
+          onChange={setAlign}
+        />
+        <textarea
+          value={bodyText}
+          onChange={(e) => setBodyText(e.target.value)}
+          placeholder="points or notes, one per line (optional)"
+          aria-label="points"
+          className={cx(input, 'min-h-[88px] flex-1 resize-none py-3 leading-[1.55]')}
+        />
       </div>
-    </div>
+    </FlightPopup>
   );
 }
 
@@ -385,6 +359,23 @@ export function SlidesBrowser() {
       return next === cur ? m : { ...m, [deck.id]: next };
     });
 
+  const searchRow = useRef<HTMLDivElement>(null);
+  const importSlides = () => {
+    setImportNote('importing…');
+    void window.api
+      ?.importPresentation()
+      .then((res) =>
+        setImportNote(
+          res?.success
+            ? `imported ${res.data?.slides?.length ?? 0} slides — open them in the MEDIA tab`
+            : res?.error === 'Cancelled'
+              ? null
+              : (res?.error ?? 'import failed'),
+        ),
+      )
+      .catch(() => setImportNote('import failed'));
+  };
+
   const needle = query.trim().toLowerCase();
   const matches = useMemo(
     () =>
@@ -423,10 +414,45 @@ export function SlidesBrowser() {
       <LibraryBrowser
         framed
         search={
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            placeholder="type a deck name or anything written on a slide..."
+          <div ref={searchRow} className="flex w-full items-center gap-3">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              placeholder="type a deck name or anything written on a slide..."
+            />
+            {/* What the import said, where the "import slides" card used to
+                say it. Only while there is something to say. */}
+            {importNote ? (
+              <span className="max-w-[45%] shrink-0 truncate text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
+                {importNote}
+              </span>
+            ) : null}
+          </div>
+        }
+        dock={
+          <TabDock
+            label="presentation slides"
+            actions={[
+              {
+                id: 'search',
+                label: 'search slides',
+                icon: <SearchIcon size={14} />,
+                onClick: () => searchRow.current?.querySelector('input')?.focus(),
+              },
+              {
+                id: 'import',
+                label: window.api?.importPresentation ? 'import slides — pptx, ppt or odp' : 'importing slides needs the desktop app',
+                icon: <ImportIcon size={14} />,
+                disabled: !window.api?.importPresentation,
+                onClick: importSlides,
+              },
+              {
+                id: 'quick',
+                label: 'quick slide — a title, a line under it, and where they sit',
+                icon: <SparkleIcon size={14} />,
+                onClick: () => setQuickModalOpen(true),
+              },
+            ]}
           />
         }
       >
@@ -439,36 +465,11 @@ export function SlidesBrowser() {
             </div>
           ) : (
             <div ref={sel.listRef}>
-              <div className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4 pb-5">
-                {needle === '' ? (
-                  <>
-                    <AddCard
-                      label="quick slide"
-                      hint="header, subheader & layout"
-                      onClick={() => setQuickModalOpen(true)}
-                    />
-                    <AddCard
-                      label="import slides"
-                      hint={importNote ?? 'pptx, ppt or odp'}
-                      onClick={() => {
-                        setImportNote('importing…');
-                        void window.api
-                          ?.importPresentation()
-                          .then((res) =>
-                            setImportNote(
-                              res?.success
-                                ? `imported ${res.data?.slides?.length ?? 0} slides — open them in the MEDIA tab`
-                                : res?.error === 'Cancelled'
-                                  ? null
-                                  : (res?.error ?? 'import failed'),
-                            ),
-                          )
-                          .catch(() => setImportNote('import failed'));
-                      }}
-                    />
-                  </>
-                ) : null}
-
+              <div
+                className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4"
+                /* Room for the dock — see TabDock. */
+                style={{ paddingBottom: DOCK_CLEARANCE }}
+              >
               {matches.map((deck, i) => {
                 const at = pageOf(deck);
                 const ready = deck.rendered > 0;

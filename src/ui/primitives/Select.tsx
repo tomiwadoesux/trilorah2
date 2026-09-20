@@ -110,6 +110,12 @@ export function Select({
           /* px-3, not px-3.5: on a pill this narrow the label was sitting a
              visible step right of the column heading below it. */
           'relative flex h-[var(--tri-field-h)] w-full items-center justify-between px-3 focus:outline-none select-none',
+          /* The corner class, not a bare border-radius. The radius alone is
+             a circular arc, and 18px of that on a 38px box is a full pill —
+             beside the search field, which takes its smoothed corner from
+             this same class, the two read as different controls. With the
+             smoothing the trigger is the rounded square its neighbour is. */
+          'tri-rounded-control',
           /*
            * Deliberately not tri-interactive. That class carries both the hover
            * lift and the press scale, and on a trigger this wide the lift fires
@@ -126,7 +132,6 @@ export function Select({
           disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
         )}
         style={{
-          borderRadius: 'var(--tri-radius-control)',
           /* The same hairline the inactive font and verse-layout cards carry.
              It used to stack a --tri-edge layer over the white one, which put
              teal on the closed trigger and made it read as a different control

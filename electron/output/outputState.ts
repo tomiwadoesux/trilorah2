@@ -16,26 +16,30 @@
  * Pure module; main.ts owns the instance and fans changes out over IPC.
  */
 
-export type OutputRole = 'projector' | 'stream' | 'stage'
+export type OutputRole = 'projector' | 'stream' | 'stage' | 'timer'
 export type ScreenState = 'live' | 'clear' | 'black' | 'logo'
 
-export const OUTPUT_IDS = ['main', 'alternate', 'third'] as const
+export const OUTPUT_IDS = ['main', 'alternate', 'third', 'fourth', 'fifth', 'timer'] as const
 export type OutputId = (typeof OUTPUT_IDS)[number]
 
-export const DEFAULT_ROLES: Record<OutputId, OutputRole> = {
+export const DEFAULT_ROLES: Record<string, OutputRole> = {
   main: 'projector',
   alternate: 'stream',
-  third: 'stage'
+  third: 'stage',
+  fourth: 'projector',
+  fifth: 'projector',
+  timer: 'timer'
 }
 
 export const ROLE_TITLES: Record<OutputRole, string> = {
   projector: 'Main Display Output',
   stream: 'Livestream Output',
-  stage: 'Stage Confidence Monitor'
+  stage: 'Stage Confidence Monitor',
+  timer: 'Stage Timer Display'
 }
 
 export function isOutputRole(v: unknown): v is OutputRole {
-  return v === 'projector' || v === 'stream' || v === 'stage'
+  return v === 'projector' || v === 'stream' || v === 'stage' || v === 'timer'
 }
 
 export function isScreenState(v: unknown): v is ScreenState {

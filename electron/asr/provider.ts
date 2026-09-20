@@ -46,6 +46,12 @@ export function resolveASRProvider(requested: string | undefined): ASRProvider {
     console.log('🎤 Deepgram selected but no key — using local Whisper')
     return whisperProvider
   }
+  // On Windows, whisper-node requires Unix `make` which is typically not installed.
+  // If a Deepgram API key is configured, prefer Deepgram so the app works out of the box.
+  if (process.platform === 'win32' && process.env.DEEPGRAM_API_KEY && requested !== 'whisper-local') {
+    console.log('🎤 Windows detected with Deepgram key — using cloud streaming ASR')
+    return deepgramProvider
+  }
   if (requested !== 'whisper-local' && requested !== undefined && requested !== '') {
     console.warn(`⚠️ Unknown asrProvider "${requested}" — using local Whisper`)
   }

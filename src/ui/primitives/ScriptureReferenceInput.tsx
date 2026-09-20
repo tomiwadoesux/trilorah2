@@ -202,6 +202,9 @@ export function ScriptureReferenceInput({
   const [internal, setInternal] = useState('');
   const text = value ?? internal;
   const [highlight, setHighlight] = useState(0);
+  const [lockedBook, setLockedBook] = useState(false);
+  const [lockedChapter, setLockedChapter] = useState(false);
+  const [lockedVerse, setLockedVerse] = useState(false);
   /*
    * Characters taken off by ← , newest last, so → can put them back.
    *
@@ -222,15 +225,41 @@ export function ScriptureReferenceInput({
     [books, p.book, bookIndex],
   );
 
+  /** Automatically lock segments if an external full reference is provided */
+  useEffect(() => {
+    if (!value) {
+      setLockedBook(false);
+      setLockedChapter(false);
+      setLockedVerse(false);
+      return;
+    }
+    // If the input is currently focused by the operator, do not auto-lock;
+    // locking is controlled step-by-step by Tab / Enter / Backspace.
+    if (typeof document !== 'undefined' && document.activeElement === inputRef.current) {
+      return;
+    }
+    const n = parts(value);
+    const bi = resolved(books, n.book);
+    if (bi >= 0 && n.book.trim().toLowerCase() === books[bi].name.toLowerCase()) {
+      setLockedBook(true);
+      if (n.chapter && n.chapter.trim() !== '') {
+        setLockedChapter(true);
+        if (n.verse && n.verse.trim() !== '') {
+          setLockedVerse(true);
+        }
+      }
+    }
+  }, [value, books]);
+
   /** The greyed remainder — only ever the rest of a book name. */
   const ghost = useMemo(() => {
-    if (p.chapter !== null || !p.book.trim()) return '';
+    if (p.chapter !== null || !p.book.trim() || lockedBook) return '';
     const pick = bookIndex >= 0 ? bookIndex : matches[highlight] ?? matches[0];
     if (pick === undefined) return '';
     const name = books[pick].name;
     const typed = p.book.trimStart();
     return name.toLowerCase().startsWith(typed.toLowerCase()) ? name.slice(typed.length) : '';
-  }, [books, p, bookIndex, matches, highlight]);
+  }, [books, p, bookIndex, matches, highlight, lockedBook]);
 
   /** The rule, applied to a whole candidate string. */
   const viable = (next: string): boolean => {
@@ -255,20 +284,44 @@ export function ScriptureReferenceInput({
     setHighlight(0);
     // Typing anything new makes the redo stack stale.
     if (!keepUndo) setUndone([]);
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.setSelectionRange(next.length, next.length);
+      }
+    });
   };
 
   const attempt = (raw: string) => {
     if (disabled) return;
     // Typing "1j" produces "1 j": one spelling reaches the rest of the field.
     const next = canonical(raw);
-    if (viable(next)) commit(next);
-    else nudge();
+    if (viable(next)) {
+      commit(next);
+      const n = parts(next);
+      // If user typed colon, lock book and chapter
+      if (n.chapter && next.endsWith(':')) {
+        setLockedBook(true);
+        setLockedChapter(true);
+      }
+      // If user typed full book name followed by space, lock book
+      if (!n.chapter && next.endsWith(' ')) {
+        const bi = resolved(books, n.book);
+        if (bi >= 0 && n.book.trim().toLowerCase() === books[bi].name.toLowerCase()) {
+          setLockedBook(true);
+        }
+      }
+    } else {
+      nudge();
+    }
   };
 
   /** Complete the book name and leave a space, ready for the chapter. */
   const acceptGhost = () => {
     if (!ghost) return;
     commit(p.book.trimStart() + ghost + ' ');
+    setLockedBook(true);
+    setLockedChapter(false);
+    setLockedVerse(false);
   };
 
   /*
@@ -301,31 +354,53 @@ export function ScriptureReferenceInput({
   }, [current?.bookIndex, current?.chapter, current?.verse]);
 
   /*
-   * One step forward through the reference, whatever stage it is at. Enter and
-   * Tab both run this; it returns false only when there is nothing left to do.
+   * Step forward through the reference:
+   * 1. Book name locks in on Enter / Tab (shows with reduced opacity).
+   * 2. Chapter locks in on Enter / Tab (shows with reduced opacity).
+   * 3. Verse locks in on Enter / Tab (shows with reduced opacity).
    */
   const advance = (): boolean => {
-    // More than one book still in play — take the highlighted one.
-    if (matches.length > 1) {
-      commit(books[matches[highlight] ?? matches[0]].name + ' ');
-      return true;
+    // Stage 1: Book not locked yet
+    if (!lockedBook) {
+      const pick = bookIndex >= 0 ? bookIndex : (matches[highlight] ?? matches[0]);
+      if (pick !== undefined && books[pick]) {
+        commit(books[pick].name + ' ');
+        setLockedBook(true);
+        setLockedChapter(false);
+        setLockedVerse(false);
+        return true;
+      }
+      return false;
     }
-    // A completion is showing — finish the word.
-    if (ghost) {
-      acceptGhost();
-      return true;
+
+    // Stage 2: Book is locked, but Chapter is not locked yet
+    if (!lockedChapter) {
+      if (p.chapter && p.chapter.trim() !== '') {
+        commit(text.replace(/[\s.:]+$/, '') + ':');
+        setLockedChapter(true);
+        setLockedVerse(false);
+        return true;
+      }
+      return false;
     }
+
+    // Stage 3: Book and Chapter are locked, Verse is being locked
+    if (!lockedVerse) {
+      if (p.verse && p.verse.trim() !== '') {
+        setLockedVerse(true);
+        if (current) onSubmit?.(current);
+        return true;
+      }
+      if (current) {
+        setLockedVerse(true);
+        onSubmit?.(current);
+        return true;
+      }
+    }
+
     // A row is selected in the list below — it owns the keystroke.
     if (onActivate?.()) return true;
-    /*
-     * Chapter typed, no verse yet: fix the chapter and open the verse slot, so
-     * the next digit is a verse rather than a third digit of the chapter. It
-     * is what makes "genesis 12" then 3 reach 12:3 instead of chapter 123.
-     */
-    if (p.chapter && p.verse === null) {
-      commit(text.replace(/[\s.:]+$/, '') + ':');
-      return true;
-    }
+
     if (current) {
       onSubmit?.(current);
       return true;
@@ -334,9 +409,35 @@ export function ScriptureReferenceInput({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    /* A modifier means the user wants the normal thing — select, jump a word,
-       go to the start — so the arrows keep their usual meaning there. */
     const plainArrow = !e.shiftKey && !e.metaKey && !e.altKey && !e.ctrlKey;
+
+    /* Backspace unlocks in reverse order: verse -> chapter -> book */
+    if (e.key === 'Backspace') {
+      // 1. If verse was locked in, unlock verse (reduce opacity -> 100% full brightness)
+      if (lockedVerse) {
+        e.preventDefault();
+        setLockedVerse(false);
+        return;
+      }
+
+      // 2. If chapter was locked and verse is empty, unlock chapter
+      if (lockedChapter && (p.verse === null || p.verse === '')) {
+        e.preventDefault();
+        setLockedChapter(false);
+        const trimmed = text.replace(/[\s.:]+$/, '');
+        commit(trimmed);
+        return;
+      }
+
+      // 3. If book was locked and chapter is empty, unlock book
+      if (lockedBook && (p.chapter === null || p.chapter === '')) {
+        e.preventDefault();
+        setLockedBook(false);
+        const trimmed = text.trimEnd();
+        commit(trimmed);
+        return;
+      }
+    }
 
     /* ← takes the last character off and remembers it. */
     if (e.key === 'ArrowLeft' && plainArrow) {
@@ -350,11 +451,7 @@ export function ScriptureReferenceInput({
       return;
     }
 
-    /*
-     * → puts back whatever ← took, one character at a time. Only once there is
-     * nothing left to restore does it fall through to accepting the ghost —
-     * otherwise finishing a word would wipe the thing being undone.
-     */
+    /* → puts back whatever ← took, one character at a time. */
     if (e.key === 'ArrowRight' && plainArrow) {
       e.preventDefault();
       if (undone.length) {
@@ -386,19 +483,80 @@ export function ScriptureReferenceInput({
       return;
     }
 
-    /*
-     * Tab is Enter.
-     *
-     * Both keys mean the same thing here — "take what is on screen and move me
-     * on" — and a field where they disagree makes the operator remember which
-     * one they are supposed to be pressing. The only difference is what
-     * happens when there is nothing to take: Enter refuses, while Tab falls
-     * through to moving focus, because a field that swallows Tab traps anyone
-     * working without a mouse. Shift-Tab is always focus.
-     */
+    /* Tab is Enter — locks in current segment */
     if (e.key === 'Tab' && !e.shiftKey) {
       if (text && advance()) e.preventDefault();
     }
+  };
+
+  /**
+   * Renders the locked and active segments:
+   * - Locked segments render with reduced opacity (50%).
+   * - Currently active segment renders with full opacity (100% white).
+   */
+  const renderSegments = () => {
+    if (!text && !ghost) return null;
+
+    const n = parts(text);
+    const bookStr = n.book;
+    let chapterStr = '';
+    let verseStr = '';
+
+    if (n.chapter !== null) {
+      const rest = text.slice(bookStr.length);
+      const m = rest.match(/^(\d*)(?:\s*[:.]\s*|\s+)?(\d*)$/);
+      if (m) {
+        const hasSep = /[:.]|\s/.test(rest.slice(m[1].length));
+        chapterStr = m[1] + (hasSep ? (rest.includes(':') ? ':' : ' ') : '');
+        verseStr = m[2] || '';
+      }
+    }
+
+    return (
+      <div className="pointer-events-none absolute inset-0 flex items-center text-[length:var(--tri-control-size)] leading-none tracking-normal whitespace-pre">
+        {bookStr && (
+          <span
+            className={cx(
+              'transition-opacity duration-150',
+              lockedBook
+                ? 'opacity-50 text-[var(--tri-ink,#e5f3f2)]'
+                : 'opacity-100 text-white font-medium',
+            )}
+          >
+            {bookStr}
+          </span>
+        )}
+        {!lockedBook && ghost && (
+          <span className="text-[rgb(229_243_242_/_0.30)] transition-opacity duration-150">
+            {ghost}
+          </span>
+        )}
+        {chapterStr && (
+          <span
+            className={cx(
+              'transition-opacity duration-150',
+              lockedChapter
+                ? 'opacity-50 text-[var(--tri-ink,#e5f3f2)]'
+                : 'opacity-100 text-white font-medium',
+            )}
+          >
+            {chapterStr}
+          </span>
+        )}
+        {verseStr && (
+          <span
+            className={cx(
+              'transition-opacity duration-150',
+              lockedVerse
+                ? 'opacity-50 text-[var(--tri-ink,#e5f3f2)]'
+                : 'opacity-100 text-white font-medium',
+            )}
+          >
+            {verseStr}
+          </span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -411,13 +569,17 @@ export function ScriptureReferenceInput({
           'tri-rounded-control relative flex h-[var(--tri-field-h)] w-full items-center gap-2.5 px-3.5',
           disabled ? 'opacity-40' : 'bg-[rgb(0_0_0_/_0.20)]',
         )}
-        onClick={() => inputRef.current?.focus()}
+        onClick={() => {
+          inputRef.current?.focus();
+          if (inputRef.current) {
+            const len = inputRef.current.value.length;
+            inputRef.current.setSelectionRange(len, len);
+          }
+        }}
       >
         <SearchIcon size={13} className="shrink-0 text-[rgb(229_243_242_/_0.45)]" />
 
-        {/* The typed text and its ghost are one line of type in two colours,
-            so they have to share metrics exactly — same size, same tracking,
-            same box. The measured copy is invisible and only holds position. */}
+        {/* The typed text and its ghost overlay. Native input is transparent with bright caret */}
         <div className="relative min-w-0 flex-1">
           <input
             ref={inputRef}
@@ -432,27 +594,19 @@ export function ScriptureReferenceInput({
             className={cx(
               /* Control size — the primary typing surface of the whole
                  scriptures tab. Shares --tri-field-h with the Select beside
-                 it (see the note above) and now shares its type size too. */
-              'relative z-10 w-full bg-transparent text-[length:var(--tri-control-size)] leading-none tracking-normal',
-              'text-[var(--tri-ink,#e5f3f2)] placeholder:text-[rgb(229_243_242_/_0.34)]',
+                 it and now shares its type size too. */
+              'relative z-10 w-full m-0 p-0 bg-transparent text-[length:var(--tri-control-size)] leading-none tracking-normal',
+              'text-transparent caret-white placeholder:text-[rgb(229_243_242_/_0.34)]',
               'focus:outline-none disabled:cursor-not-allowed',
+              /* Same as SearchField: index.css underlines every bare input,
+                 and that hairline has no business inside a filled box. */
+              'border-0',
             )}
           />
-          {ghost && (
-            <div
-              aria-hidden
-              /* Moves in lockstep with the input above — one line of type in
-                 two colours only works while the metrics are identical. */
-              className="pointer-events-none absolute inset-0 flex items-center text-[length:var(--tri-control-size)] leading-none tracking-normal"
-            >
-              <span className="invisible whitespace-pre">{text}</span>
-              <span className="whitespace-pre text-[rgb(229_243_242_/_0.30)]">{ghost}</span>
-            </div>
-          )}
+          {renderSegments()}
         </div>
 
-        {/* Live-parsed reference, so the operator can see what they have
-            built without reading their own typing back. */}
+        {/* Live-parsed reference indicator */}
         {reference() && (
           <span className="shrink-0 text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.5)]">
             {reference()!.book} {reference()!.chapter}
@@ -461,9 +615,8 @@ export function ScriptureReferenceInput({
         )}
       </div>
 
-      {/* Ambiguity is shown, not resolved silently: "jo" is six real books and
-          the operator picks. Hidden once one book is standing. */}
-      {matches.length > 1 && p.book.trim() !== '' && (
+      {/* Ambiguity is shown, not resolved silently */}
+      {matches.length > 1 && p.book.trim() !== '' && !lockedBook && (
         <ul className="flex flex-wrap gap-1.5" role="listbox">
           {matches.slice(0, 8).map((bi, i) => (
             <li key={books[bi].name}>
@@ -471,10 +624,13 @@ export function ScriptureReferenceInput({
                 type="button"
                 role="option"
                 aria-selected={i === highlight}
-                onClick={() => commit(books[bi].name + ' ')}
+                onClick={() => {
+                  commit(books[bi].name + ' ');
+                  setLockedBook(true);
+                  setLockedChapter(false);
+                  setLockedVerse(false);
+                }}
                 className={cx(
-                  /* The chips are option buttons the operator picks a book
-                     from, not hints about one — control text. */
                   'tri-rounded-control h-[30px] px-3 text-[length:var(--tri-control-size)] transition-colors',
                   i === highlight
                     ? 'bg-[rgb(255_255_255_/_0.08)] text-[var(--tri-ink)]'

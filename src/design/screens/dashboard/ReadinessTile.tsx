@@ -83,7 +83,18 @@ function troubleWords(n: number): string {
   return n === 1 ? 'thing needs attention' : 'things need attention';
 }
 
-export function ReadinessTile({
+/*
+ * EMPTIED at the owner's request ("remove the contents from the bg for now,
+ * we don't need them"), pending a redesign of what this cell should say.
+ * The shell is the same Panel with the same grid weight, so the bento does
+ * not reflow; the verdict design is kept whole below as ReadinessTileFull
+ * and coming back is a one-line swap here.
+ */
+export function ReadinessTile({ className }: { className?: string }) {
+  return <Panel className={className} />;
+}
+
+export function ReadinessTileFull({
   className,
   checks = CHECKS,
 }: {

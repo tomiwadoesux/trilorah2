@@ -1,0 +1,94 @@
+/*
+ * Motion for the run-of-service rail that a class list cannot say.
+ *
+ * Opacity and transform only, on the system ease-out — the same rules, and
+ * the same 160ms-in / 220ms-out pair, as the song cards (songs/songs.css),
+ * because a segment card and a song card are the same gesture: sweep across
+ * them and the controls arrive promptly and let go a beat late.
+ */
+
+/* ------------------------------------------------------------------ */
+/* A segment card's + / delete pair, and the minutes they cover        */
+/* ------------------------------------------------------------------ */
+/*
+ * The right end of the header holds both: the planned minutes at rest, the
+ * two buttons on hover or keyboard focus. The buttons are absolutely
+ * placed OVER that end, so the cross-fade moves nothing — the title never
+ * reflows and the card never changes width or height.
+ *
+ * The rule that is NOT matched sets the timing of the journey back to it:
+ * the base rule carries the slower exit, the hover rule the quicker entry.
+ * pointer-events follow visibility so a pair on its way out cannot eat a
+ * click meant for the card.
+ */
+.run-seg-actions {
+  /* They lie over the title's tail, so they bring their own ground: the
+     popover fill, feathered on the left so the words run under it rather
+     than being cut off by a box. */
+  background: linear-gradient(to right, transparent, var(--tri-pop) 16px);
+  border-radius: 8px;
+  opacity: 0;
+  transform: translate3d(3px, 0, 0);
+  pointer-events: none;
+  will-change: opacity, transform;
+  transition:
+    opacity 220ms var(--tri-ease-out),
+    transform 220ms var(--tri-ease-out);
+}
+.run-seg-plan {
+  opacity: 1;
+  transition: opacity 220ms var(--tri-ease-out);
+}
+.run-seg:focus-within .run-seg-actions,
+.run-seg[data-menu='true'] .run-seg-actions {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition-duration: 160ms;
+}
+.run-seg:focus-within .run-seg-plan,
+.run-seg[data-menu='true'] .run-seg-plan {
+  opacity: 0;
+  transition-duration: 160ms;
+}
+@media (hover: hover) and (pointer: fine) {
+  .run-seg:hover .run-seg-actions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition-duration: 160ms;
+  }
+  .run-seg:hover .run-seg-plan {
+    opacity: 0;
+    transition-duration: 160ms;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The right-click menu and the clock's confirm                        */
+/* ------------------------------------------------------------------ */
+/* They open from where they were asked for, so they scale from that corner
+   rather than from their centre. Short: a menu is answered, not watched. */
+@keyframes tri-ctx-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.tri-ctx-in {
+  transform-origin: top left;
+  animation: tri-ctx-in 140ms var(--tri-ease-out);
+}
+.tri-ctx-in[data-origin='top-right'] {
+  transform-origin: top right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-seg-actions,
+  .run-seg-plan {
+    transition-duration: 0ms !important;
+  }
+  .tri-ctx-in {
+    animation: none;
+  }
+}

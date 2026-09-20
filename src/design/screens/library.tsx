@@ -103,11 +103,17 @@ export interface LibraryBrowserProps {
    * without a second edge inside the panel it already sits in.
    */
   framed?: boolean;
+  /**
+   * The tab's dock (songs/TabDock) — floated over the foot of the panes, at
+   * --tri-gap from their bottom edge. The panes' scrollers pad themselves by
+   * DOCK_CLEARANCE so nothing ends up underneath it.
+   */
+  dock?: ReactNode;
   /** One or more LibraryPane. */
   children: ReactNode;
 }
 
-export function LibraryBrowser({ search, framed = false, children }: LibraryBrowserProps) {
+export function LibraryBrowser({ search, framed = false, dock, children }: LibraryBrowserProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]">
       {/*
@@ -122,12 +128,13 @@ export function LibraryBrowser({ search, framed = false, children }: LibraryBrow
       <div className="-mx-3 flex shrink-0 items-start gap-[var(--tri-gap)] px-4">{search}</div>
       <div
         className={cx(
-          '-mx-3 flex min-h-0 flex-1 overflow-hidden',
+          'relative -mx-3 flex min-h-0 flex-1 overflow-hidden',
           framed && 'tri-rounded-surface',
         )}
         style={framed ? { boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.055)' } : undefined}
       >
         {children}
+        {dock}
       </div>
     </div>
   );

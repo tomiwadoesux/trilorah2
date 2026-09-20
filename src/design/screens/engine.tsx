@@ -274,7 +274,22 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
     off.push(
       api.onAsrStatus?.((s: string) => {
-        setAsr(s as AsrStatus);
+        /* The engine speaks in sentences for the old status pill —
+           "Connecting...", "Listening...", "Error: no key", "Downloading
+           speech model — 40%". Cast straight to AsrStatus, none of them
+           equalled 'connecting' or 'listening', so the button fell back to
+           "start listening" while the engine WAS listening and the operator
+           pressed it a second time to make it look right. Folded here. */
+        const t = s.toLowerCase();
+        setAsr(
+          t.startsWith('listening')
+            ? 'listening'
+            : t.startsWith('error') || t.startsWith('could not')
+              ? 'error'
+              : t.startsWith('stopped')
+                ? 'stopped'
+                : 'connecting', // connecting, downloading the model, anything in flight
+        );
         /* Any word from the ASR proves something is running behind it. */
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
       }),

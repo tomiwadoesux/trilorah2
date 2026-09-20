@@ -55,6 +55,12 @@ export function SearchField({
           'min-w-0 flex-1 bg-transparent text-[length:var(--tri-control-size)] leading-none tracking-normal',
           'text-[var(--tri-ink,#e5f3f2)] placeholder:text-[rgb(229_243_242_/_0.34)]',
           'focus:outline-none disabled:cursor-not-allowed',
+          /* No rule of its own. The app's base stylesheet underlines every
+             bare <input> (index.css — the legacy forms rely on it), and
+             inside a filled, rounded box that hairline read as a stray line
+             cutting the field in two. The box is the field; the input is
+             only where the caret lives. */
+          'border-0',
         )}
       />
     </div>

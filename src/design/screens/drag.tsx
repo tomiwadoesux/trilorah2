@@ -78,6 +78,8 @@ export interface DragItem {
   lines?: string[];
   title?: string;
   section?: string;
+  /** Song: its library id, so the run can open it for editing later. */
+  songId?: string;
   /** Media and slides: the file, so the row can show it on the wall. */
   path?: string;
 }

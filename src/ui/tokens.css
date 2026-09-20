@@ -46,6 +46,33 @@
   --tri-indigo-3: 31 26 55; /* #1F1A37 */
   --tri-indigo-4: 38 26 55; /* #261A37 */
 
+  /*
+   * Go and caution — the two BRIGHT tones, and the only ones.
+   *
+   * Every ramp above is a dark surface that light ink sits on, and alpha
+   * carries its state. These two invert that: the surface is the ink colour
+   * itself (the mint of --tri-go-2 is the app's own mint, the gold is
+   * --tri-accent-yellow) and the label goes dark. They exist for the one or
+   * two acts on a screen that reach the congregation — "go live", and the
+   * reset that undoes it — which have to be findable in a glance across a
+   * booth, and a 30%-alpha teal among 30%-alpha ash is not. Same four-stop
+   * recipe, same angle, same drift across the last three stops, so they are
+   * still the system's surface rather than a second kind of button.
+   */
+  --tri-go-1: 72 178 152; /* #48B298 */
+  --tri-go-2: 143 211 192; /* #8FD3C0 */
+  --tri-go-3: 156 222 201; /* #9CDEC9 */
+  --tri-go-4: 104 196 168; /* #68C4A8 */
+
+  --tri-caution-1: 201 178 78; /* #C9B24E */
+  --tri-caution-2: 228 216 122; /* #E4D87A */
+  --tri-caution-3: 236 225 142; /* #ECE18E */
+  --tri-caution-4: 212 192 96; /* #D4C060 */
+
+  /* What is written on a bright surface: the teal ramp's own dark, so the
+     label is still the system's colour and not a neutral black. */
+  --tri-ink-on-bright: #06201a;
+
   --tri-red-1: 92 16 16; /* #5C1010 */
   --tri-red-2: 118 26 26; /* #761A1A */
   --tri-red-3: 120 34 34; /* #782222 */
@@ -78,6 +105,12 @@
   --tri-ink-danger: #eac7c6;
   --tri-ink-danger-hover: #fec9c9;
   --tri-accent-yellow: #e4d87a;
+
+  /* A lifted surface — the body of anything that opens over the screen (an
+     expanded tile, the song editor, a dialog) — and the ground it dims. One
+     pair, so every popup is the same material at the same depth. */
+  --tri-pop: rgb(14 20 19);
+  --tri-pop-scrim: rgb(0 0 0 / 0.55);
 
   --tri-text-shadow: 0 1px 3.2px rgb(0 0 0 / 0.48);
 
@@ -244,7 +277,7 @@
 
   /* Same face as the rest of the interface; the literal is the fallback for
      any surface that loads tokens.css without index.css. */
-  --tri-font: var(--font-ui, Roboto, system-ui, sans-serif);
+  --tri-font: 'Roboto', sans-serif;
   /* Up from the file's 12/10. Figma was drawn at screen-reading distance;
      the operator is at arm's length in a dark booth, often standing. */
   /*
@@ -429,6 +462,37 @@
   --tri-4: var(--tri-indigo-4);
 }
 
+/*
+ * The bright pair. Four variables like the others, plus the alpha ladder —
+ * restated HERE rather than by setting --tri-alpha, because hover and active
+ * write --tri-alpha themselves at a higher specificity and would drag a
+ * bright button down to the dark tones' 0.7. Scoping the ladder keeps the
+ * whole state model (rest → hover → press, the two-phase reveal) and only
+ * moves where it starts: nearly opaque at rest, fully lit under the pointer.
+ *
+ * Refused (aria-disabled) needs nothing of its own: the shared rule below
+ * takes the same gradient to 40%, which on a bright surface reads exactly as
+ * meant — still green, visibly not armed yet.
+ */
+.tri-surface--go,
+.tri-surface--caution {
+  --tri-alpha-rest: 0.86;
+  --tri-alpha-hover: 1;
+  --tri-alpha-active: 1;
+}
+.tri-surface--go {
+  --tri-1: var(--tri-go-1);
+  --tri-2: var(--tri-go-2);
+  --tri-3: var(--tri-go-3);
+  --tri-4: var(--tri-go-4);
+}
+.tri-surface--caution {
+  --tri-1: var(--tri-caution-1);
+  --tri-2: var(--tri-caution-2);
+  --tri-3: var(--tri-caution-3);
+  --tri-4: var(--tri-caution-4);
+}
+
 .tri-surface--wide {
   --tri-angle: var(--tri-angle-wide);
 }
@@ -481,6 +545,16 @@
 }
 .tri-tone-danger {
   color: var(--tri-ink-danger);
+}
+
+/* Dark ink for the bright tones. The label's drop shadow goes too: it is
+   there to lift light text off a gradient, and under dark text on a light
+   surface it only smudges the letterforms. Doubled class so it outranks
+   .tri-label, which is declared later in this file. */
+.tri-tone-bright.tri-tone-bright {
+  color: var(--tri-ink-on-bright);
+  text-shadow: none;
+  font-weight: 600;
 }
 
 /* Selected/active state for list surfaces. */

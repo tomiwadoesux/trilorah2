@@ -24,3 +24,7 @@ data/models/
 .claude/
 service-logs/
 release/
+
+# tesseract language data — downloaded at first OCR, not source
+eng.traineddata
+*.traineddata

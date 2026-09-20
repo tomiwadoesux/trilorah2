@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import ThinkingOrbsPill from '../orb/ThinkingOrbsPill';
 import {
   ActionMenu,
-  AddCard,
   Button,
   cx,
-  ScanIcon,
-  HistoryIcon,
   ChevronDownIcon,
   type ActionMenuGroup,
   DisplayFontPicker,
@@ -20,13 +17,13 @@ import {
   surface,
   toneClass,
   PencilIcon,
-  BookIcon,
   MusicIcon,
   TrashIcon,
+  GlobeIcon,
+  LaptopIcon,
   SlideThumb,
   PlusIcon,
   PlayIcon,
-  CheckIcon,
   slideBackdrop,
   type BackdropStyle,
   BACKDROP_BY_CONTENT,
@@ -40,22 +37,44 @@ import {
   type TextPositionOption,
   SegmentedControl,
   type SegmentOption,
+  ImportIcon,
+  PresentationIcon,
+  SettingsIcon,
+  QrIcon,
 } from '../../ui';
 import { BOOKS, CHAPTER_COUNTS } from '../../lib/books';
 import { parseVerse } from '../../lib/scriptureText';
 import { AppShell } from './AppShell';
 import { DashboardBento } from './dashboard';
+import { ViewEnter } from './viewEnter';
+import { RunHeaderActions } from './run/RunHeaderActions';
+import { RunOfService } from './run/RunRail';
 import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
+import { AddSongDialog } from './songs/AddSongDialog';
+import { SongEditor, type EditorSession } from './songs/SongEditor';
+import { DOCK_CLEARANCE, TabDock, type DockAction } from './songs/TabDock';
+import { useSongDrafts } from './songs/useSongDrafts';
+import { NEW_PREFIX, cardsToSections, isNewId, type SongBase, type SongDraft } from '../../../shared/songDraft';
+import './songs/songs.css';
 import { SlideCanvas } from './slide';
 import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
+import { formatTimerDisplay } from '../../../shared/timerDisplay';
+import { getTimerColor } from '../../../shared/timerColor';
+import {
+  TEXT_TRANSITIONS,
+  TRANSITION_MS,
+  clampTransitionMs,
+  isTextTransition,
+  type TextTransition,
+} from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
-import { addMedia, mediaSrc, useMediaLibrary, type MediaSource } from './mediaLibrary';
+import { addMedia, mediaSrc, useMediaLibrary, type MediaSource, type ThemeMedia } from './mediaLibrary';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
-import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, TIGHT_WORDS } from './engine';
-import { RunProvider, useRun, type RunSegment, type QueueItem } from './run';
+import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS } from './engine';
+import { RunProvider, useRun, type RunSegment } from './run';
 import { DragKeyframes, DragProvider, useDrag } from './drag';
-import { Empty, Panel } from './parts';
+import { Panel } from './parts';
 import { useForesight } from './foresight';
 
 /*
@@ -89,7 +108,7 @@ import { useForesight } from './foresight';
  * acquired a duplicate key the first time.
  */
 const TABS = [
-  { id: 'scriptures', label: 'scriptures' },
+  { id: 'scriptures', label: 'verses' },
   { id: 'themes', label: 'themes' },
   { id: 'songs', label: 'songs' },
   { id: 'slides', label: 'presentation slides' },
@@ -122,6 +141,78 @@ const DEFAULT_THEME: ThemeSettings = {
 };
 
 /*
+ * The safe margin's bounds — one object, read by both sliders that set it and
+ * by the corners you can drag on the canvas, so no control can reach a value
+ * another cannot show.
+ *
+ * Up to 20, from 16: broadcast title-safe is 10% and a careful room wants 15,
+ * and on a track that ended at 16 the useful range was crammed into its last
+ * third. Half steps because the corners are dragged by hand, and on a 600px
+ * canvas a whole percent is a visible 6px jump.
+ */
+const SAFE_MARGIN = { min: 3, max: 20, step: 0.5 } as const;
+
+/* The picker's options, straight off the shared vocabulary so this screen,
+   Settings and the wall cannot disagree about what the choices are. */
+const TRANSITION_OPTIONS: SegmentOption<TextTransition>[] = TEXT_TRANSITIONS.map((t) => ({
+  id: t.id,
+  label: t.label,
+}));
+
+/*
+ * How words arrive on the wall — the two settings the projector reads.
+ *
+ * NOT part of ThemeSettings, and the difference is the point: a theme is
+ * edited in preview and only reaches the room on "go live", because changing
+ * it moves words people are reading. A transition cannot disturb what is
+ * already up — it only decides how the NEXT thing arrives — so it is written
+ * through the moment it is chosen, like any other setting.
+ *
+ * `play` counts the reasons to show it again. With no engine (a browser tab)
+ * the writes fall away and the picker still works on the canvas.
+ */
+function useTextTransition() {
+  const [id, setId] = useState<TextTransition>('fade');
+  const [ms, setMs] = useState<number>(TRANSITION_MS.default);
+  const [play, setPlay] = useState(0);
+
+  useEffect(() => {
+    let gone = false;
+    void window.api
+      ?.getSettings?.()
+      ?.then((s: Record<string, unknown> | undefined) => {
+        if (gone || !s) return;
+        if (isTextTransition(s.textTransition)) setId(s.textTransition);
+        if (s.textTransitionMs != null) setMs(clampTransitionMs(s.textTransitionMs));
+      })
+      .catch(() => undefined);
+    return () => {
+      gone = true;
+    };
+  }, []);
+
+  const choose = useCallback((next: TextTransition) => {
+    setId(next);
+    setPlay((n) => n + 1);
+    void window.api?.setSetting?.('textTransition', next);
+  }, []);
+
+  /* The speed is heard on release, not during: replaying on every step of a
+     drag restarts the entrance thirty times and shows none of them. */
+  const replay = useRef<number | undefined>(undefined);
+  const pace = useCallback((next: number) => {
+    const clamped = clampTransitionMs(next);
+    setMs(clamped);
+    void window.api?.setSetting?.('textTransitionMs', clamped);
+    window.clearTimeout(replay.current);
+    replay.current = window.setTimeout(() => setPlay((n) => n + 1), 260);
+  }, []);
+  useEffect(() => () => window.clearTimeout(replay.current), []);
+
+  return { id, ms, play, choose, pace };
+}
+
+/*
  * The two postures of this screen: the operator's own working surface, or
  * the dashboard the rest of the team watches.
  *
@@ -133,66 +224,8 @@ const DEFAULT_THEME: ThemeSettings = {
 const VIEWS = ['operator', 'dashboard'] as const;
 type ViewMode = (typeof VIEWS)[number];
 
-/*
- * D-72 — the segment types a service is built from, plus a way out for the
- * ones no list will ever have.
- *
- * Ordered by how often a church reaches for one, NOT by where it falls in a
- * service. The list is scanned, not read: every service has worship and a
- * sermon, most have a welcome and announcements, and communion is monthly
- * at best — so chronological order buried the two universal ones in the
- * middle of the column. Running order is what the picking order sets (see
- * ArrangeList), which leaves this list free to be ordered by reach.
- */
-const SEGMENT_TYPES: SelectOption[] = [
-  { value: 'worship', label: 'worship' },
-  { value: 'sermon', label: 'sermon' },
-  { value: 'welcome', label: 'welcome' },
-  { value: 'announcements', label: 'announcements' },
-  { value: 'offering', label: 'offering' },
-  { value: 'altar-call', label: 'altar call' },
-  { value: 'closing', label: 'closing' },
-  { value: 'communion', label: 'communion' },
-  { value: 'custom', label: 'something else…' },
-];
-
-/*
- * What the "+" offers. Two ways in at the top level — scan the flyer the
- * church already made, or name a segment yourself — and the second opens the
- * list rather than flying it out sideways, because there is no room beside a
- * rail pinned to the left edge.
- */
-const ADD_MENU: ActionMenuGroup[] = [
-  {
-    items: [
-      /* The one route that saves real work: the church already made a flyer,
-         so read it rather than retyping it. It gets the gradient; nothing
-         else in the menu does, or the emphasis means nothing. */
-      { id: 'scan', label: 'scan image', icon: <ScanIcon size={14} />, accent: true },
-      {
-        id: 'segment',
-        label: 'add segment',
-        icon: <PlusIcon size={13} />,
-        /* Not a list of nine choices — a set you tick and put in order, which
-           is what a run of service is. What you arrange here is literally
-           what lands in the rail behind the menu. */
-        arrange: true,
-        items: SEGMENT_TYPES.map((t) => ({ id: t.value, label: t.label })),
-      },
-    ],
-  },
-  {
-    /* Attaching to the service rather than building it — a clip or a note
-       hangs off a segment rather than being one. Tiles because they are peers
-       and neither leads anywhere. */
-    layout: 'tiles',
-    items: [
-      { id: 'media', label: 'add media', icon: <MediaIcon size={15} /> },
-      { id: 'note', label: 'add note', icon: <NoteIcon size={15} /> },
-    ],
-  },
-];
-
+/* SEGMENT_TYPES, the "+" menu and the rail's drawing live in ./run/ — see
+   run/segmentTypes.tsx, run/RunHeaderActions.tsx and run/RunRail.tsx. */
 
 /** The bare box every region is. */
 const EDGE = { boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.055)' } as const;
@@ -234,24 +267,34 @@ function ThemesEditor({
   onChange: (next: ThemeSettings) => void;
   onReset: () => void;
 }) {
+  const tx = useTextTransition();
+  /* A corner of the guide is in someone's hand — see SlideCanvas. */
+  const [cornerHeld, setCornerHeld] = useState(false);
+  const blurb = TEXT_TRANSITIONS.find((t) => t.id === tx.id)?.blurb;
+
   return (
     /*
-     * The design as drawn: two control columns and the projector, except the
-     * three are now three SURFACES rather than three regions of one panel
-     * divided by a hairline.
+     * The design as drawn: two control columns and the projector — on ONE
+     * surface, the tab's own panel.
      *
-     * The hairline was doing a surface's job. Once the columns each sit on
-     * their own background the grouping is carried by the boxes themselves —
-     * which is what every other region of this screen already does — and the
-     * divider becomes the thing it always was: a line drawn because the
-     * groups were not visible otherwise.
+     * For a while these were separate boxes: the controls on a lighter card,
+     * the projector in a framed card beside it, the panel behind them bare.
+     * That made this the only tab whose contents did not sit on the panel
+     * the other four sit on, and the only place on the screen where a
+     * picture of the projector had a different material around it than the
+     * preview and live boxes directly above. The owner's call: it is one
+     * surface, the same one the stage uses. The grouping is carried by the
+     * columns and the space between them, and the picture is seated in the
+     * panel at --tri-gap exactly as the stage seats its two.
      *
-     * They are spaced on --tri-gap, the same gutter as the bento above, so
-     * this panel's interior is on the screen's grid rather than a private
-     * one. The halves stay equal by construction (flex-1 both sides) rather
-     * than by ratio, so the split cannot drift as the controls change.
+     * The split is set by the picture, not by a ratio: the projector takes
+     * the row's full height and the width 16:9 makes of it, so it meets the
+     * panel at --tri-gap on three sides, and the controls take what is left.
+     * At the default window that lands within a few pixels of half and half,
+     * which is where it was drawn. The row is the size container the
+     * picture measures itself against — see ThemePreview.
      */
-    <div className="flex h-full gap-[var(--tri-gap)]">
+    <div className="flex h-full gap-[var(--tri-gap)]" style={{ containerType: 'size' }}>
       {/* Only this half scrolls; the projector is a fixed object beside it
           and must not move when the controls do. */}
       <ThemeControls>
@@ -278,8 +321,51 @@ function ThemesEditor({
             <Slider label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
             <Slider label="text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
             <Slider label="verse size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
-            <Slider label="safe margin" value={theme.safeMargin} onChange={(safeMargin) => onChange({ ...theme, safeMargin })} min={3} max={16} />
+            {/* Also set by dragging any corner of the guide on the picture;
+                this stays the keyboard's way in, and the precise one. */}
+            <Slider
+              label="safe margin"
+              value={theme.safeMargin}
+              onChange={(safeMargin) => onChange({ ...theme, safeMargin })}
+              min={SAFE_MARGIN.min}
+              max={SAFE_MARGIN.max}
+              step={SAFE_MARGIN.step}
+              immediate={cornerHeld}
+            />
             <DisplayFontPicker value={theme.font} onChange={(font) => onChange({ ...theme, font })} />
+          </div>
+        </div>
+
+        {/*
+          How the words arrive. Its own row under the two columns, full
+          width: five words side by side do not fit a half-column, and a
+          segmented control is only worth having while every option is
+          readable at once. The speed sits beside the choice it paces, and
+          goes quiet on "cut", where there is nothing to pace.
+        */}
+        <div className="flex shrink-0 flex-wrap items-start gap-x-6 gap-y-4">
+          <div className="flex min-w-[240px] flex-[3] flex-col gap-1.5">
+            <SegmentedControl
+              label="transition"
+              size="sm"
+              options={TRANSITION_OPTIONS}
+              value={tx.id}
+              onChange={tx.choose}
+            />
+            <span className="px-1 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
+              {blurb}
+            </span>
+          </div>
+          <div className="flex min-w-[140px] flex-[2] flex-col gap-1.5">
+            <Slider
+              label="speed · ms"
+              value={tx.ms}
+              onChange={tx.pace}
+              min={TRANSITION_MS.min}
+              max={TRANSITION_MS.max}
+              step={50}
+              disabled={tx.id === 'cut'}
+            />
           </div>
         </div>
 
@@ -294,7 +380,12 @@ function ThemesEditor({
         </div>
       </ThemeControls>
 
-      <ThemePreview theme={theme} />
+      <ThemePreview
+        theme={theme}
+        transition={tx}
+        onSafeMargin={(safeMargin) => onChange({ ...theme, safeMargin })}
+        onSafeDrag={setCornerHeld}
+      />
     </div>
   );
 }
@@ -461,23 +552,13 @@ function FadeScroller({
 function ThemeControls({ children }: { children: ReactNode }) {
   return (
     /*
-     * The left half — its own surface, matching the stage row above: two
-     * boxes side by side on --tri-gap, equal by construction (basis-1/2 on
-     * both) rather than by flex ratio, so the seam lands dead centre and
-     * cannot drift as either side gains contents.
+     * The left half. No fill and no outline of its own — it sits on the
+     * tab's panel, the same surface the projector beside it is seated in.
      *
-     * Padding is --tri-card-gap on all four sides — the system's concentric
-     * inset, px and py the same number, a frame rather than a margin.
-     *
-     * The mask lives on the scroller INSIDE the surface, not on the surface
-     * itself: applied out here it would fade the box's own bottom corners
-     * along with the content, and a surface that dissolves at one end reads
-     * as a rendering fault rather than as more-below.
+     * The mask lives on the scroller, not out here: applied to the half it
+     * would fade the space the panel's own corner needs to stay crisp in.
      */
-    <div
-      className="tri-rounded-surface flex min-h-0 basis-1/2 flex-col overflow-hidden bg-[rgb(255_255_255_/_0.032)] px-[var(--tri-card-gap)] py-[var(--tri-card-gap)]"
-      style={{ boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.075)' }}
-    >
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <FadeScroller className="flex-1" contentClassName="flex flex-col gap-4 px-2">
         {children}
       </FadeScroller>
@@ -519,10 +600,40 @@ const THEME_SPECIMEN: VerseSlide = {
  * shows and the stage does not would be a lie told at the worst possible
  * moment. See ./slide.
  */
-function ThemePreview({ theme }: { theme: ThemeSettings }) {
+function ThemePreview({
+  theme,
+  transition,
+  onSafeMargin,
+  onSafeDrag,
+}: {
+  theme: ThemeSettings;
+  transition: { id: TextTransition; ms: number; play: number };
+  onSafeMargin: (next: number) => void;
+  onSafeDrag: (dragging: boolean) => void;
+}) {
   return (
-    <div className="flex min-h-0 min-w-0 basis-1/2 items-center justify-center">
-      <SlideCanvas theme={theme} slide={THEME_SPECIMEN} guide />
+    /*
+     * Seated like the stage boxes, and sized in container units for the
+     * reason given at StageBox. All of the row's height, so the picture sits
+     * --tri-gap off the panel above, below and to the right and the
+     * concentric corner holds — capped at three fifths of the row so that a
+     * tall, narrow window cannot let the specimen squeeze out the controls
+     * that are the reason the tab exists.
+     */
+    <div
+      className="shrink-0 self-center"
+      style={{ width: 'min(60cqw, calc(100cqh * 16 / 9))', aspectRatio: '16 / 9' }}
+    >
+      <SlideCanvas
+        seated
+        theme={theme}
+        slide={THEME_SPECIMEN}
+        guide
+        onSafeMargin={onSafeMargin}
+        onSafeDrag={onSafeDrag}
+        safeRange={SAFE_MARGIN}
+        transition={transition}
+      />
     </div>
   );
 }
@@ -614,8 +725,103 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
   const shown = library.filter((m) => m.source === shelf);
   const copy = VIEW_COPY[view];
 
+  /* The media shelf's own filter. Closed by default — five items do not
+     need one — and opened from the dock. */
+  const [mediaQuery, setMediaQuery] = useState<string | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const focusSearch = () =>
+    requestAnimationFrame(() => root.current?.querySelector<HTMLInputElement>('input[type="text"]')?.focus());
+  const mediaNeedle = (mediaQuery ?? '').trim().toLowerCase();
+  const serviceMedia = SERVICE_MEDIA.filter(
+    (m) => mediaNeedle === '' || `${m.label} ${m.detail}`.toLowerCase().includes(mediaNeedle),
+  );
+
+  /* The engine copies the file into its own folder — so the background
+     survives the USB stick being pulled — and makes it the projector's
+     background. It lands on the local shelf and is selected, the same as a
+     stock pick. */
+  const addLocal = () => {
+    void window.api?.pickBackgroundImage?.().then((res) => {
+      if (!res?.success || !res.url) return;
+      const name = decodeURIComponent(res.url.split('/').pop() ?? 'background');
+      const media = {
+        id: `local:${res.url}`,
+        label: name.replace(/\.[a-z0-9]+$/i, ''),
+        detail: 'from this laptop',
+        seed: 4,
+        style: 'smoke' as const,
+        source: 'local' as const,
+        url: res.src ?? res.url,
+        kind: 'photo' as const,
+      };
+      addMedia(media);
+      setShelf('local');
+      onSelect(media.id);
+    });
+  };
+
+  /*
+   * The dock: search · add · where from.
+   *
+   * The third button IS the shelf switch, not a copy of it — it reads and
+   * writes the same `shelf` the segmented control above does, so the two can
+   * never disagree. It shows where you ARE: a globe while the pictures come
+   * from beyond this laptop (stock, or the online search), a laptop while
+   * they are the church's own. Pressing it goes to the other.
+   */
+  const local = shelf === 'local';
+  const dock: DockAction[] =
+    view === 'themes'
+      ? [
+          {
+            id: 'search',
+            label: 'search the free photo and video library',
+            icon: <SearchIcon size={14} />,
+            active: shelf === 'search',
+            onClick: () => {
+              setShelf('search');
+              focusSearch();
+            },
+          },
+          {
+            id: 'add',
+            label: window.api?.pickBackgroundImage ? 'add an image from this computer' : 'adding images needs the desktop app',
+            icon: <PlusIcon size={14} />,
+            disabled: !window.api?.pickBackgroundImage,
+            onClick: addLocal,
+          },
+          {
+            id: 'source',
+            label: local ? 'showing this laptop — switch to stock' : 'showing stock — switch to this laptop',
+            icon: local ? <LaptopIcon size={14} /> : <GlobeIcon size={14} />,
+            onClick: () => setShelf(local ? 'stock' : 'local'),
+          },
+        ]
+      : [
+          {
+            id: 'search',
+            label: 'search this church’s media',
+            icon: <SearchIcon size={14} />,
+            active: mediaQuery !== null,
+            onClick: () => {
+              if (mediaQuery === null) {
+                setMediaQuery('');
+                focusSearch();
+              } else setMediaQuery(null);
+            },
+          },
+          { id: 'add', label: 'adding your own clips is not built yet', icon: <PlusIcon size={14} />, disabled: true },
+          {
+            id: 'source',
+            label: 'stock is for backgrounds — switch to themes to use it',
+            icon: <LaptopIcon size={14} />,
+            disabled: true,
+          },
+        ];
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    <div ref={root} className="relative flex h-full min-h-0 flex-col gap-3">
+      <TabDock label={view} actions={dock} />
       {/*
         The header is two rows, not one, and the split is by rank: what this
         tab IS on top, how to narrow it underneath. Cramming the shelf
@@ -658,6 +864,8 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
                     : 'free photo and video library'}
               </span>
             </>
+          ) : mediaQuery !== null ? (
+            <SearchField value={mediaQuery} onChange={setMediaQuery} placeholder="type a name..." className="!h-[var(--tri-control-h)]" />
           ) : null}
         </div>
       </div>
@@ -681,31 +889,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           }}
         />
       ) : view === 'themes' ? (
-        <MediaGrid
-          add={shelf === 'local' ? { label: 'add media', hint: 'an image from this computer' } : null}
-          onAdd={() => {
-            /* The engine copies the file into its own folder — so the
-               background survives the USB stick being pulled — and makes it
-               the projector's background. It lands on this shelf and is
-               selected, the same as a stock pick. */
-            void window.api?.pickBackgroundImage?.().then((res) => {
-              if (!res?.success || !res.url) return;
-              const name = decodeURIComponent(res.url.split('/').pop() ?? 'background');
-              const media = {
-                id: `local:${res.url}`,
-                label: name.replace(/\.[a-z0-9]+$/i, ''),
-                detail: 'from this laptop',
-                seed: 4,
-                style: 'smoke' as const,
-                source: 'local' as const,
-                url: res.src ?? res.url,
-                kind: 'photo' as const,
-              };
-              addMedia(media);
-              onSelect(media.id);
-            });
-          }}
-        >
+        <MediaGrid>
           {shown.map((media) => (
             /* A click makes the picture the theme background; a HOLD drags
                it into the run of service, where its row can put it on the
@@ -737,8 +921,8 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           ))}
         </MediaGrid>
       ) : (
-        <MediaGrid add={{ label: 'add media', hint: 'image, video, loop' }}>
-          {SERVICE_MEDIA.map((item) => (
+        <MediaGrid>
+          {serviceMedia.map((item) => (
             <MediaCard
               key={item.id}
               src={slideBackdrop(item.seed, item.style)}
@@ -757,18 +941,13 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
 }
 
 /** The grid both views share, so a card cannot drift between them. */
-function MediaGrid({
-  add,
-  onAdd,
-  children,
-}: {
-  add: { label: string; hint: string } | null;
-  onAdd?: () => void;
-  children: ReactNode;
-}) {
+function MediaGrid({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-h-0 auto-rows-min grid-cols-5 gap-x-3 gap-y-4 overflow-y-auto px-1 pb-3">
-      {add ? <AddCard label={add.label} hint={add.hint} onClick={onAdd} /> : null}
+    <div
+      className="grid min-h-0 auto-rows-min grid-cols-5 gap-x-3 gap-y-4 overflow-y-auto px-1"
+      /* Room for the dock — see TabDock. */
+      style={{ paddingBottom: DOCK_CLEARANCE }}
+    >
       {children}
     </div>
   );
@@ -899,6 +1078,7 @@ interface VerseRow {
  */
 function ScripturesBrowser() {
   const drag = useDrag();
+  const projector = useProjector();
   const [versions, setVersions] = useState<SelectOption[]>([{ value: 'KJV', label: 'KJV' }]);
   const [version, setVersion] = useState('KJV');
   const [query, setQuery] = useState('');
@@ -1006,6 +1186,36 @@ function ScripturesBrowser() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ref?.verse, rows]);
 
+  /* In sandbox mode or when rows is empty, stage typed reference so preview shows it immediately */
+  useEffect(() => {
+    if (!ref || !ref.book || !ref.chapter) return;
+    if (rows.length === 0) {
+      const reference = `${ref.book} ${ref.chapter}${ref.verse ? `:${ref.verse}` : ':1'}`;
+      const sampleText = ref.verse === 2
+        ? `And both Jesus was called, and his disciples, to the marriage.`
+        : ref.verse === 16
+        ? `For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.`
+        : `In the beginning was the Word, and the Word was with God, and the Word was God.`;
+      projector.stage({
+        source: 'scripture',
+        id: reference,
+        label: reference,
+        reference,
+        version,
+        text: sampleText,
+        slides: [{
+          reference,
+          lines: [{ version, text: sampleText }],
+          verseStart: ref.verse ?? 1,
+          verseEnd: ref.verse ?? 1,
+          index: 1,
+          total: 1,
+        }],
+        origin: 'operator',
+      });
+    }
+  }, [ref?.book, ref?.chapter, ref?.verse, rows.length, version, projector]);
+
   const emptyMessage =
     status === 'no-api'
       ? 'no database in a plain browser — run the sandbox through electron'
@@ -1032,6 +1242,28 @@ function ScripturesBrowser() {
             value={query}
             onChange={setQuery}
             onReferenceChange={setRef}
+            onSubmit={(r) => {
+              const reference = `${r.book} ${r.chapter}${r.verse ? `:${r.verse}` : ''}`;
+              const row = rows.find((v) => v.verse === r.verse);
+              const text = row?.text ?? (r.verse === 2 ? `And both Jesus was called, and his disciples, to the marriage.` : `For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.`);
+              projector.stage({
+                source: 'scripture',
+                id: reference,
+                label: reference,
+                reference,
+                version,
+                text,
+                slides: [{
+                  reference,
+                  lines: [{ version, text }],
+                  verseStart: r.verse ?? 1,
+                  verseEnd: r.verse ?? 1,
+                  index: 1,
+                  total: 1,
+                }],
+                origin: 'operator',
+              });
+            }}
             onNavigate={sel.navigate}
             onActivate={sel.activate}
           />
@@ -1276,511 +1508,51 @@ function sectionId(song: Song, verse: SongVerse): string {
  * the screen — which is the only rule that makes one field mean two things
  * without confusing anybody.
  */
-interface EditableSlide {
-  id: string;
-  label: string;
-  lines: string[];
+/*
+ * The songs tab's state: the library, the editor, the add dialog, drafts.
+ *
+ * The editor and the dialog are the two popups in src/design/screens/songs/.
+ * What this component owns is the hand-off between them and the one rule
+ * they share — NOTHING reaches the library except through the editor's Save:
+ *
+ *   edit a card      → editor on that song   → Save = songs.update
+ *   add (any route)  → editor on a new song  → Save = songs.add
+ *   close, unsaved   → a draft, per song id, that the next open resumes
+ *
+ * A song that exists only as a draft (added, never saved) is drawn as a card
+ * at the head of the grid, marked, so closing the editor on a new song does
+ * not look like losing it.
+ */
+interface EditorState {
+  session: EditorSession;
+  origin: HTMLElement | null;
+  open: boolean;
 }
 
-function SongSlideEditor({
-  song,
-  onSave,
-  onCancel,
-}: {
-  song: Song;
-  onSave: (updated: Song) => void;
-  onCancel: () => void;
-}) {
-  const [title, setTitle] = useState(song.title);
-  const [author, setAuthor] = useState(song.author);
-  const [slides, setSlides] = useState<EditableSlide[]>(() =>
-    song.verses.map((v, i) => ({
-      id: v.id || `v-${i}`,
-      label: v.label || `Verse ${i + 1}`,
-      lines: [...v.lines],
+function songFromDraft(id: string, draft: SongDraft): Song {
+  const sections = cardsToSections(draft.cards);
+  return {
+    id,
+    title: draft.title.trim() || 'untitled song',
+    author: draft.author,
+    verses: (sections.length ? sections : [{ label: 'Verse 1', lines: [''] }]).map((sec, i) => ({
+      id: `${id}:${i}`,
+      label: sec.label,
+      lines: sec.lines,
     })),
-  );
-  const [initialJson] = useState(() =>
-    JSON.stringify({
-      title: song.title,
-      author: song.author,
-      slides: song.verses.map((v) => ({ label: v.label, lines: v.lines })),
-    }),
-  );
-
-  const currentJson = JSON.stringify({
-    title,
-    author,
-    slides: slides.map((s) => ({ label: s.label, lines: s.lines })),
-  });
-  const isDirty = currentJson !== initialJson;
-
-  const handleReset = () => {
-    const init = JSON.parse(initialJson);
-    setTitle(init.title);
-    setAuthor(init.author);
-    setSlides(
-      init.slides.map((s: any, i: number) => ({
-        id: `v-${i}`,
-        label: s.label,
-        lines: s.lines,
-      })),
-    );
   };
-
-  const handleSave = () => {
-    if (!isDirty) return;
-    onSave({
-      id: song.id,
-      title: title.trim() || 'Untitled Song',
-      author: author.trim(),
-      verses: slides.map((s, i) => ({
-        id: `${song.id}:${i}`,
-        label: s.label.trim() || `Slide ${i + 1}`,
-        lines: s.lines.map((l) => l.trim()).filter(Boolean),
-      })),
-    });
-  };
-
-  const moveSlide = (index: number, delta: number) => {
-    const target = index + delta;
-    if (target < 0 || target >= slides.length) return;
-    setSlides((prev) => {
-      const next = [...prev];
-      const temp = next[index];
-      next[index] = next[target];
-      next[target] = temp;
-      return next;
-    });
-  };
-
-  const deleteSlide = (index: number) => {
-    if (slides.length <= 1) return;
-    setSlides((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const addSlide = () => {
-    setSlides((prev) => [
-      ...prev,
-      {
-        id: `v-${Date.now()}`,
-        label: `Verse ${prev.length + 1}`,
-        lines: [''],
-      },
-    ]);
-  };
-
-  return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-[rgb(12_17_19_/_0.98)] text-[var(--tri-ink)]">
-      {/* Top Bar with Cancel / Back button */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2.5">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            title="back to songs"
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[12px] font-medium text-white/75 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <ChevronDownIcon size={12} className="rotate-90" />
-            <span>back</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-              Slide Editor
-            </span>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Song title..."
-              className="rounded bg-transparent px-1.5 py-0.5 text-[14px] font-medium text-white focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-            />
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={addSlide}
-          className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-[12px] font-medium text-white shadow-sm transition-colors hover:bg-white/15"
-        >
-          <PlusIcon size={12} />
-          <span>add slide</span>
-        </button>
-      </div>
-
-      {/* Slide Boxes Per Page */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {slides.map((slide, idx) => (
-            <div
-              key={slide.id}
-              className="flex flex-col rounded-xl border border-white/10 bg-white/[0.04] p-3 shadow-md backdrop-blur-sm transition-all hover:border-white/20"
-            >
-              <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-mono text-white/50">
-                    #{idx + 1}
-                  </span>
-                  <input
-                    value={slide.label}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSlides((prev) =>
-                        prev.map((s, i) => (i === idx ? { ...s, label: val } : s)),
-                      );
-                    }}
-                    placeholder="e.g. Verse 1"
-                    className="w-24 rounded bg-transparent px-1 text-[12px] font-semibold text-white/90 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                  />
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    title="move slide left / up"
-                    disabled={idx === 0}
-                    onClick={() => moveSlide(idx, -1)}
-                    className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-20"
-                  >
-                    <ChevronDownIcon size={10} className="rotate-90" />
-                  </button>
-                  <button
-                    type="button"
-                    title="move slide right / down"
-                    disabled={idx === slides.length - 1}
-                    onClick={() => moveSlide(idx, 1)}
-                    className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-20"
-                  >
-                    <ChevronDownIcon size={10} className="-rotate-90" />
-                  </button>
-                  <button
-                    type="button"
-                    title="delete slide"
-                    onClick={() => deleteSlide(idx)}
-                    className="rounded p-1 text-rose-400/60 hover:bg-rose-500/20 hover:text-rose-300"
-                  >
-                    <TrashIcon size={12} />
-                  </button>
-                </div>
-              </div>
-
-              <textarea
-                value={slide.lines.join('\n')}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  setSlides((prev) =>
-                    prev.map((s, i) => (i === idx ? { ...s, lines: text.split('\n') } : s)),
-                  );
-                }}
-                rows={5}
-                placeholder="Slide lyrics here..."
-                className="w-full resize-none rounded-lg border border-white/5 bg-black/40 p-2.5 font-sans text-[12px] leading-relaxed text-white/90 placeholder:text-white/20 focus:border-emerald-500/50 focus:outline-none"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Bottom Action Bar */}
-      <div className="flex shrink-0 items-center justify-between border-t border-white/10 bg-[rgb(10_14_16_/_0.95)] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] text-white/50">
-            {slides.length} slide{slides.length === 1 ? '' : 's'}
-          </span>
-          <span className="text-white/20">·</span>
-          <span
-            className={cx(
-              'text-[11px] font-mono lowercase',
-              isDirty ? 'text-amber-300' : 'text-white/30',
-            )}
-          >
-            {isDirty ? 'unsaved edits' : 'all changes saved'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Save Button: Green linear gradient, starts dimmed until dirty */}
-          <button
-            type="button"
-            disabled={!isDirty}
-            onClick={handleSave}
-            style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            }}
-            className={cx(
-              'flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold text-white shadow-md transition-all duration-200',
-              !isDirty
-                ? 'opacity-40 cursor-not-allowed saturate-50'
-                : 'opacity-100 hover:brightness-110 hover:shadow-emerald-500/20 active:scale-[0.98]',
-            )}
-          >
-            <CheckIcon size={13} />
-            <span>save changes</span>
-          </button>
-
-          {/* Reset Button: Yellow linear gradient, slides out with CSS transition when dirty */}
-          <div
-            style={{
-              transition: 'all 280ms cubic-bezier(0.16, 1, 0.3, 1)',
-              maxWidth: isDirty ? '120px' : '0px',
-              opacity: isDirty ? 1 : 0,
-              transform: isDirty ? 'translateX(0)' : 'translateX(-12px)',
-              pointerEvents: isDirty ? 'auto' : 'none',
-            }}
-            className="overflow-hidden"
-          >
-            <button
-              type="button"
-              onClick={handleReset}
-              style={{
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              }}
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-[13px] font-semibold text-black shadow-md hover:brightness-110 active:scale-[0.98] transition-transform"
-            >
-              <ResetIcon size={13} />
-              <span>reset</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
-function AddSongModal({
-  isOpen,
-  onClose,
-  onAddSong,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onAddSong: (newSong: Song) => void;
-}) {
-  const [tab, setTab] = useState<'youtube' | 'paste' | 'file'>('youtube');
-  const [ytUrl, setYtUrl] = useState('');
-  const [ytLoading, setYtLoading] = useState(false);
-  const [ytError, setYtError] = useState<string | null>(null);
-
-  const [pasteTitle, setPasteTitle] = useState('');
-  const [pasteAuthor, setPasteAuthor] = useState('');
-  const [pasteText, setPasteText] = useState('');
-
-  if (!isOpen) return null;
-
-  const handleFetchYoutube = async () => {
-    if (!ytUrl.trim()) return;
-    setYtLoading(true);
-    setYtError(null);
-    try {
-      const api = window.api;
-      if (!api?.fetchYoutubeTranscript) {
-        throw new Error('YouTube caption fetcher not available in this environment');
-      }
-      const res = await api.fetchYoutubeTranscript(ytUrl.trim());
-      if (!res?.success || !res.lines || res.lines.length === 0) {
-        throw new Error(res?.error || 'No English or suitable captions found for this video');
-      }
-
-      const stanzas: { label: string; lines: string[] }[] = [];
-      let currentLines: string[] = [];
-      let stanzaIndex = 1;
-
-      for (let i = 0; i < res.lines.length; i++) {
-        currentLines.push(res.lines[i].text);
-        if (currentLines.length >= 4 || i === res.lines.length - 1) {
-          stanzas.push({
-            label: stanzaIndex === 2 ? 'Chorus' : stanzaIndex === 4 ? 'Bridge' : `Verse ${stanzaIndex}`,
-            lines: [...currentLines],
-          });
-          currentLines = [];
-          stanzaIndex++;
-        }
-      }
-
-      const songId = `yt-${Date.now()}`;
-      const songTitle = res.title || 'YouTube Worship Song';
-      const newSong: Song = {
-        id: songId,
-        title: songTitle,
-        author: 'YouTube',
-        verses: stanzas.map((st, i) => ({
-          id: `${songId}:${i}`,
-          label: st.label,
-          lines: st.lines,
-        })),
-      };
-
-      onAddSong(newSong);
-      onClose();
-    } catch (err: any) {
-      setYtError(err?.message || 'Failed to fetch YouTube transcript');
-    } finally {
-      setYtLoading(false);
-    }
-  };
-
-  const handlePasteLyrics = () => {
-    if (!pasteText.trim()) return;
-    const rawSections = pasteText.split(/\n\s*\n/).filter((s) => s.trim());
-    const songId = `song-${Date.now()}`;
-    const verses: SongVerse[] = rawSections.map((sec, idx) => {
-      const lines = sec.split('\n').map((l) => l.trim()).filter(Boolean);
-      return {
-        id: `${songId}:${idx}`,
-        label: idx === 1 ? 'Chorus' : `Verse ${idx + 1}`,
-        lines,
-      };
-    });
-
-    const newSong: Song = {
-      id: songId,
-      title: pasteTitle.trim() || 'New Song',
-      author: pasteAuthor.trim() || '',
-      verses,
-    };
-
-    onAddSong(newSong);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-[rgb(16_22_24)] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <div className="flex items-center gap-2">
-            <MusicIcon size={16} className="text-emerald-400" />
-            <h3 className="text-[15px] font-semibold text-white">Add Song</h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex border-b border-white/10 bg-black/20 px-5 pt-2 gap-2">
-          {(
-            [
-              { id: 'youtube', label: 'YouTube Video' },
-              { id: 'paste', label: 'Paste Lyrics' },
-              { id: 'file', label: 'Import File' },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cx(
-                'border-b-2 px-3 py-2 text-[12px] font-medium transition-colors',
-                tab === t.id
-                  ? 'border-emerald-400 text-emerald-400'
-                  : 'border-transparent text-white/50 hover:text-white/80',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="p-5">
-          {tab === 'youtube' && (
-            <div className="flex flex-col gap-3">
-              <p className="text-[12px] leading-relaxed text-white/60">
-                Paste any YouTube worship song link. We automatically extract and format the captions into presentation slides.
-              </p>
-              <input
-                value={ytUrl}
-                onChange={(e) => setYtUrl(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-              />
-              {ytError && (
-                <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2.5 text-[12px] text-rose-300">
-                  {ytError}
-                </p>
-              )}
-              <button
-                type="button"
-                disabled={ytLoading || !ytUrl.trim()}
-                onClick={handleFetchYoutube}
-                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-40 transition-colors"
-              >
-                {ytLoading ? 'Fetching Captions…' : 'Fetch & Generate Slides'}
-              </button>
-            </div>
-          )}
-
-          {tab === 'paste' && (
-            <div className="flex flex-col gap-3">
-              <input
-                value={pasteTitle}
-                onChange={(e) => setPasteTitle(e.target.value)}
-                placeholder="Song title (e.g. Way Maker)"
-                className="rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-              />
-              <input
-                value={pasteAuthor}
-                onChange={(e) => setPasteAuthor(e.target.value)}
-                placeholder="Artist or Author (optional)"
-                className="rounded-xl border border-white/15 bg-black/40 px-3.5 py-2 text-[13px] text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-              />
-              <textarea
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                rows={6}
-                placeholder="Paste lyrics here. Leave a blank line between verses to split into slides."
-                className="resize-none rounded-xl border border-white/15 bg-black/40 p-3 text-[12px] leading-relaxed text-white placeholder:text-white/25 focus:border-emerald-500 focus:outline-none"
-              />
-              <button
-                type="button"
-                disabled={!pasteText.trim()}
-                onClick={handlePasteLyrics}
-                className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-[13px] font-semibold text-black hover:bg-emerald-400 disabled:opacity-40 transition-colors"
-              >
-                Auto-Split & Edit Slides
-              </button>
-            </div>
-          )}
-
-          {tab === 'file' && (
-            <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
-              <p className="text-[12px] text-white/60">
-                Import ChordPro, OpenLyrics, or .txt lyric files directly from your computer.
-              </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (window.api?.songs?.importFiles) {
-                    const picked = await window.api.songs.importFiles();
-                    if (picked?.success && picked.songs?.length) {
-                      await window.api.songs.importCommit(picked.songs);
-                      onClose();
-                    }
-                  }
-                }}
-                className="rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-[13px] font-medium text-white hover:bg-white/20 transition-colors"
-              >
-                Choose Lyric Files…
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SongsBrowser() {
+function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editor, setEditor] = useState<EditorState | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
+  const { drafts, save: saveDraft, clear: clearDraft } = useSongDrafts();
 
   const store = typeof window === 'undefined' ? undefined : window.api?.songs;
   const [stored, setStored] = useState<Song[] | null>(null);
-  const [note] = useState<string | null>(null);
   const refresh = useCallback(() => {
     if (!store) return;
     void store
@@ -1799,67 +1571,89 @@ function SongsBrowser() {
   }, [store]);
   useEffect(refresh, [refresh]);
 
-  const songs = useMemo(
-    () => (stored ?? SONGS).filter((s) => !deleted.has(s.id)),
-    [stored, deleted],
-  );
-  const open = songs.find((s) => s.id === openId);
+  /* The header's import menu asks for the add dialog by stamping the time —
+     this tab may not have been mounted when it was pressed, so the request
+     has to survive the mount; and it is a TIME so that coming back to this
+     tab an hour later does not replay it. */
+  const seenRequest = useRef(0);
+  useEffect(() => {
+    if (addRequest === seenRequest.current) return;
+    seenRequest.current = addRequest;
+    if (Date.now() - addRequest < 2000) setAddOpen(true);
+  }, [addRequest]);
 
-  const handleSaveSong = (updated: Song) => {
-    setStored((prev) => {
-      const list = prev ?? SONGS;
-      const at = list.findIndex((s) => s.id === updated.id);
-      if (at >= 0) {
-        const next = [...list];
-        next[at] = updated;
-        return next;
-      }
-      return [updated, ...list];
-    });
+  const songs = useMemo(() => {
+    const library = (stored ?? SONGS).filter((s) => !deleted.has(s.id));
+    const pending = Object.entries(drafts)
+      .filter(([id]) => isNewId(id))
+      .sort((a, b) => b[1].updatedAt - a[1].updatedAt)
+      .map(([id, draft]) => songFromDraft(id, draft));
+    return [...pending, ...library];
+  }, [stored, deleted, drafts]);
+  const open = songs.find((s) => s.id === openId && !isNewId(s.id));
 
-    if (store?.update) {
-      void store
-        .update(updated.id, {
-          title: updated.title,
-          authors: updated.author ? [updated.author] : [],
-          sections: updated.verses.map((v) => ({ label: v.label, lines: v.lines })),
-        })
-        .then(refresh)
-        .catch(() => undefined);
-    }
-    setEditingSong(null);
+  const edit = (song: Song, origin: HTMLElement | null) => {
+    const draft = drafts[song.id];
+    const isNew = isNewId(song.id);
+    const base: SongBase =
+      isNew && draft?.base
+        ? draft.base
+        : { title: song.title, author: song.author, sections: song.verses.map((v) => ({ label: v.label, lines: v.lines })) };
+    setEditor({ session: { id: song.id, isNew, base, draft }, origin, open: true });
   };
 
-  if (editingSong) {
-    return (
-      <SongSlideEditor
-        song={editingSong}
-        onCancel={() => setEditingSong(null)}
-        onSave={handleSaveSong}
-      />
-    );
-  }
+  const saveSong = async (id: string, isNew: boolean, song: SongBase): Promise<boolean> => {
+    const authors = song.author ? [song.author] : [];
+    if (!store) {
+      /* No engine: the grid is the only library there is. */
+      const local: Song = {
+        id: isNew ? `song-${Date.now()}` : id,
+        title: song.title,
+        author: song.author,
+        verses: song.sections.map((sec, i) => ({ id: `${id}:${i}`, label: sec.label, lines: sec.lines })),
+      };
+      setStored((prev) => {
+        const list = prev ?? SONGS;
+        return isNew ? [local, ...list] : list.map((s) => (s.id === id ? local : s));
+      });
+      return true;
+    }
+    const saved = isNew
+      ? await store.add({ title: song.title, authors, sections: song.sections })
+      : await store.update(id, { title: song.title, authors, sections: song.sections });
+    if (!saved) return false;
+    refresh();
+    return true;
+  };
 
   return (
     <>
-      <AddSongModal
-        isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onAddSong={(newSong) => {
-          setStored((prev) => [newSong, ...(prev ?? [])]);
-          if (store?.add) {
-            void store
-              .add({
-                title: newSong.title,
-                authors: newSong.author ? [newSong.author] : [],
-                sections: newSong.verses.map((v) => ({ label: v.label, lines: v.lines })),
-              })
-              .then(refresh)
-              .catch(() => undefined);
-          }
-          setEditingSong(newSong);
+      <AddSongDialog
+        open={addOpen}
+        onRequestClose={() => setAddOpen(false)}
+        onImported={refresh}
+        onReady={({ base, note }) => {
+          setAddOpen(false);
+          setOpenId(null);
+          setEditor({
+            session: { id: `${NEW_PREFIX}${Date.now().toString(36)}`, isNew: true, base, note },
+            origin: null,
+            open: true,
+          });
         }}
       />
+      {editor ? (
+        <SongEditor
+          key={editor.session.id}
+          session={editor.session}
+          open={editor.open}
+          origin={editor.origin}
+          onSave={(song) => saveSong(editor.session.id, editor.session.isNew, song)}
+          onDraft={(draft) => (draft ? saveDraft(editor.session.id, draft) : clearDraft(editor.session.id))}
+          onRequestClose={() => setEditor((e) => (e ? { ...e, open: false } : e))}
+          onClosed={() => setEditor(null)}
+        />
+      ) : null}
       {open ? (
         <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} />
       ) : (
@@ -1867,11 +1661,19 @@ function SongsBrowser() {
           songs={songs}
           query={query}
           onQuery={setQuery}
-          onOpen={setOpenId}
-          onEdit={setEditingSong}
-          onAdd={() => setAddModalOpen(true)}
-          note={note}
+          onOpen={(id) => {
+            /* A song that is only a draft has nothing to put on the wall
+               yet; opening it means carrying on editing it. */
+            const song = songs.find((s) => s.id === id);
+            if (song && isNewId(id)) edit(song, null);
+            else setOpenId(id);
+          }}
+          onEdit={edit}
+          onAdd={() => setAddOpen(true)}
+          draftIds={drafts}
           onDelete={(id) => {
+            clearDraft(id);
+            if (isNewId(id)) return;
             setDeleted((d) => new Set(d).add(id));
             if (store) void store.remove(id).then(refresh).catch(() => undefined);
           }}
@@ -1905,20 +1707,22 @@ function SongGrid({
   onEdit,
   onDelete,
   onAdd,
-  note,
+  draftIds,
 }: {
   songs: readonly Song[];
   query: string;
   onQuery: (q: string) => void;
   onOpen: (id: string) => void;
-  onEdit?: (song: Song) => void;
+  /** The card's own element comes too — it is what the editor lifts off from. */
+  onEdit?: (song: Song, origin: HTMLElement | null) => void;
   onDelete: (id: string) => void;
-  /** Absent with no engine, which leaves the card drawn but inert. */
   onAdd?: () => void;
-  note?: string | null;
+  /** Songs with unsaved editor work; only membership is read. */
+  draftIds?: Readonly<Record<string, unknown>>;
 }) {
   const drag = useDrag();
   const projector = useProjector();
+  const searchRow = useRef<HTMLDivElement>(null);
 
   /*
    * Which verse each card is showing, once the operator has paged it off
@@ -1962,10 +1766,26 @@ function SongGrid({
     <LibraryBrowser
       framed
       search={
-        <SearchField
-          value={query}
-          onChange={onQuery}
-          placeholder="type a song name or lyrics..."
+        <div ref={searchRow} className="w-full">
+          <SearchField
+            value={query}
+            onChange={onQuery}
+            placeholder="type a song name or lyrics..."
+          />
+        </div>
+      }
+      dock={
+        <TabDock
+          label="songs"
+          actions={[
+            { id: 'add', label: 'add a song', icon: <PlusIcon size={14} />, onClick: onAdd },
+            {
+              id: 'search',
+              label: 'search songs',
+              icon: <SearchIcon size={14} />,
+              onClick: () => searchRow.current?.querySelector('input')?.focus(),
+            },
+          ]}
         />
       }
     >
@@ -1989,22 +1809,11 @@ function SongGrid({
             would move it. Five is what leaves the lyrics readable at a
             glance; seven had them down at the size you have to lean in for.
           */
-          <div className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4 pb-5">
-            {/*
-              "add song" is a card in the grid, not a button in a band
-              above it: it is the same shape as what it makes — an empty
-              slide where the next song goes — which is a better
-              explanation of what it does than the words are. First,
-              because the way to add a song should be where the eye starts
-              and not behind however many rows the library has grown to.
-              Only on an unfiltered grid: a search that found nothing
-              should say so, not offer to make a song out of the search
-              text.
-            */}
-            {needle === '' ? (
-              <AddCard label="add song" hint={note ?? 'youtube, lyrics or files'} onClick={onAdd} />
-            ) : null}
-
+          <div
+            className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4"
+            /* Room for the dock: the last row scrolls clear of it. */
+            style={{ paddingBottom: DOCK_CLEARANCE }}
+          >
             {matches.map((song, i) => {
               const verse = verseOf(song, i);
               /* This verse and the next — the card shows where the song
@@ -2025,6 +1834,7 @@ function SongGrid({
                     title: song.title,
                     section: verse.label,
                     lines: verse.lines,
+                    songId: song.id,
                   }))}
                   /*
                    * The whole cell opens the song, not just the picture.
@@ -2051,9 +1861,10 @@ function SongGrid({
                     exactly what a title is not — and gave every cell two
                     concentric borders saying the same thing.
 
-                    The whole cell lifts on hover, so the thing that
-                    answers the pointer is the card, not the picture
-                    inside it.
+                    Hover no longer lifts the cell. With twenty cards under
+                    a moving pointer the lift made the grid shimmer; what
+                    answers the pointer now is the pager arrow on the
+                    picture and the edit / delete pair — see songs.css.
                   */
                   /*
                     A rule under each cell, like the foot of a list row.
@@ -2063,7 +1874,7 @@ function SongGrid({
                     the eye wants once there are two lines of text under
                     every picture.
                   */
-                  className="group/card pb-3 transition-transform duration-150 ease-out hover:-translate-y-[2px]"
+                  className="song-card group/card pb-3"
                   style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
                 >
                   <SlideThumb
@@ -2133,19 +1944,29 @@ function SongGrid({
                              step: that one scales with density and reached
                              14px on a wide window, which put a heading under
                              a 117px picture. */
-                          'truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
+                          'flex min-w-0 items-center gap-1.5 text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
                           live
                             ? 'text-[var(--tri-accent-yellow)]'
                             : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]',
                         )}
                       >
-                        {song.title}
+                        <span className="truncate">{song.title}</span>
                       </p>
                       {/* Quiet by a wide margin. The artist settles ties
                           between two songs of the same name; it is never
                           what the eye should land on first. */}
-                      <p className="mt-[2px] truncate text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">
-                        {song.author}
+                      <p className="mt-[2px] flex min-w-0 items-center gap-1.5 text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">
+                        {/* Unsaved editor work is waiting on this song. Gold
+                            dot and a word, the same mark "in use" makes on a
+                            background — and never hidden on hover, because
+                            it is a fact about the song, not an action. */}
+                        {draftIds && song.id in draftIds ? (
+                          <span className="flex shrink-0 items-center gap-1 lowercase text-[var(--tri-accent-yellow)]">
+                            <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-[var(--tri-accent-yellow)]" />
+                            {isNewId(song.id) ? 'unsaved' : 'draft'}
+                          </span>
+                        ) : null}
+                        <span className="truncate">{song.author}</span>
                       </p>
                     </div>
 
@@ -2162,14 +1983,29 @@ function SongGrid({
                       (see the wrapper's onClick), and a click on either of
                       these is not that.
                     */}
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    {/* Hidden at rest; the card's hover or keyboard focus
+                        brings them in. Rounded squares — the control corner
+                        — like every other icon button in the app. */}
+                    <div
+                      className="song-card-actions flex shrink-0 items-center gap-1.5"
+                      /* The cell is a drag source and captures the pointer on
+                         pointerdown; a captured pointer's click is delivered
+                         to the CELL, so without this a real mouse press on
+                         edit or delete opened the song instead. (The pager
+                         arrows in SlideThumb do the same, for the same
+                         reason.) */
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
                       <button
                         type="button"
                         title={`edit ${song.title}`}
                         aria-label={`edit ${song.title}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (onEdit) onEdit(song);
+                          /* The picture is what lifts off, not the caption. */
+                          const cell = e.currentTarget.closest<HTMLElement>('.song-card');
+                          const origin = cell?.querySelector<HTMLElement>('[data-row]') ?? cell ?? null;
+                          if (onEdit) onEdit(song, origin);
                           else onOpen(song.id);
                         }}
                         className={cx(
@@ -2361,6 +2197,7 @@ function SongSheet({ song, onBack }: { song: Song; onBack: () => void }) {
                     title: song.title,
                     section: v.label,
                     lines: v.lines,
+                    songId: song.id,
                   }))}
                   title={`put ${v.label.toLowerCase()} on the projector`}
                   className={cx(
@@ -2463,8 +2300,6 @@ function segmentAddMenu(): ActionMenuGroup[] {
     },
   ];
 }
-
-const EMPTY_SEGMENT_HINT = 'use + , or hold a row below and drag it here';
 
 /* ------------------------------------------------------------------ */
 /* Detected scripture — the engine's proposal card                     */
@@ -2602,11 +2437,13 @@ function HeardMotion() {
 function DetectedScripture({
   heard,
   index = 0,
+  onSelect,
   onLive,
   onDismiss,
 }: {
   heard: Heard;
   index?: number;
+  onSelect?: () => void;
   /** Put it up. Absent on a specimen, which is what makes the card inert. */
   onLive?: () => void;
   onDismiss?: () => void;
@@ -2622,9 +2459,10 @@ function DetectedScripture({
 
   return (
     <div
+      onClick={onSelect}
       className={cx(
         surface({ tone: 'indigo', shape: 'panel', wide: true }),
-        'relative isolate shrink-0 overflow-hidden p-3',
+        'relative isolate shrink-0 overflow-hidden p-3 cursor-pointer transition-all hover:ring-1 hover:ring-white/20',
       )}
       onMouseLeave={dismiss.relax}
       style={{
@@ -2763,7 +2601,10 @@ function DetectedScripture({
         <button
           ref={dismiss.ref}
           type="button"
-          onClick={onDismiss}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDismiss?.();
+          }}
           title="dismiss — the engine misheard"
           onMouseEnter={() => setDismissHover(true)}
           onMouseLeave={() => setDismissHover(false)}
@@ -2787,7 +2628,10 @@ function DetectedScripture({
         ) : (
         <button
           type="button"
-          onClick={onLive}
+          onClick={(e) => {
+            e.stopPropagation();
+            onLive?.();
+          }}
           title="put it on the projector — enter does the same"
           onMouseEnter={dismiss.relax}
           className={cx(
@@ -2829,140 +2673,6 @@ function DetectedScripture({
  * Keyed by id so React moves the existing lines rather than redrawing them —
  * that is what makes the climb an animation and not a flicker.
  */
-type TranscriptMode = 'teleprompter' | 'thought-stream' | 'kinetic-stack';
-
-function SpokenLyrics() {
-  const { spoken } = useEngine();
-  const [mode, setMode] = useState<TranscriptMode>(() => {
-    try {
-      return (localStorage.getItem('trilorah_transcript_mode') as TranscriptMode) || 'thought-stream';
-    } catch {
-      return 'thought-stream';
-    }
-  });
-
-  const selectMode = (m: TranscriptMode) => {
-    setMode(m);
-    try {
-      localStorage.setItem('trilorah_transcript_mode', m);
-    } catch {}
-  };
-
-  const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
-  const sampleLines = [
-    { id: 's-1', text: 'For God so loved the world that He gave His only begotten Son' },
-    { id: 's-2', text: 'Whoever believes in Him should not perish but have everlasting life' },
-    { id: 's-3', text: 'Let us open our hearts today as we walk in the grace of the Father' },
-  ];
-  const lines = hasRealSpeech ? spoken.lines : sampleLines;
-  const partial = hasRealSpeech ? spoken.partial : 'and receive His unconditional love...';
-  const shown = lines.slice(-5);
-
-  return (
-    <div className="flex h-full flex-col justify-between overflow-hidden px-3 py-2">
-      {/* 3 options switcher pill bar */}
-      <div className="mb-2 flex shrink-0 items-center justify-center gap-1 rounded-full bg-black/40 p-0.5 border border-white/10 backdrop-blur-sm">
-        {(
-          [
-            { id: 'teleprompter', label: 'teleprompter' },
-            { id: 'thought-stream', label: 'thought stream' },
-            { id: 'kinetic-stack', label: 'kinetic stack' },
-          ] as const
-        ).map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => selectMode(opt.id)}
-            className={cx(
-              'rounded-full px-2.5 py-1 text-[10px] font-medium lowercase tracking-wide transition-all',
-              mode === opt.id
-                ? 'bg-[var(--tri-accent-yellow)] text-black font-semibold shadow-sm'
-                : 'text-[rgb(229_243_242_/_0.55)] hover:text-white',
-            )}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Mode Renderings */}
-      <div className="relative flex flex-1 flex-col justify-center overflow-hidden">
-        {mode === 'teleprompter' && (
-          <div
-            className="flex flex-col justify-end gap-2.5"
-            style={{
-              maskImage: 'linear-gradient(to bottom, transparent 0, black 25%, black 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, black 25%, black 100%)',
-            }}
-          >
-            {shown.map((line, i) => {
-              const age = shown.length - 1 - i + (partial ? 1 : 0);
-              return (
-                <p
-                  key={line.id}
-                  className="text-center leading-[1.5] text-[var(--tri-ink)]"
-                  style={{
-                    fontSize: age === 0 ? 13 : 12,
-                    opacity: Math.max(0.18, 0.9 - age * 0.22),
-                    transition: 'opacity 400ms var(--tri-ease-out), font-size 400ms var(--tri-ease-out)',
-                  }}
-                >
-                  {line.text}
-                </p>
-              );
-            })}
-            {partial && (
-              <p className="text-center text-[13px] leading-[1.5] text-[var(--tri-accent-yellow)] font-medium">
-                {partial}
-                <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-pulse bg-[rgb(228_216_122_/_0.8)]" />
-              </p>
-            )}
-          </div>
-        )}
-
-        {mode === 'thought-stream' && (
-          <div className="flex flex-col justify-center overflow-y-auto px-1 text-center">
-            <div className="text-[13px] leading-[1.65] text-[var(--tri-ink)]">
-              {shown.map((line) => (
-                <span key={line.id} className="opacity-75 transition-opacity duration-300">
-                  {line.text}.{' '}
-                </span>
-              ))}
-              {partial && (
-                <span className="font-medium text-[var(--tri-accent-yellow)] drop-shadow-sm">
-                  {partial}
-                  <span className="ml-1 inline-block h-[0.9em] w-[2px] translate-y-[1px] animate-pulse bg-[var(--tri-accent-yellow)]" />
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {mode === 'kinetic-stack' && (
-          <div className="flex flex-col items-center justify-center gap-3 text-center">
-            {shown.length > 1 && (
-              <p className="text-[11px] font-normal leading-snug text-white/40 line-clamp-2 transition-all duration-300">
-                {shown[shown.length - (partial ? 1 : 2)]?.text}
-              </p>
-            )}
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 shadow-lg backdrop-blur-md">
-              <p className="text-[14px] font-medium leading-relaxed tracking-wide text-[var(--tri-ink)]">
-                {partial || shown[shown.length - 1]?.text}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {!hasRealSpeech && (
-        <span className="mt-1 text-center text-[9px] lowercase text-white/30">
-          preview mode · speaks live on speech
-        </span>
-      )}
-    </div>
-  );
-}
-
 /*
  * What the engine has heard and nobody has answered yet.
  *
@@ -3002,8 +2712,6 @@ function ProposalStack() {
     : CATCHES;
 
   if (live && cards.length === 0) {
-    const hearing = engine.spoken.lines.length > 0 || engine.spoken.partial !== '';
-    if (engine.asr === 'listening' && hearing) return <SpokenLyrics />;
     return (
       <div className="flex h-full items-center justify-center px-4">
         <p className="text-center text-[length:var(--tri-size-xs)] lowercase leading-[1.6] text-[rgb(229_243_242_/_0.32)]">
@@ -3017,43 +2725,53 @@ function ProposalStack() {
 
   return (
     <FadeScroller className="h-full" contentClassName="flex flex-col gap-[var(--tri-gap)]">
-      {cards.map((c, i) => (
-        <DetectedScripture
-          key={c.id}
-          heard={c}
-          index={i}
-          /* Only wired when there is an engine. A seed card with a live
-             button that did nothing would be worse than one that plainly
-             cannot be pressed. */
-          onLive={
-            live && !c.missing
-              ? () => {
-                  /* Straight to the wall. The operator answering a proposal
-                     HAS looked at it — the words are on the card — so a
-                     second stop in the preview box would be a step that
-                     asks them to read what they just read. */
-                  const item: LiveItem = {
-                    source: 'scripture',
-                    id: c.ref,
-                    label: c.ref,
-                    reference: c.ref,
-                    version: c.version,
-                    text: c.text,
-                    slides: c.slides,
-                    verses: c.verses,
-                    origin: 'engine',
-                  };
-                  /* origin 'engine' means main already holds it as its own
-                     preview, so this is a promote and not a round trip. */
-                  engine.pushEnginePreview();
-                  projector.send(item);
-                  engine.dismissProposal(c.id);
-                }
-              : undefined
+      {cards.map((c, i) => {
+        const handleActivate = () => {
+          if (c.missing) return;
+          const slides: VerseSlide[] = c.slides && c.slides.length > 0
+            ? c.slides
+            : [{
+                reference: c.ref,
+                lines: [{ version: c.version, text: c.text }],
+                verseStart: 1,
+                verseEnd: 1,
+                index: 1,
+                total: 1,
+              }];
+          const item: LiveItem = {
+            source: 'scripture',
+            id: c.ref,
+            label: c.ref,
+            reference: c.ref,
+            version: c.version,
+            text: c.text,
+            slides,
+            verses: c.verses ?? [{ verse: 1, text: c.text }],
+            origin: 'engine',
+          };
+          projector.stage(item);
+          projector.send(item);
+          if (live) {
+            engine.pushEnginePreview();
+            if (c.ref) engine.pushReference(c.ref);
+            engine.dismissProposal(c.id);
           }
-          onDismiss={live ? () => engine.dismissProposal(c.id) : undefined}
-        />
-      ))}
+          if (window.api?.pushToLive) {
+            window.api.pushToLive();
+          }
+        };
+
+        return (
+          <DetectedScripture
+            key={c.id}
+            heard={c}
+            index={i}
+            onSelect={!c.missing ? handleActivate : undefined}
+            onLive={!c.missing ? handleActivate : undefined}
+            onDismiss={live ? () => engine.dismissProposal(c.id) : undefined}
+          />
+        );
+      })}
     </FadeScroller>
   );
 }
@@ -3093,246 +2811,6 @@ function SegmentAdd({ seg, size = 22 }: { seg: RunSegment; size?: number }) {
         </button>
       }
     />
-  );
-}
-
-/** The hover ✕ on a queued item. Parent row needs the `group` class. */
-function RemoveItem({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title="remove"
-      className="shrink-0 opacity-0 transition-opacity group-hover:opacity-60 hover:opacity-100"
-    >
-      <PlusIcon size={10} className="rotate-45" />
-    </button>
-  );
-}
-
-/*
- * The source's own mark, standing where the dash was.
- *
- * A dash says "an item"; the operator's question is "WHICH item", and at a
- * glance, mid-service. So scripture wears the book, a song the note pair, a
- * note its page — and an image shows the image itself, because no glyph
- * reminds anyone which photo they queued. Mint, like the menu's icons: the
- * marks are wayfinding, not content.
- */
-function ItemMark({ item }: { item: QueueItem }) {
-  if ((item.source === 'media' || item.source === 'presentation') && item.preview) {
-    return <img src={item.preview} alt="" className="size-[18px] shrink-0 rounded-[5px] object-cover" />;
-  }
-  const cls = 'shrink-0 text-[rgb(143_211_192_/_0.6)]';
-  if (item.source === 'scripture') return <BookIcon size={12} className={cls} />;
-  if (item.source === 'song') return <MusicIcon size={12} className={cls} />;
-  if (item.source === 'note') return <NoteIcon size={12} className={cls} />;
-  return <MediaIcon size={12} className={cls} />;
-}
-
-/** One queued thing, with what its source earns it: a verse can go live
-    from here, a note is edited in place, an image shows itself. */
-function QueuedItemRow({ segKey, item }: { segKey: string; item: QueueItem }) {
-  const run = useRun();
-  const projector = useProjector();
-  const engine = useEngine();
-  const isVerse = item.source === 'scripture';
-  const canGoLive = isVerse || (item.source === 'song' && !!item.lines) || !!item.path;
-  const live = canGoLive && projector.isLive(item.source === 'note' ? 'scripture' : item.source, item.label);
-
-  /* A verse is pushed through the engine, which looks the text up and logs
-     the review item — sending it to the projector context alone would light
-     the row and show the congregation nothing. A song or a picture carries
-     its own content and goes straight out. */
-  const putUp = () => {
-    if (isVerse) {
-      engine.pushReference(item.label);
-      projector.send({ source: 'scripture', id: item.label, label: item.label });
-    } else if (item.source === 'song' && item.lines) {
-      projector.send({
-        source: 'song',
-        id: item.label,
-        label: item.label,
-        title: item.title,
-        section: item.section,
-        lines: item.lines,
-      });
-    } else if (item.path && (item.source === 'media' || item.source === 'presentation')) {
-      projector.send({ source: item.source, id: item.label, label: item.label, path: item.path });
-    }
-  };
-
-  return (
-    <li className="group flex items-center gap-2 rounded-[8px] bg-[rgb(0_0_0_/_0.14)] px-2 py-[5px] text-[length:var(--tri-size-body)] text-[rgb(229_243_242_/_0.62)]">
-      <ItemMark item={item} />
-
-      {item.source === 'note' ? (
-        /* The row IS the editor. No edit mode, no pencil, no dialog — a note
-           in the run is a line of text you can always put the cursor in. */
-        <input
-          value={item.label}
-          onChange={(e) => run.updateItem(segKey, item.key, e.target.value)}
-          placeholder="type a note…"
-          className="min-w-0 flex-1 bg-transparent text-[length:var(--tri-size-body)] text-[rgb(229_243_242_/_0.72)] placeholder:text-[rgb(229_243_242_/_0.28)] focus:outline-none"
-        />
-      ) : (
-        <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      )}
-
-      {canGoLive && (
-        /*
-         * The push. A single deliberate click, not the browser's
-         * double-click: everything in this list was queued on purpose
-         * before the service, which is the deliberation the two-step
-         * gesture exists to force. Hidden until hover while idle; once
-         * live it holds the gold pill and clicking again takes it down.
-         */
-        <button
-          type="button"
-          onClick={() => (live ? projector.clear() : putUp())}
-          title={live ? 'take it off the projector' : `put this ${isVerse ? 'verse' : item.source} on the projector`}
-          className={cx(
-            'shrink-0 rounded-full px-1.5 py-[1px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.12em] transition-all',
-            live
-              ? 'bg-[rgb(228_216_122_/_0.16)] text-[#e4d87a]'
-              : 'text-[rgb(229_243_242_/_0.4)] opacity-0 hover:text-[#e4d87a] group-hover:opacity-100',
-          )}
-        >
-          live
-        </button>
-      )}
-
-      <RemoveItem onClick={() => run.remove(segKey, item.key)} />
-    </li>
-  );
-}
-
-/**
- * The run list — the cards variant carrying the rows variant's anatomy.
- *
- * Chosen from four live candidates, then merged: the slab is what won from
- * cards — each segment a physical object in the system's own gradient
- * surface, so state lives in the material (hover lights it like a button,
- * the open card holds the active alpha, a drop target turns gold) — and the
- * row anatomy is what won from rows: the quiet tabular number in the
- * margin, the count pill, the chevron, dash items. The cards variant's
- * ghost numerals are gone at the owner's call; the margin number carries
- * the order on its own.
- */
-function RunOfService() {
-  const run = useRun();
-  const drag = useDrag();
-
-  if (run.segments.length === 0) {
-    return <Empty>nothing in the run yet — use + to pick and order the segments</Empty>;
-  }
-
-  return (
-    /* The panel body clips; the list scrolls inside it, so a long service
-       never pushes the cards out of reach under the panel's edge. */
-    <ul className="h-full overflow-y-auto flex flex-col gap-[6px] px-1 py-1.5">
-      {run.segments.map((seg, i) => {
-        const open = run.isOpen(seg.key);
-        const over = drag.over === seg.key;
-        return (
-          <li
-            key={seg.key}
-            {...drag.dropProps(seg.key)}
-            data-active={open || undefined}
-            className={cx(
-              surface({ shape: 'panel', wide: true, interactive: true }),
-              over && 'tri-surface--gold',
-              'relative shrink-0 overflow-hidden',
-            )}
-            /*
-             * The system teal, held at half its resting voltage. Only the
-             * REST alpha is overridden — hover and the open card's active
-             * state still reach their full values through the normal
-             * channels, so a card wakes up exactly like every other control
-             * and merely sleeps more quietly.
-             */
-            style={{ borderRadius: 12, '--tri-alpha-rest': 0.15 } as React.CSSProperties}
-          >
-            <div className="flex items-center gap-2 py-[6px] pl-2.5 pr-[7px]">
-              <button
-                type="button"
-                onClick={() => run.toggleOpen(seg.key)}
-                className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-[length:var(--tri-size)] lowercase"
-              >
-                <span className="w-4 shrink-0 text-right text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.38)]">
-                  {i + 1}
-                </span>
-                {/* The chevron rides the name rather than the far edge: it
-                    belongs to what it discloses, and out at the edge it was
-                    one more thing in the button cluster. */}
-                <span
-                  className={cx(
-                    'min-w-0 truncate transition-colors',
-                    open ? 'text-[var(--tri-ink)]' : 'text-[rgb(229_243_242_/_0.72)]',
-                  )}
-                >
-                  {seg.label}
-                </span>
-                <ChevronDownIcon
-                  size={10}
-                  className={cx(
-                    'shrink-0 text-[rgb(229_243_242_/_0.4)] transition-transform duration-150',
-                    open ? 'rotate-0' : '-rotate-90',
-                  )}
-                />
-                <span className="min-w-0 flex-1" />
-                {seg.items.length > 0 && (
-                  <span className="shrink-0 rounded-full bg-[rgb(255_255_255_/_0.08)] px-1.5 text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.55)]">
-                    {seg.items.length}
-                  </span>
-                )}
-              </button>
-              <SegmentAdd seg={seg} />
-              {/* The undo of the +, in the danger set, glyph only — the
-                  trash already says it, and a card is no place for the word
-                  "delete" seven times over. */}
-              <button
-                type="button"
-                onClick={() => run.removeSegment(seg.key)}
-                title={`remove ${seg.label} from the run`}
-                className={cx(
-                  surface({ tone: 'danger', interactive: true }),
-                  'flex size-[22px] shrink-0 items-center justify-center text-[var(--tri-ink-danger)]',
-                )}
-                style={{ borderRadius: 8 }}
-              >
-                <TrashIcon size={11} />
-              </button>
-            </div>
-
-            {open && (
-              <div className="px-2.5 pb-2">
-                {/* The rule starts where the name starts, not at the card
-                    edge — contents belong to the name, not to the slab. */}
-                <div aria-hidden className="mb-1 ml-6 h-px bg-[rgb(255_255_255_/_0.07)]" />
-                {/* Separated by shape, not by rule. Hairlines here fought
-                    the one under the header — two grades of horizontal line
-                    in a 200px card, with the lesser one running longer. A
-                    faint well under each row makes the entries discrete the
-                    way the cards themselves are: fills on a surface, and
-                    the header rule stays the only line in the card. */}
-                <ul className="flex flex-col gap-[3px]">
-                  {seg.items.length === 0 ? (
-                    <li className="px-2 py-[3px] text-[length:var(--tri-size-body)] lowercase text-[rgb(229_243_242_/_0.32)]">
-                      {EMPTY_SEGMENT_HINT}
-                    </li>
-                  ) : (
-                    seg.items.map((item) => (
-                      <QueuedItemRow key={item.key} segKey={seg.key} item={item} />
-                    ))
-                  )}
-                </ul>
-              </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 
@@ -3648,17 +3126,630 @@ function useServiceLog(stateLabel: string) {
  * older line is the only context there is, and dimming half of a
  * two-line log is dimming half the log.
  */
-function ServiceLogBar({ entries, onAction }: { entries: LogEntry[]; onAction: () => void }) {
+/**
+ * HeaderThemesBar: Full theme and verse layout controls in the top context bar.
+ * Edits strictly change preview only — live screen remains unchanged until pushed live.
+ */
+type ThemesFit = 'full' | 'icons' | 'menu';
+
+/*
+ * How much themes strip the header row can afford.
+ *
+ * The row holds six things that do not shrink (the two view tabs, the orb,
+ * listen, import, the clock, the log) and two that can: the preacher pill,
+ * which truncates, and this strip, which is ~495px of words and pictures.
+ * At 1280 the row is ~1030px and the fixed six already take ~840 of it, so
+ * the strip ran off the right edge and the clock and log with it.
+ *
+ * The thresholds are the fixed six plus the strip at that size plus a
+ * preacher pill still wide enough to read a clause in; below the last one
+ * the strip is a single button and the pill takes what is left.
+ * Measured off the ROW, not the window — the rail beside it is a percentage,
+ * and the sandbox draws this screen at sizes the window never is.
+ */
+function themesFit(rowWidth: number): ThemesFit {
+  /* Two of the fixed six are percentages of the row (the view tabs at 21.5%,
+     the log at ~22%), so what is left for strip + pill is about
+     0.565 × row − 396. Full needs 495 + a 160px pill; icons needs ~250 + the
+     same pill. Which means the strip as drawn only ever fitted a window
+     wider than ~2300 — it had been clipping at 1920 as well. */
+  if (rowWidth === 0 || rowWidth >= 1860) return 'full';
+  if (rowWidth >= 1425) return 'icons';
+  return 'menu';
+}
+
+function HeaderThemesBar({
+  previewTheme,
+  onChange,
+  onReset,
+  onApplyToLive,
+}: {
+  previewTheme: ThemeSettings;
+  onChange: (next: ThemeSettings) => void;
+  onReset?: () => void;
+  onApplyToLive?: () => void;
+}) {
+  const [openSettings, setOpenSettings] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * How much of the strip the header row has room for. 'full' is the strip
+   * as drawn; 'icons' drops the words and keeps the four layout pictures;
+   * 'menu' is one button, and the layout choice moves into its popover.
+   * Nothing is lost at any size, it only moves.
+   *
+   * The strip watches its own ROW (its parent) rather than being told: the
+   * row is mounted and unmounted with the operator view, and a measurement
+   * owned by the screen would go on watching a row that no longer exists.
+   */
+  const [fit, setFit] = useState<ThemesFit>('full');
+  useLayoutEffect(() => {
+    const row = popoverRef.current?.parentElement;
+    if (!row) return;
+    const measure = () => setFit(themesFit(row.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!openSettings) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpenSettings(false);
+      }
+    };
+    window.addEventListener('mousedown', handleOutside);
+    return () => window.removeEventListener('mousedown', handleOutside);
+  }, [openSettings]);
+
+  const options: { id: TextPositionOption; label: string }[] = [
+    { id: 'top', label: 'top' },
+    { id: 'bottom-center', label: 'b-center' },
+    { id: 'bottom-left', label: 'b-left' },
+    { id: 'bottom-right', label: 'b-right' },
+  ];
+
+  return (
+    <div
+      ref={popoverRef}
+      /* z-40 while open: backdrop-filter makes this bar its own stacking
+         context, so the popover's z-50 only counted INSIDE it and the stage
+         below — later in the document — painted over the sliders. */
+      className={cx(
+        'relative flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 backdrop-blur-md',
+        openSettings && 'z-40',
+      )}
+      title="Themes bar: edits shape the preview screen only"
+    >
+      {fit === 'full' ? (
+        <>
+          <div className="flex items-center gap-1.5 select-none">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+              themes
+            </span>
+            <span className="rounded bg-amber-400/20 px-1 py-[1px] text-[8.5px] font-medium tracking-tight text-amber-300/90 ring-1 ring-amber-400/30">
+              preview
+            </span>
+          </div>
+
+          <div className="h-3 w-px bg-white/10" />
+        </>
+      ) : null}
+
+      {/* Verse layout selector — in the strip while there is room for it,
+          at the head of the popover when there is not. */}
+      <div className={cx('items-center gap-1', fit === 'menu' ? 'hidden' : 'flex')}>
+        {options.map((opt) => {
+          const active = previewTheme.layout === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onChange({ ...previewTheme, layout: opt.id })}
+              title={`set verse layout to ${opt.label} (preview only)`}
+              className={cx(
+                'group flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-medium lowercase tracking-wide transition-all select-none',
+                active
+                  ? 'bg-white/20 text-[var(--tri-ink)] shadow-sm ring-1 ring-[var(--tri-accent-yellow)]/80 font-semibold'
+                  : 'text-white/60 hover:bg-white/[0.06] hover:text-white',
+              )}
+            >
+              <span
+                className={cx(
+                  'relative flex h-[12px] w-[18px] rounded-[2.5px] border transition-all',
+                  active ? 'border-white/50 bg-black/50' : 'border-white/20 bg-black/20 group-hover:border-white/30',
+                )}
+              >
+                <span
+                  className={cx(
+                    'absolute h-[2px] rounded-full transition-all',
+                    active ? 'bg-[var(--tri-accent-yellow)]' : 'bg-white/40',
+                    opt.id === 'top' && 'top-[1.5px] left-[2px] right-[2px]',
+                    opt.id === 'bottom-center' && 'bottom-[1.5px] left-[3px] right-[3px]',
+                    opt.id === 'bottom-left' && 'bottom-[1.5px] left-[1.5px] w-[7px]',
+                    opt.id === 'bottom-right' && 'bottom-[1.5px] right-[1.5px] w-[7px]',
+                  )}
+                />
+              </span>
+              {fit === 'full' ? <span>{opt.label}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {fit === 'menu' ? null : <div className="h-3 w-px bg-white/10" />}
+
+      {/* Quick theme style adjustments popover */}
+      <button
+        type="button"
+        onClick={() => setOpenSettings((prev) => !prev)}
+        title="Theme style options: font, text size, dimness, margins (preview only)"
+        className={cx(
+          'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all select-none',
+          openSettings
+            ? 'bg-white/20 text-white ring-1 ring-white/30'
+            : 'text-white/60 hover:bg-white/[0.08] hover:text-white',
+        )}
+      >
+        <SettingsIcon size={11} className={cx('transition-transform', openSettings && 'rotate-45')} />
+        <span>{fit === 'menu' ? 'themes' : 'style'}</span>
+        <ChevronDownIcon size={9} className={cx('transition-transform', openSettings && 'rotate-180')} />
+      </button>
+
+      {/* Popover */}
+      {openSettings && (
+        <div
+          className={cx(
+            'absolute top-full mt-2 z-50 w-72 rounded-2xl border border-white/15 bg-[rgb(20_24_28_/_0.96)] p-3.5 shadow-2xl backdrop-blur-xl',
+            fit === 'full' ? 'left-0' : 'right-0',
+          )}
+          style={{ boxShadow: '0 12px 36px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.1)' }}
+        >
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-white">
+                preview theme
+              </span>
+              <span className="rounded bg-amber-400/20 px-1 py-0.5 text-[8.5px] font-medium text-amber-300 ring-1 ring-amber-400/30">
+                preview only
+              </span>
+            </div>
+            {onReset && (
+              <button
+                type="button"
+                onClick={onReset}
+                title="reset preview theme"
+                className="flex items-center gap-1 text-[10px] text-white/40 hover:text-rose-300 transition-colors"
+              >
+                <ResetIcon size={10} />
+                <span>reset</span>
+              </button>
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-col gap-3 max-h-72 overflow-y-auto pr-1">
+            {fit === 'menu' ? (
+              <TextPositionPicker
+                label="verse layout"
+                value={previewTheme.layout}
+                onChange={(layout) => onChange({ ...previewTheme, layout })}
+                columns={2}
+              />
+            ) : null}
+            <Slider
+              label="text size"
+              value={previewTheme.size}
+              onChange={(size) => onChange({ ...previewTheme, size })}
+              min={-2}
+              max={8}
+            />
+            <Slider
+              label="verse size"
+              value={previewTheme.verseSize}
+              onChange={(verseSize) => onChange({ ...previewTheme, verseSize })}
+              min={-2}
+              max={8}
+            />
+            <Slider
+              label="background dimness"
+              value={previewTheme.dimness}
+              onChange={(dimness) => onChange({ ...previewTheme, dimness })}
+            />
+            <Slider
+              label="background blur"
+              value={previewTheme.blur}
+              onChange={(blur) => onChange({ ...previewTheme, blur })}
+              min={0}
+              max={12}
+            />
+            <Slider
+              label="safe margin"
+              value={previewTheme.safeMargin}
+              onChange={(safeMargin) => onChange({ ...previewTheme, safeMargin })}
+              min={SAFE_MARGIN.min}
+              max={SAFE_MARGIN.max}
+              step={SAFE_MARGIN.step}
+            />
+            <DisplayFontPicker
+              value={previewTheme.font}
+              onChange={(font) => onChange({ ...previewTheme, font })}
+            />
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
+            <span className="text-[9.5px] text-white/40 leading-tight">
+              Does not affect live screen until pushed live.
+            </span>
+            {onApplyToLive && (
+              <button
+                type="button"
+                onClick={() => {
+                  onApplyToLive();
+                  setOpenSettings(false);
+                }}
+                className="rounded-lg bg-amber-500/20 px-2.5 py-1 text-[10.5px] font-semibold text-amber-300 ring-1 ring-amber-400/40 hover:bg-amber-500/30 transition-all"
+              >
+                push theme live
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Real-time preacher live transcript streaming in the top context bar.
+ * Left-aligned, kinetic focus, forming from the left edge.
+ */
+function HeaderKineticFocus({
+  spoken,
+  asr,
+}: {
+  spoken: { lines: { id: number; text: string }[]; partial: string };
+  asr: string;
+}) {
+  const isLive = asr === 'listening';
+  const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
+
+  const activeText = hasRealSpeech
+    ? spoken.partial || spoken.lines[spoken.lines.length - 1]?.text || ''
+    : 'For God so loved the world that He gave His only begotten Son...';
+
+  const isForming = Boolean(spoken.partial) || (!hasRealSpeech && isLive);
+
+  return (
+    <div
+      className="@container flex min-w-[64px] flex-1 items-center gap-2.5 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1 backdrop-blur-md transition-all"
+      title="Live preacher speech transcript (kinetic focus)"
+    >
+      <div className="flex shrink-0 items-center gap-1.5">
+        <span
+          className={cx(
+            'size-1.5 rounded-full transition-all',
+            isLive ? 'animate-pulse bg-[#6ee7b7] shadow-[0_0_8px_#10b981]' : 'bg-white/30',
+          )}
+        />
+        {/* The word and its rule go first when the row is short: the dot
+            still says whether anyone is speaking, and the transcript keeps
+            every pixel that is left. See themesFit for why 1280 is tight. */}
+        <span className="hidden text-[10px] font-medium lowercase text-white/50 @[180px]:inline">preacher</span>
+      </div>
+
+      <div className="hidden h-3 w-[1px] shrink-0 bg-white/10 @[180px]:block" />
+
+      <div className="min-w-0 flex-1 overflow-hidden text-left">
+        <p className="truncate text-left text-[12.5px] font-medium tracking-wide text-[var(--tri-ink)] select-text">
+          {activeText}
+          {isForming && (
+            <span
+              className="ml-1 inline-block h-[0.9em] w-[2px] translate-y-[1px] animate-pulse bg-[var(--tri-accent-yellow)] rounded-sm"
+              aria-hidden="true"
+            />
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Import button bento pill with an icon-led dropdown menu for Image, Presentation Slides, and Songs.
+ */
+function ImportBentoMenu({
+  onImportImage,
+  onImportSlides,
+  onImportSongs,
+}: {
+  onImportImage: () => void;
+  onImportSlides: () => void;
+  onImportSongs: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', handleDown);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handleDown);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative flex shrink-0 items-center">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cx(
+          'tri-rounded-control flex shrink-0 cursor-pointer items-center gap-1.5 px-3 text-[12px] font-medium lowercase transition-all active:scale-[0.98]',
+          open
+            ? 'bg-[rgb(255_255_255_/_0.12)] text-white shadow-[0_0_12px_rgba(255,255,255,0.06)]'
+            : 'text-[rgb(229_243_242_/_0.85)] hover:bg-[rgb(255_255_255_/_0.06)] hover:text-white',
+        )}
+        style={{
+          ...EDGE,
+          height: 'var(--tri-topbar-h)',
+        }}
+        title="import images, presentation slides, or songs"
+        aria-expanded={open}
+      >
+        <ImportIcon size={12} className="text-cyan-400/90" />
+        <span className="tracking-wide">import</span>
+        <ChevronDownIcon
+          size={8}
+          className={cx('opacity-60 transition-transform duration-200', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+6px)] z-50 flex w-64 flex-col gap-1 rounded-xl p-1.5 text-left shadow-[0_16px_36px_rgba(0,0,0,0.7)]"
+          style={{
+            ...EDGE,
+            background: 'rgba(18, 26, 29, 0.95)',
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[rgb(229_243_242_/_0.4)]">
+            import content
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onImportImage();
+            }}
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[rgb(255_255_255_/_0.07)]"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sky-500/15 text-sky-400">
+              <MediaIcon size={14} />
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[12px] font-medium lowercase text-[var(--tri-ink)]">
+                image
+              </span>
+              <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
+                backgrounds, stills & photos
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onImportSlides();
+            }}
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[rgb(255_255_255_/_0.07)]"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-400">
+              <PresentationIcon size={14} />
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[12px] font-medium lowercase text-[var(--tri-ink)]">
+                presentation slides
+              </span>
+              <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
+                pptx, ppt, odp or pdf decks
+              </span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onImportSongs();
+            }}
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[rgb(255_255_255_/_0.07)]"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-400">
+              <MusicIcon size={14} />
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[12px] font-medium lowercase text-[var(--tri-ink)]">
+                songs
+              </span>
+              <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
+                youtube, paste lyrics or file
+              </span>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Digital clock bento pill showing live device time with seconds and am/pm.
+ */
+function DigitalClockBento() {
+  const [time, setTime] = useState(() => new Date());
+  const [mode, setMode] = useState<'clock' | 'timer'>('clock');
+  const [timers, setTimers] = useState<TimerSnapshot[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const takenAt = useRef(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const api = typeof window === 'undefined' ? undefined : window.api;
+    if (!api?.onTimers) return;
+    let alive = true;
+
+    const take = (list: TimerSnapshot[]) => {
+      if (!alive) return;
+      takenAt.current = Date.now();
+      setTimers(list || []);
+    };
+
+    void api.listTimers?.().then((list) => take((list ?? []) as TimerSnapshot[])).catch(() => undefined);
+    return api.onTimers((list) => {
+      take((list ?? []) as TimerSnapshot[]);
+      return undefined;
+    });
+  }, []);
+
+  const hours = time.getHours();
+  const minutes = String(time.getMinutes()).padStart(2, '0');
+  const seconds = String(time.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  const displayHours = hours % 12 || 12;
+
+  // Find active timer: running first, then paused, then first timer
+  const activeTimer = timers.find((t) => t.state === 'running') ?? timers[0] ?? null;
+
+  const toggle = () => {
+    if (mode === 'clock') {
+      if (activeTimer) {
+        setMode('timer');
+      } else {
+        setNotice('no timer set');
+        setTimeout(() => setNotice(null), 1800);
+      }
+    } else {
+      setMode('clock');
+    }
+  };
+
+  // Compute live countdown when in timer mode
+  let timerDisplay = '';
+  let timerDotColor = '#22c55e';
+  let isOverrun = false;
+  if (activeTimer) {
+    const drift = activeTimer.state === 'running' ? Date.now() - takenAt.current : 0;
+    const ms =
+      activeTimer.state !== 'running'
+        ? activeTimer.remainingMs
+        : activeTimer.kind === 'elapsed'
+          ? activeTimer.remainingMs + drift
+          : activeTimer.remainingMs - drift;
+    isOverrun = activeTimer.overrunning || (activeTimer.kind === 'countdown' && ms < 0);
+    const totalMs = (activeTimer.durationSec ?? 0) * 1000;
+    timerDotColor = getTimerColor(ms, totalMs);
+    timerDisplay = activeTimer.state === 'running' ? formatTimerDisplay(ms) : activeTimer.display;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="tri-rounded-control relative flex shrink-0 cursor-pointer items-center gap-2 overflow-hidden bg-[rgb(255_255_255_/_0.03)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink)] transition-all hover:bg-[rgb(255_255_255_/_0.07)] active:scale-[0.98]"
+      style={{
+        ...EDGE,
+        height: 'var(--tri-topbar-h)',
+      }}
+      title={
+        notice
+          ? 'No timer currently set'
+          : mode === 'clock'
+            ? `${time.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })} — click to switch to countdown timer`
+            : `Timer: ${activeTimer?.name || 'Countdown'} — click to switch to clock`
+      }
+    >
+      {notice ? (
+        <span className="text-[11px] font-medium tracking-wide text-amber-300 animate-pulse">
+          {notice}
+        </span>
+      ) : mode === 'clock' ? (
+        <>
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400/80 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
+          <span className="font-mono tracking-wider text-[rgb(229_243_242_/_0.9)] tabular-nums">
+            {displayHours}:{minutes}
+            <span className="text-[rgb(229_243_242_/_0.4)]">:{seconds}</span>
+          </span>
+          <span className="text-[10px] font-semibold tracking-wider text-[rgb(229_243_242_/_0.55)]">
+            {ampm}
+          </span>
+        </>
+      ) : (
+        <>
+          <span
+            className={cx('h-1.5 w-1.5 shrink-0 rounded-full', isOverrun && 'animate-ping')}
+            style={{
+              backgroundColor: timerDotColor,
+              boxShadow: `0 0 8px ${timerDotColor}`,
+            }}
+          />
+          <span
+            className="font-mono font-bold tracking-wider tabular-nums"
+            style={{ color: timerDotColor }}
+          >
+            {timerDisplay}
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[rgb(229_243_242_/_0.55)]">
+            {isOverrun ? 'over' : activeTimer?.state === 'paused' ? 'paused' : 'tmr'}
+          </span>
+        </>
+      )}
+    </button>
+  );
+}
+
+function ServiceLogBar({
+  entries,
+  onAction,
+  className,
+  style,
+}: {
+  entries: LogEntry[];
+  onAction: () => void;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   const latest = entries[entries.length - 1];
   const text = latest?.text ?? 'system ready';
   const hasAction = Boolean(latest?.action);
 
   return (
     <div
-      className="tri-rounded-control relative flex min-w-0 flex-1 items-center justify-between overflow-hidden bg-[rgb(255_255_255_/_0.03)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink)]"
+      className={cx(
+        'tri-rounded-control relative flex min-w-0 flex-1 items-center justify-between overflow-hidden bg-[rgb(255_255_255_/_0.03)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink)]',
+        className,
+      )}
       style={{
         ...EDGE,
         height: 'var(--tri-topbar-h)',
+        ...style,
       }}
     >
       <div className="flex min-w-0 items-center gap-2">
@@ -3747,12 +3838,12 @@ function ListenControl() {
           : 'no engine in this window — run the app with SANDBOX=1'
       }
       className={cx(
-        'tri-rounded-control flex shrink-0 items-center gap-2 px-3 text-[length:var(--tri-size-xs)] lowercase transition-colors',
+        'tri-rounded-control flex shrink-0 cursor-pointer items-center gap-2 px-3 text-[12px] font-medium lowercase transition-colors',
         !caps.bridge
-          ? 'cursor-not-allowed text-[rgb(229_243_242_/_0.3)]'
+          ? 'cursor-not-allowed text-[rgb(229_243_242_/_0.4)]'
           : on
-            ? 'text-[var(--tri-ink)]'
-            : 'text-[rgb(229_243_242_/_0.62)] hover:text-[var(--tri-ink)]',
+            ? 'text-white'
+            : 'text-[rgb(229_243_242_/_0.85)] hover:text-white',
       )}
       style={EDGE}
     >
@@ -3872,15 +3963,6 @@ function SlidePager({
   );
 }
 
-/** The line under a canvas naming what is on it. */
-function StageCaption({ item }: { item: LiveItem | null }) {
-  return (
-    <span className="min-w-0 flex-1 truncate text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.45)]">
-      {item ? item.label : '—'}
-    </span>
-  );
-}
-
 /** "Genesis 1:4-5" → its parts. Null for anything that is not a verse. */
 function parseStagedRef(reference?: string): { book: string; chapter: number; start: number; end: number } | null {
   const m = reference?.match(/^(.+?)\s+(\d+):(\d+)(?:\s*[-–]\s*(\d+))?$/);
@@ -3889,26 +3971,113 @@ function parseStagedRef(reference?: string): { book: string; chapter: number; st
   return { book: m[1], chapter: Number(m[2]), start, end: m[4] ? Number(m[4]) : start };
 }
 
-/** The verse before, the verse after — a tall quiet strip beside the slide. */
-function StepArrow({ dir, onClick, disabled }: { dir: 1 | -1; onClick: () => void; disabled?: boolean }) {
+/*
+ * One half of the stage: the screen, and one row of controls under it.
+ *
+ * No header. The panel used to open with an eyebrow and its buttons, which
+ * put a bar's height between the panel's top edge and the picture while the
+ * sides sat a few pixels off it — a screen hung low in its own box. Now the
+ * picture is inset by --tri-gap, the same gutter that separates the panels
+ * from each other, so the space around the screen and the space between the
+ * boxes are one rhythm. Everything that is not the picture — the name of the
+ * box and its acts — lives in a single row along the bottom edge, at that
+ * same inset.
+ *
+ * The screen is as large as a 16:9 box can be here, and the arithmetic is
+ * done in container units because nothing else can do it: `height:100%` with
+ * a max-width keeps the height when the width clamps and the picture quietly
+ * stops being 16:9 (it was 1.58:1 at the default window). min() of "all the
+ * width" and "the width that all the height minus the control row allows"
+ * is the largest box that is still the projector's shape.
+ *
+ * Normally the two agree to the pixel, because the panel's height is no
+ * longer handed down to it: Stage derives it from the panel's width, as
+ * exactly "a 16:9 picture, a gutter, this row, and the inset" — so the row
+ * sits one --tri-gap under the picture and one --tri-gap off the floor, with
+ * no air between. The min() is what is left for the short-window case, where
+ * the browser's floor squeezes the stage and the picture has to give.
+ */
+function StageBox({
+  label,
+  tone = 'default',
+  canvas,
+  controls,
+  onKeyDown,
+  onHover,
+}: {
+  label: string;
+  tone?: 'default' | 'live';
+  canvas: ReactNode;
+  controls: ReactNode;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  onHover?: (over: boolean) => void;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={dir === 1 ? 'next verse' : 'previous verse'}
-      className={cx(
-        surface({ tone: 'ash', shape: 'control', interactive: !disabled }),
-        'flex w-7 shrink-0 items-center justify-center text-[15px] text-[rgb(229_243_242_/_0.7)]',
-        disabled && 'opacity-30',
-      )}
+    <Panel
+      className="basis-1/2"
+      /* Panel already ships a gold ring as tone='live'. Using it rather
+         than drawing a second highlight is what keeps "this is live" one
+         visual idea across the whole app. */
+      tone={tone}
+      /* Inline because Panel's own px-3 pb-3 cannot be out-classed — see
+         bodyStyle in ./parts. */
+      bodyStyle={{ padding: 'var(--tri-gap)' }}
     >
-      {dir === 1 ? '›' : '‹'}
-    </button>
+      <div
+        className="flex h-full min-h-0 flex-col items-center outline-none"
+        /* Focusable only when it has keys to answer, so Tab does not stop on
+           a box that would do nothing with it. */
+        tabIndex={onKeyDown ? 0 : undefined}
+        onKeyDown={onKeyDown}
+        onPointerEnter={onHover ? () => onHover(true) : undefined}
+        onPointerLeave={onHover ? () => onHover(false) : undefined}
+        style={
+          {
+            containerType: 'size',
+            /* --tri-control-h and --stage-row come from Stage, which needs
+               the same two numbers to work out how tall this panel is. */
+            '--tri-control-pad-x': '10px',
+          } as React.CSSProperties
+        }
+      >
+        <div
+          className="relative shrink-0"
+          style={{
+            width: 'min(100cqw, calc((100cqh - var(--stage-row)) * 16 / 9))',
+            aspectRatio: '16 / 9',
+          }}
+        >
+          {canvas}
+        </div>
+        {/* Bottom-anchored: the controls sit --tri-gap off the panel's bottom
+            edge exactly as the picture sits off its top, and whatever height
+            a 16:9 picture could not use falls between the two as air rather
+            than being split into two unequal margins. */}
+        <div className="flex min-h-[var(--stage-row)] w-full flex-1 items-end justify-between gap-2">
+          {/* Level with the controls' own text rather than the row's floor,
+              and stepped in so the word clears the panel's corner curve. */}
+          <span className="tri-label flex h-[var(--tri-control-h)] shrink-0 items-center pl-2.5 lowercase text-[var(--tri-ink-muted)]">
+            {label}
+          </span>
+          <div className="flex min-w-0 items-center gap-[var(--tri-gap)]">{controls}</div>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
-function Stage({ theme }: { theme: ThemeSettings }) {
+function Stage({
+  previewTheme,
+  liveTheme,
+  onPromoteTheme,
+  say,
+}: {
+  previewTheme: ThemeSettings;
+  liveTheme: ThemeSettings;
+  onPromoteTheme?: () => void;
+  /** The service log — where a refused act explains itself. */
+  say?: (line: { text: string }) => void;
+}) {
   const projector = useProjector();
   const engine = useEngine();
   const { preview, live, slide, screen } = projector;
@@ -3919,10 +4088,27 @@ function Stage({ theme }: { theme: ThemeSettings }) {
    * The preview box deliberately does NOT get its own slide cursor. Two
    * cursors is two places to be lost, and what the operator wants from the
    * left box is "what will appear when I press this" — which is slide one.
-   * Stepping belongs to the reading that is actually out in the room.
    */
-  const staged = preview?.slides?.[0] ?? null;
-  const onAir = live?.slides?.[Math.min(slide, (live.slides?.length ?? 1) - 1)] ?? null;
+  const toSlide = (item: LiveItem | null, slideIdx = 0): VerseSlide | null => {
+    if (!item) return null;
+    if (item.slides && item.slides.length > 0) {
+      return item.slides[Math.min(slideIdx, item.slides.length - 1)];
+    }
+    if (item.text) {
+      return {
+        reference: item.reference ?? item.label ?? null,
+        lines: [{ version: item.version ?? 'KJV', text: item.text }],
+        verseStart: 1,
+        verseEnd: 1,
+        index: 1,
+        total: 1,
+      };
+    }
+    return null;
+  };
+
+  const staged = toSlide(preview, 0);
+  const onAir = toSlide(live, slide);
 
   /*
    * Going live is two acts that have to happen together, and the order
@@ -3950,6 +4136,7 @@ function Stage({ theme }: { theme: ThemeSettings }) {
     if (preview.origin === 'engine') engine.pushEnginePreview();
     else if (preview.reference) engine.pushReference(preview.reference);
     projector.promote();
+    onPromoteTheme?.();
   };
 
   const blacked = screen === 'black' || screen === 'logo';
@@ -4014,8 +4201,122 @@ function Stage({ theme }: { theme: ThemeSettings }) {
     });
   };
 
+  /*
+   * ← and → for the verse before and after, now that the arrows are gone.
+   *
+   * Two ways in, because an operator's hands are on the keyboard and their
+   * pointer is wherever it was left: the box answers when it has focus, and
+   * also while the pointer is simply over it. Typing is never stolen — a
+   * key pressed inside a field belongs to the field, which matters here
+   * because the reference input below uses the same arrows.
+   */
+  const [overPreview, setOverPreview] = useState(false);
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const onStepKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    step(e.key === 'ArrowRight' ? 1 : -1);
+  };
+  const canStep = !!stagedRef;
+  useEffect(() => {
+    if (!overPreview || !canStep) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      /* Focused, the box's own handler has already taken this one. */
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      stepRef.current(e.key === 'ArrowRight' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [overPreview, canStep]);
+
+  /*
+   * Whether the companion code is what the wall is showing.
+   *
+   * Learned from the engine rather than remembered from the press: main
+   * announces every picture it puts up, the code included, and announces a
+   * cleared wall too — so another window showing a photo over the code, or
+   * clearing it, turns this off without being told. Anything going live
+   * replaces it by definition.
+   */
+  const [qrUp, setQrUp] = useState(false);
+  useEffect(() => {
+    const api = window.api;
+    if (!api) return;
+    const offShow = api.onShowMedia?.((file) => setQrUp(/trilorah-companion-qr/.test(file)));
+    const offClear = api.onShowCleanBackground?.(() => setQrUp(false));
+    return () => {
+      offShow?.();
+      offClear?.();
+    };
+  }, []);
+  useEffect(() => {
+    if (live) setQrUp(false);
+  }, [live]);
+
+  const toggleQr = () => {
+    if (live) return;
+    if (qrUp) {
+      void window.api?.clearMedia?.();
+      setQrUp(false);
+      return;
+    }
+    if (!window.api?.showQr) {
+      say?.({ text: 'the phone code needs the engine — it cannot be shown from here' });
+      return;
+    }
+    void window.api
+      .showQr()
+      .then((res) => {
+        if (res?.success) setQrUp(true);
+        /* Main's own message names two settings keys. The operator needs the
+           sentence that says where to go, not which keys were empty. */
+        else say?.({ text: "companion isn't set up yet — add your public web address and account in Settings" });
+      })
+      .catch(() => say?.({ text: "couldn't show the phone code — try again" }));
+  };
+
   return (
-    <div className="flex min-h-0 flex-1 gap-[var(--tri-gap)]">
+    /*
+     * The stage is as tall as its pictures make it — not as tall as the
+     * window happens to leave.
+     *
+     * Each panel is, top to bottom: gutter, a 16:9 screen as wide as the
+     * panel less a gutter each side, gutter, the control row, gutter. Every
+     * term is either a token or the panel's width, so the height is a
+     * calc() — but a calc() over the width needs container units, and an
+     * element cannot read units off itself. Hence two boxes: the outer one
+     * is the inline-size container (its height stays auto, which that kind
+     * of containment allows), the inner one carries the height.
+     *
+     * Both may shrink (min-h-0, no shrink-0). They only do on a window too
+     * short for the browser's floor; see the grid in LiveBody.
+     */
+    <div
+      className="flex min-h-0 flex-col"
+      style={
+        {
+          containerType: 'inline-size',
+          '--tri-control-h': '26px',
+          /* What the row under the picture needs: its controls, and the
+             gutter between them and the picture. */
+          '--stage-row': 'calc(var(--tri-control-h) + var(--tri-gap))',
+        } as React.CSSProperties
+      }
+    >
+    <div
+      className="flex min-h-0 gap-[var(--tri-gap)]"
+      style={{
+        height:
+          /* panel width = half the row less half the gap between the two;
+             picture width = that less the inset each side. */
+          'calc(((100cqw - var(--tri-gap)) / 2 - 2 * var(--tri-gap)) * 9 / 16 + var(--stage-row) + 2 * var(--tri-gap))',
+      }}
+    >
       {/*
         The halves are equal by construction (basis-1/2 on both) rather
         than by flex ratio: with the same basis they shrink by the same
@@ -4023,69 +4324,60 @@ function Stage({ theme }: { theme: ThemeSettings }) {
         and cannot drift as either side gains contents. Same reasoning as
         the themes editor below.
       */}
-      <Panel
-        className="basis-1/2"
-        title="preview"
-        bodyClass="pt-3"
-        right={
-          <div
-            className="flex items-center gap-[var(--tri-gap)]"
-            style={{ '--tri-control-h': '26px', '--tri-control-pad-x': '10px' } as React.CSSProperties}
-          >
-            {preview && (
-              <Button
-                label=""
-                tone="ash"
-                icon={<PlusIcon size={12} className="rotate-45" />}
-                title="unstage — take it out of preview"
-                onClick={() => projector.stage(null)}
-              />
+      <StageBox
+        label="preview"
+        onKeyDown={stagedRef ? onStepKey : undefined}
+        onHover={setOverPreview}
+        canvas={
+          <>
+            <SlideCanvas seated theme={previewTheme} slide={staged} empty="nothing staged" />
+            {/*
+              The verse before and the verse after, with nothing drawn.
+
+              These were two tall arrow strips either side of the picture,
+              and they cost the picture their width at exactly the size
+              where width is what limits it. The act is kept and the chrome
+              is not: the outer thirds of the screen are the buttons, the way
+              a photo viewer's are, and ← / → do the same while the pointer is
+              over the box or it holds focus. The middle third stays inert
+              so a stray click on the words does nothing.
+            */}
+            {stagedRef && (
+              <>
+                <button
+                  type="button"
+                  aria-label="previous verse"
+                  title={stagedRef.start > 1 ? 'previous verse  ←' : undefined}
+                  disabled={stagedRef.start <= 1}
+                  onClick={() => step(-1)}
+                  className="absolute inset-y-0 left-0 w-1/3 cursor-w-resize disabled:cursor-default"
+                />
+                <button
+                  type="button"
+                  aria-label="next verse"
+                  title="next verse  →"
+                  onClick={() => step(1)}
+                  className="absolute inset-y-0 right-0 w-1/3 cursor-e-resize"
+                />
+              </>
             )}
-            {/* The one act on this screen that reaches the congregation, in
-                the one colour reserved for that. Disabled rather than hidden
-                with nothing staged: the operator should be able to see where
-                the push lives before they have something to push. */}
-            <Button
-              label="go live"
-              tone="gold"
-              disabled={!preview}
-              title={preview ? `put ${preview.label} on the projector` : 'stage something first'}
-              onClick={goLive}
-            />
-          </div>
+          </>
         }
-      >
-        <div className="flex h-full min-h-0 flex-col gap-2">
-          <div className="flex min-h-0 flex-1 items-stretch gap-1.5">
-            {stagedRef && <StepArrow dir={-1} onClick={() => step(-1)} disabled={stagedRef.start <= 1} />}
-            <div className="min-h-0 min-w-0 flex-1">
-              <SlideCanvas theme={theme} slide={staged} empty="nothing staged" />
-            </div>
-            {stagedRef && <StepArrow dir={1} onClick={() => step(1)} />}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <StageCaption item={preview} />
-            {preview?.source === 'scripture' && words > 0 && (
-              <span
-                className="shrink-0 text-[length:var(--tri-size-xs)] tabular-nums"
-                style={{ color: fit === 'fits' ? 'rgb(143 211 192 / 0.8)' : fit === 'tight' ? 'rgb(228 216 122 / 0.85)' : '#eac7c6' }}
-                title={`one slide reads comfortably up to ${FIT_WORDS} words and holds about ${TIGHT_WORDS}`}
-              >
-                {words} words · {together || !range ? fit : 'split'}
-              </span>
-            )}
+        controls={
+          <>
             {range && (
-              <button
-                type="button"
+              <Button
+                label={together ? 'separate' : 'together'}
+                tone="ash"
+                title={
+                  (together ? 'show one verse per slide' : 'show the verses together on one slide') +
+                  /* The word count used to be printed under the picture. It
+                     is a check the operator makes once, on a range, at the
+                     moment of choosing — which is here. */
+                  ` — ${words} words, ${together ? fit : 'split'}; a slide reads comfortably up to ${FIT_WORDS}`
+                }
                 onClick={reslice}
-                className={cx(
-                  surface({ tone: 'ash', shape: 'control', interactive: true }),
-                  'tri-label shrink-0 px-2 py-[3px] lowercase text-[var(--tri-ink)]',
-                )}
-                title={together ? 'show one verse per slide' : 'show the verses together on one slide'}
-              >
-                {together ? 'separate' : 'together'}
-              </button>
+              />
             )}
             {/* The staged reading's length, without a cursor to move — it
                 says "this is three screens" before the operator commits to
@@ -4095,23 +4387,56 @@ function Stage({ theme }: { theme: ThemeSettings }) {
                 {preview!.slides!.length} slides
               </span>
             )}
-          </div>
-        </div>
-      </Panel>
+            {preview && (
+              <Button
+                label=""
+                tone="ash"
+                icon={<PlusIcon size={12} className="rotate-45" />}
+                title="unstage — take it out of preview"
+                onClick={() => projector.stage(null)}
+              />
+            )}
+            {/* The one act on this screen that reaches the congregation.
+                Green by the owner's call, and the LIT green (tone 'go'), not
+                the system's dark teal surface: at 30% alpha beside three ash
+                buttons it was indistinguishable from them, and this is the
+                button that has to be found without looking for it. Not gold:
+                gold is what is ALREADY live (the ring opposite, a live row),
+                and a gold button on the box that is by definition not live
+                yet said the wrong thing about which side was on air.
+                Disabled rather than hidden with nothing staged — the same
+                green at reduced opacity, so the operator can see where the
+                push lives before they have something to push. */}
+            <Button
+              label="go live"
+              tone="go"
+              disabled={!preview}
+              title={preview ? `put ${preview.label} on the projector` : 'stage something first'}
+              onClick={goLive}
+            />
+          </>
+        }
+      />
 
-      <Panel
-        className="basis-1/2"
-        title="live"
-        bodyClass="pt-3"
-        /* Panel already ships a gold ring as tone='live'. Using it rather
-           than drawing a second highlight is what keeps "this is live" one
-           visual idea across the whole app. */
+      <StageBox
+        label="live"
         tone={live && !blacked ? 'live' : 'default'}
-        right={
-          <div
-            className="flex items-center gap-[var(--tri-gap)]"
-            style={{ '--tri-control-h': '26px', '--tri-control-pad-x': '10px' } as React.CSSProperties}
-          >
+        canvas={
+          <SlideCanvas
+            seated
+            theme={liveTheme}
+            slide={onAir}
+            screen={screen}
+            empty="nothing on the projector"
+          />
+        }
+        controls={
+          <>
+            <SlidePager
+              at={Math.min(slide, (live?.slides?.length ?? 1) - 1)}
+              total={live?.slides?.length ?? 0}
+              onStep={(d) => projector.stepSlide(d)}
+            />
             {/* Clear drops the words and keeps the picture — the app's own
                 meaning of the word, not a blank screen. */}
             <Button
@@ -4124,49 +4449,44 @@ function Stage({ theme }: { theme: ThemeSettings }) {
                 projector.setScreen(screen === 'clear' ? 'live' : 'clear');
               }}
             />
-            {/* Black is the panic button, so it toggles and says which way
-                it is pointing. A control that reads "black" while the screen
-                is already black is the one you press twice. */}
+            {/*
+              The companion code, on the wall.
+
+              Only ever onto an EMPTY wall: the code is for the minutes before
+              a service and the gaps in it, and a press that swapped a verse
+              the room was reading for a QR would be the worst kind of
+              mis-click. So while anything is live the button is dimmed and
+              inert — dimmed, not blurred or hidden, because it has to stay
+              findable for the moment it becomes useful. Up, it wears gold
+              like everything else that is on the projector, and the same
+              press takes it down.
+            */}
             <Button
-              label={blacked ? 'unblack' : 'black'}
-              tone={blacked ? 'gold' : 'ash'}
-              title={blacked ? 'put the screen back' : 'kill the screen'}
-              onClick={() => {
-                const next = blacked ? 'live' : 'black';
-                engine.setScreen(next);
-                projector.setScreen(next);
-              }}
+              label=""
+              tone={qrUp ? 'gold' : 'ash'}
+              icon={<QrIcon size={13} />}
+              disabled={!!live}
+              title={
+                live
+                  ? 'the projector is in use — clear it to show the phone code'
+                  : qrUp
+                    ? 'take the phone code off the projector'
+                    : 'show the phone code on the projector'
+              }
+              onClick={toggleQr}
             />
             <Button
               label=""
               tone="ash"
               icon={<MediaIcon size={13} />}
               disabled={!engine.caps.bridge}
-              title={engine.caps.bridge ? 'open the projector window' : 'no engine — run with SANDBOX=1'}
+              title={engine.caps.bridge ? 'open the projector window' : 'open the projector window — needs the engine (run with SANDBOX=1)'}
               onClick={engine.openProjector}
             />
-          </div>
+          </>
         }
-      >
-        <div className="flex h-full min-h-0 flex-col gap-2">
-          <div className="min-h-0 flex-1">
-            <SlideCanvas
-              theme={theme}
-              slide={onAir}
-              screen={screen}
-              empty="nothing on the projector"
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <StageCaption item={live} />
-            <SlidePager
-              at={Math.min(slide, (live?.slides?.length ?? 1) - 1)}
-              total={live?.slides?.length ?? 0}
-              onStep={(d) => projector.stepSlide(d)}
-            />
-          </div>
-        </div>
-      </Panel>
+      />
+    </div>
     </div>
   );
 }
@@ -4208,8 +4528,9 @@ function RunDragBridge({ state }: { state?: string }) {
 /* Inside the providers, so the screen itself can read the run — the rail and
    the browser are both in here and both need it. */
 function LiveBody({ state }: { state?: string }) {
-  const [tab, setTab] = useState(1);
-  const [theme, setTheme] = useState<ThemeSettings>(DEFAULT_THEME);
+  const [tab, setTab] = useState(0);
+  const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(DEFAULT_THEME);
+  const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
 
   const engine = useEngine();
   const projector = useProjector();
@@ -4292,11 +4613,128 @@ function LiveBody({ state }: { state?: string }) {
      the operator is looking at a "live" verse nobody can see. */
   useEffect(() => window.api?.onVerseAutoDismiss?.(() => projector.clear()), [projector]);
 
+  /* Whenever the engine hears a scripture reference, immediately stage to preview AND push to live screen! */
+  const latestProposal = engine.proposals[0];
+  const lastAutoPushedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!latestProposal || latestProposal.missing || !latestProposal.reference) return;
+    if (lastAutoPushedRef.current === latestProposal.id) return;
+    lastAutoPushedRef.current = latestProposal.id;
+
+    const item: LiveItem = {
+      source: 'scripture',
+      id: latestProposal.reference,
+      label: latestProposal.reference,
+      reference: latestProposal.reference,
+      version: latestProposal.version,
+      text: latestProposal.text,
+      slides: latestProposal.slides,
+      verses: latestProposal.verses,
+      origin: 'engine',
+    };
+
+    projector.stage(item);
+    projector.send(item);
+    if (window.api?.pushToLive) {
+      window.api.pushToLive();
+    }
+  }, [latestProposal?.id, projector]);
+
   /* The bar's contents. The log listens to the state so a change speaks
      for itself, and the one action any line offers lands back here. */
   const log = useServiceLog(stateLabel);
   const say = log.say;
   const goManual = useCallback(() => say({ text: "suggestions off — you're driving" }), [say]);
+
+  const [songAddRequest, setSongAddRequest] = useState(0);
+  const hiddenImageInputRef = useRef<HTMLInputElement>(null);
+  const hiddenSlideInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportImage = useCallback(() => {
+    if (window.api?.pickBackgroundImage) {
+      void window.api.pickBackgroundImage().then((res) => {
+        if (!res?.success || !res.url) return;
+        const name = decodeURIComponent(res.url.split('/').pop() ?? 'image');
+        const media: ThemeMedia = {
+          id: `local:${res.url}`,
+          label: name.replace(/\.[a-z0-9]+$/i, ''),
+          detail: 'imported image',
+          seed: 4,
+          style: 'smoke' as const,
+          source: 'local' as const,
+          url: res.src ?? res.url,
+          kind: 'photo' as const,
+        };
+        addMedia(media);
+        setPreviewTheme((prev) => ({ ...prev, backgroundId: media.id }));
+        setView('operator');
+        setTab(TABS.findIndex((t) => t.id === 'media'));
+        say({ text: `imported image: ${media.label}` });
+      });
+    } else {
+      hiddenImageInputRef.current?.click();
+    }
+  }, [say]);
+
+  const handleImageFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const media: ThemeMedia = {
+      id: `local:${Date.now()}`,
+      label: file.name.replace(/\.[a-z0-9]+$/i, ''),
+      detail: 'imported image',
+      seed: 4,
+      style: 'smoke' as const,
+      source: 'local' as const,
+      url,
+      kind: 'photo' as const,
+    };
+    addMedia(media);
+    setPreviewTheme((prev) => ({ ...prev, backgroundId: media.id }));
+    setView('operator');
+    setTab(TABS.findIndex((t) => t.id === 'media'));
+    say({ text: `imported image: ${media.label}` });
+    e.target.value = '';
+  };
+
+  const handleImportSlides = useCallback(() => {
+    if (window.api?.importPresentation) {
+      say({ text: 'importing presentation slides…' });
+      void window.api
+        .importPresentation()
+        .then((res) => {
+          if (res?.success) {
+            setView('operator');
+            setTab(TABS.findIndex((t) => t.id === 'slides'));
+            say({ text: `imported ${res.data?.slides?.length ?? 0} slides` });
+          } else if (res?.error && res.error !== 'Cancelled') {
+            say({ text: `slide import: ${res.error}` });
+          }
+        })
+        .catch(() => say({ text: 'slide import failed' }));
+    } else {
+      hiddenSlideInputRef.current?.click();
+    }
+  }, [say]);
+
+  const handleSlideFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setView('operator');
+    setTab(TABS.findIndex((t) => t.id === 'slides'));
+    say({ text: `selected presentation deck: ${file.name}` });
+    e.target.value = '';
+  };
+
+  /* The songs tab owns the add-song dialog (and the rule that nothing is
+     added until the editor's Save). The header only asks for it. */
+  const handleImportSongs = useCallback(() => {
+    setView('operator');
+    setTab(TABS.findIndex((t) => t.id === 'songs'));
+    setSongAddRequest(Date.now());
+  }, []);
 
   return (
     <>
@@ -4312,305 +4750,281 @@ function LiveBody({ state }: { state?: string }) {
         edge. If the browser turns out to be starved at 1280, that is the
         trade to revisit — not the rail.
       */}
-      <div className="flex h-full gap-[var(--tri-gap)] p-2.5">
-        {/* Rail — 18% of the width, full height, split in two.
-
-            A flat 18% now the tab strip no longer spans it: the old
-            one-tab-pill construction was measured against a strip that
-            reached the window edge, and there is nothing left down there
-            for the rail to share an edge with.
-
-            Operator posture only. The dashboard is read, not worked, and a
-            control column beside a surface with no controls is 18% of the
-            window spent on something nobody is going to touch — so the rail
-            leaves with the rest of the body rather than staying as a frame
-            around it. See ./dashboard.
-
-            The COLUMN stays, though, even when the rail does not. The rail
-            and the context bar are siblings in this row, so taking the
-            column out of the flow moves the bar with it: the whole top strip
-            slid left by the rail's width and then stretched to fill the
-            space, which also resized the view switch inside it. That switch
-            is the one control the two postures share — it is the way back —
-            and a control that jumps a quarter of the window the instant you
-            press it is a control you have to find again.
-
-            So the dashboard holds the same measure open on the same side and
-            draws nothing in it. The top of the window is then identical in
-            both postures, and the run of service keeps its header level with
-            the bar, because neither one has moved. */}
-        {view === 'operator' ? (
-        // The whole rail is a drop target, not just the segments in it.
-        // data-drop-segment with an EMPTY value means "the run, but nowhere
-        // in particular" — the drag layer reads that as a drop with no
-        // segment and dropInto makes the one the carry belongs in. Without
-        // this the rail was inert until the operator had already built it by
-        // hand, which is the wrong way round. Segments inside carry their
-        // own key and win, because elementFromPoint finds the innermost.
-        <div
-          data-drop-segment=""
-          className="flex shrink-0 flex-col gap-[var(--tri-gap)]"
-          style={{ width: 'var(--tri-rail-w)' }}
-        >
-          {/* Named, so the empty box says what it is for. The rail is the
-              order of service — what is coming next, in sequence — which is
-              a different question from anything the browser below answers. */}
-          <Panel
-            title={`run of service (${run.segments.length})`}
-            className="flex-1"
-            /* The header band is --tri-bar-h, and this is the one panel that
-               must not be: it starts at the window's ceiling level with the
-               context bar, so its band is scoped up to the taller strip
-               token. Every other panel header on the screen keeps the bar
-               height — they sit under this line, not on it. */
-            style={{ '--tri-bar-h': 'var(--tri-topbar-h)' } as React.CSSProperties}
-            /* C-01 twice, in the header's `right` slot — the slot exists for
-               exactly this, so the panel gets its actions without any new
-               layout around it. The pair is spaced on the same 0.45rem the
-               regions of the screen are, so two buttons in a header read at
-               the same rhythm as everything else on it. */
-            right={
-              /*
-               * One step down from the control height, via the tokens rather
-               * than a size prop: Button reads --tri-control-h and its
-               * padding from the vars, so scoping smaller values to this
-               * wrapper resizes the pair without Button learning a "small"
-               * variant it has not earned yet.
-               */
-              <div
-                className="flex items-center gap-[var(--tri-gap)]"
-                style={
-                  {
-                    '--tri-control-h': '26px',
-                    '--tri-control-pad-x': '8px',
-                  } as React.CSSProperties
-                }
-              >
-                <ActionMenu
-                  groups={ADD_MENU}
-                  onArrange={(_parent, picked) => run.addSegments(picked)}
-                  trigger={<Button label="" icon={<PlusIcon size={12} />} title="add to the run" />}
-                />
-                {/* Ash — the system's neutral, for a control that is not
-                    about anything in particular. Next to a "+" that is the
-                    whole point of the header, a second teal button would
-                    read as a second primary action; ash lets it sit there
-                    without competing.
-
-                    Inert for now, like the settings glyph on the context
-                    bar: the button is the design decision, and what history
-                    the rail keeps is not one this screen gets to make. */}
-                <Button
-                  label=""
-                  tone="ash"
-                  icon={<HistoryIcon size={12} />}
-                  title="load Sunday service order"
-                  onClick={() => run.loadSundayTemplate()}
-                />
-              </div>
-            }
-          >
-            <RunOfService />
-          </Panel>
-
-          {/*
-            The lower box, unnamed — the drawing gives it no words, and
-            naming it here would be inventing a job for it.
-
-            Exactly the browser's height, so the rail's divide falls on the
-            browser's top edge: the gap under the tab strip runs unbroken
-            across the whole window as one line, rather than the rail
-            breaking somewhere near it. The tab strip therefore has the top
-            box beside it, not this one.
-
-            The 40% MUST track the browser panel's h-[40%] below — it is the
-            one number written in two places, and there is no way to say it
-            once, because Tailwind cannot read a height off a sibling.
-          */}
-          {/* pt-3 because the panel body ships px-3 pb-3 and no top — fine
-              under a header band, wrong here: this box has no header, so
-              without it the first card sat flat against the panel's ceiling
-              with an inset on its other three sides. The note below has
-              always said the top gap comes from the panel; now it does. */}
-          {/* The body's own pb-3 is overridden to --tri-card-gap, the inset
-              the themes surface opposite gives ITS scroller. Both panels are
-              the same 40% of the same height, so matching the inset is what
-              puts the two fades on one line across the foot of the window
-              instead of 7px apart — which, on two dissolving edges, reads as
-              one of them being wrong. Inline rather than in bodyClass: the
-              panel joins its classes with cx, so a second pb-* would sit
-              beside pb-3 and let source order pick the winner. */}
-          <Panel
-            className="h-[40%] shrink-0"
-            bodyClass="pt-3"
-            bodyStyle={{ paddingBottom: 'var(--tri-card-gap)' }}
-          >
-            {/*
-              The proposals, top-down and newest first.
-
-              The mic box that used to hold this ceiling is gone. It was an
-              on-switch for a service that has one starting moment, parked
-              permanently in the one column the operator watches all through
-              the sermon — so it spent the whole service being a control
-              nobody would touch again, above the only thing here that is
-              ever news. The panel is the proposals now, and nothing else.
-
-              A column rather than a floor-pinned single: catches arrive
-              while earlier ones are still unanswered, and a stack is the
-              only arrangement that does not make the second one destroy the
-              first. Cards keep their natural height and the column scrolls
-              past three, which is the same bargain every fixed-height panel
-              on this screen makes — the box never moves, the contents do.
-            */}
-            <HeardMotion />
-            <ProposalStack />
-          </Panel>
-        </div>
-        ) : (
-          /* The rail's column, held open and drawn empty — the whole reason
-             the top of the window does not move when the posture switches.
-
-             aria-hidden because there is nothing here to read: it is a
-             measure, not a region, and a screen reader announcing an empty
-             box would be announcing the layout rather than the screen. */
-          <div aria-hidden className="shrink-0" style={{ width: 'var(--tri-rail-w)' }} />
-        )}
-
-        {/* The right column — bar, stage, tabs, browser. Everything below
-            the stage is in here now, which is what puts the tab strip on
-            the stage's left edge instead of the window's.
-
-            With the rail gone the column beside it is empty but still held,
-            so this one keeps exactly the width it had and the bento starts
-            under the bar where the stage did. The bar is not rebuilt for the
-            dashboard — it is the same row, in the same place in the tree, at
-            the same width. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
-          {/* Context bar — title, glyph, breadcrumb, split 21.5 / 4 / 73.
-              --tri-topbar-h, not --tri-bar-h: this row holds the view
-              switch — the two pills the operator reaches for most — and
-              wants to be a hand's target, not a header. The run of service
-              on the left sets its header band to the same token, so the two
-              start level and the top of the window reads as one line rather
-              than two that nearly agree. Still a token, so it moves with the
-              tier: at touch the labels grow, and a bar that did not would
-              simply crop them. */}
+      {view === 'dashboard' ? (
+        <div className="flex h-full w-full min-w-0 flex-col gap-[var(--tri-gap)] p-2.5">
+          {/* Top header row */}
           <div
             className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
             style={{ height: 'var(--tri-topbar-h)' }}
           >
-            {/* The segment left of the settings icon is the view switch. */}
-            <div className="flex shrink-0 items-stretch gap-[var(--tri-gap)]" style={{ width: '21.5%' }}>
-              {VIEWS.map((m) => (
+            {/* Left gap matching the Run of Service column so header controls do not shift */}
+            <div aria-hidden className="shrink-0" style={{ width: 'var(--tri-rail-w)' }} />
+
+            {/* View switch with matched proportional width so buttons and orb stay in exact position */}
+            <div
+              className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
+              style={{ width: 'calc((100% - var(--tri-rail-w) - var(--tri-gap)) * 0.215)' }}
+            >
+              {VIEWS.map((m) => {
+                const active = m === view;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setView(m)}
+                    aria-pressed={active}
+                    className={cx(
+                      'tri-rounded-control flex flex-1 cursor-pointer items-center justify-center text-[12.5px] font-medium lowercase tracking-wide transition-all select-none',
+                      active
+                        ? 'bg-[rgb(255_255_255_/_0.15)] font-semibold text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]'
+                        : 'text-[rgb(255_255_255_/_0.78)] hover:bg-[rgb(255_255_255_/_0.06)] hover:text-white',
+                    )}
+                    style={EDGE}
+                  >
+                    {m}
+                  </button>
+                );
+              })}
+            </div>
+            <StatusOrb label={stateLabel} onClick={stepState} />
+            <ListenControl />
+
+            {/* Middle stretch spacer */}
+            <div className="flex-1" />
+
+            {/* Import Bento Pill Menu beside timer */}
+            <ImportBentoMenu
+              onImportImage={handleImportImage}
+              onImportSlides={handleImportSlides}
+              onImportSongs={handleImportSongs}
+            />
+
+            {/* Device Digital Clock Bento */}
+            <DigitalClockBento />
+
+            {/* Right: separate logs bento card matching the width of the empty space below */}
+            <div
+              className="flex shrink-0 items-stretch"
+              style={{ width: 'var(--tri-rail-w)' }}
+            >
+              <ServiceLogBar entries={log.entries} onAction={goManual} />
+            </div>
+          </div>
+
+          {/* Dashboard bento: moves to the left; the empty space moves to the right */}
+          <div className="flex min-h-0 flex-1 items-stretch gap-[var(--tri-gap)]">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
+              <DashboardBento />
+            </div>
+            <div aria-hidden className="shrink-0" style={{ width: 'var(--tri-rail-w)' }} />
+          </div>
+        </div>
+      ) : (
+        /*
+         * Two rows, and the first one is sized by the STAGE.
+         *
+         * The rows used to be percentages of the window — stage takes what is
+         * left over a 40% browser — and a 16:9 picture fitted into a box
+         * whose height came from somewhere else leaves a band of nothing
+         * under itself at every window size but one. The stage now states its
+         * own height from its width (see Stage), row one is `auto` around
+         * it, and the browser row takes everything that frees up.
+         *
+         * A grid rather than two flex columns because the rail's lower panel
+         * and the browser have to keep starting on the same line, and now
+         * that the line is wherever the stage ends, only a shared track can
+         * promise that. Both columns span the two rows and subgrid them.
+         *
+         * minmax(0, auto): row one may be squeezed below what the stage asks
+         * for. On a wide, short window (1920×800) a full-width 16:9 pair would
+         * leave the browser a strip; the browser's floor wins there and the
+         * pictures shrink inside their panels instead — StageBox's min()
+         * already knows how.
+         */
+        <ViewEnter
+          /* Its panels settle in when the dashboard is turned away from —
+             but not at launch, where the surface is simply there. */
+          skipFirst
+          className="grid h-full gap-[var(--tri-gap)] p-2.5"
+          style={{
+            gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
+            gridTemplateRows: 'minmax(0, auto) minmax(30%, 1fr)',
+          }}
+        >
+          <div
+            data-drop-segment=""
+            className="row-span-2 grid min-h-0 grid-rows-subgrid"
+          >
+            {/* Out of flow inside its cell: the run can be any length, and a
+                long one must scroll inside the row the stage sized rather
+                than be counted as a reason to make that row taller. */}
+            <div className="relative min-h-0">
+            <Panel
+              title={`run of service (${run.segments.length})`}
+              className="absolute inset-0"
+              style={{ '--tri-bar-h': 'var(--tri-topbar-h)' } as React.CSSProperties}
+              right={<RunHeaderActions say={say} />}
+            >
+              <RunOfService
+                renderAdd={(seg) => <SegmentAdd seg={seg} />}
+                fallbackSongs={SONGS}
+              />
+            </Panel>
+            </div>
+
+            <Panel
+              className="min-h-0"
+              bodyClass="pt-3"
+              bodyStyle={{ paddingBottom: 'var(--tri-card-gap)' }}
+            >
+              <HeardMotion />
+              <ProposalStack />
+            </Panel>
+          </div>
+
+          <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-subgrid">
+            <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
+            <div
+              className="flex min-w-0 shrink-0 items-stretch gap-[var(--tri-gap)]"
+              style={{ height: 'var(--tri-topbar-h)' }}
+            >
+              <div className="flex shrink-0 items-stretch gap-[var(--tri-gap)]" style={{ width: '21.5%' }}>
+                {VIEWS.map((m) => {
+                  const active = m === view;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setView(m)}
+                      aria-pressed={active}
+                      className={cx(
+                        'tri-rounded-control flex flex-1 cursor-pointer items-center justify-center text-[12.5px] font-medium lowercase tracking-wide transition-all select-none',
+                        active
+                          ? 'bg-[rgb(255_255_255_/_0.15)] font-semibold text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]'
+                          : 'text-[rgb(255_255_255_/_0.78)] hover:bg-[rgb(255_255_255_/_0.06)] hover:text-white',
+                      )}
+                      style={EDGE}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+              <StatusOrb label={stateLabel} onClick={stepState} />
+              <ListenControl />
+
+              {/* Live speech transcript in top header */}
+              <HeaderKineticFocus spoken={engine.spoken} asr={engine.asr} />
+
+              {/* Themes bar in top header — edits change preview only */}
+              <HeaderThemesBar
+                previewTheme={previewTheme}
+                onChange={setPreviewTheme}
+                onReset={() => setPreviewTheme(DEFAULT_THEME)}
+                onApplyToLive={() => setLiveTheme(previewTheme)}
+              />
+
+              {/* Import Bento Pill Menu beside timer */}
+              <ImportBentoMenu
+                onImportImage={handleImportImage}
+                onImportSlides={handleImportSlides}
+                onImportSongs={handleImportSongs}
+              />
+
+              {/* Device Digital Clock Bento */}
+              <DigitalClockBento />
+
+              {/* Right: separate logs bento matching dashboard */}
+              <div
+                className="flex shrink-0 items-stretch"
+                style={{ width: 'calc((100% + var(--tri-gap)) * 0.18 / 0.82)' }}
+              >
+                <ServiceLogBar entries={log.entries} onAction={goManual} />
+              </div>
+            </div>
+
+            <Stage
+              say={say}
+              previewTheme={previewTheme}
+              liveTheme={liveTheme}
+              onPromoteTheme={() => {
+                setLiveTheme(previewTheme);
+                /* The two layout choices the projector reads from settings.
+                   Written only here, on promote, so moving the safe area in
+                   the preview never shifts words the room is reading. */
+                void window.api?.setSetting?.('verseLayout', previewTheme.layout);
+                void window.api?.setSetting?.('safeMargin', previewTheme.safeMargin);
+              }}
+            />
+
+            <div className="flex h-[var(--tri-field-h)] shrink-0 items-stretch gap-[var(--tri-gap)]">
+              {TABS.map((t, i) => (
                 <button
-                  key={m}
+                  key={t.id}
                   type="button"
-                  onClick={() => setView(m)}
-                  aria-pressed={m === view}
+                  onClick={() => setTab(i)}
                   className={cx(
                     'tri-rounded-control flex flex-1 items-center justify-center text-[length:var(--tri-size-xs)] lowercase transition-colors',
-                    m === view
-                      ? 'bg-[rgb(255_255_255_/_0.06)] text-[var(--tri-ink)]'
-                      : 'text-[rgb(229_243_242_/_0.62)] hover:bg-[rgb(255_255_255_/_0.03)]',
+                    i === tab
+                      ? 'bg-[rgb(255_255_255_/_0.06)] text-[var(--tri-ink)] font-semibold'
+                      : 'text-[rgb(229_243_242_/_0.62)]',
                   )}
                   style={EDGE}
                 >
-                  {m}
+                  {t.label}
                 </button>
               ))}
             </div>
-            {/* The orb took the gear's place: the bar had one square and
-                the status of the engine is worth more in it than a door
-                to settings, which the rail's own gear already opens. */}
-            {/* Hover names the state, click steps it — the chip that used
-                to do both is gone and the bar beside it is the log. */}
-            <StatusOrb label={stateLabel} onClick={stepState} />
-            <ListenControl />
-            <ServiceLogBar entries={log.entries} onAction={goManual} />
+            </div>
 
+            <Panel
+              className="min-h-0"
+              /* Themes sits on the panel like every other tab — see
+                 ThemesEditor. Its inset is the stage's, --tri-gap all round,
+                 because it seats a projector the same way the stage does. */
+              bodyClass={TABS[tab]?.id === 'themes' ? undefined : 'pt-3'}
+              bodyStyle={TABS[tab]?.id === 'themes' ? { padding: 'var(--tri-gap)' } : undefined}
+            >
+              {TABS[tab]?.id === 'themes' ? (
+                <ThemesEditor
+                  theme={previewTheme}
+                  onChange={setPreviewTheme}
+                  onReset={() => setPreviewTheme(DEFAULT_THEME)}
+                />
+              ) : null}
+              {TABS[tab]?.id === 'scriptures' ? <ScripturesBrowser /> : null}
+              {TABS[tab]?.id === 'songs' ? <SongsBrowser addRequest={songAddRequest} /> : null}
+              {TABS[tab]?.id === 'slides' ? <SlidesBrowser /> : null}
+              {TABS[tab]?.id === 'media' ? (
+                <MediaBrowser
+                  selected={previewTheme.backgroundId}
+                  onSelect={(backgroundId) => {
+                    setPreviewTheme((prev) => ({ ...prev, backgroundId }));
+                    setTab(0);
+                  }}
+                />
+              ) : null}
+            </Panel>
           </div>
+        </ViewEnter>
+      )}
 
-          {/* Everything under the bar is the posture. The switch above is
-              the one control the two share, which is what makes it a switch
-              rather than a tab. */}
-          {view === 'dashboard' ? (
-            <DashboardBento />
-          ) : (
-          <>
-          {/* The stage — the two boxes, filled. See Stage. */}
-          <Stage theme={theme} />
+      {/* Hidden file pickers for web fallback */}
+      <input
+        ref={hiddenImageInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageFilePicked}
+        className="hidden"
+      />
+      <input
+        ref={hiddenSlideInputRef}
+        type="file"
+        accept=".pptx,.ppt,.odp,.pdf"
+        onChange={handleSlideFilePicked}
+        className="hidden"
+      />
 
-          {/* The tab strip. Six flex-1 pills on the stage's own width. */}
-          <div className="flex h-[var(--tri-field-h)] shrink-0 items-stretch gap-[var(--tri-gap)]">
-            {TABS.map((t, i) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(i)}
-                className={cx(
-                  'tri-rounded-control flex flex-1 items-center justify-center text-[length:var(--tri-size-xs)] lowercase transition-colors',
-                  i === tab
-                    ? 'bg-[rgb(255_255_255_/_0.06)] text-[var(--tri-ink)]'
-                    : 'text-[rgb(229_243_242_/_0.62)]',
-                )}
-                style={EDGE}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/*
-            Fixed share of the screen, the wireframe's — the panel does not
-            grow to fit its contents. When a tab's controls are taller than
-            this, they scroll inside it; the panel itself never moves. That
-            keeps the stage above at a constant size, which matters more
-            than any one tab seeing all of itself at once.
-
-            40% — and the rail's lower box is the same 40%, so the two are
-            the same height and their top edges line up. Move one, move the
-            other. See the note there.
-
-            40% and not a half: the browser is the reference, not the thing
-            being watched, so it takes the smaller share and the stage keeps
-            the rest. The two strips above are sized by their tier tokens
-            rather than by percentages — deliberately, so labels cannot crop
-            at touch — so the stage gets whatever is left after those and
-            this 40%. The number that matters is the stage's, not this one.
-          */}
-          {/* bare + no body padding for themes: that tab's contents are
-              surfaces of their own now, and they space themselves on
-              --tri-gap, the same gutter as the strip above. Every other tab
-              is still content in a panel and keeps the panel. */}
-          <Panel
-            className="h-[40%] shrink-0"
-            bare={TABS[tab].id === 'themes'}
-            bodyClass={TABS[tab].id === 'themes' ? undefined : 'pt-3'}
-          >
-            {TABS[tab].id === 'themes' ? (
-              <ThemesEditor
-                theme={theme}
-                onChange={setTheme}
-                onReset={() => setTheme(DEFAULT_THEME)}
-              />
-            ) : null}
-            {TABS[tab].id === 'scriptures' ? <ScripturesBrowser /> : null}
-            {TABS[tab].id === 'songs' ? <SongsBrowser /> : null}
-            {TABS[tab].id === 'slides' ? <SlidesBrowser /> : null}
-            {TABS[tab].id === 'media' ? (
-              <MediaBrowser
-                selected={theme.backgroundId}
-                onSelect={(backgroundId) => {
-                  setTheme({ ...theme, backgroundId });
-                  setTab(TABS.findIndex((item) => item.id === 'themes'));
-                }}
-              />
-            ) : null}
-          </Panel>
-          </>
-          )}
-        </div>
-      </div>
     </>
   );
 }

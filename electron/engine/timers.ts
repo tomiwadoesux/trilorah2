@@ -50,6 +50,8 @@ export interface Timer {
   pausedAt: number | null
   /** Time already banked by earlier run segments, in ms. */
   elapsedBeforePauseMs: number
+  /** Extra seconds added live during countdown (e.g. +12 min). */
+  extraSec?: number
 }
 
 export interface TimerSnapshot {
@@ -64,6 +66,8 @@ export interface TimerSnapshot {
   remainingMs: number
   overrunning: boolean
   display: string
+  durationSec?: number
+  extraSec?: number
 }
 
 export interface CreateTimerInput {
@@ -72,6 +76,7 @@ export interface CreateTimerInput {
   durationSec?: number
   targetTime?: string
   overrun?: boolean
+  extraSec?: number
 }
 
 export type UpdateTimerPatch = Partial<Omit<CreateTimerInput, 'kind'>>
@@ -159,6 +164,7 @@ export class TimerStore {
     }
     if (input.kind === 'countdown') timer.durationSec = input.durationSec
     if (input.kind === 'to-time') timer.targetTime = input.targetTime
+    if (input.extraSec !== undefined) timer.extraSec = input.extraSec
     this.timers.push(timer)
     this.emit()
     return clone(timer)
@@ -187,6 +193,7 @@ export class TimerStore {
     if (patch.durationSec !== undefined) timer.durationSec = patch.durationSec
     if (patch.targetTime !== undefined) timer.targetTime = patch.targetTime
     if (patch.overrun !== undefined) timer.overrun = Boolean(patch.overrun)
+    if (patch.extraSec !== undefined) timer.extraSec = patch.extraSec
     this.emit()
     return clone(timer)
   }
@@ -359,7 +366,9 @@ function snapshotOf(t: Timer, at: number): TimerSnapshot {
     state: t.state,
     remainingMs,
     overrunning: past && t.overrun,
-    display: formatTimerDisplay(remainingMs)
+    display: formatTimerDisplay(remainingMs),
+    durationSec: t.durationSec,
+    extraSec: t.extraSec
   }
 }
 

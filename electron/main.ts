@@ -61,7 +61,7 @@ import { FolderIndex } from './library/folders'
 import { presetForReference } from './media/presetPicker'
 import { parseSong } from './songs/import'
 import type { ImportedSong } from './songs/import'
-import { fetchYoutubeLyrics } from './songs/youtube'
+import { registerLyricsIpc } from './songs/lyricsIpc'
 import { SongStore } from './songs/store'
 // --- 2026-09-08 EasyWorship parity pass (BUILD-MAP 2.10–2.13) ---
 import { AlertManager, type AlertTarget } from './alerts/alerts'
@@ -1401,6 +1401,8 @@ ipcMain.handle('songs-update', (_event, { id, patch }) => {
   }
 })
 ipcMain.handle('songs-remove', (_event, { id }) => songStore().remove(id))
+// Online lyric sources (LRCLIB search, YouTube captions) — electron/songs/lyricsIpc.ts
+registerLyricsIpc(ipcMain)
 
 // Evals (item 25): export ledger corrections as anonymised fixtures.
 ipcMain.handle('evals-export-fixtures', async () => {
@@ -1725,11 +1727,6 @@ ipcMain.handle('pick-media-file', async () => {
   } catch (e: any) {
     return { success: false, error: e?.message ?? 'could not copy media file' }
   }
-})
-
-// Fetch YouTube transcripts/captions and auto-segment into song sections
-ipcMain.handle('fetch-youtube-transcript', async (_event, url: string) => {
-  return await fetchYoutubeLyrics(url)
 })
 
 // Real display status for connections tile
@@ -2064,6 +2061,8 @@ const THEME_KEYS = new Set([
   'stageShowElapsed',
   'verseLayout',
   'safeMargin',
+  'textTransition',
+  'textTransitionMs',
 ])
 
 ipcMain.handle('set-setting', (_event, { key, value }) => {
@@ -2438,6 +2437,7 @@ ipcMain.handle('import-schedule-image', async () => {
       canceled: false,
       success: true,
       entries: parsed.entries,
+      rows: parsed.rows,
       unmatchedLines: parsed.unmatchedLines,
       rawText: parsed.rawText
     }
@@ -2664,6 +2664,8 @@ app.whenReady().then(() => {
     } catch (e) {
       console.error('❌ Database error:', e)
     }
+  } else {
+    console.error('❌ bible.db not found! Please copy bible.db to the project root or run `npm run bible:build`')
   }
   console.log('🧠 Connecting to ML resolver...')
   connectML(handleMLVerseDetection)
