@@ -14,13 +14,18 @@ import { startWhisperLocal, stopWhisperLocal, findWhisperModel } from './whisper
 
 export type ASRProviderId = 'deepgram' | 'whisper-local'
 
+import type { WordTiming } from '../../shared/wordTimings'
+
 export interface ASRProvider {
   id: ASRProviderId
   start: (
     /* `display` is the recogniser's own casing and punctuation, when it has
        any. The engine matches on lowercase; a person reading the transcript
        wants the sentence. */
-    onText: (text: string, isFinal: boolean, display?: string) => void,
+    /* `words` carries per-word timings when the recogniser supplies them —
+       Deepgram does, whisper-local does not. The companion page needs them to
+       highlight the word being spoken rather than fading a paragraph. */
+    onText: (text: string, isFinal: boolean, display?: string, words?: WordTiming[] | null) => void,
     onError?: (error: Error) => void,
     deviceLabel?: string,
     onStatus?: (message: string) => void

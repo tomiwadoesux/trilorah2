@@ -90,7 +90,11 @@ export function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean
       onClick={() => onChange(!on)}
       className={cx(
         'relative h-[20px] w-[36px] shrink-0 rounded-full transition-colors duration-[var(--tri-dur-state)]',
-        on ? 'bg-[rgb(143_211_192_/_0.55)]' : 'bg-[rgb(255_255_255_/_0.1)]',
+        /* On is a brighter track, not a different hue. The mint it used to
+           be was the only colour on a settings sheet of otherwise plain ink,
+           so a row of toggles read as a row of green lights; the knob moving
+           is what says "on", and it says it in the dark. */
+        on ? 'bg-[rgb(255_255_255_/_0.3)]' : 'bg-[rgb(255_255_255_/_0.1)]',
       )}
       style={{ boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.08)' }}
     >

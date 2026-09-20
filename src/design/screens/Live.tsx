@@ -3183,9 +3183,46 @@ function useServiceLog(stateLabel: string) {
  * older line is the only context there is, and dimming half of a
  * two-line log is dimming half the log.
  */
+/** How many sentences of the sermon the context bar holds at once. */
+const TRANSCRIPT_ROWS = 3;
+
+/*
+ * The ladder, as numbers, indexed by distance from the newest line.
+ *
+ * Not evenly spaced: the drop from the current sentence to the one before
+ * it is deliberately gentler than the drop after that, so the eye reads
+ * "this, and the one that set it up, and a memory" rather than three
+ * evenly-greyed rows of equal claim. See .tri-transcript-line in tokens.css
+ * for how a row gets from one rung to the next.
+ */
+const LADDER = [1, 0.55, 0.25];
+
+/*
+ * A sentence Deepgram has not finished hearing is dimmer than one it has.
+ *
+ * It sits between the newest rung and the one below, which is the point:
+ * the operator can tell at a glance that the bottom line may still change
+ * its mind. When the line goes final the row is the SAME DOM node (see the
+ * key below), so it brightens to 1 over the ladder duration instead of the
+ * text jumping.
+ */
+const PARTIAL_ALPHA = 0.72;
+
 /**
- * Real-time preacher live transcript streaming in the top context bar.
- * Left-aligned, kinetic focus, forming from the left edge.
+ * The preacher's speech in the top context bar — three sentences deep,
+ * newest at the bottom, each one dimming a rung as the next arrives.
+ *
+ * Replaces a single line that was thrown away the instant the next one
+ * landed. The owner's complaint was exactly that: nobody can read one
+ * sentence in the time it takes to say the next, so the strip showed text
+ * that could not be used. Depth plus a ladder of opacity makes the bar
+ * readable at a glance and gives the current sentence its context.
+ *
+ * Why the rows are built as a fixed-length array with the partial folded in
+ * as the last entry: every row then knows its distance from the newest, and
+ * that distance is the ONLY input to its opacity. When a sentence lands,
+ * every row's distance goes up by one and CSS moves them all together —
+ * there is no per-row state, no timer, and nothing to fall out of step.
  */
 function HeaderKineticFocus({
   spoken,
@@ -3197,42 +3234,116 @@ function HeaderKineticFocus({
   const isLive = asr === 'listening';
   const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
 
-  const activeText = hasRealSpeech
-    ? spoken.partial || spoken.lines[spoken.lines.length - 1]?.text || ''
-    : 'For God so loved the world that He gave His only begotten Son...';
+  /*
+   * Newest last. The partial is appended as its own row rather than
+   * replacing the newest final, because it IS the next sentence — showing
+   * it in place of the last one would throw away the very context this
+   * change exists to keep.
+   *
+   * Its key is one past the newest final's id, which is the id the engine
+   * will hand the final when it commits it (spokenId is a plain counter —
+   * see onTranscriptLine in engine.tsx). React therefore keeps the same
+   * element across the settle, and the row transitions from provisional to
+   * full strength rather than unmounting and flashing back in.
+   */
+  const rows = useMemo(() => {
+    const settled = spoken.lines.map((l) => ({ ...l, partial: false }));
+    if (spoken.partial) {
+      const nextId = (spoken.lines[spoken.lines.length - 1]?.id ?? -1) + 1;
+      settled.push({ id: nextId, text: spoken.partial, partial: true });
+    }
+    if (!hasRealSpeech) {
+      /* Nothing has been heard yet. One placeholder, at the newest rung, so
+         the strip says what it is for instead of reading as broken. */
+      return [
+        {
+          id: -1,
+          text: isLive
+            ? 'listening for the pulpit…'
+            : 'For God so loved the world that He gave His only begotten Son…',
+          partial: true,
+        },
+      ];
+    }
+    return settled.slice(-TRANSCRIPT_ROWS);
+  }, [spoken.lines, spoken.partial, hasRealSpeech, isLive]);
 
-  const isForming = Boolean(spoken.partial) || (!hasRealSpeech && isLive);
+  const newestId = rows[rows.length - 1]?.id;
 
   return (
     <div
-      className="@container flex min-w-[64px] flex-1 items-center gap-2.5 overflow-hidden rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1 backdrop-blur-md transition-all"
-      title="Live preacher speech transcript (kinetic focus)"
+      className={cx(
+        '@container relative flex min-w-[64px] flex-1 overflow-hidden rounded-[var(--tri-radius-control)]',
+        'border border-white/10 bg-white/[0.04] pl-3 pr-2.5 backdrop-blur-md',
+      )}
+      /* Three rows tall, and never shorter than the controls beside it —
+         see --tri-topbar-live-h. Pinned rather than left to the content so
+         a one-line transcript does not sit in a short pill that jumps taller
+         on the third sentence. */
+      style={{ height: 'var(--tri-topbar-live-h)', paddingBlock: '6px' }}
+      title="live preacher transcript — newest line at the bottom"
     >
-      <div className="flex shrink-0 items-center gap-1.5">
-        <span
-          className={cx(
-            'size-1.5 rounded-full transition-all',
-            isLive ? 'animate-pulse bg-[#6ee7b7] shadow-[0_0_8px_#10b981]' : 'bg-white/30',
-          )}
-        />
-        {/* The word and its rule go first when the row is short: the dot
-            still says whether anyone is speaking, and the transcript keeps
-            every pixel that is left. See themesFit for why 1280 is tight. */}
-        <span className="hidden text-[10px] font-medium lowercase text-white/50 @[180px]:inline">preacher</span>
-      </div>
+      {/*
+        The live dot is taken OUT of the text flow and parked in the corner.
+        Inline it cost about 18px of every one of the three lines, and at
+        1280 this strip is already the narrowest thing on the row — the
+        owner's complaint was as much about lines being short as about there
+        being one of them, and 18px is a word. Top-right rather than
+        top-left because the text is read left-to-right from a hard margin:
+        a marker on that margin pushes the first character off it.
+      */}
+      <span
+        aria-label={isLive ? 'listening' : 'not listening'}
+        className={cx(
+          'absolute right-2.5 top-2 size-1.5 rounded-full transition-all',
+          isLive ? 'animate-pulse bg-[#6ee7b7] shadow-[0_0_8px_#10b981]' : 'bg-white/30',
+        )}
+      />
 
-      <div className="hidden h-3 w-[1px] shrink-0 bg-white/10 @[180px]:block" />
-
-      <div className="min-w-0 flex-1 overflow-hidden text-left">
-        <p className="truncate text-left text-[12.5px] font-medium tracking-wide text-[var(--tri-ink)] select-text">
-          {activeText}
-          {isForming && (
-            <span
-              className="ml-1 inline-block h-[0.9em] w-[2px] translate-y-[1px] animate-pulse bg-[var(--tri-accent-yellow)] rounded-sm"
-              aria-hidden="true"
-            />
-          )}
-        </p>
+      {/*
+        Bottom-anchored. With fewer than three sentences the stack sits at
+        the FOOT of the pill, so the newest line is always on the same
+        baseline — it does not walk down the pill as the service fills up.
+      */}
+      <div className="flex min-w-0 flex-1 flex-col justify-end overflow-hidden text-left">
+        {rows.map((row, i) => {
+          /* Distance from the newest, which is the rung. */
+          const depth = rows.length - 1 - i;
+          const alpha = row.partial && depth === 0 ? PARTIAL_ALPHA : (LADDER[depth] ?? 0);
+          return (
+            <p
+              key={row.id}
+              className={cx(
+                'tri-transcript-line truncate text-left font-medium tracking-wide select-text',
+                /* Only the arriving row animates in; the rest are
+                   transitioning down and must not restart their keyframe. */
+                row.id === newestId && 'tri-transcript-line--new',
+                /* Only the TOP row is level with the corner dot, so only the
+                   top row pays for it. The other two keep the full width —
+                   which is the whole reason the dot left the text flow. */
+                depth === TRANSCRIPT_ROWS - 1 && 'pr-3',
+              )}
+              style={
+                {
+                  '--tri-line-a': alpha,
+                  fontSize: '11.5px',
+                  /* The rung height is a token so three rows and the pill
+                     that holds them are computed from the same number. */
+                  lineHeight: 'var(--tri-transcript-leading)',
+                  color: 'var(--tri-ink)',
+                } as React.CSSProperties
+              }
+            >
+              {row.text}
+              {row.partial && depth === 0 && (
+                <span
+                  className="ml-1 inline-block h-[0.85em] w-[2px] translate-y-[1px] animate-pulse rounded-sm bg-[var(--tri-accent-yellow)]"
+                  aria-hidden="true"
+                />
+              )}
+            </p>
+          );
+        })}
       </div>
     </div>
   );
@@ -4704,7 +4815,12 @@ function LiveBody({ state }: { state?: string }) {
             <Panel
               title={`run of service (${run.segments.length})`}
               className="absolute inset-0"
-              style={{ '--tri-bar-h': 'var(--tri-topbar-h)' } as React.CSSProperties}
+              /* The live-transcript variant, not the plain topbar height:
+                 the strip across the top of the right column is now three
+                 lines of speech tall, and this header has to be exactly as
+                 tall or the top of the window comes apart into two lines
+                 that nearly agree. See --tri-topbar-live-h. */
+              style={{ '--tri-bar-h': 'var(--tri-topbar-live-h)' } as React.CSSProperties}
               right={<RunHeaderActions say={say} />}
             >
               <RunOfService
@@ -4726,11 +4842,22 @@ function LiveBody({ state }: { state?: string }) {
 
           <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-subgrid">
             <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
+            {/*
+              The strip is as tall as the transcript needs (three lines),
+              which is taller than the controls that share it. items-center
+              rather than items-stretch so those controls keep their own
+              --tri-topbar-h height and sit on the strip's centre line — a
+              button stretched to three lines of speech is a slab, and one
+              left at its own height under `stretch` would hang off the top.
+            */}
             <div
-              className="flex min-w-0 shrink-0 items-stretch gap-[var(--tri-gap)]"
-              style={{ height: 'var(--tri-topbar-h)' }}
+              className="flex min-w-0 shrink-0 items-center gap-[var(--tri-gap)]"
+              style={{ height: 'var(--tri-topbar-live-h)' }}
             >
-              <div className="flex shrink-0 items-stretch gap-[var(--tri-gap)]" style={{ width: '21.5%' }}>
+              <div
+                className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
+                style={{ width: '21.5%', height: 'var(--tri-topbar-h)' }}
+              >
                 {VIEWS.map((m) => {
                   const active = m === view;
                   return (
@@ -4752,8 +4879,18 @@ function LiveBody({ state }: { state?: string }) {
                   );
                 })}
               </div>
-              <StatusOrb label={stateLabel} onClick={stepState} />
-              <ListenControl />
+              {/* These two sized their own height off the strip when it
+                  stretched them. The strip is now taller than a control, so
+                  they get the control height explicitly and centre in it —
+                  otherwise the orb, which is an aspect-square of h-full,
+                  inflates to a three-line circle. */}
+              <div
+                className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
+                style={{ height: 'var(--tri-topbar-h)' }}
+              >
+                <StatusOrb label={stateLabel} onClick={stepState} />
+                <ListenControl />
+              </div>
 
               {/* Live speech transcript in top header */}
               <HeaderKineticFocus spoken={engine.spoken} asr={engine.asr} />
@@ -4768,10 +4905,16 @@ function LiveBody({ state }: { state?: string }) {
               {/* Device Digital Clock Bento */}
               <DigitalClockBento />
 
-              {/* Right: separate logs bento matching dashboard */}
+              {/* Right: the service log.
+                  Narrower on the operator view than it is on the dashboard,
+                  and deliberately so. It shows one line here; the whole
+                  history is a column on the dashboard now. The width it gives
+                  up goes to the transcript beside it, which at 1280 was
+                  truncating a preacher's sentence at about 28 characters —
+                  the one thing in this strip that is worth more room. */}
               <div
                 className="flex shrink-0 items-stretch"
-                style={{ width: 'calc((100% + var(--tri-gap)) * 0.18 / 0.82)' }}
+                style={{ width: 'calc((100% + var(--tri-gap)) * 0.11 / 0.82)' }}
               >
                 <ServiceLogBar entries={log.entries} onAction={goManual} />
               </div>

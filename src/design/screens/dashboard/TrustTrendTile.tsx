@@ -24,9 +24,9 @@ import { useBoxSize } from './useBoxSize';
  * to climb towards. With it, the tile states a position in one glance: this
  * preacher is most of the way to hands-free and not there yet.
  *
- * Drawn the way EngagementChart is drawn — no axis lines, no gridlines,
- * shape over values. From across a dark booth nobody reads a percentage off
- * a chart; they read whether the lines go up.
+ * Drawn with no axis lines and no gridlines, shape over values. From across
+ * a dark booth nobody reads a percentage off a chart; they read whether the
+ * lines go up.
  */
 
 /* ------------------------------------------------------------------ */
@@ -104,9 +104,9 @@ const Y_GUTTER = 26; /* room for the widest y label plus its gap */
 const X_ROW = 16;
 const TOP_PAD = 6; /* so the topmost y label has a middle to sit on */
 const STROKE = 1.4;
-/* The plot stops short of the right edge, which EngagementChart does not
-   need to: this chart ends on a dot, and a dot centred on the last pixel of
-   the svg loses its right half to the clip. HEAD_R + a hair of its stroke. */
+/* The plot stops short of the right edge: this chart ends on a dot, and a
+   dot centred on the last pixel of the svg loses its right half to the clip.
+   HEAD_R + a hair of its stroke. */
 const RIGHT_PAD = 4;
 const HEAD_R = 2.6;
 /* The gate is chrome, not data, so it is drawn thinner than either series
@@ -143,10 +143,9 @@ function project(
 }
 
 /*
- * Catmull-Rom through every point, emitted as cubic beziers — the same curve
- * EngagementChart draws, for the same reason: a polyline reads as
- * measurement, eight little decisions the eye has to add up, and this tile is
- * asking to be glanced at. Tension 0.5 is the classic ratio; the clamp keeps
+ * Catmull-Rom through every point, emitted as cubic beziers. A polyline
+ * reads as measurement — eight little decisions the eye has to add up — and
+ * this tile is asking to be glanced at. Tension 0.5 is the classic ratio; the clamp keeps
  * a steep step from throwing a control point past the top or the floor of the
  * plot, which would bow a line out through the axis labels.
  */

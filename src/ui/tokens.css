@@ -210,6 +210,23 @@
    */
   --tri-bar-inset: calc((var(--tri-bar-h) - var(--tri-control-h)) / 2);
   /*
+   * One row of live transcript, and the strip that has to hold three of them.
+   *
+   * The context bar used to show the preacher's last sentence on a single
+   * line and drop it the instant the next one landed, which is the one thing
+   * an operator cannot read fast enough to use. Three lines is what it takes
+   * to still have the sentence that set up the one being said now.
+   *
+   * --tri-topbar-live-h is a max() rather than a flat number so the strip is
+   * never SHORTER than the row it replaces: at touch density the controls it
+   * holds are already 53px and three lines of transcript are less than that,
+   * so the strip stays the height of its buttons and the transcript centres
+   * in it. Only where the text is the taller thing does the strip grow. The
+   * 13px is the pill's own padding, top and bottom together.
+   */
+  --tri-transcript-leading: 15px;
+  --tri-topbar-live-h: max(var(--tri-topbar-h), calc(3 * var(--tri-transcript-leading) + 13px));
+  /*
    * The rail's column — the run of service on the left of S-02.
    *
    * A token because the operator posture fills this column and the dashboard
@@ -327,6 +344,16 @@
   /* The dark edges trail the middle with a soft, gentle feather out. */
   --tri-dur-state-trail: 240ms;
   --tri-delay-trail: 40ms;
+  /*
+   * A rung of the live-transcript ladder, up or down.
+   *
+   * Much longer than the 110ms state change, and on purpose: this is not
+   * feedback for something the operator did, it is the room talking. Tuned
+   * by eye at 1280 against real Deepgram cadence — under about 350ms the
+   * ladder flickers between fast sentences, over about 700ms a new line is
+   * still arriving when the next one lands and they overlap.
+   */
+  --tri-dur-transcript: 480ms;
   --tri-press-scale: 0.97;
 }
 
@@ -428,6 +455,74 @@
   .tri-surface {
     transition-duration: 1ms;
     transition-delay: 0s;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Live transcript ladder                                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The preacher's speech in the context bar, as a ladder of three lines
+ * rather than one line that vanishes.
+ *
+ * The complaint this answers, in the owner's words: the old strip showed a
+ * single sentence and replaced it outright, so the operator never got to
+ * finish reading one before it was gone. Three lines, newest at the bottom,
+ * and a line does not disappear — it dims one rung.
+ *
+ * The ladder is expressed as one custom property, --tri-line-a, set per row
+ * from the row's distance to the newest. Opacity is animated rather than
+ * display or height, because only opacity and transform are free on the
+ * compositor and this strip is repainting while the engine transcribes.
+ */
+.tri-transcript-line {
+  opacity: var(--tri-line-a);
+  /*
+   * The symmetry the owner asked for: an arriving line fades IN over
+   * exactly the time every line above it takes to fade DOWN a rung. Same
+   * duration, same curve, so the whole ladder moves as one gesture instead
+   * of one thing appearing while others blink out.
+   */
+  transition: opacity var(--tri-dur-transcript) var(--tri-ease-out);
+}
+
+/*
+ * A row that has just mounted has nothing to transition FROM — a transition
+ * needs two values and React gives it one. So the newest line gets a
+ * keyframe for its first appearance only, with the same duration and curve
+ * the step-down uses.
+ *
+ * fill-mode is deliberately left at `none`: once the keyframe finishes the
+ * row falls back to its own `opacity: var(--tri-line-a)`, which is what
+ * lets the transition above take over when the NEXT line pushes this one up
+ * a rung. `forwards` would pin it at the keyframe's end value forever and
+ * the ladder would never move again.
+ */
+.tri-transcript-line--new {
+  animation: tri-transcript-in var(--tri-dur-transcript) var(--tri-ease-out);
+}
+
+@keyframes tri-transcript-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: var(--tri-line-a);
+  }
+}
+
+/*
+ * Reduced motion keeps the ladder — the opacities are the reading order,
+ * and flattening them would lose which sentence is current — and drops
+ * only the travel between rungs.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .tri-transcript-line {
+    transition-duration: 1ms;
+  }
+  .tri-transcript-line--new {
+    animation: none;
   }
 }
 
@@ -618,6 +713,7 @@
   --tri-field-h: 33px;
   --tri-bar-h: 33px;
   --tri-topbar-h: 41px;
+  --tri-transcript-leading: 14px;
   --tri-field-h-sm: 28px;
   --tri-slider-h: 26px;
   --tri-option-h: 29px;
@@ -644,6 +740,7 @@
   --tri-field-h: 38px;
   --tri-bar-h: 38px;
   --tri-topbar-h: 46px;
+  --tri-transcript-leading: 15px;
   --tri-field-h-sm: 32px;
   --tri-slider-h: 30px;
   --tri-option-h: 33px;
@@ -668,6 +765,7 @@
   --tri-field-h: 45px;
   --tri-bar-h: 45px;
   --tri-topbar-h: 53px;
+  --tri-transcript-leading: 17px;
   --tri-field-h-sm: 37px;
   --tri-slider-h: 36px;
   --tri-option-h: 39px;

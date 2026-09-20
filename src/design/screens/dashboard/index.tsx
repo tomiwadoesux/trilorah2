@@ -1,5 +1,6 @@
 import { PreachingTile } from './PreachingTile';
-import { EngagementChart } from './EngagementChart';
+import { Panel } from '../parts';
+import { TimersTile } from './TimersTile';
 import { ConnectedTile } from './ConnectedTile';
 import { PreacherStatsTile } from './PreacherStatsTile';
 import { ReadinessTile } from './ReadinessTile';
@@ -26,10 +27,15 @@ export function DashboardBento() {
   const root = useViewEnter<HTMLDivElement>();
   return (
     <div ref={root} className="flex min-h-0 flex-1 flex-col gap-[var(--tri-gap)]">
-      {/* Top band: Preacher Transcript Tile and Engagement Chart */}
+      {/* Top band: the transcript, the service timer on a card of its own,
+          and the second half of the old chart slot still waiting to be given
+          something to hold. The timer used to share the transcript card
+          behind a toggle — two things the booth watches at once cannot take
+          turns in one box. */}
       <div className="flex min-h-0 basis-0 grow-[312] gap-[var(--tri-gap)]">
         <PreachingTile className="basis-0 grow-[345]" />
-        <EngagementChart className="basis-0 grow-[814]" />
+        <TimersTile className="basis-0 grow-[407]" />
+        <Panel className="basis-0 grow-[407]" />
       </div>
 
       {/* The middle band. Its two columns keep their own vertical rhythm —

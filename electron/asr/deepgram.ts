@@ -5,6 +5,7 @@ import { getSetting } from '../data/settings'
 // post-recovery: window-mic capture path (no SoX dependency)
 import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
 import { emitMicRequest, emitMicStop } from '../emitters'
+import { toWordTimings, type WordTiming } from '../../shared/wordTimings'
 
 let usingWindowMic = false
 
@@ -30,7 +31,7 @@ export function setDeepgramKeywords(list: string[]): void {
 }
 
 export function startDeepgram(
-  onText: (text: string, isFinal: boolean, display?: string) => void,
+  onText: (text: string, isFinal: boolean, display?: string, words?: WordTiming[] | null) => void,
   onError?: (error: Error) => void,
   deviceLabel?: string,
   onStatus?: (message: string) => void
@@ -51,6 +52,10 @@ export function startDeepgram(
     smart_format: true,
     interim_results: true,
     punctuate: true,
+    // Per-word start/end times. The companion page lights the word being
+    // spoken from these; without them a phone can only fade paragraphs.
+    // Costs nothing extra — it is the same transcription either way.
+    words: true,
     /* Milliseconds of silence before Deepgram closes a sentence. This was
        3500, and the engine acts on finals — so every spoken command and
        every reference waited three and a half seconds after the preacher
@@ -73,11 +78,15 @@ export function startDeepgram(
     currentOnStatus?.('Listening...')
   })
   deepgramConnection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
-    const transcript = data.channel?.alternatives?.[0]?.transcript
+    const alternative = data.channel?.alternatives?.[0]
+    const transcript = alternative?.transcript
     if (!transcript) return
     const isFinal = data.is_final || data.speech_final
     console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${transcript}`)
-    onText(transcript.toLowerCase(), isFinal, transcript)
+    // Finals only: a partial's words are re-sent, re-timed and sometimes
+    // re-worded on the next packet, and a phone highlighting those would
+    // stutter backwards mid-sentence.
+    onText(transcript.toLowerCase(), isFinal, transcript, isFinal ? toWordTimings(alternative?.words) : null)
   })
   deepgramConnection.on(LiveTranscriptionEvents.Error, (error: any) => {
     console.error('❌ Deepgram error:', error)

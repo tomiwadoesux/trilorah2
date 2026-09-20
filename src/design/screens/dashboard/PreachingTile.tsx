@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Panel } from '../parts';
 import { useEngine } from '../engine';
-import { TimersTile } from './TimersTile';
 import { cx } from '../../../ui';
 
 /*
@@ -13,36 +11,8 @@ import { cx } from '../../../ui';
  */
 
 export function PreachingTile({ className }: { className?: string }) {
-  const [activeTab, setActiveTab] = useState<'transcript' | 'timer'>('transcript');
   const engine = useEngine();
   const { spoken, asr } = engine;
-
-  if (activeTab === 'timer') {
-    return (
-      <div className={cx('relative flex h-full min-h-0 min-w-0 flex-col', className)}>
-        {/* Toggle back to transcript */}
-        <div className="absolute right-3 top-2.5 z-10">
-          <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-black/70 p-0.5 backdrop-blur-md">
-            <button
-              type="button"
-              onClick={() => setActiveTab('transcript')}
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-medium lowercase tracking-wide text-white/50 transition-all hover:text-white"
-            >
-              transcript
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('timer')}
-              className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold lowercase tracking-wide text-white shadow-sm"
-            >
-              timer
-            </button>
-          </div>
-        </div>
-        <TimersTile className="h-full w-full" />
-      </div>
-    );
-  }
 
   const isLive = asr === 'listening';
   const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
@@ -85,24 +55,6 @@ export function PreachingTile({ className }: { className?: string }) {
             <span className="text-[10px] font-medium lowercase tracking-wide text-white/70">
               {isLive ? 'live mic' : asr}
             </span>
-          </div>
-
-          {/* Tab switcher: transcript (active) | timer */}
-          <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-black/40 p-0.5">
-            <button
-              type="button"
-              onClick={() => setActiveTab('transcript')}
-              className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold lowercase tracking-wide text-white shadow-sm"
-            >
-              transcript
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('timer')}
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-medium lowercase tracking-wide text-white/50 transition-all hover:text-white"
-            >
-              timer
-            </button>
           </div>
         </div>
       }

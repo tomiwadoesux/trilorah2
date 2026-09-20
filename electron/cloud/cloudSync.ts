@@ -3,6 +3,8 @@ import { enqueue, size, flush } from './offlineQueue'
 import type { CloudOp } from './offlineQueue'
 
 let activeServiceId: string | null = null
+/** When this service's transcript clock started — see pushTranscriptChunk. */
+let serviceStartedAt: number | null = null
 let activeAccountId: string | null = null
 let flushInterval: NodeJS.Timeout | null = null
 const FLUSH_INTERVAL_MS = 15000
@@ -93,6 +95,7 @@ export async function startService(
       .single()
     if (error) throw error
     activeServiceId = data.id
+    serviceStartedAt = Date.now()
     console.log(`☁️  Service created in cloud: ${activeServiceId}`)
     return { success: true, serviceId: activeServiceId }
   } catch (e: any) {
@@ -115,6 +118,7 @@ export async function endService(): Promise<{ success: boolean }> {
   await flush(applyOp)
   const id = activeServiceId
   activeServiceId = null
+  serviceStartedAt = null
   console.log(`☁️  Service ended: ${id}`)
   return { success: true }
 }
@@ -137,7 +141,13 @@ export function pushSegment(type: string, confidence = 1): void {
   })
 }
 
-export function pushTranscriptChunk(text: string, isFinal: boolean, segmentType: string): void {
+export function pushTranscriptChunk(
+  text: string,
+  isFinal: boolean,
+  segmentType: string,
+  /** Per-word timings, when the recogniser gave any (Deepgram; not whisper). */
+  words?: { w: string; s: number; e: number }[] | null
+): void {
   if (!activeServiceId) return
   if (!text.trim()) return
   enqueue({
@@ -148,6 +158,10 @@ export function pushTranscriptChunk(text: string, isFinal: boolean, segmentType:
       text,
       is_final: isFinal,
       segment_type: segmentType,
+      words: words && words.length > 0 ? words : null,
+      // Where this sits in the service, so a phone watching a stream that is
+      // half a minute behind can line the words up with what it is hearing.
+      offset_ms: serviceStartedAt ? Date.now() - serviceStartedAt : null,
       timestamp: new Date().toISOString()
     }
   })

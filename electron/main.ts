@@ -776,7 +776,7 @@ function startASR(deviceLabel?: string) {
   emitASRStatus('Connecting...')
   activeASR.start(
     // onText callback
-    (rawText, isFinal, display) => {
+    (rawText, isFinal, display, wordTimings) => {
       // Per-preacher vocabulary fixes proper nouns before anything reads the text.
       let text = rawText
       const vocabPid = activePreacherId()
@@ -789,7 +789,7 @@ function startASR(deviceLabel?: string) {
       emitTranscriptLine(display ?? text, isFinal)
       if (isFinal) {
         const segType = transitionDetector?.getCurrentSegment().type ?? 'unknown'
-        pushTranscriptChunk(text, true, segType)
+        pushTranscriptChunk(text, true, segType, wordTimings)
       }
       const words = text.toLowerCase().split(/\s+/).filter(Boolean)
       recentTranscriptBuffer.push(...words)
