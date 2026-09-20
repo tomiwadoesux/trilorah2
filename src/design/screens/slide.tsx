@@ -74,6 +74,17 @@ export interface SlideCanvasProps {
    *  the other cannot show. */
   safeRange?: { min: number; max: number; step: number };
   /**
+   * Makes the reference line itself draggable, away from or toward the verse.
+   * Called with the new gap, snapped and clamped to `refGapRange`. Like the
+   * corners, this is the canvas's way of setting a value the themes bar also
+   * has a slider for — drag here and that slider follows.
+   */
+  onRefGap?: (next: number) => void;
+  /** Reports the reference being held, for the same reason onSafeDrag does. */
+  onRefGapDrag?: (dragging: boolean) => void;
+  /** The gap's bounds, shared with its slider. */
+  refGapRange?: { min: number; max: number; step: number };
+  /**
    * How the words arrive, played HERE. `play` is a counter: bump it and the
    * text block re-mounts and runs the entrance once — which is how the
    * editor shows a transition the moment it is picked. Absent, words simply
@@ -140,8 +151,12 @@ export interface SlideTheme {
   blur: number;
   shadow: number;
   font: string;
+  /** The scripture body. */
   size: number;
+  /** The reference line (John 3:16) — its own size, not a scale of the body. */
   verseSize: number;
+  /** Space between the body and the reference, in ems of the body. */
+  refGap: number;
   layout: string;
   safeMargin: number;
 }
@@ -156,6 +171,9 @@ export function SlideCanvas({
   seated = false,
   onSafeMargin,
   onSafeDrag,
+  onRefGap,
+  onRefGapDrag,
+  refGapRange = { min: 0, max: 3, step: 0.05 },
   safeRange = { min: 3, max: 20, step: 0.5 },
   transition,
 }: SlideCanvasProps) {
@@ -222,6 +240,51 @@ export function SlideCanvas({
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     setDragging(false);
     onSafeDrag?.(false);
+  };
+
+  /*
+   * Dragging the reference.
+   *
+   * Same bargain as the corners: the thing you move on the picture is the
+   * thing the slider sets, so either one can drive it and the other follows.
+   * Travel is read DOWN the picture and converted to ems of the body text,
+   * because that is the unit the gap is stored in — a gap in pixels would
+   * mean something different on the preview than on a 1080-line wall.
+   *
+   * Sign: with the verse above the reference (the bottom layouts) dragging
+   * DOWN opens the gap; with the reference above (the top layout) dragging
+   * down closes it. refSign is that, so the reference always follows the
+   * pointer rather than running away from it.
+   */
+  const refGrab = useRef<{ y: number; gap: number } | null>(null);
+  const [refDragging, setRefDragging] = useState(false);
+  const refDraggable = guide && !!onRefGap;
+  const refSign = atBottom ? 1 : -1;
+
+  const onRefDown = (e: ReactPointerEvent<HTMLParagraphElement>) => {
+    if (e.button !== 0 || !refDraggable) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    refGrab.current = { y: e.clientY, gap: theme.refGap };
+    setRefDragging(true);
+    onRefGapDrag?.(true);
+  };
+  const onRefMove = (e: ReactPointerEvent<HTMLParagraphElement>) => {
+    const g = refGrab.current;
+    if (!g) return;
+    /* The body's computed px size is the em the gap is measured in. */
+    const em = Math.max(17, 27 + theme.size * 2);
+    const moved = ((e.clientY - g.y) * refSign) / em;
+    const snapped = Math.round((g.gap + moved) / refGapRange.step) * refGapRange.step;
+    const next = Math.min(refGapRange.max, Math.max(refGapRange.min, snapped));
+    if (next !== theme.refGap) onRefGap?.(next);
+  };
+  const onRefUp = (e: ReactPointerEvent<HTMLParagraphElement>) => {
+    if (!refGrab.current) return;
+    refGrab.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    setRefDragging(false);
+    onRefGapDrag?.(false);
   };
 
   const picture = (
@@ -322,19 +385,52 @@ export function SlideCanvas({
             }}
           >
             {!atBottom && slide.reference && (
-              <p className="m-0 mb-[0.45em] text-[0.46em] font-semibold tracking-[0.08em] opacity-75">{slide.reference}</p>
-            )}
-            {slide.lines.map((line, i) => (
               <p
-                key={`${line.version}-${i}`}
-                className={(!atBottom && slide.reference) || i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}
-                style={{ fontSize: `${Math.max(0.72, 1 + theme.verseSize * 0.08)}em` }}
+                className="m-0 font-semibold tracking-[0.08em] opacity-75"
+                onPointerDown={onRefDown}
+                onPointerMove={onRefMove}
+                onPointerUp={onRefUp}
+                onPointerCancel={onRefUp}
+                style={{
+                  /* Its OWN size, off the container's em, so the two sliders
+                     never pull on each other: verseSize moves this line and
+                     nothing else. */
+                  fontSize: `${Math.max(0.28, 0.46 + theme.verseSize * 0.035)}em`,
+                  marginBottom: `${theme.refGap}em`,
+                  cursor: refDraggable ? 'ns-resize' : undefined,
+                  touchAction: refDraggable ? 'none' : undefined,
+                  color: refDragging ? 'var(--tri-accent-yellow)' : undefined,
+                }}
               >
+                {slide.reference}
+              </p>
+            )}
+            {/* The body is the container's own em — `size` sets it up on the
+                wrapper — so nothing here scales it a second time. The margin
+                is only ever the space BETWEEN body lines; the space to the
+                reference belongs to the reference, above or below. */}
+            {slide.lines.map((line, i) => (
+              <p key={`${line.version}-${i}`} className={i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}>
                 {line.text}
               </p>
             ))}
             {atBottom && slide.reference && (
-              <p className="m-0 mt-[0.45em] text-[0.46em] font-semibold tracking-[0.08em] opacity-75">{slide.reference}</p>
+              <p
+                className="m-0 font-semibold tracking-[0.08em] opacity-75"
+                onPointerDown={onRefDown}
+                onPointerMove={onRefMove}
+                onPointerUp={onRefUp}
+                onPointerCancel={onRefUp}
+                style={{
+                  fontSize: `${Math.max(0.28, 0.46 + theme.verseSize * 0.035)}em`,
+                  marginTop: `${theme.refGap}em`,
+                  cursor: refDraggable ? 'ns-resize' : undefined,
+                  touchAction: refDraggable ? 'none' : undefined,
+                  color: refDragging ? 'var(--tri-accent-yellow)' : undefined,
+                }}
+              >
+                {slide.reference}
+              </p>
             )}
           </div>
         ) : screen === 'live' && empty ? (

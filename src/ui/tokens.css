@@ -210,22 +210,25 @@
    */
   --tri-bar-inset: calc((var(--tri-bar-h) - var(--tri-control-h)) / 2);
   /*
-   * One row of live transcript, and the strip that has to hold three of them.
+   * One row of live transcript, and the strip that has to hold two of them.
    *
    * The context bar used to show the preacher's last sentence on a single
    * line and drop it the instant the next one landed, which is the one thing
-   * an operator cannot read fast enough to use. Three lines is what it takes
-   * to still have the sentence that set up the one being said now.
+   * an operator cannot read fast enough to use. Two lines is what it takes to
+   * still have the sentence that set up the one being said now; anything
+   * deeper is reading, and reading happens on the dashboard.
    *
    * --tri-topbar-live-h is a max() rather than a flat number so the strip is
-   * never SHORTER than the row it replaces: at touch density the controls it
-   * holds are already 53px and three lines of transcript are less than that,
-   * so the strip stays the height of its buttons and the transcript centres
-   * in it. Only where the text is the taller thing does the strip grow. The
-   * 13px is the pill's own padding, top and bottom together.
+   * never SHORTER than the row it replaces: the controls it sits beside are
+   * 41/46/53px by density and two lines of transcript are 41/43/47px, so the
+   * strip is the height of its buttons at every tier and the transcript
+   * centres in it. The max() stays because it is the guarantee, not because
+   * the text currently wins — change the leading or the row count and it is
+   * what keeps the top of the window from coming apart. The 13px is the
+   * pill's own padding, top and bottom together.
    */
   --tri-transcript-leading: 15px;
-  --tri-topbar-live-h: max(var(--tri-topbar-h), calc(3 * var(--tri-transcript-leading) + 13px));
+  --tri-topbar-live-h: max(var(--tri-topbar-h), calc(2 * var(--tri-transcript-leading) + 13px));
   /*
    * The rail's column — the run of service on the left of S-02.
    *

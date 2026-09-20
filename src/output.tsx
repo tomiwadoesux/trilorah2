@@ -62,6 +62,10 @@ interface Theme {
   stageShowTimer: string;
   verseLayout: string;
   safeMargin: number;
+  /** The reference line's own size, independent of the verse body's. */
+  refScale: number;
+  /** Space between the verse and its reference, in ems of the reference. */
+  refGap: number;
   /** How words arrive on the wall. See TEXT_TRANSITIONS in shared/textTransitions.ts. */
   textTransition: TextTransition;
   textTransitionMs: number;
@@ -100,6 +104,10 @@ const DEFAULT_THEME: Theme = {
   stageShowTimer: '',
   verseLayout: 'top',
   safeMargin: 7,
+  refScale: 1,
+  /* 4vh was this gap's hard-coded value before it became a control; as an
+     em of the reference it lands in the same place at the default size. */
+  refGap: 2,
   textTransition: 'fade',
   textTransitionMs: 450,
 };
@@ -139,6 +147,10 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     stageShowTimer: typeof s.stageShowTimer === 'string' ? s.stageShowTimer : '',
     verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'top',
     safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 7,
+    /* Both default when a theme saved before these existed is read back, so
+       an older church file keeps the wall it already had. */
+    refScale: typeof s.refScale === 'number' && s.refScale > 0 ? s.refScale : 1,
+    refGap: typeof s.refGap === 'number' && s.refGap >= 0 ? s.refGap : 2,
     textTransition: isTextTransition(s.textTransition) ? s.textTransition : 'fade',
     textTransitionMs: clampTransitionMs(s.textTransitionMs),
   };
@@ -357,6 +369,8 @@ function OutputSurface() {
     '--verse-weight': String(theme.weight),
     '--verse-color': theme.color,
     '--safe-margin': `${theme.safeMargin}%`,
+    '--ref-scale': String(theme.refScale),
+    '--ref-gap': `${theme.refGap}em`,
     '--tx-ms': `${theme.textTransition === 'cut' ? 0 : theme.textTransitionMs}ms`,
     '--stage-justify': stageJustify,
     '--stage-align': stageAlign,
@@ -383,11 +397,37 @@ function OutputSurface() {
           ? activeTimer.remainingMs + drift
           : activeTimer.remainingMs - drift
       : 0;
-    const totalMs = activeTimer && activeTimer.durationSec ? activeTimer.durationSec * 1000 : 0;
-    const color = activeTimer ? getTimerColor(ms, totalMs) : '#22c55e';
-    const isOverrun = Boolean(activeTimer && (activeTimer.overrunning || (activeTimer.kind === 'countdown' && ms < 0)));
-    const targetDisplay = totalMs > 0 ? formatTimerDisplay(totalMs) : null;
+    // Colour by the phase the store says we are in, not by durationSec. Once
+    // the agreed time is spent and grace was granted, remainingMs belongs to
+    // the EXTENSION, so dividing it by the sermon's full length would read
+    // 3:00 of a 45-minute sermon as 6% and paint the extension red from its
+    // first second — exactly the green restart the two-phase design exists
+    // to give the preacher.
+    const phaseTotalMs = activeTimer
+      ? activeTimer.phaseTotalMs || (activeTimer.durationSec ?? 0) * 1000
+      : 0;
+    const color = activeTimer ? getTimerColor(ms, phaseTotalMs) : '#22c55e';
+    // Trust the store's own verdict for the phase flip. Interpolating locally
+    // past zero would declare OVERTIME EXCEEDED on the tick the sermon runs
+    // out, a second before the snapshot arrives that would have started the
+    // extension counting down in green.
+    const isOverrun = Boolean(
+      activeTimer &&
+        (activeTimer.overrunning ||
+          (activeTimer.kind === 'countdown' && !activeTimer.inExtension && !activeTimer.extraSec && ms < 0)),
+    );
+    // "OF 45:00" during the extension would be a lie — the big number is
+    // counting the grace, not the sermon — so the caption follows the phase.
+    const targetDisplay = phaseTotalMs > 0 ? formatTimerDisplay(phaseTotalMs) : null;
     const activeDisplay = activeTimer ? (activeTimer.state === 'running' ? formatTimerDisplay(ms) : activeTimer.display) : null;
+    // Grace the preacher was granted is news the room should keep seeing —
+    // including after the extension itself runs out, which is precisely when
+    // someone will ask why the clock is red. It says EXTRA TIME while the
+    // extension is the thing counting down, so the big number is unambiguous.
+    const extensionLabel =
+      activeTimer && activeTimer.extraSec && activeTimer.extraSec > 0
+        ? `+${Math.round(activeTimer.extraSec / 60)} MIN ${activeTimer.inExtension ? 'EXTRA TIME' : 'EXTENSION'}`
+        : null;
 
     return (
       <div className={`output-root role-timer screen-${screen}`}>
@@ -420,6 +460,9 @@ function OutputSurface() {
                 <div className="timer-screen-overtime-label">
                   OVERTIME EXCEEDED
                 </div>
+                {extensionLabel && (
+                  <div className="timer-screen-extension-badge">{extensionLabel}</div>
+                )}
               </>
             ) : (
               <>
@@ -434,10 +477,8 @@ function OutputSurface() {
                     OF {targetDisplay}
                   </div>
                 )}
-                {activeTimer.extraSec && activeTimer.extraSec > 0 && (
-                  <div className="timer-screen-extension-badge">
-                    +{Math.round(activeTimer.extraSec / 60)} MIN EXTENSION
-                  </div>
+                {extensionLabel && (
+                  <div className="timer-screen-extension-badge">{extensionLabel}</div>
                 )}
               </>
             )
@@ -550,7 +591,7 @@ function OutputSurface() {
           </div>
         </div>
       )}
-      <div className={`output-stage ${contentVisible ? 'visible' : ''}`}>
+      <div className={`output-stage ${contentVisible ? 'visible' : ''} ${atBottom ? '' : 'ref-above'}`}>
         {shown && (
           <div className="output-enter" key={`${formatRef(shown.detection)}|${slideIndex}`}>
             {shown.isPreview && <div className="output-preview-mark">preview</div>}

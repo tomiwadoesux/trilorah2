@@ -501,3 +501,157 @@ describe('dispose', () => {
     expect(emissions).toHaveLength(0)
   })
 })
+
+describe('preacher extension (extraSec)', () => {
+  /** A 45-minute sermon, overrunning, as the dashboard creates it. */
+  function sermon(s: TimerStore) {
+    return s.create({ kind: 'countdown', durationSec: 45 * 60, overrun: true })!
+  }
+
+  it('does not touch the countdown while the agreed time is still running', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    s.update(t.id, { extraSec: 5 * 60 })
+    now += 44 * 60_000
+
+    const v = s.valueOf(t.id)!
+    expect(v.inExtension).toBe(false)
+    expect(v.remainingMs).toBe(60_000)
+    expect(v.phaseTotalMs).toBe(45 * 60_000)
+  })
+
+  it('restarts at the extension full value the moment the duration runs out', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    s.update(t.id, { extraSec: 5 * 60 })
+    now += 45 * 60_000
+
+    const v = s.valueOf(t.id)!
+    expect(v.inExtension).toBe(true)
+    expect(v.remainingMs).toBe(5 * 60_000)
+    expect(v.display).toBe('5:00')
+    expect(v.phaseTotalMs).toBe(5 * 60_000)
+  })
+
+  it('counts the extension down, then overruns past the end of it', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    s.update(t.id, { extraSec: 3 * 60 })
+
+    now += 46 * 60_000 // one minute into the three granted
+    expect(s.valueOf(t.id)!.display).toBe('2:00')
+    expect(s.valueOf(t.id)!.overrunning).toBe(false)
+
+    now += 2 * 60_000 // exactly spent
+    expect(s.valueOf(t.id)!.remainingMs).toBe(0)
+
+    now += 30_000 // past the extension too
+    const v = s.valueOf(t.id)!
+    expect(v.overrunning).toBe(true)
+    expect(v.display).toBe('-0:30')
+  })
+
+  /**
+   * The bug this whole model exists to kill: folding grace into durationSec
+   * grows the denominator, so remaining/total jumps back UP and the face
+   * cools from red to green at the worst possible moment.
+   */
+  it('keeps the phase total at the extension length, so the face does not cool', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    now += 45 * 60_000
+    s.update(t.id, { extraSec: 5 * 60 })
+
+    const v = s.valueOf(t.id)!
+    expect(v.durationSec).toBe(45 * 60)
+    expect(v.phaseTotalMs).toBe(5 * 60_000)
+    expect(v.remainingMs / v.phaseTotalMs).toBe(1)
+  })
+
+  it('accumulates a second grant onto the first', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    now += 45 * 60_000
+    s.update(t.id, { extraSec: 3 * 60 })
+    now += 60_000
+    expect(s.valueOf(t.id)!.display).toBe('2:00')
+
+    s.update(t.id, { extraSec: 3 * 60 + 5 * 60 })
+    expect(s.valueOf(t.id)!.display).toBe('7:00')
+    expect(s.valueOf(t.id)!.inExtension).toBe(true)
+  })
+
+  it('parks the extension at zero when overrun is off', () => {
+    const s = store()
+    const t = s.create({ kind: 'countdown', durationSec: 60 })!
+    s.start(t.id)
+    s.update(t.id, { extraSec: 60 })
+    now += 200_000
+    const v = s.valueOf(t.id)!
+    expect(v.remainingMs).toBe(0)
+    expect(v.overrunning).toBe(false)
+  })
+
+  it('lets a grant be taken back with zero', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    now += 45 * 60_000
+    s.update(t.id, { extraSec: 5 * 60 })
+    expect(s.valueOf(t.id)!.inExtension).toBe(true)
+
+    s.update(t.id, { extraSec: 0 })
+    const v = s.valueOf(t.id)!
+    expect(v.inExtension).toBe(false)
+    expect(v.remainingMs).toBe(0)
+  })
+
+  it('rejects grace that is negative, unreal, or on the wrong kind of timer', () => {
+    const s = store()
+    const t = sermon(s)
+    expect(s.update(t.id, { extraSec: -60 })).toBeNull()
+    expect(s.update(t.id, { extraSec: Number.NaN })).toBeNull()
+    expect(s.update(t.id, { extraSec: '5' as never })).toBeNull()
+    expect(s.valueOf(t.id)!.extraSec).toBeUndefined()
+
+    const e = s.create({ kind: 'elapsed' })!
+    expect(s.update(e.id, { extraSec: 60 })).toBeNull()
+  })
+
+  it('lapses the grant on reset, so next week starts clean', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    now += 45 * 60_000
+    s.update(t.id, { extraSec: 5 * 60 })
+    s.reset(t.id)
+
+    const v = s.valueOf(t.id)!
+    expect(v.extraSec).toBe(0)
+    expect(v.inExtension).toBe(false)
+    expect(v.display).toBe('45:00')
+  })
+
+  it('holds the extension still across a pause', () => {
+    const s = store()
+    const t = sermon(s)
+    s.start(t.id)
+    now += 45 * 60_000
+    s.update(t.id, { extraSec: 5 * 60 })
+    now += 60_000
+    s.pause(t.id)
+    expect(s.valueOf(t.id)!.display).toBe('4:00')
+
+    now += 10 * 60_000 // the world moves on; a paused clock does not
+    expect(s.valueOf(t.id)!.display).toBe('4:00')
+
+    s.start(t.id)
+    now += 60_000
+    expect(s.valueOf(t.id)!.display).toBe('3:00')
+  })
+})

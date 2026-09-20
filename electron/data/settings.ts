@@ -137,6 +137,12 @@ export const defaults = {
   // Stream output: lower-third band for OBS/vMix capture, or the full
   // projector look on a transparent canvas.
   streamLayout: 'lower-third' as 'lower-third' | 'full',
+  // Scripture layout on the wall, written by the themes tab on promote.
+  // verseLayout / safeMargin have always ridden along as loose keys; these
+  // two are declared so the reference's size and the space in front of it
+  // are part of the shape rather than something only the reader knows.
+  refScale: 1,
+  refGap: 2,
   // Stage confidence monitor extras.
   stageShowClock: true,
   stageShowNext: true,

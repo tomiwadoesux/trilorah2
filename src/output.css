@@ -82,13 +82,29 @@ body {
 }
 
 .output-ref {
-  margin-top: 4vh;
+  /* Set from the theme, so the gap the editor draws is the gap the room
+     gets. In ems of THIS line, which is why it survives a change of size:
+     move the reference-size slider and the space moves with it.
+
+     --ref-scale is its own, NOT --verse-scale: the two sliders are
+     independent now (the verse body scales with --verse-scale, this line
+     with --ref-scale) and multiplying by both would put them back on one
+     leash. */
+  margin-top: var(--ref-gap, 2em);
   font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
   font-variant-caps: small-caps;
   letter-spacing: 0.08em;
-  font-size: calc(clamp(1.1rem, 1.8vw, 2.4vw) * var(--verse-scale, 1));
+  font-size: calc(clamp(1.1rem, 1.8vw, 2.4vw) * var(--ref-scale, 1));
   color: var(--verse-color, #ffffff);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Reference above the verse (the 'top' layout): the same one gap, on the
+   other side of the line, so dragging it in the editor opens the same space
+   whichever way round the slide is built. */
+.output-stage.ref-above .output-ref {
+  margin-top: 0;
+  margin-bottom: var(--ref-gap, 2em);
 }
 
 /* A song section. Same face, weight and colour as a verse so the wall does
@@ -205,8 +221,10 @@ body {
 }
 
 .role-stream.layout-lower-third .output-ref {
+  /* The band is its own tight composition, so the gap is the layout's, not
+     the theme's — but the SIZE still follows the reference slider. */
   margin-top: 1vh;
-  font-size: calc(clamp(0.9rem, 1.3vw, 1.6vw) * var(--verse-scale, 1));
+  font-size: calc(clamp(0.9rem, 1.3vw, 1.6vw) * var(--ref-scale, 1));
 }
 
 /* Stage · confidence monitor: verse a touch smaller to leave room for the strip. */

@@ -72,6 +72,7 @@ import { ScreenStateMachine, roleFor, ROLE_TITLES, isScreenState } from './outpu
 import { Readable } from 'node:stream'
 import { placeOutput } from './output/displays'
 import type { LiveContent } from '../shared/liveContent'
+import { buildQrCard } from '../shared/qrCard'
 import { searchBible } from './data/bibleSearch'
 import { emitEngineEvent } from './emitters'
 import { resolveASRProvider, type ASRProvider } from './asr/provider'
@@ -199,6 +200,7 @@ function getMimeType(filePath: string): string {
   if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg'
   if (extension === '.webp') return 'image/webp'
   if (extension === '.gif') return 'image/gif'
+  if (extension === '.svg') return 'image/svg+xml'
   if (extension === '.mp4' || extension === '.m4v') return 'video/mp4'
   if (extension === '.mov') return 'video/quicktime'
   if (extension === '.webm') return 'video/webm'
@@ -262,12 +264,30 @@ const timers = new TimerStore((snapshot) => {
   broadcastToWindows('on-timers', snapshot)
 })
 
+/*
+ * How many saved timers are worth carrying across a restart.
+ *
+ * A church runs a handful — the countdown to the service, the offering, the
+ * sermon. Anything beyond that is residue: before the dashboard learned to
+ * reuse a stopped countdown, every press of START wrote another row, and a
+ * morning of pressing could leave dozens behind. They were invisible in the
+ * UI (the face only ever shows one) but they came back on every boot and the
+ * panel's own header counted them, so "service timer (21)" was the only sign
+ * anything was wrong. Newest wins, because the ones a church still uses are
+ * the ones it touched last.
+ */
+const MAX_RESTORED_TIMERS = 8
+
 function restoreTimers(): void {
   const saved = getSetting('timers')
   if (!Array.isArray(saved)) return
-  for (const t of saved) {
+  const keep = saved.slice(-MAX_RESTORED_TIMERS)
+  for (const t of keep) {
     if (t && typeof t === 'object') timers.create(t as never)
   }
+  /* Write the trimmed list straight back, so the pile is gone for good rather
+     than re-trimmed on every launch. */
+  if (keep.length < saved.length) persistTimers()
 }
 
 function persistTimers(): void {
@@ -280,6 +300,8 @@ function persistTimers(): void {
       durationSec: t.durationSec,
       targetTime: t.targetTime,
       overrun: t.overrun
+      // extraSec is deliberately NOT persisted: grace granted to last week's
+      // preacher must not still be on the clock next Sunday.
     })) as never
   )
 }
@@ -1597,12 +1619,23 @@ ipcMain.handle('show-qr', async () => {
       return { success: false, error: 'set public web url and account slug in Settings first' }
     }
     const url = `${base}/live/${slug}`
-    const { toFile } = await import('qrcode')
-    const file = path.join(app.getPath('temp'), 'trilorah-companion-qr.png')
-    await toFile(file, url, { width: 800, margin: 2 })
+    const { toString: qrToString } = await import('qrcode')
+    // margin 0: the card draws its own quiet zone, and the library's would
+    // sit inside that as a second, visible border.
+    const qrSvg = await qrToString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' })
+    const file = path.join(app.getPath('temp'), 'trilorah-companion-qr.svg')
+    fs.writeFileSync(
+      file,
+      buildQrCard({
+        qrSvg,
+        caption: String(getSetting('qrCompanionCaption') ?? '').trim() || 'Follow along on your phone',
+        url,
+        churchName: String(getSetting('churchName') ?? '')
+      })
+    )
     console.log(`📱 Companion QR on outputs → ${url}`)
     BrowserWindow.getAllWindows().forEach((win) => {
-      if (!win.isDestroyed()) win.webContents.send('on-show-media', file)
+      if (!win.isDestroyed()) win.webContents.send('on-show-media', file, 'photo')
     })
     return { success: true, url }
   } catch (e: any) {

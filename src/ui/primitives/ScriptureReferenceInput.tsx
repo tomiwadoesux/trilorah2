@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cx } from '../lib/cx';
 import { useNudge } from '../hooks/useNudge';
 import { SearchIcon } from '../icons';
+import { parts } from '../../../shared/referenceParts';
 
 /*
  * The scripture reference input.
@@ -42,6 +43,10 @@ export interface ResolvedReference {
   chapter: number;
   /** null when the operator stopped at the chapter — "Psalm 23" is a reference. */
   verse: number | null;
+  /** The last verse of a typed range ("5-9" → 9), null for a single verse.
+   *  Never less than `verse`; a half-typed "5-" reports null until a digit
+   *  lands, so a caller never sees a range that runs backwards. */
+  rangeEnd?: number | null;
 }
 
 export interface ScriptureReferenceInputProps {
@@ -88,46 +93,6 @@ export interface ScriptureReferenceInputProps {
 /* ------------------------------------------------------------------ */
 /* Parsing                                                             */
 /* ------------------------------------------------------------------ */
-
-interface Parts {
-  /** "1 john", "genesis" — trailing space kept, it means "done typing letters". */
-  book: string;
-  /** Digits typed for the chapter, "" when none yet, null when not started. */
-  chapter: string | null;
-  verse: string | null;
-}
-
-/*
- * Split what has been typed into book / chapter / verse.
- *
- * Hand-scanned rather than one regex because a leading digit is part of the
- * book ("1 John") while every later digit is a number — a distinction that
- * makes the single-regex version unreadable.
- */
-function parts(raw: string): Parts {
-  const s = raw.replace(/\s+/g, ' ').replace(/^ /, '');
-  let i = 0;
-  let book = '';
-
-  // Leading digit belongs to the name: 1 Samuel, 2 Kings, 3 John.
-  if (/\d/.test(s[0] ?? '')) {
-    while (i < s.length && /\d/.test(s[i])) book += s[i++];
-    while (i < s.length && s[i] === ' ') {
-      book += ' ';
-      i++;
-    }
-  }
-  while (i < s.length && /[a-z ]/i.test(s[i])) book += s[i++];
-
-  const rest = s.slice(i);
-  if (!rest) return { book, chapter: null, verse: null };
-
-  const m = rest.match(/^(\d*)(?:\s*[:.]\s*|\s+)?(\d*)$/);
-  if (!m) return { book, chapter: null, verse: null };
-
-  const sep = /[:.]|\s/.test(rest.slice(m[1].length));
-  return { book, chapter: m[1], verse: sep ? m[2] : null };
-}
 
 /*
  * The space after a leading number is not information.
@@ -275,7 +240,19 @@ export function ScriptureReferenceInput({
     if (n.verse === null) return true;
     const ch = Number(n.chapter);
     if (!n.chapter || ch < 1 || ch > books[bi].chapters) return false;
-    return viableNumber(n.verse, versesInChapter?.(bi, ch));
+    const last = versesInChapter?.(bi, ch);
+    if (!viableNumber(n.verse, last)) return false;
+
+    /* The range's end. Held to the same rule as every other number — it has
+       to be able to grow into a real verse of THIS chapter — with one more
+       on top: it may not end before it started, so "9-5" is refused at the
+       "5" rather than accepted and then quietly reordered. A dash with no
+       digits yet is fine; it is a reference being typed, not a broken one. */
+    if (n.rangeEnd === null) return true;
+    if (!n.verse) return false; // a dash needs a verse in front of it
+    if (n.rangeEnd === '') return true;
+    if (!viableNumber(n.rangeEnd, last)) return false;
+    return Number(n.rangeEnd + '9'.repeat(Math.max(0, String(last ?? 999).length - n.rangeEnd.length))) >= Number(n.verse);
   };
 
   const commit = (next: string, keepUndo = false) => {
@@ -338,8 +315,12 @@ export function ScriptureReferenceInput({
     const ch = p.chapter ? Number(p.chapter) : 1;
     if (ch < 1 || ch > books[bookIndex].chapters) return null;
     const v = p.verse ? Number(p.verse) : null;
-    return { bookIndex, book: books[bookIndex].name, chapter: ch, verse: v };
-  }, [books, bookIndex, p.chapter, p.verse]);
+    /* Only a complete, forward range is reported. A half-typed "5-" is a
+       single verse until its second number arrives, so the caller shows
+       verse 5 the whole way through rather than blanking on the dash. */
+    const end = p.rangeEnd && v !== null && Number(p.rangeEnd) >= v ? Number(p.rangeEnd) : null;
+    return { bookIndex, book: books[bookIndex].name, chapter: ch, verse: v, rangeEnd: end };
+  }, [books, bookIndex, p.chapter, p.verse, p.rangeEnd]);
   const reference = () => current;
 
   /*
@@ -351,7 +332,7 @@ export function ScriptureReferenceInput({
   useEffect(() => {
     onReferenceChange?.(current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.bookIndex, current?.chapter, current?.verse]);
+  }, [current?.bookIndex, current?.chapter, current?.verse, current?.rangeEnd]);
 
   /*
    * Step forward through the reference:

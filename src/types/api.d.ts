@@ -735,6 +735,14 @@ interface TimerSnapshot {
   display: string;
   durationSec?: number;
   extraSec?: number;
+  /**
+   * True once the agreed duration is spent and the granted extension is what
+   * is counting down. `remainingMs` then belongs to the EXTENSION, not the
+   * sermon, so anything colouring by remaining/total must use phaseTotalMs.
+   */
+  inExtension: boolean;
+  /** Full length of whichever phase remainingMs belongs to, in ms. */
+  phaseTotalMs: number;
 }
 
 interface TimerRecord {

@@ -125,6 +125,7 @@ interface ThemeSettings {
   font: FontOption;
   size: number;
   verseSize: number;
+  refGap: number;
   layout: TextPositionOption;
   safeMargin: number;
 }
@@ -137,6 +138,9 @@ const DEFAULT_THEME: ThemeSettings = {
   font: 'default',
   size: 0,
   verseSize: 0,
+  /* 0.45em — what the gap was hard-coded to before it became a control, so
+     an existing theme looks the same until someone moves the slider. */
+  refGap: 0.45,
   layout: 'top',
   safeMargin: 7,
 };
@@ -152,6 +156,12 @@ const DEFAULT_THEME: ThemeSettings = {
  * canvas a whole percent is a visible 6px jump.
  */
 const SAFE_MARGIN = { min: 3, max: 20, step: 0.5 } as const;
+
+/* The reference gap's bounds, in ems of the verse body — shared by its
+   slider and by dragging the reference on the canvas, for the same reason
+   SAFE_MARGIN is shared. 0 butts the two lines together; 3em is most of a
+   line of space, past which the reference has visibly left the verse. */
+const REF_GAP = { min: 0, max: 3, step: 0.05 } as const;
 
 /* The picker's options, straight off the shared vocabulary so this screen,
    Settings and the wall cannot disagree about what the choices are. */
@@ -271,6 +281,7 @@ function ThemesEditor({
   const tx = useTextTransition();
   /* A corner of the guide is in someone's hand — see SlideCanvas. */
   const [cornerHeld, setCornerHeld] = useState(false);
+  const [refHeld, setRefHeld] = useState(false);
   const blurb = TEXT_TRANSITIONS.find((t) => t.id === tx.id)?.blurb;
 
   return (
@@ -320,8 +331,23 @@ function ThemesEditor({
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <Slider label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
-            <Slider label="text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
-            <Slider label="verse size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
+            {/* Two sizes that no longer pull on each other: the first is the
+                scripture, the second is the John 3:16 line. They used to be
+                "text" (which scaled BOTH, because it set the container) and
+                "verse" (which scaled only the body), so moving either moved
+                the verse and neither label was true. */}
+            <Slider label="verse text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
+            <Slider label="reference size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
+            {/* Also set by dragging the reference itself on the picture. */}
+            <Slider
+              label="reference gap"
+              value={theme.refGap}
+              onChange={(refGap) => onChange({ ...theme, refGap })}
+              min={REF_GAP.min}
+              max={REF_GAP.max}
+              step={REF_GAP.step}
+              immediate={refHeld}
+            />
             {/* Also set by dragging any corner of the guide on the picture;
                 this stays the keyboard's way in, and the precise one. */}
             <Slider
@@ -386,6 +412,8 @@ function ThemesEditor({
         transition={tx}
         onSafeMargin={(safeMargin) => onChange({ ...theme, safeMargin })}
         onSafeDrag={setCornerHeld}
+        onRefGap={(refGap) => onChange({ ...theme, refGap })}
+        onRefGapDrag={setRefHeld}
       />
     </div>
   );
@@ -606,11 +634,15 @@ function ThemePreview({
   transition,
   onSafeMargin,
   onSafeDrag,
+  onRefGap,
+  onRefGapDrag,
 }: {
   theme: ThemeSettings;
   transition: { id: TextTransition; ms: number; play: number };
   onSafeMargin: (next: number) => void;
   onSafeDrag: (dragging: boolean) => void;
+  onRefGap: (next: number) => void;
+  onRefGapDrag: (dragging: boolean) => void;
 }) {
   return (
     /*
@@ -633,6 +665,9 @@ function ThemePreview({
         onSafeMargin={onSafeMargin}
         onSafeDrag={onSafeDrag}
         safeRange={SAFE_MARGIN}
+        onRefGap={onRefGap}
+        onRefGapDrag={onRefGapDrag}
+        refGapRange={REF_GAP}
         transition={transition}
       />
     </div>
@@ -1214,6 +1249,16 @@ function ScripturesBrowser() {
     },
   });
 
+  /* Specimen text for the sandbox, where no database is attached. The two
+     recognisable verses keep the screenshots readable; everything else gets
+     one line so a range still demonstrates a range. */
+  const FALLBACK_VERSE = (v: number) =>
+    v === 2
+      ? 'And both Jesus was called, and his disciples, to the marriage.'
+      : v === 16
+        ? 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.'
+        : 'In the beginning was the Word, and the Word was with God, and the Word was God.';
+
   /** The bound the input refuses against — straight off the loaded chapter. */
   const versesInChapter = (bookIndex: number, chapter: number) =>
     target && target.bookIndex === bookIndex && target.chapter === chapter && rows.length
@@ -1232,31 +1277,26 @@ function ScripturesBrowser() {
   useEffect(() => {
     if (!ref || !ref.book || !ref.chapter) return;
     if (rows.length === 0) {
-      const reference = `${ref.book} ${ref.chapter}${ref.verse ? `:${ref.verse}` : ':1'}`;
-      const sampleText = ref.verse === 2
-        ? `And both Jesus was called, and his disciples, to the marriage.`
-        : ref.verse === 16
-        ? `For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.`
-        : `In the beginning was the Word, and the Word was with God, and the Word was God.`;
+      const first = ref.verse ?? 1;
+      const last = Math.max(first, ref.rangeEnd ?? first);
+      const reference =
+        `${ref.book} ${ref.chapter}:${first}` + (last > first ? `-${last}` : '');
+      const verses = Array.from({ length: last - first + 1 }, (_, i) => ({
+        verse: first + i,
+        text: FALLBACK_VERSE(first + i),
+      }));
       projector.stage({
         source: 'scripture',
         id: reference,
         label: reference,
         reference,
         version,
-        text: sampleText,
-        slides: [{
-          reference,
-          lines: [{ version, text: sampleText }],
-          verseStart: ref.verse ?? 1,
-          verseEnd: ref.verse ?? 1,
-          index: 1,
-          total: 1,
-        }],
+        text: verses.map((v) => v.text).join(' '),
+        slides: buildVerseSlides({ book: ref.book, chapter: ref.chapter, version }, verses, SLIDE_RULES),
         origin: 'operator',
       });
     }
-  }, [ref?.book, ref?.chapter, ref?.verse, rows.length, version, projector]);
+  }, [ref?.book, ref?.chapter, ref?.verse, ref?.rangeEnd, rows.length, version, projector]);
 
   const emptyMessage =
     status === 'no-api'
@@ -1285,24 +1325,38 @@ function ScripturesBrowser() {
             onChange={setQuery}
             onReferenceChange={setRef}
             onSubmit={(r) => {
-              const reference = `${r.book} ${r.chapter}${r.verse ? `:${r.verse}` : ''}`;
-              const row = rows.find((v) => v.verse === r.verse);
-              const text = row?.text ?? (r.verse === 2 ? `And both Jesus was called, and his disciples, to the marriage.` : `For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.`);
+              /*
+               * A typed range is a READING, not a verse: "5-9" stages all
+               * five and lets buildVerseSlides break them the way the wall
+               * would. Before this, the field could not even parse the dash
+               * and the whole reference came back null — which is why a
+               * range put nothing on the screen at all.
+               */
+              const first = r.verse ?? 1;
+              const last = Math.max(first, r.rangeEnd ?? first);
+              const reference =
+                `${r.book} ${r.chapter}` +
+                (r.verse ? `:${first}${last > first ? `-${last}` : ''}` : '');
+
+              const picked = rows.filter((v) => v.verse >= first && v.verse <= last);
+              const verses = picked.length
+                ? picked.map((v) => ({ verse: v.verse, text: v.text }))
+                : [{ verse: first, text: FALLBACK_VERSE(first) }];
+
+              const slides = buildVerseSlides(
+                { book: r.book, chapter: r.chapter, version },
+                verses,
+                SLIDE_RULES,
+              );
+
               projector.stage({
                 source: 'scripture',
                 id: reference,
                 label: reference,
                 reference,
                 version,
-                text,
-                slides: [{
-                  reference,
-                  lines: [{ version, text }],
-                  verseStart: r.verse ?? 1,
-                  verseEnd: r.verse ?? 1,
-                  index: 1,
-                  total: 1,
-                }],
+                text: verses.map((v) => v.text).join(' '),
+                slides,
                 origin: 'operator',
               });
             }}
@@ -3173,29 +3227,26 @@ function useServiceLog(stateLabel: string) {
 
 
 /**
- * The bar. Bottom-anchored inside a fixed two-row window: a new line
- * appears at the bottom and the one above it moves up by exactly one row,
- * which is the whole animation. The stack is keyed on the newest row so
- * the rise restarts on every arrival.
+ * How many sentences of the sermon the context bar holds at once.
  *
- * Both rows are at full strength. An earlier pass faded the older line to
- * half — with three rows that was a reading order, but at two rows the
- * older line is the only context there is, and dimming half of a
- * two-line log is dimming half the log.
+ * Two, not three. The strip is a glance, not a reading surface — the owner
+ * asked for the current sentence and the one that set it up, and nothing
+ * more. The full log is a click away on the dashboard, which is exactly why
+ * the pill now opens it.
  */
-/** How many sentences of the sermon the context bar holds at once. */
-const TRANSCRIPT_ROWS = 3;
+const TRANSCRIPT_ROWS = 2;
 
 /*
  * The ladder, as numbers, indexed by distance from the newest line.
  *
- * Not evenly spaced: the drop from the current sentence to the one before
- * it is deliberately gentler than the drop after that, so the eye reads
- * "this, and the one that set it up, and a memory" rather than three
- * evenly-greyed rows of equal claim. See .tri-transcript-line in tokens.css
- * for how a row gets from one rung to the next.
+ * One rung per row, so LADDER.length must track TRANSCRIPT_ROWS. At two
+ * rows the older line is the only context there is, so it drops to 0.55
+ * rather than the 0.25 a third row used to get — dimmed enough to be
+ * plainly behind the current sentence, bright enough to still be read. See
+ * .tri-transcript-line in tokens.css for how a row gets from one rung to
+ * the next.
  */
-const LADDER = [1, 0.55, 0.25];
+const LADDER = [1, 0.55];
 
 /*
  * A sentence Deepgram has not finished hearing is dimmer than one it has.
@@ -3209,14 +3260,19 @@ const LADDER = [1, 0.55, 0.25];
 const PARTIAL_ALPHA = 0.72;
 
 /**
- * The preacher's speech in the top context bar — three sentences deep,
- * newest at the bottom, each one dimming a rung as the next arrives.
+ * The preacher's speech in the top context bar — two sentences deep,
+ * newest at the bottom, the older one dimming a rung as the next arrives.
  *
  * Replaces a single line that was thrown away the instant the next one
  * landed. The owner's complaint was exactly that: nobody can read one
  * sentence in the time it takes to say the next, so the strip showed text
  * that could not be used. Depth plus a ladder of opacity makes the bar
  * readable at a glance and gives the current sentence its context.
+ *
+ * The strip is a glance and nothing more, which is why the whole pill is a
+ * button: the scrollable log of everything said lives on the dashboard, and
+ * the natural thing to do when two lines are not enough is to reach for the
+ * text itself. Clicking it goes there.
  *
  * Why the rows are built as a fixed-length array with the partial folded in
  * as the last entry: every row then knows its distance from the newest, and
@@ -3227,9 +3283,11 @@ const PARTIAL_ALPHA = 0.72;
 function HeaderKineticFocus({
   spoken,
   asr,
+  onOpenDashboard,
 }: {
   spoken: { lines: { id: number; text: string }[]; partial: string };
   asr: string;
+  onOpenDashboard: () => void;
 }) {
   const isLive = asr === 'listening';
   const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
@@ -3254,13 +3312,13 @@ function HeaderKineticFocus({
     }
     if (!hasRealSpeech) {
       /* Nothing has been heard yet. One placeholder, at the newest rung, so
-         the strip says what it is for instead of reading as broken. */
+         the strip says what it is for instead of reading as broken.
+         Never sample scripture: an operator glancing at this strip mid-service
+         must not be able to mistake filler for something the preacher said. */
       return [
         {
           id: -1,
-          text: isLive
-            ? 'listening for the pulpit…'
-            : 'For God so loved the world that He gave His only begotten Son…',
+          text: isLive ? 'listening for the pulpit…' : 'transcripts appear here',
           partial: true,
         },
       ];
@@ -3271,26 +3329,34 @@ function HeaderKineticFocus({
   const newestId = rows[rows.length - 1]?.id;
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onOpenDashboard}
       className={cx(
-        '@container relative flex min-w-[64px] flex-1 overflow-hidden rounded-[var(--tri-radius-control)]',
+        '@container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',
         'border border-white/10 bg-white/[0.04] pl-3 pr-2.5 backdrop-blur-md',
+        /* The same neutral lift every other control on this strip uses when
+           the pointer is over it. No colour: the only coloured thing in this
+           pill is the live dot, and that means something. */
+        'transition-colors hover:border-white/20 hover:bg-white/[0.08]',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tri-accent-yellow)]',
       )}
-      /* Three rows tall, and never shorter than the controls beside it —
+      /* Two rows tall, and never shorter than the controls beside it —
          see --tri-topbar-live-h. Pinned rather than left to the content so
          a one-line transcript does not sit in a short pill that jumps taller
-         on the third sentence. */
+         on the second sentence. */
       style={{ height: 'var(--tri-topbar-live-h)', paddingBlock: '6px' }}
-      title="live preacher transcript — newest line at the bottom"
+      title="live preacher transcript — click to open the dashboard, where the full transcript is"
+      aria-label="Live preacher transcript. Opens the dashboard, where the full transcript is."
     >
       {/*
         The live dot is taken OUT of the text flow and parked in the corner.
-        Inline it cost about 18px of every one of the three lines, and at
-        1280 this strip is already the narrowest thing on the row — the
-        owner's complaint was as much about lines being short as about there
-        being one of them, and 18px is a word. Top-right rather than
-        top-left because the text is read left-to-right from a hard margin:
-        a marker on that margin pushes the first character off it.
+        Inline it cost about 18px of every line, and at 1280 this strip is
+        already the narrowest thing on the row — the owner's complaint was as
+        much about lines being short as about there being one of them, and
+        18px is a word. Top-right rather than top-left because the text is
+        read left-to-right from a hard margin: a marker on that margin pushes
+        the first character off it.
       */}
       <span
         aria-label={isLive ? 'listening' : 'not listening'}
@@ -3301,7 +3367,7 @@ function HeaderKineticFocus({
       />
 
       {/*
-        Bottom-anchored. With fewer than three sentences the stack sits at
+        Bottom-anchored. Before the second sentence lands the stack sits at
         the FOOT of the pill, so the newest line is always on the same
         baseline — it does not walk down the pill as the service fills up.
       */}
@@ -3311,15 +3377,17 @@ function HeaderKineticFocus({
           const depth = rows.length - 1 - i;
           const alpha = row.partial && depth === 0 ? PARTIAL_ALPHA : (LADDER[depth] ?? 0);
           return (
-            <p
+            /* A span, not a paragraph: the pill is a button now, and a <p>
+               inside one is invalid nesting. `block` keeps the row a row. */
+            <span
               key={row.id}
               className={cx(
-                'tri-transcript-line truncate text-left font-medium tracking-wide select-text',
+                'tri-transcript-line block truncate text-left font-medium tracking-wide select-text',
                 /* Only the arriving row animates in; the rest are
                    transitioning down and must not restart their keyframe. */
                 row.id === newestId && 'tri-transcript-line--new',
                 /* Only the TOP row is level with the corner dot, so only the
-                   top row pays for it. The other two keep the full width —
+                   top row pays for it. The newest line keeps the full width —
                    which is the whole reason the dot left the text flow. */
                 depth === TRANSCRIPT_ROWS - 1 && 'pr-3',
               )}
@@ -3327,8 +3395,8 @@ function HeaderKineticFocus({
                 {
                   '--tri-line-a': alpha,
                   fontSize: '11.5px',
-                  /* The rung height is a token so three rows and the pill
-                     that holds them are computed from the same number. */
+                  /* The rung height is a token so the rows and the pill that
+                     holds them are computed from the same number. */
                   lineHeight: 'var(--tri-transcript-leading)',
                   color: 'var(--tri-ink)',
                 } as React.CSSProperties
@@ -3341,11 +3409,11 @@ function HeaderKineticFocus({
                   aria-hidden="true"
                 />
               )}
-            </p>
+            </span>
           );
         })}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -4816,10 +4884,10 @@ function LiveBody({ state }: { state?: string }) {
               title={`run of service (${run.segments.length})`}
               className="absolute inset-0"
               /* The live-transcript variant, not the plain topbar height:
-                 the strip across the top of the right column is now three
-                 lines of speech tall, and this header has to be exactly as
-                 tall or the top of the window comes apart into two lines
-                 that nearly agree. See --tri-topbar-live-h. */
+                 the strip across the top of the right column is sized by the
+                 transcript pill, and this header has to be exactly as tall or
+                 the top of the window comes apart into two lines that nearly
+                 agree. See --tri-topbar-live-h. */
               style={{ '--tri-bar-h': 'var(--tri-topbar-live-h)' } as React.CSSProperties}
               right={<RunHeaderActions say={say} />}
             >
@@ -4843,12 +4911,13 @@ function LiveBody({ state }: { state?: string }) {
           <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-subgrid">
             <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
             {/*
-              The strip is as tall as the transcript needs (three lines),
-              which is taller than the controls that share it. items-center
-              rather than items-stretch so those controls keep their own
-              --tri-topbar-h height and sit on the strip's centre line — a
-              button stretched to three lines of speech is a slab, and one
-              left at its own height under `stretch` would hang off the top.
+              The strip is as tall as the transcript needs, floored at the
+              control height. items-center rather than items-stretch so the
+              controls keep their own --tri-topbar-h height and sit on the
+              strip's centre line — a button stretched to the full strip is a
+              slab, and one left at its own height under `stretch` would hang
+              off the top. At two lines the floor is what wins, but the rule
+              has to hold either way.
             */}
             <div
               className="flex min-w-0 shrink-0 items-center gap-[var(--tri-gap)]"
@@ -4892,8 +4961,14 @@ function LiveBody({ state }: { state?: string }) {
                 <ListenControl />
               </div>
 
-              {/* Live speech transcript in top header */}
-              <HeaderKineticFocus spoken={engine.spoken} asr={engine.asr} />
+              {/* Live speech transcript in top header. Two lines here, the
+                  whole scrollable log on the dashboard — so the pill routes
+                  there rather than pretending to be the log. */}
+              <HeaderKineticFocus
+                spoken={engine.spoken}
+                asr={engine.asr}
+                onOpenDashboard={() => setView('dashboard')}
+              />
 
               {/* Import Bento Pill Menu beside timer */}
               <ImportBentoMenu
@@ -4931,6 +5006,22 @@ function LiveBody({ state }: { state?: string }) {
                    the preview never shifts words the room is reading. */
                 void window.api?.setSetting?.('verseLayout', previewTheme.layout);
                 void window.api?.setSetting?.('safeMargin', previewTheme.safeMargin);
+                /*
+                 * The reference's size and the space in front of it, in the
+                 * units the wall reads (src/output.css). The editor's sliders
+                 * are steps around zero; the wall scales a clamp() by a
+                 * ratio, so the step becomes a multiplier on the same curve
+                 * the reference already had.
+                 *
+                 * The gap is stored as ems of the BODY in the editor (that is
+                 * what it is dragged against there) and as ems of the
+                 * REFERENCE on the wall, so it is converted rather than
+                 * copied — 0.45em of body at the default sizes is the 2em of
+                 * reference that .output-ref used to hard-code as 4vh.
+                 */
+                const refScale = Math.max(0.28, 0.46 + previewTheme.verseSize * 0.035) / 0.46;
+                void window.api?.setSetting?.('refScale', refScale);
+                void window.api?.setSetting?.('refGap', (previewTheme.refGap / 0.45) * 2);
               }}
             />
 

@@ -50,7 +50,18 @@ export interface Timer {
   pausedAt: number | null
   /** Time already banked by earlier run segments, in ms. */
   elapsedBeforePauseMs: number
-  /** Extra seconds added live during countdown (e.g. +12 min). */
+  /**
+   * Grace the preacher was granted at the end of the sermon, in seconds.
+   *
+   * This is NOT part of durationSec and must never be folded into it. The
+   * sermon clock has two phases: the duration everyone agreed on, and then,
+   * if someone grants it, a fresh countdown of this length. Adding the extra
+   * to the duration instead would rewrite history — a 45-minute sermon that
+   * ran to 44:00 and was handed five more would suddenly read 6:00 left of
+   * 50:00, which is 12% remaining, so the face would jump back from red to
+   * green exactly when the pressure is highest. Kept separate, the first
+   * countdown still ends in red, and the extension starts its own green.
+   */
   extraSec?: number
 }
 
@@ -68,6 +79,16 @@ export interface TimerSnapshot {
   display: string
   durationSec?: number
   extraSec?: number
+  /**
+   * True once the agreed duration has run out and the timer is counting down
+   * the granted extension instead. `remainingMs` is then time left of the
+   * EXTENSION, and `phaseTotalMs` is the extension's full length — so a face
+   * that colours by remaining/total warms from green again at the top of the
+   * extension and reaches red as that runs out too.
+   */
+  inExtension: boolean
+  /** Full length of whichever phase remainingMs belongs to, in ms. */
+  phaseTotalMs: number
 }
 
 export interface CreateTimerInput {
@@ -188,6 +209,12 @@ export class TimerStore {
       if (timer.kind !== 'to-time' || !isTargetTime(patch.targetTime)) return null
     }
     if (patch.name !== undefined && typeof patch.name !== 'string') return null
+    // Grace only makes sense on a countdown, and only as a real number of
+    // seconds. Zero is legal — that is how a grant is taken back.
+    if (patch.extraSec !== undefined) {
+      if (timer.kind !== 'countdown') return null
+      if (typeof patch.extraSec !== 'number' || !Number.isFinite(patch.extraSec) || patch.extraSec < 0) return null
+    }
 
     if (patch.name !== undefined) timer.name = patch.name.trim() || defaultName(timer.kind)
     if (patch.durationSec !== undefined) timer.durationSec = patch.durationSec
@@ -254,6 +281,10 @@ export class TimerStore {
     timer.startedAt = null
     timer.pausedAt = null
     timer.elapsedBeforePauseMs = 0
+    // Grace was granted against a sermon that is now being run again from the
+    // top, so it lapses with it. Leaving it would hand the next run an
+    // extension nobody asked for.
+    if (timer.extraSec) timer.extraSec = 0
     // Un-pin, so restarting a to-time timer measures against the clock afresh.
     delete timer.anchoredAt
     this.emit()
@@ -316,12 +347,29 @@ function runMs(t: Timer, at: number): number {
 
 function snapshotOf(t: Timer, at: number): TimerSnapshot {
   let remainingMs: number
+  let inExtension = false
+  let phaseTotalMs = (t.durationSec ?? 0) * SECOND_MS
 
   if (t.kind === 'elapsed') {
     remainingMs = runMs(t, at)
+    phaseTotalMs = 0
   } else if (t.kind === 'countdown') {
     const total = (t.durationSec ?? 0) * SECOND_MS
-    remainingMs = total - runMs(t, at)
+    const extra = Math.max(0, t.extraSec ?? 0) * SECOND_MS
+    const left = total - runMs(t, at)
+
+    if (extra > 0 && left <= 0) {
+      // The agreed time is spent and grace was granted, so the face restarts
+      // at the extension's full value and drains from there. `left` is
+      // already negative by exactly how far into the extension we are, which
+      // is why adding it counts the extension down rather than up.
+      remainingMs = extra + left
+      inExtension = true
+      phaseTotalMs = extra
+    } else {
+      remainingMs = left
+      phaseTotalMs = total
+    }
   } else {
     // to-time chases a wall-clock instant, so the gap is fixed the moment
     // the timer starts: we resolve the target once, from the start, and
@@ -368,7 +416,9 @@ function snapshotOf(t: Timer, at: number): TimerSnapshot {
     overrunning: past && t.overrun,
     display: formatTimerDisplay(remainingMs),
     durationSec: t.durationSec,
-    extraSec: t.extraSec
+    extraSec: t.extraSec,
+    inExtension,
+    phaseTotalMs
   }
 }
 
