@@ -1273,14 +1273,58 @@ ipcMain.on('process-text', (_event, text) => {
   emitTranscript(text)
 })
 
+/*
+ * Starting to listen IS starting the service, as far as the outside world is
+ * concerned.
+ *
+ * Everything that reaches a phone — transcript chunks, detected verses,
+ * segments — is keyed on `activeServiceId`, and every one of those functions
+ * opens with `if (!activeServiceId) return`. So with no service row the app
+ * transcribes perfectly, drives the projector perfectly, and posts NOTHING:
+ * the companion page says "no live service yet today" through an entire
+ * sermon. The only thing that ever created that row was a button in the
+ * Cloud tab that an operator has no reason to press and no way to guess at.
+ *
+ * Pressing Start Listening is the operator saying the service has begun.
+ * That is the signal, so it is the one used, and the cloud half stops being
+ * a separate ritual nobody performs.
+ *
+ * Fire-and-forget on purpose: the microphone must not wait on the network.
+ * If this fails the service runs exactly as it did before — locally correct,
+ * publicly silent — and says so in the log rather than blocking the start.
+ */
+async function ensureCloudService(): Promise<void> {
+  if (!isCloudConfigured()) return
+  if (getActiveServiceId()) return
+  try {
+    /* No sermon title: there is no setting holding one, and the page reads
+       fine without it. The operator can name the service in the Cloud tab. */
+    const res = await startService({ preacherId: activePreacherId() || null })
+    if (res.success && res.serviceId) {
+      console.log(`☁️  Service opened for the companion page: ${res.serviceId}`)
+    } else if (!res.success) {
+      console.error(`☁️  Could not open the cloud service — the phone page will stay empty: ${res.error}`)
+    }
+  } catch (e: any) {
+    console.error('☁️  Could not open the cloud service:', e?.message)
+  }
+}
+
 ipcMain.on('start-listening', (_event, deviceLabel) => {
   console.log('▶️ Start listening requested', deviceLabel ? `(device: ${deviceLabel})` : '')
   startASR(deviceLabel)
+  void ensureCloudService()
 })
 
 ipcMain.on('stop-listening', () => {
   console.log('⏹️ Stop listening requested')
   stopASR()
+  /* Deliberately NOT ending the cloud service. An operator stops and starts
+     listening several times in one service — between songs, over a
+     testimony, whenever the room gets loud — and ending the service on the
+     first stop would take the page down mid-sermon and orphan every chunk
+     that followed. The service ends when the operator ends it, or with the
+     app. */
 })
 
 ipcMain.on('push-to-live', () => {

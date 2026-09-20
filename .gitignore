@@ -28,3 +28,5 @@ release/
 # tesseract language data — downloaded at first OCR, not source
 eng.traineddata
 *.traineddata
+.vercel
+.env*

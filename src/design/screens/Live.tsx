@@ -3560,6 +3560,115 @@ function ImportBentoMenu({
 /**
  * Digital clock bento pill showing live device time with seconds and am/pm.
  */
+/*
+ * Whether the companion code is what the wall is showing, and the one press
+ * that puts it there or takes it down.
+ *
+ * Shared by the stage's icon button and the header bento, because two
+ * controls for one wall that each remembered their own answer would
+ * disagree the moment either was used. State is learned from the engine
+ * rather than from the press: main announces every picture it puts up, the
+ * code included, and announces a cleared wall too, so a photo shown over
+ * the code from another window turns this off without being told.
+ */
+function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
+  const [qrUp, setQrUp] = useState(false);
+
+  useEffect(() => {
+    const api = window.api;
+    if (!api) return;
+    const offShow = api.onShowMedia?.((file) => setQrUp(/trilorah-companion-qr/.test(file)));
+    const offClear = api.onShowCleanBackground?.(() => setQrUp(false));
+    return () => {
+      offShow?.();
+      offClear?.();
+    };
+  }, []);
+
+  /* Anything going live replaces the code by definition. */
+  useEffect(() => {
+    if (live) setQrUp(false);
+  }, [live]);
+
+  const toggleQr = useCallback(() => {
+    if (live) return;
+    if (qrUp) {
+      void window.api?.clearMedia?.();
+      setQrUp(false);
+      return;
+    }
+    if (!window.api?.showQr) {
+      say?.({ text: 'the phone code needs the engine — it cannot be shown from here' });
+      return;
+    }
+    void window.api
+      .showQr()
+      .then((res) => {
+        if (res?.success) setQrUp(true);
+        /* Main's own message names two settings keys. The operator needs the
+           sentence that says where to go, not which keys were empty. */
+        else say?.({ text: "companion isn't set up yet — add your public web address and account in Settings" });
+      })
+      .catch(() => say?.({ text: "couldn't show the phone code — try again" }));
+  }, [live, qrUp, say]);
+
+  return { qrUp, toggleQr };
+}
+
+/*
+ * The companion code as the third bento in the header strip.
+ *
+ * It was only ever an unlabelled icon down in the stage controls, which is
+ * the wrong place for the one thing an operator reaches for BEFORE a service
+ * starts — the minutes when the room is filling and the wall is empty are
+ * exactly when the code should go up, and at that moment the operator is
+ * looking at the top of the window, not at a row of glyphs under a blank
+ * preview.
+ *
+ * So it sits up here beside the clock, named, with its state on its face.
+ * Same rule as the icon: only onto an empty wall, dimmed and inert while
+ * anything is live, because swapping a verse the room is reading for a QR is
+ * the worst mis-click in the app.
+ */
+function CompanionQrBento({ live, say }: { live: boolean; say?: (e: { text: string }) => void }) {
+  const { qrUp, toggleQr } = useCompanionQr(live, say);
+
+  return (
+    <button
+      type="button"
+      onClick={toggleQr}
+      disabled={live}
+      className={cx(
+        'tri-rounded-control relative flex shrink-0 items-center gap-2 overflow-hidden px-3 text-[length:var(--tri-size-xs)] lowercase transition-all',
+        live
+          ? 'cursor-not-allowed bg-[rgb(255_255_255_/_0.02)] text-[rgb(229_243_242_/_0.3)]'
+          : qrUp
+            ? 'cursor-pointer bg-[rgb(212_175_105_/_0.16)] text-[var(--tri-gold,#d4af69)] hover:bg-[rgb(212_175_105_/_0.22)] active:scale-[0.98]'
+            : 'cursor-pointer bg-[rgb(255_255_255_/_0.03)] text-[var(--tri-ink)] hover:bg-[rgb(255_255_255_/_0.07)] active:scale-[0.98]',
+      )}
+      style={{ ...EDGE, height: 'var(--tri-topbar-h)' }}
+      title={
+        live
+          ? 'the projector is in use — clear it to show the phone code'
+          : qrUp
+            ? 'take the phone code off the projector'
+            : 'show the phone code on the projector'
+      }
+    >
+      <span
+        className={cx('h-1.5 w-1.5 shrink-0 rounded-full', qrUp && 'animate-pulse')}
+        style={
+          qrUp
+            ? { backgroundColor: '#d4af69', boxShadow: '0 0 8px rgba(212,175,105,0.7)' }
+            : { backgroundColor: 'rgb(229 243 242 / 0.25)' }
+        }
+      />
+      <QrIcon size={12} />
+      <span className="font-medium tracking-wide">{qrUp ? 'code up' : 'phone code'}</span>
+    </button>
+  );
+}
+
 function DigitalClockBento() {
   const [time, setTime] = useState(() => new Date());
   const [mode, setMode] = useState<'clock' | 'timer'>('clock');
@@ -4196,54 +4305,13 @@ function Stage({
   }, [overPreview, canStep]);
 
   /*
-   * Whether the companion code is what the wall is showing.
-   *
-   * Learned from the engine rather than remembered from the press: main
-   * announces every picture it puts up, the code included, and announces a
-   * cleared wall too — so another window showing a photo over the code, or
-   * clearing it, turns this off without being told. Anything going live
-   * replaces it by definition.
+   * Whether the clip on the wall is paused, as far as this window knows.
    */
-  const [qrUp, setQrUp] = useState(false);
-  /* Whether the clip on the wall is paused, as far as this window knows. */
   const [videoPaused, setVideoPaused] = useState(false);
   const liveKey = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
   useEffect(() => setVideoPaused(false), [liveKey]);
-  useEffect(() => {
-    const api = window.api;
-    if (!api) return;
-    const offShow = api.onShowMedia?.((file) => setQrUp(/trilorah-companion-qr/.test(file)));
-    const offClear = api.onShowCleanBackground?.(() => setQrUp(false));
-    return () => {
-      offShow?.();
-      offClear?.();
-    };
-  }, []);
-  useEffect(() => {
-    if (live) setQrUp(false);
-  }, [live]);
 
-  const toggleQr = () => {
-    if (live) return;
-    if (qrUp) {
-      void window.api?.clearMedia?.();
-      setQrUp(false);
-      return;
-    }
-    if (!window.api?.showQr) {
-      say?.({ text: 'the phone code needs the engine — it cannot be shown from here' });
-      return;
-    }
-    void window.api
-      .showQr()
-      .then((res) => {
-        if (res?.success) setQrUp(true);
-        /* Main's own message names two settings keys. The operator needs the
-           sentence that says where to go, not which keys were empty. */
-        else say?.({ text: "companion isn't set up yet — add your public web address and account in Settings" });
-      })
-      .catch(() => say?.({ text: "couldn't show the phone code — try again" }));
-  };
+  const { qrUp, toggleQr } = useCompanionQr(!!live, say);
 
   return (
     /*
@@ -4607,16 +4675,33 @@ function LiveBody({ state }: { state?: string }) {
      the operator is looking at a "live" verse nobody can see. */
   useEffect(() => window.api?.onVerseAutoDismiss?.(() => projector.clear()), [projector]);
 
-  /* Whenever the engine hears a scripture reference, immediately stage to preview AND push to live screen! */
+  /*
+   * A caught reference STAGES. It does not go live.
+   *
+   * This used to stage and push in the same breath, which put the engine's
+   * guess in front of the congregation the instant it heard one — over
+   * whatever the operator had chosen, mid-sentence, with no press involved.
+   * The proposal stack exists precisely so that answering a catch is a
+   * deliberate act (see ProposalStack), and pushing here went behind it.
+   *
+   * So it fills the preview box only: the operator sees the verse arrive,
+   * reads it, and presses live when the preacher actually gets there. The
+   * press is in the proposal card and in the preview panel's own live
+   * button, both of which already do the full round trip.
+   *
+   * It also will not touch preview while something is already staged by
+   * hand — a catch is a suggestion, and overwriting a chosen verse is the
+   * same mistake one step quieter.
+   */
   const latestProposal = engine.proposals[0];
-  const lastAutoPushedRef = useRef<string | null>(null);
+  const lastStagedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!latestProposal || latestProposal.missing || !latestProposal.reference) return;
-    if (lastAutoPushedRef.current === latestProposal.id) return;
-    lastAutoPushedRef.current = latestProposal.id;
+    if (lastStagedRef.current === latestProposal.id) return;
+    lastStagedRef.current = latestProposal.id;
 
-    const item: LiveItem = {
+    projector.stage({
       source: 'scripture',
       id: latestProposal.reference,
       label: latestProposal.reference,
@@ -4626,13 +4711,7 @@ function LiveBody({ state }: { state?: string }) {
       slides: latestProposal.slides,
       verses: latestProposal.verses,
       origin: 'engine',
-    };
-
-    projector.stage(item);
-    projector.send(item);
-    if (window.api?.pushToLive) {
-      window.api.pushToLive();
-    }
+    });
   }, [latestProposal?.id, projector]);
 
   /* The bar's contents. The log listens to the state so a change speaks
@@ -4816,6 +4895,9 @@ function LiveBody({ state }: { state?: string }) {
             {/* Device Digital Clock Bento */}
             <DigitalClockBento />
 
+            {/* The companion code — third bento, right of the timer. */}
+            <CompanionQrBento live={!!projector.live} say={say} />
+
             {/* Right: separate logs bento card matching the width of the empty space below */}
             <div
               className="flex shrink-0 items-stretch"
@@ -4979,6 +5061,9 @@ function LiveBody({ state }: { state?: string }) {
 
               {/* Device Digital Clock Bento */}
               <DigitalClockBento />
+
+              {/* The companion code — third bento, right of the timer. */}
+              <CompanionQrBento live={!!projector.live} say={say} />
 
               {/* Right: the service log.
                   Narrower on the operator view than it is on the dashboard,
