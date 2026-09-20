@@ -6,7 +6,8 @@
     "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start -p 3003",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

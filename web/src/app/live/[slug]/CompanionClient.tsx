@@ -31,6 +31,8 @@ interface Service {
   sermon_title: string | null;
   publish_transcript: boolean;
   audience_training_enabled: boolean;
+  /** Public YouTube/Facebook stream, when the church has set one. */
+  stream_url: string | null;
 }
 
 export default function CompanionClient({
@@ -122,14 +124,24 @@ export default function CompanionClient({
     if (!service) return;
     let cancelled = false;
     (async () => {
-      const since = new Date(Date.now() - 30 * 1000).toISOString();
+      // Wide enough to cover the deliberate lag. The transcript shows the room
+      // as it was ~24s ago (stream delay + hold), so a 30s backfill left a
+      // phone that had just been opened with nothing it was allowed to draw
+      // yet. Three minutes gives the highlight somewhere to start and the
+      // viewer a little to scroll back through.
+      //
+      // Bounded by row count as well as by time: a recogniser that reconnects
+      // can flush a burst of chunks with near-identical timestamps, and a
+      // congregant's phone should not take a thousand rows to the face for it.
+      const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
       const [tcRes, vRes, nRes, segRes] = await Promise.all([
         supabase
           .from("transcript_chunks")
           .select("*")
           .eq("service_id", service.id)
           .gte("timestamp", since)
-          .order("timestamp"),
+          .order("timestamp", { ascending: false })
+          .limit(120),
         supabase
           .from("detected_verses")
           .select("*")
@@ -150,7 +162,9 @@ export default function CompanionClient({
           .maybeSingle(),
       ]);
       if (cancelled) return;
-      if (tcRes.data) setTranscript(tcRes.data);
+      // Fetched newest-first so the limit keeps the RECENT rows; stored oldest
+      // first, which is the order everything downstream expects to read.
+      if (tcRes.data) setTranscript([...tcRes.data].reverse());
       if (vRes.data) setVerses(vRes.data);
       if (nRes.data) setNotes(nRes.data);
       if (segRes.data) setCurrentSegment(segRes.data.type);
@@ -244,7 +258,10 @@ export default function CompanionClient({
   }
 
   return (
-    <main className="min-h-screen pb-20 flex flex-col">
+    // h-screen, not min-h-screen: the transcript inside is the thing that
+    // scrolls, so the page itself must be exactly one viewport or the tab bar
+    // ends up below the fold on a phone with a browser chrome bar.
+    <main className="h-screen pb-20 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="px-4 pt-5 pb-3 border-b border-white/5 sticky top-0 bg-[#0a0a0a]/95 backdrop-blur z-10">
         <div className="flex items-center justify-between">
@@ -267,7 +284,9 @@ export default function CompanionClient({
       </header>
 
       {/* Content */}
-      <section className="flex-1 overflow-hidden">
+      {/* A flex column so the transcript can take whatever height the optional
+          stream player leaves it, instead of a fixed calc that overflows. */}
+      <section className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {tab === "now" && (
           <TranscriptStream
             chunks={transcript}
@@ -275,6 +294,8 @@ export default function CompanionClient({
             segment={currentSegment}
             isLive={!!isLive}
             publishTranscript={service.publish_transcript}
+            serviceStartedAt={service.started_at}
+            streamUrl={service.stream_url}
           />
         )}
         {tab === "verses" && (

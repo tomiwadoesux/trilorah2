@@ -13,7 +13,7 @@ interface GivingMethods {
 export default function GiveTab({ methods }: { methods: GivingMethods | null }) {
   if (!methods) {
     return (
-      <div className="h-[calc(100vh-180px)] flex items-center justify-center text-sm text-gray-500">
+      <div className="flex-1 min-h-0 flex items-center justify-center text-sm text-gray-500">
         No giving methods configured.
       </div>
     );
@@ -58,14 +58,14 @@ export default function GiveTab({ methods }: { methods: GivingMethods | null }) 
 
   if (cards.length === 0) {
     return (
-      <div className="h-[calc(100vh-180px)] flex items-center justify-center text-sm text-gray-500">
+      <div className="flex-1 min-h-0 flex items-center justify-center text-sm text-gray-500">
         No giving methods configured.
       </div>
     );
   }
 
   return (
-    <div className="px-5 py-6 pb-32 overflow-y-auto h-[calc(100vh-180px)] space-y-3">
+    <div className="px-5 py-6 pb-32 overflow-y-auto flex-1 min-h-0 space-y-3">
       {methods.note && (
         <p className="text-sm text-gray-400 leading-relaxed mb-2 px-1">
           {methods.note}

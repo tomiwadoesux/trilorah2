@@ -54,14 +54,14 @@ export default function VersesTab({
 
   if (verses.length === 0) {
     return (
-      <div className="h-[calc(100vh-180px)] flex items-center justify-center text-gray-500 text-sm">
+      <div className="flex-1 min-h-0 flex items-center justify-center text-gray-500 text-sm">
         Verses will appear here as the pastor references them.
       </div>
     );
   }
 
   return (
-    <div className="px-5 py-6 space-y-3 pb-32 overflow-y-auto h-[calc(100vh-180px)]">
+    <div className="px-5 py-6 space-y-3 pb-32 overflow-y-auto flex-1 min-h-0">
       {verses.map((v) => (
         <div
           key={v.id}

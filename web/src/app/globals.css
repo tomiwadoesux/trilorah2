@@ -35,3 +35,38 @@ html, body {
   100% { box-shadow: 0 0 0 rgba(62, 155, 79, 0); }
 }
 .verse-glow { animation: verse-glow 1.6s ease-out; }
+
+/*
+ * The word-level transcript. Native smooth scroll is deliberately NOT used
+ * here — the autoscroll in TranscriptStream issues its own smooth scrollTo and
+ * the two compound into a scroll that never settles. `overscroll-contain` stops
+ * a scroll past the last word from dragging the whole page on iOS.
+ */
+.transcript-words {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /*
+   * Scrolling prose under a fixed header guillotines a line of text in half at
+   * the top edge, which looks like a rendering bug. Fading the first and last
+   * few percent out instead says "there is more above this" — and it is the
+   * same gesture as the word opacity below, so nothing on this screen ever
+   * appears or disappears on a hard edge.
+   */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 7%,
+    #000 92%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to bottom, transparent 0, #000 7%, #000 92%, transparent 100%);
+}
+
+/* A congregant who has asked their phone to stop moving things gets the word
+   states without the crossfade — the highlight is information, the fade is
+   decoration. */
+@media (prefers-reduced-motion: reduce) {
+  .transcript-words * {
+    transition-duration: 0.01ms !important;
+  }
+}
