@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
 import StoreModule from 'electron-store'
+import { SUPABASE_DEFAULTS } from './supabaseDefaults'
 
 // electron-store ships dual CJS/ESM builds — grab the constructor either way.
 const StoreCtor: any =
@@ -14,9 +15,19 @@ interface CloudConfig {
   publishableKey: string
 }
 
+/**
+ * The environment wins where it is set, and the compiled-in project is the
+ * fallback.
+ *
+ * That order matters in both directions. A developer with their own Supabase
+ * in `.env.local` keeps pointing at it. And a PACKAGED app — which has no
+ * `.env.local`, because it is not shipped — now has an address instead of
+ * nothing, which is the whole reason the Cloud tab used to read "cloud is not
+ * configured in this build" on every install.
+ */
 function readConfig(): CloudConfig | null {
-  const url = process.env.SUPABASE_URL || ''
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY || ''
+  const url = process.env.SUPABASE_URL || SUPABASE_DEFAULTS.url
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || SUPABASE_DEFAULTS.publishableKey
   if (!url || !key) return null
   return { url, publishableKey: key }
 }
@@ -26,7 +37,8 @@ export function getSupabase(): SupabaseClient | null {
   const cfg = readConfig()
   if (!cfg) {
     console.warn(
-      '⚠️  Supabase env vars missing — cloud sync disabled. Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in .env.local'
+      '⚠️  No Supabase project — cloud sync disabled. The build should carry one (cloud/supabaseDefaults.ts); ' +
+        'override with SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in .env.local'
     )
     return null
   }
