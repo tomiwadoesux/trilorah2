@@ -73,6 +73,7 @@ import { ProjectorProvider, useProjector, type LiveItem } from './projector';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
 import { DragKeyframes, DragProvider, useDrag } from './drag';
+import { LogHistory } from './LogHistory';
 import { Panel } from './parts';
 import { useForesight } from './foresight';
 
@@ -2964,6 +2965,9 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
  *      rides on the line as its own row, so it cannot be missed and
  *      cannot be mistaken for part of the sentence.
  */
+/** How many lines the log remembers. ~3 hours at one line every half minute. */
+const LOG_HISTORY = 400;
+
 interface LogSeed {
   text: string;
   /** The way out, when there is one. Rendered as its own row beneath. */
@@ -2972,6 +2976,8 @@ interface LogSeed {
 
 interface LogEntry extends LogSeed {
   id: number;
+  /** When it was said — the history column shows it. */
+  at: number;
   /** Dealt once, when the line is said, and never re-dealt after. */
 }
 
@@ -3048,13 +3054,16 @@ function useServiceLog(stateLabel: string) {
   const [entries, setEntries] = useState<LogEntry[]>(() =>
     typeof window !== 'undefined' && window.api
       ? []
-      : LOG_SEED.map((seed, i) => ({ ...seed, id: i })),
+      : LOG_SEED.map((seed, i) => ({ ...seed, id: i, at: Date.now() - (LOG_SEED.length - i) * 60_000 })),
   );
 
   const say = useCallback((seed: LogSeed) => {
+    /* A whole service's worth. The bar only ever reads the tail, but the
+       dashboard's history column shows all of it, and eight lines was a
+       minute of a busy service. */
     setEntries((list) => [
-      ...list.slice(-7),
-      { ...seed, id: nextId.current++ },
+      ...list.slice(-(LOG_HISTORY - 1)),
+      { ...seed, id: nextId.current++, at: Date.now() },
     ]);
   }, []);
 
@@ -4567,7 +4576,14 @@ function LiveBody({ state }: { state?: string }) {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
               <DashboardBento />
             </div>
-            <div aria-hidden className="shrink-0" style={{ width: 'var(--tri-rail-w)' }} />
+            {/* Was an empty spacer. The log's history, directly under the bar
+                that says the newest line — see LogHistory. */}
+            <LogHistory
+              entries={log.entries}
+              onAction={goManual}
+              className="shrink-0"
+              style={{ width: 'var(--tri-rail-w)' }}
+            />
           </div>
         </div>
       ) : (
