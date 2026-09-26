@@ -14,6 +14,7 @@ import { cx } from '../../ui';
 /** Panel — the card every region of a screen sits in. */
 export function Panel({
   title,
+  icon,
   right,
   children,
   className,
@@ -25,6 +26,9 @@ export function Panel({
   unavailable = false,
 }: {
   title?: string;
+  /** A small glyph in a square before the title. On a tile that opens it
+      turns mint with the tile's hover, alongside its card art. */
+  icon?: ReactNode;
   right?: ReactNode;
   children?: ReactNode;
   className?: string;
@@ -91,8 +95,22 @@ export function Panel({
           {/* `length:` because text-[var(...)] is ambiguous to Tailwind — it
               reads it as a colour and never sets a size, which left this
               label at the browser default. */}
-          <span className="text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
-            {title}
+          <span className="flex min-w-0 items-center gap-2">
+            {icon && (
+              <span
+                aria-hidden
+                className={cx(
+                  'grid size-[22px] shrink-0 place-items-center rounded-[7px] bg-[rgb(255_255_255_/_0.05)] text-[rgb(229_243_242_/_0.62)]',
+                  'shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.08)] transition-[color,box-shadow] duration-300',
+                  'group-hover/tile:text-[#8fd3c0] group-hover/tile:shadow-[inset_0_0_0_1px_rgb(143_211_192_/_0.35)]',
+                )}
+              >
+                {icon}
+              </span>
+            )}
+            <span className="truncate text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
+              {title}
+            </span>
           </span>
           {right}
         </header>

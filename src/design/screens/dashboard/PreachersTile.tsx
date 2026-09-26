@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { PersonIcon } from '@radix-ui/react-icons';
 import { Button, PlusIcon, SearchField, SegmentedControl, cx, surface } from '../../../ui';
 import { Panel, Pill } from '../parts';
 import { FIELD } from '../settingsRows';
 import { FlightPopup } from '../songs/FlightPopup';
+import { OrbitArt, type OrbitDot } from './CardArt';
 import { Expandable } from './expand';
 import {
   GATES,
@@ -160,16 +162,25 @@ function Face({
   onAdd: () => void;
 }) {
   const others = preachers.filter((p) => p.id !== active?.id);
+  const [hovered, setHovered] = useState(false);
+  /* Everyone, as dots on the orbit: the further along their training, the
+     closer to the centre. The drawing is the list, not a picture of one. */
+  const RING: Record<TrainingStage, number> = { auto: 0, mature: 1, training: 2, new: 3 };
+  const dots: OrbitDot[] = preachers.map((p) => ({ id: p.id, ring: RING[stageOf(p)], today: p.id === active?.id }));
   const counts = (['auto', 'mature', 'training', 'new'] as const)
     .map((s) => [s, preachers.filter((p) => stageOf(p) === s).length] as const)
     .filter(([, n]) => n > 0)
     .map(([s, n]) => `${n} ${STAGE[s].label}`);
 
   return (
-    <Panel title="preachers" className="min-h-0 flex-1">
+    <Panel title="preachers" icon={<PersonIcon width={13} height={13} />} className="min-h-0 flex-1">
       <div
         role="button"
         tabIndex={0}
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
         onClick={onOpen}
         onKeyDown={pressKeys(onOpen)}
         aria-label="open the preachers list"
@@ -220,12 +231,13 @@ function Face({
           )}
         </div>
 
-        {/* Everyone else, and the way to add one more. */}
+        {/* Everyone else, and the way to add one more — over the orbit. */}
         <div
-          className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-h-0 min-w-0 flex-col justify-between gap-2 px-3 py-2.5')}
+          className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'relative flex min-h-0 min-w-0 flex-col justify-between gap-2 overflow-hidden px-3 py-2.5')}
           style={{ borderRadius: 10 }}
         >
-          <div className="flex min-w-0 items-center justify-between gap-2">
+          <OrbitArt dots={dots} hovered={hovered} className="-bottom-3 -right-4 h-[118%] w-[92%]" />
+          <div className="relative flex min-w-0 items-center justify-between gap-2">
             <span className="flex -space-x-2">
               {others.slice(0, 4).map((p) => (
                 <Avatar key={p.id} p={p} size={26} ring />
@@ -243,13 +255,15 @@ function Face({
               {preachers.length} {preachers.length === 1 ? 'preacher' : 'preachers'} ›
             </span>
           </div>
-          <p className="truncate text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
+          <p className="relative truncate text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
             {counts.length ? counts.join(' · ') : 'no one yet'}
           </p>
           {/* Its own press: the tile opens either way, but this one opens it
               with the name field already waiting. */}
-          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            <Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} className="w-full" />
+          {/* Compact and left: the bottom-right corner belongs to the orbit,
+              and a full-width button laid over it hid the drawing's centre. */}
+          <div className="relative self-start" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            <Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} />
           </div>
         </div>
       </div>
@@ -307,6 +321,8 @@ export function PreachersTile({ className }: { className?: string }) {
     <Expandable
       className={className}
       title="Preachers"
+      glyph={false}
+      ring={false}
       blurb="Everyone who preaches here, how well the app knows each of them, and who is preaching today."
       size={{ w: 780, h: 660 }}
       tile={({ onOpen }) => (

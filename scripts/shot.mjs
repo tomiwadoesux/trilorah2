@@ -19,6 +19,7 @@
  *   --eval "<js>"                            run JS in the page first
  *   --click "<css selector>"                 click something, then shoot
  *   --hover "<css selector>"                 move the real pointer over it, then shoot
+ *   --frames <n>                             force n frames first (see below)
  *   --wait <ms>                              settle time before the shot
  *   --list                                   just print the targets
  *
@@ -152,6 +153,16 @@ async function main() {
       await rpc(ws, seq, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
       console.log(`hover ${hover} → ${Math.round(at.x)},${Math.round(at.y)}`);
     }
+  }
+
+  /* A window behind other windows produces no frames, so CSS transitions
+     and requestAnimationFrame never advance and every shot shows the start
+     state. Each capture forces a frame; n of them, spaced out, carry an
+     animation through — in this session, so a --hover is still in effect. */
+  const frames = Number(arg('frames', 0));
+  for (let i = 0; i < frames; i++) {
+    await rpc(ws, seq, 'Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+    await sleep(80);
   }
 
   await sleep(Number(arg('wait', 400)));

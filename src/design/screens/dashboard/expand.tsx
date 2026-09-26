@@ -96,6 +96,9 @@ export interface ExpandableProps {
    * on top of them.
    */
   glyph?: boolean;
+  /** The hairline that brightens round the tile on hover. Off for a tile
+      with card art (./CardArt) — the drawing lighting up is its hover. */
+  ring?: boolean;
 }
 
 /*
@@ -109,7 +112,7 @@ interface Flight {
   to: Box;
 }
 
-export function Expandable({ tile, className, title, blurb, children, size = { w: 720, h: 640 }, glyph = true }: ExpandableProps) {
+export function Expandable({ tile, className, title, blurb, children, size = { w: 720, h: 640 }, glyph = true, ring = true }: ExpandableProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   /* On screen at all — true from lift-off until the way home has FINISHED,
@@ -224,10 +227,12 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
         style={{ opacity: flying ? 0.25 : 1, transitionDuration: `${still ? 0 : FLIGHT_MS}ms`, transitionTimingFunction: EASE }}
       >
         {tile({ onOpen: lift, open: flying })}
-        <span
-          aria-hidden
-          className="tri-rounded-surface pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/0 transition-[box-shadow] duration-200 group-hover/tile:ring-white/20"
-        />
+        {ring && (
+          <span
+            aria-hidden
+            className="tri-rounded-surface pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/0 transition-[box-shadow] duration-200 group-hover/tile:ring-white/20"
+          />
+        )}
         {glyph && (
           <span
             aria-hidden
