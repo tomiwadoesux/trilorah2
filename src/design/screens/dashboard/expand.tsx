@@ -39,11 +39,11 @@ import { cx, PlusIcon } from '../../../ui';
 /* Exported: the song editor and the add-song dialog open with this same
    flight (src/design/screens/songs/FlightPopup.tsx), so there is one clock
    and one curve for "a thing lifts off the grid and grows". */
-export const FLIGHT_MS = 360;
-export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+export const FLIGHT_MS = 480;
+export const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
 /* The same clock and curve in the units Motion takes. Derived, never
    retyped — the app has one motion language and this file is its source. */
-export const EASE_BEZIER = [0.22, 1, 0.36, 1] as const;
+export const EASE_BEZIER = [0.32, 0.72, 0, 1] as const;
 export const FLIGHT_S = FLIGHT_MS / 1000;
 
 export interface Box {
@@ -203,10 +203,27 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
           eye reads "that one lifted off" rather than "one appeared". */}
       <div
         ref={anchor}
-        className={cx('flex min-h-0 min-w-0 flex-col transition-opacity', className)}
+        className={cx(
+          'group/tile relative flex min-h-0 min-w-0 flex-col transition-[opacity,transform]',
+          /* The one hover every opening tile shares: it says "this opens"
+             and nothing else. The glyph sits where ✕ will be once the box
+             has landed, so the way in and the way out are the same corner. */
+          !flying && 'hover:-translate-y-px',
+          className,
+        )}
         style={{ opacity: flying ? 0.25 : 1, transitionDuration: `${still ? 0 : FLIGHT_MS}ms`, transitionTimingFunction: EASE }}
       >
         {tile({ onOpen: lift, open: flying })}
+        <span
+          aria-hidden
+          className="tri-rounded-surface pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/0 transition-[box-shadow] duration-200 group-hover/tile:ring-white/20"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-3 top-2.5 text-[12px] leading-none text-white/0 transition-colors duration-200 group-hover/tile:text-white/55"
+        >
+          ⤢
+        </span>
       </div>
 
       {shellEl && flight && createPortal(
@@ -235,7 +252,7 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
                 /* z-50 while open; a box on its way home drops under the
                    next one lifting off so two flights never fight for the
                    top. Both beat the ground. */
-                className="tri-rounded-surface absolute flex flex-col overflow-hidden bg-[#0e1413]"
+                className="tri-rounded-surface absolute flex flex-col overflow-hidden bg-[#141416]"
                 style={{
                   boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.08), 0 30px 80px rgb(0 0 0 / 0.5)',
                 }}

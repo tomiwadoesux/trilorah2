@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Panel } from '../parts';
 import { useBoxSize } from './useBoxSize';
 
@@ -235,6 +235,19 @@ export function TrustTrendTile({ className }: { className?: string }) {
   const trustLine = ready ? smoothPath(trustPts, plotTop, plotBottom) : '';
   const head = trustPts[trustPts.length - 1];
 
+  /* The service under the pointer. A vertical hairline and that service's
+     numbers — the standard chart hover, nothing more. Nearest point wins,
+     so the whole plot width is live rather than only the dots. */
+  const [hover, setHover] = useState<number | null>(null);
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!ready || trustPts.length < 2) return;
+    const x = e.clientX - e.currentTarget.getBoundingClientRect().left;
+    let best = 0;
+    for (let i = 1; i < trustPts.length; i++) if (Math.abs(trustPts[i].x - x) < Math.abs(trustPts[best].x - x)) best = i;
+    setHover(best);
+  };
+  const hov = hover != null ? { p: HISTORY[hover], pt: trustPts[hover] } : null;
+
   return (
     <Panel className={className} bodyClass="pt-3">
       <div className="flex h-full flex-col gap-[var(--tri-gap)]">
@@ -333,6 +346,8 @@ export function TrustTrendTile({ className }: { className?: string }) {
                   : `, at or above the ${pct(GATE)} auto-mode gate.`
               }`}
               style={{ fontFamily: 'var(--tri-font)' }}
+              onPointerMove={onMove}
+              onPointerLeave={() => setHover(null)}
             >
               <defs>
                 {/* The trust line's own fill. Only it gets one: two filled
@@ -414,6 +429,22 @@ export function TrustTrendTile({ className }: { className?: string }) {
               {/* Where it stands now. The one dot on the chart, because the
                   latest service is the only point anybody is looking for. */}
               {head && <circle cx={head.x} cy={head.y} r={HEAD_R} fill={TRUST} />}
+
+              {hov && (
+                <g aria-hidden pointerEvents="none">
+                  <line x1={hov.pt.x} x2={hov.pt.x} y1={plotTop} y2={plotBottom} stroke="rgb(229 243 242 / 0.35)" strokeWidth={1} />
+                  <circle cx={hov.pt.x} cy={hov.pt.y} r={HEAD_R} fill={TRUST} stroke="#0e1413" strokeWidth={1.5} />
+                  <text
+                    x={hov.pt.x}
+                    y={plotTop - 3}
+                    textAnchor={hov.pt.x > (plotLeft + plotRight) / 2 ? 'end' : 'start'}
+                    fill="rgb(229 243 242 / 0.85)"
+                    style={AXIS_TYPE}
+                  >
+                    {hov.p.label} · {pct(hov.p.trustLowerBound)} trusted · {pct(hov.p.precision)} accurate
+                  </text>
+                </g>
+              )}
             </svg>
           )}
         </div>

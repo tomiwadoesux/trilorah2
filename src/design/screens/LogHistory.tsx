@@ -90,7 +90,7 @@ export function LogHistory({
             key={e.id}
             className={cx(
               surface({ tone: 'default', shape: 'control' }),
-              'tri-log-card shrink-0 px-3 py-2.5',
+              'tri-log-card group/log shrink-0 px-3 py-2.5',
               e.action && 'tri-log-card--ask',
             )}
             /* Only the card that just arrived animates; the rest are moved
@@ -106,9 +106,14 @@ export function LogHistory({
               {e.text}
             </p>
             <div className="mt-1.5 flex items-center gap-2 text-[length:var(--tri-size-eyebrow)] tabular-nums text-[rgb(229_243_242_/_0.32)]">
-              <span>{clock(e.at)}</span>
-              <span aria-hidden>·</span>
-              <span>{ago(e.at, now)}</span>
+              {/* When, on hover only — an old line otherwise stays quiet. The
+                  newest line keeps its time, since "just now" is the one
+                  thing a glance at the log is checking. */}
+              <span className={cx('flex items-center gap-2 transition-opacity', i === 0 ? 'opacity-100' : 'opacity-0 group-hover/log:opacity-100')}>
+                <span>{clock(e.at)}</span>
+                <span aria-hidden>·</span>
+                <span>{ago(e.at, now)}</span>
+              </span>
               {e.action && onAction ? (
                 <button
                   type="button"

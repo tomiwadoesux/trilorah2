@@ -53,6 +53,15 @@ const STATE_INK: Record<OutputState, string> = {
   disabled: 'rgb(229 243 242 / 0.35)',
 };
 
+/* What the state means, in the booth's words. Shown under the name on
+   hover: the dot says how it is, this says what to do about it. */
+const STATE_WHY: Record<OutputState, string> = {
+  connected: 'talking to it',
+  'not connected': 'set up, but not reachable — open the card',
+  connecting: 'checking…',
+  disabled: 'off — turn it on in the card',
+};
+
 const ROWS: { id: OutputId; name: string }[] = [
   { id: 'vmix', name: 'vMix' },
   { id: 'obs', name: 'OBS Studio' },
@@ -182,7 +191,7 @@ export function ConnectionsTile({ className }: { className?: string }) {
           {outputs.map((output, i) => (
             <li
               key={output.id}
-              className="flex min-h-0 flex-1 items-center gap-2 py-1"
+              className="group/row flex min-h-0 flex-1 items-center gap-2 py-1"
               /* The rule rides on the row rather than sitting between rows as
                  an element of its own — a divider would take height the rows
                  are already dividing between them. The last row goes without,
@@ -206,6 +215,9 @@ export function ConnectionsTile({ className }: { className?: string }) {
               />
               <span className="min-w-0 flex-1 truncate text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">
                 {output.name}
+                <span className="ml-2 hidden text-[length:var(--tri-size-xs)] font-normal lowercase text-[rgb(229_243_242_/_0.45)] group-hover/row:inline">
+                  {STATE_WHY[output.state]}
+                </span>
               </span>
               <span className="flex shrink-0 items-center gap-1.5">
                 <span

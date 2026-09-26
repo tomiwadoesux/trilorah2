@@ -58,6 +58,11 @@ export function PreachingTile({ className }: { className?: string }) {
    */
   const historyRef = useRef<HTMLDivElement | null>(null);
   const [following, setFollowing] = useState(true);
+  /* Pointer over the history: hold still. Reading a line while the pulpit
+     keeps talking is the one time the booth touches this tile, and a line
+     that slides away under the pointer is the thing that makes them stop
+     trying. Leave and it catches up. */
+  const [held, setHeld] = useState(false);
 
   const onHistoryScroll = () => {
     const el = historyRef.current;
@@ -73,9 +78,9 @@ export function PreachingTile({ className }: { className?: string }) {
   const historyTail = priorTexts[priorTexts.length - 1] ?? '';
   useLayoutEffect(() => {
     const el = historyRef.current;
-    if (!el || !following) return;
+    if (!el || !following || held) return;
     el.scrollTop = el.scrollHeight;
-  }, [priorTexts.length, historyTail, following]);
+  }, [priorTexts.length, historyTail, following, held]);
 
   /* The tile lives in a bento that resizes with the window, and a shorter
      tile changes where "the bottom" is. Without this a follower ends up
@@ -156,6 +161,8 @@ export function PreachingTile({ className }: { className?: string }) {
             transcript still sits on the focus box and a long one scrolls. */}
         <div
           ref={historyRef}
+          onPointerEnter={() => setHeld(true)}
+          onPointerLeave={() => setHeld(false)}
           onScroll={onHistoryScroll}
           className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-left"
         >

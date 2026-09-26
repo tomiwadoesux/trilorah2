@@ -42,7 +42,7 @@ const MUTED = 'rgb(229 243 242 / 0.45)';
  * the band keeps its proportions; the old face is PreacherStatsTileFull.
  */
 export function PreacherStatsTile({ className }: { className?: string }) {
-  return <Panel className={className} />;
+  return <PreacherStatsTileFull className={className} />;
 }
 
 export function PreacherStatsTileFull({ className }: { className?: string }) {

@@ -290,6 +290,10 @@ function DigitFace({
   );
 }
 
+function clockAt(ms: number): string {
+  return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 export function TimersTile({ className }: { className?: string }) {
   const [timers, setTimers] = useState<Snapshot[]>([]);
   const [, setTick] = useState(0);
@@ -698,7 +702,7 @@ export function TimersTile({ className }: { className?: string }) {
           */}
           <div
             onClick={onOpen}
-            className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-left"
+            className="group/face flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-left"
           >
             {running || activeTimer ? (
               <>
@@ -709,6 +713,13 @@ export function TimersTile({ className }: { className?: string }) {
                 {extraBadge && (
                   <span className="rounded border border-white/12 bg-white/[0.08] px-2 py-0.5 text-[10px] font-bold text-[rgb(229_243_242_/_0.75)]">
                     {extraBadge}
+                  </span>
+                )}
+                {/* Started · ends, on hover. Read off the clock rather than
+                    stored: the snapshot only knows what is left. */}
+                {running && activeTimer && (
+                  <span className="text-[10px] tabular-nums text-[rgb(229_243_242_/_0)] transition-colors group-hover/face:text-[rgb(229_243_242_/_0.5)]">
+                    started {clockAt(Date.now() - ((activeTimer.phaseTotalMs ?? 0) - activeTimer.remainingMs))} · ends {clockAt(Date.now() + activeTimer.remainingMs)}
                   </span>
                 )}
               </>

@@ -91,7 +91,7 @@ function troubleWords(n: number): string {
  * and coming back is a one-line swap here.
  */
 export function ReadinessTile({ className }: { className?: string }) {
-  return <Panel className={className} />;
+  return <ReadinessTileFull className={className} />;
 }
 
 export function ReadinessTileFull({

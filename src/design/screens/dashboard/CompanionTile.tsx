@@ -52,7 +52,7 @@ function Confirm({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
   );
 }
 
-export function CompanionTile({ className }: { className?: string }) {
+export function CompanionTile({ className, stacked = false }: { className?: string; stacked?: boolean }) {
   const [mode, setMode] = useState<'anyone' | 'wifi-only'>('anyone');
   const [confirm, setConfirm] = useState(false);
   const [live, setLive] = useState(false);
@@ -130,6 +130,7 @@ export function CompanionTile({ className }: { className?: string }) {
         <Panel
           className="relative min-h-0 flex-1"
           bodyClass="pt-3"
+          title={stacked ? 'companion' : undefined}
           tone={live ? 'live' : 'default'}
         >
           {confirm && (
@@ -153,14 +154,20 @@ export function CompanionTile({ className }: { className?: string }) {
             link, then the controls pushed to the foot — so both sides start
             on one line and end on another.
           */}
-          <div className="flex h-full min-h-0 items-stretch gap-4">
+          <div className={cx('flex h-full min-h-0 gap-4', stacked ? 'flex-col items-stretch' : 'items-stretch')}>
             {/* The code is the door: press it and the tile opens. The
                 controls beside it act without opening anything. */}
             <button
               type="button"
               onClick={onOpen}
               title="open companion settings"
-              className="tri-rounded-control group relative flex aspect-square h-full max-h-[168px] min-h-0 shrink-0 items-center justify-center self-center overflow-hidden border border-white/10 bg-white/[0.04] transition-colors hover:border-white/20"
+              className={cx(
+                'tri-rounded-control group relative flex min-h-0 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-white/[0.04] transition-colors hover:border-white/20',
+                /* Stacked, the code takes whatever height the stack under it
+                   leaves and squares itself off that — width follows height,
+                   never the other way, or the controls fall off the floor. */
+                stacked ? 'aspect-square min-h-0 flex-1 self-center' : 'aspect-square h-full max-h-[168px] self-center',
+              )}
             >
               {/* The engine's own SVG — scannable, and the same code the
                   projector shows. Nothing is drawn without a real link: a
@@ -179,11 +186,13 @@ export function CompanionTile({ className }: { className?: string }) {
               )}
             </button>
 
-            <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+            <div className={cx('flex min-w-0 flex-col gap-2', stacked ? 'shrink-0' : 'flex-1 justify-center')}>
               <div className="min-w-0">
-                <p className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">
-                  companion
-                </p>
+                {!stacked && (
+                  <p className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">
+                    companion
+                  </p>
+                )}
                 <p className="mt-1 truncate font-mono text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.7)]">
                   {link ? link.replace(/^https?:\/\//, '') : 'no link yet'}
                 </p>

@@ -69,7 +69,7 @@ function Chip({ children, onRemove }: { children: string; onRemove?: () => void 
 
 function SuggestionRow({ s, onAccept, onDismiss }: { s: Suggestion; onAccept: () => void; onDismiss: () => void }) {
   return (
-    <div className={cx(surface({ tone: 'indigo', shape: 'panel', wide: true }), 'flex items-center gap-2.5 px-2.5 py-2')} style={{ borderRadius: 10 }}>
+    <div className={cx(surface({ tone: 'indigo', shape: 'panel', wide: true }), 'group/sug flex items-center gap-2.5 px-2.5 py-2')} style={{ borderRadius: 10 }}>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[length:var(--tri-size-xs)] text-[var(--tri-ink)]">
           "{s.heard}" <span style={{ color: MUTED }}>→ {s.action === 'next' ? 'next verse' : 'previous verse'}</span>
@@ -78,10 +78,10 @@ function SuggestionRow({ s, onAccept, onDismiss }: { s: Suggestion; onAccept: ()
           {s.preacher} · you pressed {s.action} within a beat, {s.times} times
         </p>
       </div>
-      <button type="button" onClick={onAccept} title="make it a command" className={cx(surface({ tone: 'default', interactive: true }), 'grid size-[22px] place-items-center text-[#8fd3c0]')} style={{ borderRadius: 7 }}>
+      <button type="button" onClick={onAccept} title="make it a command" className={cx(surface({ tone: 'default', interactive: true }), 'grid size-[22px] place-items-center text-[#8fd3c0] opacity-0 transition-opacity group-hover/sug:opacity-100 focus-visible:opacity-100')} style={{ borderRadius: 7 }}>
         <CheckIcon size={11} />
       </button>
-      <button type="button" onClick={onDismiss} title="not a command" className={cx(surface({ tone: 'ash', interactive: true }), 'grid size-[22px] place-items-center text-[rgb(229_243_242_/_0.45)]')} style={{ borderRadius: 7 }}>
+      <button type="button" onClick={onDismiss} title="not a command" className={cx(surface({ tone: 'ash', interactive: true }), 'grid size-[22px] place-items-center text-[rgb(229_243_242_/_0.45)] opacity-0 transition-opacity group-hover/sug:opacity-100 focus-visible:opacity-100')} style={{ borderRadius: 7 }}>
         <PlusIcon size={10} className="rotate-45" />
       </button>
     </div>
