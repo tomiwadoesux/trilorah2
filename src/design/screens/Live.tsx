@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import ThinkingOrbsPill from '../orb/ThinkingOrbsPill';
+import StatusOrbSvg from '../orb/StatusOrbSvg';
 import {
   ActionMenu,
   Button,
@@ -74,7 +74,6 @@ import { ProjectorProvider, useProjector, type LiveItem } from './projector';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
 import { DragKeyframes, DragProvider, useDrag } from './drag';
-import { LogHistory } from './LogHistory';
 import { Panel } from './parts';
 import { useForesight } from './foresight';
 
@@ -2980,7 +2979,7 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
   const look = ORB_BY_STATE[label] ?? ORB_BY_STATE.idle;
   const [named, setNamed] = useState(false);
   return (
-    <div className="relative flex aspect-square h-full shrink-0">
+    <div className="relative flex aspect-square shrink-0" style={{ height: 'var(--tri-topbar-h)' }}>
       <button
         type="button"
         onClick={onClick}
@@ -2989,24 +2988,19 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
         onFocus={() => setNamed(true)}
         onBlur={() => setNamed(false)}
         aria-label={`engine: ${label} — change state`}
-        className="tri-rounded-control flex h-full w-full items-center justify-center"
-        style={EDGE}
+        className="flex h-full w-full items-center justify-center"
       >
-        {/* No pill, no label. The ball fills its 46px square with a 4px
-            margin. `dots` is a MULTIPLIER on the style's own count (150 ×
-            0.6 = 90), not a count — the full 150 is mush at this size and
-            64× was a solid disc. The verb is the bar's job, not the orb's. */}
-        <ThinkingOrbsPill
+        {/* SVG + CSS, not the WebGPU dot ball: five elements animated on
+            the compositor, and it draws on a machine with no GPU driver,
+            where the dot ball showed an error sentence instead. The verb
+            is the bar's job, not the orb's. */}
+        <StatusOrbSvg
           style={look.style}
-          dotColor={INK}
+          ink={INK}
           accent={look.accent}
           speed={look.speed}
-          dotOpacity={look.opacity}
-          showsPill={false}
-          showsLabel={false}
-          ball={38}
-          dots={0.6}
-          scheme="dark"
+          opacity={look.opacity}
+          size={30}
         />
       </button>
       {/*
@@ -3334,7 +3328,7 @@ function HeaderKineticFocus({
       onClick={onOpenDashboard}
       className={cx(
         '@container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',
-        'border border-white/10 bg-white/[0.04] pl-3 pr-2.5 backdrop-blur-md',
+        'border border-white/10 bg-white/[0.04] px-8 backdrop-blur-md',
         /* The same neutral lift every other control on this strip uses when
            the pointer is over it. No colour: the only coloured thing in this
            pill is the live dot, and that means something. */
@@ -3371,7 +3365,7 @@ function HeaderKineticFocus({
         the FOOT of the pill, so the newest line is always on the same
         baseline — it does not walk down the pill as the service fills up.
       */}
-      <div className="flex min-w-0 flex-1 flex-col justify-end overflow-hidden text-left">
+      <div className="flex min-w-0 flex-1 flex-col justify-end overflow-hidden text-center">
         {rows.map((row, i) => {
           /* Distance from the newest, which is the rung. */
           const depth = rows.length - 1 - i;
@@ -3382,14 +3376,10 @@ function HeaderKineticFocus({
             <span
               key={row.id}
               className={cx(
-                'tri-transcript-line block truncate text-left font-medium tracking-wide select-text',
+                'tri-transcript-line block truncate text-center font-medium tracking-wide select-text',
                 /* Only the arriving row animates in; the rest are
                    transitioning down and must not restart their keyframe. */
                 row.id === newestId && 'tri-transcript-line--new',
-                /* Only the TOP row is level with the corner dot, so only the
-                   top row pays for it. The newest line keeps the full width —
-                   which is the whole reason the dot left the text flow. */
-                depth === TRANSCRIPT_ROWS - 1 && 'pr-3',
               )}
               style={
                 {
@@ -3456,19 +3446,13 @@ function ImportBentoMenu({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cx(
-          'tri-rounded-control flex shrink-0 cursor-pointer items-center gap-1.5 px-3 text-[12px] font-medium lowercase transition-all active:scale-[0.98]',
-          open
-            ? 'bg-[rgb(255_255_255_/_0.12)] text-white shadow-[0_0_12px_rgba(255,255,255,0.06)]'
-            : 'text-[rgb(229_243_242_/_0.85)] hover:bg-[rgb(255_255_255_/_0.06)] hover:text-white',
+          'flex h-8 shrink-0 cursor-pointer items-center gap-1.5 text-[13.5px] font-medium lowercase transition-colors rounded-full border border-white/[0.14] bg-white/[0.03] px-3 hover:border-white/30 hover:bg-white/[0.07]',
+          open ? 'border-white/30 text-white' : 'text-[rgb(229_243_242_/_0.75)] hover:text-white',
         )}
-        style={{
-          ...EDGE,
-          height: 'var(--tri-topbar-h)',
-        }}
         title="import images, presentation slides, or songs"
         aria-expanded={open}
       >
-        <ImportIcon size={12} className="text-cyan-400/90" />
+        <ImportIcon size={12} className="opacity-80" />
         <span className="tracking-wide">import</span>
         <ChevronDownIcon
           size={8}
@@ -3630,42 +3614,39 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
  * anything is live, because swapping a verse the room is reading for a QR is
  * the worst mis-click in the app.
  */
-function CompanionQrBento({ live, say }: { live: boolean; say?: (e: { text: string }) => void }) {
-  const { qrUp, toggleQr } = useCompanionQr(live, say);
 
+/**
+ * operator | dashboard. Top-left on both views, exactly the rail's width, so
+ * the orb and everything after it sit in the same place whichever view is up.
+ */
+function ViewTabs({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
   return (
-    <button
-      type="button"
-      onClick={toggleQr}
-      disabled={live}
-      className={cx(
-        'tri-rounded-control relative flex shrink-0 items-center gap-2 overflow-hidden px-3 text-[length:var(--tri-size-xs)] lowercase transition-all',
-        live
-          ? 'cursor-not-allowed bg-[rgb(255_255_255_/_0.02)] text-[rgb(229_243_242_/_0.3)]'
-          : qrUp
-            ? 'cursor-pointer bg-[rgb(212_175_105_/_0.16)] text-[var(--tri-gold,#d4af69)] hover:bg-[rgb(212_175_105_/_0.22)] active:scale-[0.98]'
-            : 'cursor-pointer bg-[rgb(255_255_255_/_0.03)] text-[var(--tri-ink)] hover:bg-[rgb(255_255_255_/_0.07)] active:scale-[0.98]',
-      )}
-      style={{ ...EDGE, height: 'var(--tri-topbar-h)' }}
-      title={
-        live
-          ? 'the projector is in use — clear it to show the phone code'
-          : qrUp
-            ? 'take the phone code off the projector'
-            : 'show the phone code on the projector'
-      }
+    <div
+      className="flex shrink-0 items-stretch gap-5 pl-1"
+      style={{ width: 'var(--tri-rail-w)' }}
     >
-      <span
-        className={cx('h-1.5 w-1.5 shrink-0 rounded-full', qrUp && 'animate-pulse')}
-        style={
-          qrUp
-            ? { backgroundColor: '#d4af69', boxShadow: '0 0 8px rgba(212,175,105,0.7)' }
-            : { backgroundColor: 'rgb(229 243 242 / 0.25)' }
-        }
-      />
-      <QrIcon size={12} />
-      <span className="font-medium tracking-wide">{qrUp ? 'code up' : 'phone code'}</span>
-    </button>
+      {VIEWS.map((m) => {
+        const active = m === view;
+        return (
+          /* Words, not boxes — the same idiom as the app's own nav a row
+             above. The active one is bright and carries a short rule. */
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange(m)}
+            aria-pressed={active}
+            className={cx(
+              'flex h-8 cursor-pointer items-center rounded-full border px-3.5 text-[14.5px] lowercase tracking-wide transition-colors select-none',
+              active
+                ? 'border-white/25 bg-white/[0.12] font-semibold text-white'
+                : 'border-white/[0.14] font-medium text-[rgb(255_255_255_/_0.6)] hover:border-white/30 hover:text-white',
+            )}
+          >
+            {m}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -3743,11 +3724,7 @@ function DigitalClockBento() {
     <button
       type="button"
       onClick={toggle}
-      className="tri-rounded-control relative flex shrink-0 cursor-pointer items-center gap-2 overflow-hidden bg-[rgb(255_255_255_/_0.03)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink)] transition-all hover:bg-[rgb(255_255_255_/_0.07)] active:scale-[0.98]"
-      style={{
-        ...EDGE,
-        height: 'var(--tri-topbar-h)',
-      }}
+      className="relative flex h-8 shrink-0 cursor-pointer items-center gap-2 text-[13.5px] lowercase text-[var(--tri-ink)] transition-colors hover:text-white rounded-full border border-white/[0.14] bg-white/[0.03] px-3 hover:border-white/30 hover:bg-white/[0.07]"
       title={
         notice
           ? 'No timer currently set'
@@ -3762,8 +3739,7 @@ function DigitalClockBento() {
         </span>
       ) : mode === 'clock' ? (
         <>
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-400/80 shadow-[0_0_6px_rgba(34,211,238,0.6)]" />
-          <span className="font-mono tracking-wider text-[rgb(229_243_242_/_0.9)] tabular-nums">
+          <span className="font-mono tracking-wider text-[rgb(229_243_242_/_0.75)] tabular-nums">
             {displayHours}:{minutes}
             <span className="text-[rgb(229_243_242_/_0.4)]">:{seconds}</span>
           </span>
@@ -3813,14 +3789,10 @@ function ServiceLogBar({
   return (
     <div
       className={cx(
-        'tri-rounded-control relative flex min-w-0 flex-1 items-center justify-between overflow-hidden bg-[rgb(255_255_255_/_0.03)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink)]',
+        'relative flex h-8 min-w-0 flex-1 items-center justify-between overflow-hidden rounded-full border border-white/[0.14] bg-white/[0.03] px-3 text-[13.5px] lowercase text-[var(--tri-ink)]',
         className,
       )}
-      style={{
-        ...EDGE,
-        height: 'var(--tri-topbar-h)',
-        ...style,
-      }}
+      style={style}
     >
       <div className="flex min-w-0 items-center gap-2">
         <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400/85 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
@@ -3908,14 +3880,14 @@ function ListenControl() {
           : 'no engine in this window — run the app with SANDBOX=1'
       }
       className={cx(
-        'tri-rounded-control flex shrink-0 cursor-pointer items-center gap-2 px-3 text-[12px] font-medium lowercase transition-colors',
+        'tri-rounded-control flex shrink-0 cursor-pointer items-center gap-2 px-4 text-[13.5px] font-medium lowercase transition-colors',
         !caps.bridge
           ? 'cursor-not-allowed text-[rgb(229_243_242_/_0.4)]'
           : on
-            ? 'text-white'
-            : 'text-[rgb(229_243_242_/_0.85)] hover:text-white',
+            ? 'bg-[rgb(255_255_255_/_0.12)] text-white'
+            : 'bg-[rgb(255_255_255_/_0.07)] text-[rgb(229_243_242_/_0.9)] hover:bg-[rgb(255_255_255_/_0.11)] hover:text-white',
       )}
-      style={EDGE}
+      style={{ ...EDGE, height: 'var(--tri-topbar-h)' }}
     >
       <MicIcon size={12} />
       {label}
@@ -4847,38 +4819,10 @@ function LiveBody({ state }: { state?: string }) {
         <div className="flex h-full w-full min-w-0 flex-col gap-[var(--tri-gap)] p-2.5">
           {/* Top header row */}
           <div
-            className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
+            className="flex shrink-0 items-center gap-5 border-b border-white/[0.07]"
             style={{ height: 'var(--tri-topbar-h)' }}
           >
-            {/* Left gap matching the Run of Service column so header controls do not shift */}
-            <div aria-hidden className="shrink-0" style={{ width: 'var(--tri-rail-w)' }} />
-
-            {/* View switch with matched proportional width so buttons and orb stay in exact position */}
-            <div
-              className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
-              style={{ width: 'calc((100% - var(--tri-rail-w) - var(--tri-gap)) * 0.215)' }}
-            >
-              {VIEWS.map((m) => {
-                const active = m === view;
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setView(m)}
-                    aria-pressed={active}
-                    className={cx(
-                      'tri-rounded-control flex flex-1 cursor-pointer items-center justify-center text-[12.5px] font-medium lowercase tracking-wide transition-all select-none',
-                      active
-                        ? 'bg-[rgb(255_255_255_/_0.15)] font-semibold text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]'
-                        : 'text-[rgb(255_255_255_/_0.78)] hover:bg-[rgb(255_255_255_/_0.06)] hover:text-white',
-                    )}
-                    style={EDGE}
-                  >
-                    {m}
-                  </button>
-                );
-              })}
-            </div>
+            <ViewTabs view={view} onChange={setView} />
             <StatusOrb label={stateLabel} onClick={stepState} />
             <ListenControl />
 
@@ -4895,9 +4839,6 @@ function LiveBody({ state }: { state?: string }) {
             {/* Device Digital Clock Bento */}
             <DigitalClockBento />
 
-            {/* The companion code — third bento, right of the timer. */}
-            <CompanionQrBento live={!!projector.live} say={say} />
-
             {/* Right: separate logs bento card matching the width of the empty space below */}
             <div
               className="flex shrink-0 items-stretch"
@@ -4907,19 +4848,9 @@ function LiveBody({ state }: { state?: string }) {
             </div>
           </div>
 
-          {/* Dashboard bento: moves to the left; the empty space moves to the right */}
-          <div className="flex min-h-0 flex-1 items-stretch gap-[var(--tri-gap)]">
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
-              <DashboardBento />
-            </div>
-            {/* Was an empty spacer. The log's history, directly under the bar
-                that says the newest line — see LogHistory. */}
-            <LogHistory
-              entries={log.entries}
-              onAction={goManual}
-              className="shrink-0"
-              style={{ width: 'var(--tri-rail-w)' }}
-            />
+          {/* The bento is the whole dashboard — the log is a card in it. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
+            <DashboardBento log={log.entries} onLogAction={goManual} />
           </div>
         </div>
       ) : (
@@ -4951,9 +4882,36 @@ function LiveBody({ state }: { state?: string }) {
           className="grid h-full gap-[var(--tri-gap)] p-2.5"
           style={{
             gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
-            gridTemplateRows: 'minmax(0, auto) minmax(30%, 1fr)',
+            /* Header, stage, browser, ticker. The header and the ticker span
+               both columns: the tabs sit over the rail, top-left, and the
+               transcript runs along the foot of the window. Both views now
+               share one header. The rail gives up the header's height for
+               it — a call reversed on purpose, 46px against a column. */
+            gridTemplateRows: 'var(--tri-topbar-h) minmax(0, auto) minmax(30%, 1fr) auto',
           }}
         >
+          <div
+            className="col-span-2 flex min-w-0 items-center gap-5 border-b border-white/[0.07]"
+            style={{ height: 'var(--tri-topbar-h)' }}
+          >
+            <ViewTabs view={view} onChange={setView} />
+            <StatusOrb label={stateLabel} onClick={stepState} />
+            <ListenControl />
+            <div className="flex-1" />
+            <ImportBentoMenu
+              onImportImage={handleImportImage}
+              onImportSlides={handleImportSlides}
+              onImportSongs={handleImportSongs}
+            />
+            <DigitalClockBento />
+            {/* The service log, rail-wide — the same slot it has on the
+                dashboard. The transcript it once made room for is a ticker
+                at the foot of the window now. */}
+            <div className="flex shrink-0 items-stretch" style={{ width: 'var(--tri-rail-w)' }}>
+              <ServiceLogBar entries={log.entries} onAction={goManual} />
+            </div>
+          </div>
+
           <div
             data-drop-segment=""
             className="row-span-2 grid min-h-0 grid-rows-subgrid"
@@ -4965,12 +4923,6 @@ function LiveBody({ state }: { state?: string }) {
             <Panel
               title={`run of service (${run.segments.length})`}
               className="absolute inset-0"
-              /* The live-transcript variant, not the plain topbar height:
-                 the strip across the top of the right column is sized by the
-                 transcript pill, and this header has to be exactly as tall or
-                 the top of the window comes apart into two lines that nearly
-                 agree. See --tri-topbar-live-h. */
-              style={{ '--tri-bar-h': 'var(--tri-topbar-live-h)' } as React.CSSProperties}
               right={<RunHeaderActions say={say} />}
             >
               <RunOfService
@@ -4992,94 +4944,6 @@ function LiveBody({ state }: { state?: string }) {
 
           <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-subgrid">
             <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
-            {/*
-              The strip is as tall as the transcript needs, floored at the
-              control height. items-center rather than items-stretch so the
-              controls keep their own --tri-topbar-h height and sit on the
-              strip's centre line — a button stretched to the full strip is a
-              slab, and one left at its own height under `stretch` would hang
-              off the top. At two lines the floor is what wins, but the rule
-              has to hold either way.
-            */}
-            <div
-              className="flex min-w-0 shrink-0 items-center gap-[var(--tri-gap)]"
-              style={{ height: 'var(--tri-topbar-live-h)' }}
-            >
-              <div
-                className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
-                style={{ width: '21.5%', height: 'var(--tri-topbar-h)' }}
-              >
-                {VIEWS.map((m) => {
-                  const active = m === view;
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setView(m)}
-                      aria-pressed={active}
-                      className={cx(
-                        'tri-rounded-control flex flex-1 cursor-pointer items-center justify-center text-[12.5px] font-medium lowercase tracking-wide transition-all select-none',
-                        active
-                          ? 'bg-[rgb(255_255_255_/_0.15)] font-semibold text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]'
-                          : 'text-[rgb(255_255_255_/_0.78)] hover:bg-[rgb(255_255_255_/_0.06)] hover:text-white',
-                      )}
-                      style={EDGE}
-                    >
-                      {m}
-                    </button>
-                  );
-                })}
-              </div>
-              {/* These two sized their own height off the strip when it
-                  stretched them. The strip is now taller than a control, so
-                  they get the control height explicitly and centre in it —
-                  otherwise the orb, which is an aspect-square of h-full,
-                  inflates to a three-line circle. */}
-              <div
-                className="flex shrink-0 items-stretch gap-[var(--tri-gap)]"
-                style={{ height: 'var(--tri-topbar-h)' }}
-              >
-                <StatusOrb label={stateLabel} onClick={stepState} />
-                <ListenControl />
-              </div>
-
-              {/* Live speech transcript in top header. Two lines here, the
-                  whole scrollable log on the dashboard — so the pill routes
-                  there rather than pretending to be the log. */}
-              <HeaderKineticFocus
-                spoken={engine.spoken}
-                asr={engine.asr}
-                onOpenDashboard={() => setView('dashboard')}
-              />
-
-              {/* Import Bento Pill Menu beside timer */}
-              <ImportBentoMenu
-                onImportImage={handleImportImage}
-                onImportSlides={handleImportSlides}
-                onImportSongs={handleImportSongs}
-              />
-
-              {/* Device Digital Clock Bento */}
-              <DigitalClockBento />
-
-              {/* The companion code — third bento, right of the timer. */}
-              <CompanionQrBento live={!!projector.live} say={say} />
-
-              {/* Right: the service log.
-                  Narrower on the operator view than it is on the dashboard,
-                  and deliberately so. It shows one line here; the whole
-                  history is a column on the dashboard now. The width it gives
-                  up goes to the transcript beside it, which at 1280 was
-                  truncating a preacher's sentence at about 28 characters —
-                  the one thing in this strip that is worth more room. */}
-              <div
-                className="flex shrink-0 items-stretch"
-                style={{ width: 'calc((100% + var(--tri-gap)) * 0.11 / 0.82)' }}
-              >
-                <ServiceLogBar entries={log.entries} onAction={goManual} />
-              </div>
-            </div>
-
             <Stage
               say={say}
               previewTheme={previewTheme}
@@ -5158,6 +5022,19 @@ function LiveBody({ state }: { state?: string }) {
                 />
               ) : null}
             </Panel>
+          </div>
+
+          {/* The live transcript, along the foot of the window. Not the
+              header — that is controls — and not beside the verses, which
+              the owner turned down. The bottom edge is where a live stream
+              conventionally runs, and nothing else claimed it. Two lines,
+              full width; the whole log is on the dashboard. */}
+          <div className="col-span-2 flex min-w-0 items-stretch">
+            <HeaderKineticFocus
+              spoken={engine.spoken}
+              asr={engine.asr}
+              onOpenDashboard={() => setView('dashboard')}
+            />
           </div>
         </ViewEnter>
       )}

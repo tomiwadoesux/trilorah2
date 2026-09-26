@@ -91,7 +91,7 @@ export function Panel({
           {/* `length:` because text-[var(...)] is ambiguous to Tailwind — it
               reads it as a colour and never sets a size, which left this
               label at the browser default. */}
-          <span className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">
+          <span className="text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
             {title}
           </span>
           {right}
