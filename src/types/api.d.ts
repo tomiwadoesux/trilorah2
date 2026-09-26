@@ -495,6 +495,8 @@ interface WindowApi {
   /* Scripture ------------------------------------------------------ */
   getChapter(bookId: number, chapter: number, version?: string): Promise<ChapterResult>;
   getAvailableVersions(): Promise<string[]>;
+  /** Fullscreen the window this page is in. Resolves to the new state. */
+  toggleWindowFullscreen?(): Promise<boolean>;
   getDbStatus?(): Promise<{ connected: boolean; verses?: number; error?: string }>;
   searchVerse(book: string, chapter: number, verse: number, version?: string): Promise<VerseSearchResult>;
 

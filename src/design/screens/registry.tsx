@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import { AppShellScreen, APP_SHELL_STATES } from './AppShell';
 import { LiveScreen, LIVE_STATES } from './Live';
 import { SettingsScreen, SETTINGS_STATES } from './Settings';
+import { DashboardProtoScreen, DASHBOARD_PROTO_STATES } from './DashboardProto';
 
 /*
  * The Screens surface — the second half of the sandbox.
@@ -47,6 +48,13 @@ export const SCREENS: Screen[] = [
     blurb: 'The control surface — service order and preacher left, preview and transcript centre, output, queue and log right, transport along the bottom. Fourteen states, one layout.',
     states: LIVE_STATES,
     Component: LiveScreen,
+  },
+  {
+    id: 'S-03',
+    title: 'NO NAV (proto)',
+    blurb: 'Wireframe. The ten-tab nav is gone; every tab\u2019s work is a card on the dashboard or an action where it belongs, and profile settings sit behind \u2699. Boxes only \u2014 the question is arrangement, not components.',
+    states: DASHBOARD_PROTO_STATES,
+    Component: DashboardProtoScreen,
   },
   {
     id: 'S-10',

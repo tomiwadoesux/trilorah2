@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Get available Bible versions
   getAvailableVersions: () => ipcRenderer.invoke('get-available-versions'),
+  toggleWindowFullscreen: () => ipcRenderer.invoke('window-toggle-fullscreen') as Promise<boolean>,
 
   // Bible database health (drives the missing-DB banner)
   getDbStatus: () => ipcRenderer.invoke('get-db-status'),

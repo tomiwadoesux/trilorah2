@@ -208,6 +208,16 @@ export function Gallery() {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
   const toggleFullscreen = () => {
+    /* Inside Electron the window is fullscreened natively — the HTML API
+       was refusing the request there. In a plain browser it still works. */
+    const native = window.api?.toggleWindowFullscreen;
+    if (native) {
+      void native().then((on) => {
+        setIsFullscreen(on);
+        if (!on) setChromeHover(false);
+      });
+      return;
+    }
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen();
   };

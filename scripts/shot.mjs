@@ -18,6 +18,7 @@
  *   --out <path>                             where the png goes
  *   --eval "<js>"                            run JS in the page first
  *   --click "<css selector>"                 click something, then shoot
+ *   --hover "<css selector>"                 move the real pointer over it, then shoot
  *   --wait <ms>                              settle time before the shot
  *   --list                                   just print the targets
  *
@@ -130,6 +131,27 @@ async function main() {
       returnByValue: true,
     });
     console.log(`click ${click} →`, r.result?.value);
+  }
+
+  const hover = arg('hover');
+  if (typeof hover === 'string') {
+    /* A real pointer move through CDP, not a synthetic mouseover: :hover
+       styles only follow the platform's own pointer. */
+    const r = await rpc(ws, seq, 'Runtime.evaluate', {
+      expression: `(() => {
+        const el = document.querySelector(${JSON.stringify(hover)});
+        if (!el) return null;
+        const b = el.getBoundingClientRect();
+        return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+      })()`,
+      returnByValue: true,
+    });
+    const at = r.result?.value;
+    if (!at) console.log(`hover ${hover} → not found`);
+    else {
+      await rpc(ws, seq, 'Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y });
+      console.log(`hover ${hover} → ${Math.round(at.x)},${Math.round(at.y)}`);
+    }
   }
 
   await sleep(Number(arg('wait', 400)));

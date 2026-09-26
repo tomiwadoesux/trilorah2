@@ -2088,6 +2088,17 @@ ipcMain.handle('load-presentations', async () => {
   }
 })
 
+// The sandbox's FULLSCREEN button. The HTML fullscreen API is not reliable
+// inside an Electron window (the request can be refused with no gesture the
+// page can see), so the window itself is asked instead. Returns the new state.
+ipcMain.handle('window-toggle-fullscreen', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win || win.isDestroyed()) return false
+  const next = !win.isFullScreen()
+  win.setFullScreen(next)
+  return next
+})
+
 ipcMain.handle('get-available-versions', () => {
   if (!db) return ['KJV']
   try {
