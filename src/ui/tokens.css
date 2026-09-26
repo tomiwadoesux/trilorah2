@@ -109,7 +109,7 @@
   /* A lifted surface — the body of anything that opens over the screen (an
      expanded tile, the song editor, a dialog) — and the ground it dims. One
      pair, so every popup is the same material at the same depth. */
-  --tri-pop: rgb(14 20 19);
+  --tri-pop: rgb(20 20 22);
   --tri-pop-scrim: rgb(0 0 0 / 0.55);
 
   --tri-text-shadow: 0 1px 3.2px rgb(0 0 0 / 0.48);

@@ -142,6 +142,7 @@ export function VoiceCommandsTile({ className }: { className?: string }) {
     <Expandable
       className={className}
       title="Voice commands"
+      glyph={false}
       blurb="What the pastor can say to the app from the pulpit — and what the app has noticed them saying."
       size={{ w: 640, h: 620 }}
       tile={({ onOpen }) => (

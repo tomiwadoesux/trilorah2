@@ -34,6 +34,13 @@ export interface FlightPopupProps {
   header: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
+  /**
+   * The ground's z-index; the box sits ten above it. 40 is the dashboard
+   * tiles' own layer. A popup opened FROM an open tile (a preacher's
+   * profile, out of the preachers list) passes more, so its ground covers
+   * the tile's box instead of sliding under it.
+   */
+  layer?: number;
 }
 
 type Phase = 'closed' | 'opening' | 'open' | 'closing';
@@ -48,6 +55,7 @@ export function FlightPopup({
   header,
   footer,
   children,
+  layer = 40,
 }: FlightPopupProps) {
   const anchor = useRef<HTMLSpanElement>(null);
   const [phase, setPhase] = useState<Phase>('closed');
@@ -144,8 +152,9 @@ export function FlightPopup({
                 aria-label="close"
                 tabIndex={-1}
                 onClick={onRequestClose}
-                className="absolute inset-0 z-40 cursor-default"
+                className="absolute inset-0 cursor-default"
                 style={{
+                  zIndex: layer,
                   background: 'var(--tri-pop-scrim)',
                   opacity: atTarget ? 1 : 0,
                   transition: still ? 'none' : `opacity ${FLIGHT_MS}ms ${EASE}`,
@@ -155,9 +164,15 @@ export function FlightPopup({
                 role="dialog"
                 aria-modal="true"
                 aria-label={label}
-                className="tri-rounded-surface absolute z-50 flex flex-col overflow-hidden"
+                /* Read by an open dashboard tile: while this is up, Esc is
+                   this popup's to answer, not the tile's under it. Off as
+                   soon as it starts home — it no longer answers Esc then,
+                   so the next press must reach the tile. */
+                data-flight-popup={phase === 'closing' ? undefined : ''}
+                className="tri-rounded-surface absolute flex flex-col overflow-hidden"
                 style={{
                   ...box,
+                  zIndex: layer + 10,
                   background: 'var(--tri-pop)',
                   opacity: atTarget || anchored ? 1 : 0,
                   boxShadow:

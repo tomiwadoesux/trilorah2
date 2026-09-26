@@ -1,7 +1,7 @@
 import { PreachingTile } from './PreachingTile';
 import { TimersTile } from './TimersTile';
 import { ConnectedTile } from './ConnectedTile';
-import { PreacherStatsTile } from './PreacherStatsTile';
+import { PreachersTile } from './PreachersTile';
 import { ReadinessTile } from './ReadinessTile';
 import { RecentServicesTile } from './RecentServicesTile';
 import { TrustTrendTile } from './TrustTrendTile';
@@ -64,9 +64,11 @@ export function DashboardBento({
         <SermonNotesTile className="min-w-0 basis-0 grow-[300]" />
       </div>
 
-      {/* Band 3 — the preacher: stats, recent services, and the trust trend. */}
+      {/* Band 3 — the preachers (who is on today, everyone the app knows,
+          and each one's profile behind a press), recent services, and the
+          trust trend. */}
       <div className="flex min-h-0 basis-0 grow-[246] gap-[var(--tri-gap)]">
-        <PreacherStatsTile className="basis-0 grow-[623]" />
+        <PreachersTile className="basis-0 grow-[623]" />
         <RecentServicesTile className="basis-0 grow-[258]" />
         <TrustTrendTile className="basis-0 grow-[265]" />
       </div>

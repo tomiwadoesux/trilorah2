@@ -31,6 +31,7 @@ export function ConnectedTile({ className }: { className?: string }) {
     <Expandable
       className={className}
       title="Connected"
+      glyph={false}
       blurb="Software the app talks to — the switcher, the stream, the Stream Deck."
       size={{ w: 680, h: 640 }}
       tile={({ onOpen }) => (

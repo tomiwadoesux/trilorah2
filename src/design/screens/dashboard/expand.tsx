@@ -90,6 +90,12 @@ export interface ExpandableProps {
   children: ReactNode;
   /** The open size the content would like. */
   size?: { w: number; h: number };
+  /**
+   * The ⤢ that appears in the top-right corner on hover. Off for a tile
+   * whose own face already puts words in that corner — the glyph would sit
+   * on top of them.
+   */
+  glyph?: boolean;
 }
 
 /*
@@ -103,7 +109,7 @@ interface Flight {
   to: Box;
 }
 
-export function Expandable({ tile, className, title, blurb, children, size = { w: 720, h: 640 } }: ExpandableProps) {
+export function Expandable({ tile, className, title, blurb, children, size = { w: 720, h: 640 }, glyph = true }: ExpandableProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   /* On screen at all — true from lift-off until the way home has FINISHED,
@@ -163,7 +169,11 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.key !== 'Escape') return;
+      /* A popup opened from inside this tile (FlightPopup) is on top and
+         answers Esc itself; closing this one too would take both down. */
+      if (document.querySelector('[data-flight-popup]')) return;
+      close();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -218,12 +228,14 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
           aria-hidden
           className="tri-rounded-surface pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/0 transition-[box-shadow] duration-200 group-hover/tile:ring-white/20"
         />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute right-3 top-2.5 text-[12px] leading-none text-white/0 transition-colors duration-200 group-hover/tile:text-white/55"
-        >
-          ⤢
-        </span>
+        {glyph && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-3 top-2.5 text-[12px] leading-none text-white/0 transition-colors duration-200 group-hover/tile:text-white/55"
+          >
+            ⤢
+          </span>
+        )}
       </div>
 
       {shellEl && flight && createPortal(
@@ -252,7 +264,7 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
                 /* z-50 while open; a box on its way home drops under the
                    next one lifting off so two flights never fight for the
                    top. Both beat the ground. */
-                className="tri-rounded-surface absolute flex flex-col overflow-hidden bg-[#141416]"
+                className="tri-rounded-surface absolute flex flex-col overflow-hidden bg-[var(--tri-pop)]"
                 style={{
                   boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.08), 0 30px 80px rgb(0 0 0 / 0.5)',
                 }}

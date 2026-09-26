@@ -49,10 +49,9 @@ const CHECKS: readonly ReadinessCheck[] = [
   { id: 'disk', label: 'disk space for the recording', state: 'ok', detail: '54 gb free' },
 ];
 
-/* The tile's second voice, hoisted for the same reason PreacherStatsTile
-   hoists its own: it lands on the summary line, the fix words and the
-   footer, and a caption a shade brighter than its neighbour reads as a
-   mistake rather than a hierarchy. */
+/* The tile's second voice, hoisted because it lands on every check's label
+   and on the verdict line, and a caption a shade brighter than its
+   neighbour reads as a mistake rather than a hierarchy. */
 const MUTED = 'rgb(229 243 242 / 0.45)';
 
 const MINT = '#8fd3c0';
