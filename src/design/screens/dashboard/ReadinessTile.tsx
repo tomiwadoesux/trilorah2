@@ -76,7 +76,6 @@ const STATE_TONE: Record<ReadinessCheck['state'], 'ok' | 'warn' | 'danger'> = {
 /* The most rows the short cell in the middle band can show above the footer.
    Deliberately not a scroll: nobody is standing in front of this board to
    scroll it, and the verdict line has already given the true count. */
-const SHOWN = 2;
 
 /** "2 things need attention" — the count is the sentence's subject. */
 function troubleWords(n: number): string {
@@ -102,186 +101,56 @@ export function ReadinessTileFull({
   checks?: readonly ReadinessCheck[];
 }) {
   const trouble = checks.filter((c) => c.state !== 'ok');
-  /*
-   * No checks is NOT a pass.
-   *
-   * An empty array is what arrives while pre-flight is still running, and
-   * what arrives if it failed to run at all. Both were reading as "ready for
-   * service" in mint, which is the one sentence this tile must never say
-   * without having earned it — a green verdict nobody checked is worse than
-   * no tile, because it is trusted. It gets its own posture: idle dot, muted
-   * ink, no ring, and a footer that says why there is no verdict yet.
-   */
   const unknown = checks.length === 0;
   const ready = !unknown && trouble.length === 0;
-  /* A fail anywhere sets the tile's ring, but the verdict line stays gold in
-     both problem shapes: the number of things to do is the message, and two
-     urgencies would only ask which one to read first. */
   const worst = trouble.some((c) => c.state === 'fail') ? 'fail' : 'warn';
-
-  /* Details rather than labels: on the green side the reader wants the facts
-     ("4 displays · scarlett solo"), not the checklist's own wording, which
-     they already trust to have run. */
-  const summary = checks.map((c) => c.detail).join(' · ');
-
-  /*
-   * Two rows is what the 105-weight cell actually holds. A third would push
-   * the footer out of the panel, and the footer is the line that stops two
-   * problems reading as a dead machine — so the list yields before it does.
-   * Failures sort ahead of warnings: if only two rows are going to be read,
-   * they must be the two that stop the service.
-   */
-  const ordered = [...trouble].sort(
-    (a, b) => (a.state === 'fail' ? 0 : 1) - (b.state === 'fail' ? 0 : 1),
-  );
-  const shown = ordered.slice(0, SHOWN);
-  const hidden = ordered.length - shown.length;
 
   return (
     <Panel
+      title="readiness"
       className={className}
-      bodyClass="pt-3"
       tone={ready || unknown ? 'default' : worst === 'fail' ? 'danger' : 'live'}
     >
-      <div
-        /* No justify-between: the middle band is flex-1 and eats the free
-           space, so there is never any left to distribute and the rule was
-           only ever describing an intent the layout already had. */
-        className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]"
-        /* Scoped here and not on Panel — Panel is shared with every region of
-           the screen, and one tile's display scale is not something to hand
-           all of them. */
-        style={{ containerType: 'inline-size' }}
-      >
-        {/* Band one: the verdict. The only thing on this tile that has to
-            carry across a dark booth, so it is the only thing off the type
-            scale — sized in cqw, light at display weight the way the
-            preacher's name is. */}
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
-          <Dot tone={unknown ? 'idle' : ready ? 'ok' : STATE_TONE[worst]} />
-          <h2
-            className="min-w-0 truncate lowercase"
-            style={{
-              fontFamily: 'var(--tri-font)',
-              fontSize: 'clamp(18px, 3.1cqw, 30px)',
-              fontWeight: 300,
-              letterSpacing: '0.01em',
-              color: unknown ? MUTED : ready ? MINT : GOLD,
-            }}
-          >
-            {unknown ? (
-              'checking…'
-            ) : ready ? (
-              'ready for service'
-            ) : (
-              <>
-                {/* tabular-nums on the count for the same reason every figure
-                    in the bento has it: this line redraws as checks resolve,
-                    and proportional digits make the words shuffle. */}
-                <span className="tabular-nums">{trouble.length}</span> {troubleWords(trouble.length)}
-              </>
-            )}
-          </h2>
+      <div className="flex h-full min-h-0 flex-col gap-2">
+        {/* The checks, as blocks in a row — S-03's arrangement. Each is the
+            thing checked, what it found, and a bar that is full when it
+            passed. Five short blocks read faster than one long sentence. */}
+        <div
+          className="grid min-h-0 flex-1 gap-2"
+          style={{ gridTemplateColumns: `repeat(${Math.max(1, checks.length)}, minmax(0, 1fr))` }}
+        >
+          {checks.map((check) => (
+            <div
+              key={check.id}
+              className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-h-[46px] min-w-0 flex-col justify-between gap-1 px-2.5 py-1.5')}
+              style={{ borderRadius: 10 }}
+            >
+              <span className="truncate text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: MUTED }}>
+                {check.label}
+              </span>
+              <span className="truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: STATE_INK[check.state] }}>
+                {check.detail}
+              </span>
+              <span className="h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+                <span
+                  className="block h-full rounded-full"
+                  style={{ width: check.state === 'ok' ? '100%' : check.state === 'warn' ? '55%' : '15%', background: STATE_INK[check.state] }}
+                />
+              </span>
+            </div>
+          ))}
         </div>
 
-        {/* Band two: the one that gives. Green, it is a single line of proof
-            and the slack is deliberate air under the verdict. In trouble, it
-            is the list, and the same region absorbs it. */}
-        {ready || unknown ? (
-          <p
-            className="min-h-0 flex-1 text-[length:var(--tri-size-xs)] leading-[1.5]"
-            style={{ color: MUTED }}
-          >
-            {unknown ? 'pre-flight has not reported yet' : summary}
-          </p>
-        ) : (
-          <ul className="flex min-h-0 flex-1 flex-col gap-[var(--tri-card-gap)] overflow-hidden">
-            {shown.map((check) => (
-              /* Each failing check is a door: the whole row is the target,
-                 not a button parked at its end. Non-interactive here because
-                 the dashboard is read — this is the drawing of the door, and
-                 the screen it opens onto does not exist yet. */
-              <li
-                key={check.id}
-                className={cx(
-                  surface({ tone: 'default', shape: 'panel', wide: true }),
-                  /*
-                   * shrink-0 at natural height, NOT flex-1.
-                   *
-                   * ConnectionsTile's rows share their region because that
-                   * list is the whole tile and its cell is 236 weight tall.
-                   * This one lands in the 105 cell — about 95px at the
-                   * default artboard — where the verdict, the footer and the
-                   * panel's own padding have already spent ~80px before the
-                   * list gets a pixel. Rows told to divide what is left get
-                   * ~7px each and clip through the middle of their own type,
-                   * which is a worse failure than the failure it is
-                   * reporting. They keep their two lines and the count below
-                   * carries whatever does not fit.
-                   */
-                  'flex shrink-0 items-center gap-2 px-2.5 py-1.5',
-                )}
-                /* 30px is the Panel's own radius and far too round for a card
-                   nested inside one; corner-shape survives from the surface
-                   class. */
-                style={{ borderRadius: 12 }}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">
-                    {check.label}
-                  </span>
-                  <span
-                    className="block truncate text-[length:var(--tri-size-xs)] lowercase"
-                    style={{ color: STATE_INK[check.state] }}
-                  >
-                    {check.detail}
-                  </span>
-                </span>
-                {check.fix && (
-                  /* The door's words, in the tile's caption voice. It is a
-                     destination, not an act — the row says where it goes, it
-                     does not claim to have fixed anything. */
-                  <span
-                    className="shrink-0 whitespace-nowrap text-[length:var(--tri-size-eyebrow)] lowercase"
-                    style={{ color: MUTED }}
-                  >
-                    {check.fix}
-                  </span>
-                )}
-              </li>
-            ))}
-            {hidden > 0 && (
-              /* Not a row: a card here would claim to be a door to one
-                 thing, and this is the count of several. It is the list
-                 admitting its own edge, in the caption voice. */
-              <li
-                className="shrink-0 truncate px-2.5 text-[length:var(--tri-size-xs)] lowercase"
-                style={{ color: MUTED }}
-              >
-                <span className="tabular-nums">{hidden}</span> more below
-              </li>
-            )}
-          </ul>
-        )}
-
-        {/* Band three: the footer, present in both postures so the tile does
-            not change height class when it turns. Green, it says how much was
-            checked; in trouble, how much still passed — which is the sentence
-            that keeps a two-item list from reading as a broken machine. */}
-        {/* No tracking: 0.14em belongs to the uppercase eyebrow, where it
-            opens letterforms that are all the same height. On a lowercase
-            sentence it only pulls the words apart. */}
-        <p
-          className="shrink-0 truncate text-[length:var(--tri-size-eyebrow)] lowercase"
-          style={{ color: MUTED }}
-        >
+        {/* The verdict, as a foot line rather than a headline: the blocks
+            already said it, this is the count. */}
+        <p className="flex shrink-0 items-center gap-2 truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
+          <Dot tone={unknown ? 'idle' : ready ? 'ok' : STATE_TONE[worst]} />
           {unknown ? (
-            'no checks reported'
+            'pre-flight has not reported yet'
+          ) : ready ? (
+            <>ready for service · <span className="tabular-nums">{checks.length}</span> of <span className="tabular-nums">{checks.length}</span> checks passed</>
           ) : (
-            <>
-              <span className="tabular-nums">{checks.length - trouble.length}</span> of{' '}
-              <span className="tabular-nums">{checks.length}</span> checks passed
-            </>
+            <><span className="tabular-nums">{trouble.length}</span> {troubleWords(trouble.length)} · <span className="tabular-nums">{checks.length - trouble.length}</span> of <span className="tabular-nums">{checks.length}</span> passed</>
           )}
         </p>
       </div>

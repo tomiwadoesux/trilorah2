@@ -249,7 +249,7 @@ export function TrustTrendTile({ className }: { className?: string }) {
   const hov = hover != null ? { p: HISTORY[hover], pt: trustPts[hover] } : null;
 
   return (
-    <Panel className={className} bodyClass="pt-3">
+    <Panel title="trust trend" className={className}>
       <div className="flex h-full flex-col gap-[var(--tri-gap)]">
         {/* (a) the span, and where the climb has got to */}
         <div className="flex shrink-0 items-baseline justify-between gap-[var(--tri-gap)]">

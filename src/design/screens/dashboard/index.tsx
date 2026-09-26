@@ -54,8 +54,8 @@ export function DashboardBento({
           connections; the log and the notes beside them. */}
       <div className="flex min-h-0 basis-0 grow-[330] gap-[var(--tri-gap)]">
         <div className="flex min-w-0 basis-0 grow-[640] flex-col gap-[var(--tri-gap)]">
-          <ReadinessTile className="min-h-0 basis-0 grow-[110]" />
-          <div className="flex min-h-0 basis-0 grow-[220] gap-[var(--tri-gap)]">
+          <ReadinessTile className="min-h-0 basis-0 grow-[150]" />
+          <div className="flex min-h-0 basis-0 grow-[200] gap-[var(--tri-gap)]">
             <VoiceCommandsTile className="basis-0 grow-[1]" />
             <ConnectedTile className="basis-0 grow-[1]" />
           </div>

@@ -1,3 +1,4 @@
+import { cx, surface } from '../../../ui';
 import { Panel } from '../parts';
 
 /*
@@ -47,66 +48,38 @@ export function PreacherStatsTile({ className }: { className?: string }) {
 
 export function PreacherStatsTileFull({ className }: { className?: string }) {
   return (
-    <Panel className={className} bodyClass="pt-3">
-      <div
-        className="flex h-full min-h-0 flex-col justify-between"
-        /* cqw only means anything with a container under it, and it has to be
-           this box rather than the Panel: Panel is shared with every other
-           region of the screen, and one tile's type scale is not something to
-           hand all of them. */
-        style={{ containerType: 'inline-size' }}
-      >
-        {/* The name is the tile's title — there is no panel header, because a
-            label saying "preacher" above a name saying "Pastor Dan" is the
-            same word twice. */}
-        <div className="shrink-0">
-          <h2
-            className="truncate text-[var(--tri-ink)]"
-            style={{
-              fontFamily: 'var(--tri-font)',
-              fontSize: 'clamp(22px, 3.4cqw, 34px)',
-              fontWeight: 300,
-              letterSpacing: '0.01em',
-            }}
-          >
-            {PREACHER.name}
-          </h2>
-          <p className="mt-0.5 text-[length:var(--tri-size-xs)]" style={{ color: MUTED }}>
-            {PREACHER.services}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-end justify-between gap-[var(--tri-gap)]">
+    <Panel title="preacher" className={className}>
+      {/* Two blocks, S-03's arrangement: who is preaching on the left, what
+          the numbers say on the right. Quiet type — the name is the biggest
+          thing here, and it is not big. */}
+      <div className="grid h-full min-h-0 grid-cols-2 gap-2">
+        <div
+          className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-h-0 min-w-0 flex-col justify-between px-3 py-2.5')}
+          style={{ borderRadius: 10 }}
+        >
           <div className="min-w-0">
-            <p
-              className="tabular-nums text-[var(--tri-ink)]"
-              style={{
-                fontFamily: 'var(--tri-font)',
-                fontSize: 'clamp(42px, 7.4cqw, 76px)',
-                fontWeight: 300,
-                lineHeight: 0.9,
-                letterSpacing: '0.02em',
-              }}
-            >
-              {PREACHER.accuracy}%
+            <p className="truncate text-[15px] font-semibold text-[var(--tri-ink)]">{PREACHER.name}</p>
+            <p className="mt-0.5 truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
+              {PREACHER.services}
             </p>
-            <p className="mt-1 lowercase text-[length:var(--tri-size-xs)]" style={{ color: MUTED }}>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[26px] font-semibold tabular-nums leading-none text-[var(--tri-ink)]">{PREACHER.accuracy}%</span>
+            <span className="text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
               detection accuracy
+            </span>
+          </div>
+        </div>
+        <div
+          className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-h-0 min-w-0 flex-col justify-center gap-1.5 px-3 py-2.5')}
+          style={{ borderRadius: 10 }}
+        >
+          {FACTS.map((fact) => (
+            <p key={fact.label} className="flex items-baseline justify-between gap-3 text-[length:var(--tri-size-xs)]">
+              <span className="truncate lowercase" style={{ color: MUTED }}>{fact.label.replace(/:$/, '')}</span>
+              <span className="shrink-0 font-semibold text-[rgb(229_243_242_/_0.9)]">{fact.value}</span>
             </p>
-          </div>
-
-          <div className="min-w-0 text-right text-[length:var(--tri-size-xs)] leading-[1.3]">
-            {FACTS.map((fact) => (
-              /* The whole pair holds one line, label included. min-w-0 on the
-                 block is what makes that safe: the line can never widen the
-                 tile, it can only stop "most referenced books:" breaking in
-                 two and taking a fifth line's height out of the row. */
-              <p key={fact.label} className="whitespace-nowrap">
-                <span style={{ color: MUTED }}>{fact.label} </span>
-                <span className="font-semibold text-[rgb(229_243_242_/_0.9)]">{fact.value}</span>
-              </p>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
     </Panel>
