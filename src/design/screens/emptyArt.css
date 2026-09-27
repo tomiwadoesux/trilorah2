@@ -1,0 +1,1277 @@
+/*
+ * Motion for the empty-state drawings (D-30).
+ *
+ * The rule these all obey: an empty state is WAITING, and waiting is not
+ * the same as loading. A spinner says "work is happening, stand by"; these
+ * panels are not working, they are ready and unused. So nothing here spins,
+ * pulses urgently, or runs a progress-shaped loop. Every animation is slow
+ * (6–14s), low-amplitude, and never resolves — it is the visual equivalent
+ * of a room breathing with nobody in it.
+ *
+ * All of it is CSS on SVG geometry that is already drawn: transforms,
+ * opacity, and stroke-dashoffset. No JS timers, no rAF, no re-renders —
+ * the panel costs nothing to leave on screen for the ten minutes before a
+ * service, which is exactly how long it will be up.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Shared                                                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Every drawing sits in this box. transform-box/origin are set here once:
+ * SVG children default to transform-origin at the USER SPACE origin, not
+ * their own centre, so a scale on a <rect> without this flies off toward
+ * the top-left instead of breathing in place.
+ */
+.tri-es-art * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* A horizontal line has no height, so fill-box gives it a degenerate box.
+   The sweep moves in the SVG's own coordinates instead. */
+.tri-es-sweep {
+  transform-box: view-box;
+}
+
+/* ------------------------------------------------------------------ */
+/* Run of service — the slots wait to be filled                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The dashes crawl. A dashed rect in this system means "a place where a
+ * thing will go" (see CardArt's outer orbit), and animating the dash offset
+ * makes that placeholder feel held open rather than abandoned — the same
+ * read as a marching-ants selection, slowed to a fifth of the speed so it
+ * is a drift rather than a march.
+ *
+ * Each slot crawls slower than the one above it: the top slot is the next
+ * one to be filled, and the rail should feel like it is settling downward.
+ */
+.tri-es-slot--dashed {
+  animation: tri-es-crawl 9s linear infinite;
+}
+.tri-es-slot--dashed.tri-es-d2 {
+  animation-duration: 13s;
+}
+
+@keyframes tri-es-crawl {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+/*
+ * The first slot is solid — it is the one you are about to use — so it
+ * breathes instead, very slightly, on the long cycle everything here shares.
+ */
+.tri-es-slot--first {
+  animation: tri-es-breathe 7s var(--tri-ease-in-out) infinite;
+}
+
+@keyframes tri-es-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.62;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Catches, idle — the flat line                                       */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A true flat line is a dead signal, and an unmoving one reads as a frozen
+ * UI rather than a quiet room. So the baseline gets the smallest possible
+ * sign of life: a faint sweep of brightness travelling along it, once every
+ * eight seconds. It is a scan, not a pulse — the panel is listening for
+ * something to happen, and nothing is.
+ */
+.tri-es-sweep {
+  animation: tri-es-sweep 8s var(--tri-ease-in-out) infinite;
+}
+
+/*
+ * Translated in USER UNITS, not percent. A horizontal <line> has a
+ * zero-height fill-box, and a percentage translate resolves against that
+ * box — on some engines it collapses to nothing. The viewBox is 150 wide
+ * and the sweep segment is 36, so ±98 carries it cleanly off both ends.
+ */
+/*
+ * The sweep segment is drawn at x 8..30 and the baseline runs 8..142, so it
+ * travels +112 to put its trailing edge at the line's far end and never
+ * past it. It fades out well before then: a bright mark sitting at the end
+ * of the axis reads as a value, not as a scan.
+ */
+@keyframes tri-es-sweep {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.9;
+  }
+  62% {
+    opacity: 0.9;
+  }
+  88% {
+    opacity: 0;
+  }
+  99% {
+    transform: translateX(112px);
+  }
+}
+
+/*
+ * The dashed ghost-peaks — where a catch WOULD have risen — fade in and out
+ * on a long offset cycle, so the panel keeps suggesting the shape it is
+ * waiting for without ever drawing it solidly enough to be misread as data.
+ */
+.tri-es-ghost {
+  animation: tri-es-ghost 11s var(--tri-ease-in-out) infinite;
+}
+.tri-es-ghost.tri-es-d2 {
+  animation-duration: 14s;
+  animation-delay: -5s;
+}
+
+@keyframes tri-es-ghost {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  45% {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Catches, listening — the field is live                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * This is the one state on the page where something IS happening: the
+ * engine is up and hearing a room. So it is the only drawing that twinkles
+ * — each dot fading on its own cycle, with the per-dot duration and delay
+ * set inline from the same seeded scatter that places it, so no two dots
+ * are ever in phase. That irregularity is the whole effect: a field where
+ * every dot blinked together would read as a strobe, and one where they
+ * drift independently reads as noise being heard.
+ */
+.tri-es-dot {
+  animation: tri-es-twinkle var(--tri-es-dur, 5s) var(--tri-ease-in-out) var(--tri-es-delay, 0s)
+    infinite;
+}
+
+@keyframes tri-es-twinkle {
+  0%,
+  100% {
+    opacity: var(--tri-es-lo, 0.15);
+  }
+  50% {
+    opacity: var(--tri-es-hi, 0.7);
+  }
+}
+
+/*
+ * The listening baseline gets the same sweep as idle, but faster and
+ * brighter: same gesture, more alive. The two panels sit side by side on
+ * the Live screen often enough that the DIFFERENCE has to be legible, and
+ * rate is the clearest axis for that — you read "faster" before you read
+ * "brighter".
+ */
+.tri-es-sweep--live {
+  animation-duration: 4.5s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Songs — the grid, gone dark                                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A query that matches nothing: the cards go out one after another, left to
+ * right, and come back. Read as a search running along the row and finding
+ * nothing in any of them. The stagger is per-column via an inline delay, so
+ * the wave direction is the same as reading order.
+ */
+.tri-es-card {
+  animation: tri-es-dim 6s var(--tri-ease-in-out) var(--tri-es-delay, 0s) infinite;
+}
+
+@keyframes tri-es-dim {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.3;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Recent services — the chart before there is a line                   */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The dashed columns rise from the baseline and settle back, one after the
+ * other — the chart rehearsing the shape it will have once services exist.
+ * scaleY from the bottom, so they grow out of the axis rather than out of
+ * their own middles.
+ */
+.tri-es-col {
+  transform-origin: bottom;
+  animation: tri-es-rise 9s var(--tri-ease-in-out) var(--tri-es-delay, 0s) infinite;
+}
+
+@keyframes tri-es-rise {
+  0%,
+  100% {
+    transform: scaleY(0.18);
+    opacity: 0.25;
+  }
+  45%,
+  60% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* The rail's spine: the slowest crawl of the three rail gestures, because
+   it is the run as a whole rather than any one slot. -14 is exactly two
+   periods of a "2 5" dash, so it loops with no visible jump. */
+.tri-es-spine {
+  animation: tri-es-crawl 18s linear infinite;
+}
+
+/* ------------------------------------------------------------------ */
+/* Transcript — the room above the pill                                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * NOT a crawl. The run rail's slots crawl because they are places a card
+ * gets dropped into; a line of speech is not dropped, it accumulates. So
+ * these lines do not travel — they strengthen and fade on their own
+ * cycles, the rhythm of a sentence that keeps almost starting.
+ *
+ * Co-prime-ish durations at negative delays mean no two lines are ever in
+ * step, so the stack never pulses as a unit. And the rates are deliberately
+ * NOT graded by depth the way the run rail's are — a rate gradient is the
+ * rail's signature, and a second panel borrowing it dilutes both.
+ */
+.tri-es-utter {
+  animation: tri-es-breathe var(--tri-es-dur, 11s) var(--tri-ease-in-out)
+    var(--tri-es-delay, 0s) infinite;
+}
+.tri-es-t0 { --tri-es-dur: 11s; --tri-es-delay: 0s; }
+.tri-es-t1 { --tri-es-dur: 13s; --tri-es-delay: -3.5s; }
+.tri-es-t2 { --tri-es-dur: 12s; --tri-es-delay: -7s; }
+.tri-es-t3 { --tri-es-dur: 14s; --tri-es-delay: -2s; }
+.tri-es-t4 { --tri-es-dur: 13s; --tri-es-delay: -9s; }
+
+/* Where the next word would start, on the longest cycle on the sheet. */
+.tri-es-next {
+  animation: tri-es-rest 9s var(--tri-ease-in-out) infinite;
+}
+
+@keyframes tri-es-rest {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.12;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Companion — the square waiting for a code                           */
+/* ------------------------------------------------------------------ */
+
+/* The square is real and ready, so it breathes — the same reason the run
+   rail's first slot does. The register drifts on the slowest crawl in the
+   set, because there is no next action here: the code appears when the
+   service opens, not when anyone presses anything. */
+.tri-es-qr-frame {
+  animation: tri-es-breathe 9s var(--tri-ease-in-out) infinite;
+}
+.tri-es-qr-grid {
+  animation: tri-es-crawl 16s linear infinite;
+}
+.tri-es-qr-grid.tri-es-d2 {
+  animation-duration: 21s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifications — the gutter                                          */
+/* ------------------------------------------------------------------ */
+
+/* Slowest crawl on the sheet. Nothing here translates and nothing moves
+   downward: the log's real arrival gesture is a translateY, and borrowing
+   it to mean "nothing has happened" reads as a bug rather than a choice. */
+.tri-es-slot--dashed.tri-es-d3 {
+  animation-duration: 17s;
+}
+
+/* ------------------------------------------------------------------ */
+/* The kept room — rows that fade rather than travel                   */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A dash-crawl on a line that starts at a fixed margin reads as extension
+ * toward the right edge — a gesture with a destination, which is the
+ * spinner failure at 16s instead of 1s. Fading has no destination: the card
+ * suggests rows and lets them go, forever, which is what a permanently kept
+ * space does. The slowest thing on the page, because this is the only card
+ * that will never fill.
+ */
+.tri-es-kept {
+  animation: tri-es-hold 16s var(--tri-ease-in-out) var(--tri-es-delay, 0s) infinite;
+}
+
+/*
+ * A gentler trough than tri-es-ghost's 0.1. These rows are already the
+ * dimmest marks on the sheet (0.20 down to 0.13), and multiplying that by
+ * 0.1 took them to nothing — the card read as genuinely blank for half of
+ * every cycle, which is the broken look this drawing exists to avoid.
+ * Floors at 0.45 instead: the rows never leave, they only soften.
+ */
+@keyframes tri-es-hold {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Sermon notes — the outline accretes                                 */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Notes do not arrive on a signal, so nothing sweeps and nothing scans.
+ * They accrete, unevenly, over forty minutes. The dashes drift RIGHTWARD —
+ * the direction a line is written, not the direction marching ants travel —
+ * at three rates by depth, so the eye settles on the top level, which is an
+ * outline's reading order.
+ */
+.tri-es-outline {
+  animation: tri-es-drift 11s linear infinite;
+}
+.tri-es-o1 { animation-duration: 13s; }
+.tri-es-o2 { animation-duration: 10s; }
+.tri-es-o3 { animation-duration: 8s; }
+
+/* 9 is not arbitrary: the dasharrays here are "4 5" and "3 4", periods of
+   9 and 7. A 9 offset loops seamlessly on the points; the sub-lines drift
+   through their own period without a visible jump because they are dimmer
+   and shorter. */
+@keyframes tri-es-drift {
+  to {
+    stroke-dashoffset: 9;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The catches ghosts — a third peak                                   */
+/* ------------------------------------------------------------------ */
+
+/* 11 / 14 / 17 with scattered delays: the three never coincide inside the
+   ten minutes a booth looks at this before a service. */
+.tri-es-ghost.tri-es-d3 {
+  animation-duration: 17s;
+  animation-delay: -9s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion                                                      */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Everything above is decoration on a state that is already fully told by
+ * its drawing and its sentence, so under reduced motion it all simply
+ * stops. Nothing is shortened or softened — there is no information in the
+ * movement to preserve, which is the test for whether an animation may be
+ * removed outright.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .tri-es-slot--dashed,
+  .tri-es-slot--first,
+  .tri-es-spine,
+  .tri-es-sweep,
+  .tri-es-ghost,
+  .tri-es-dot,
+  .tri-es-card,
+  .tri-es-col,
+  .tri-es-utter,
+  .tri-es-next,
+  .tri-es-qr-frame,
+  .tri-es-qr-grid,
+  .tri-es-kept,
+  .tri-es-outline {
+    animation: none;
+  }
+  /* The columns' resting transform is mid-animation, so it has to be
+     restored explicitly or they sit collapsed at 18%. */
+  .tri-es-col {
+    transform: none;
+  }
+  .tri-es-sweep {
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion marks — yui540's demos, ported whole                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Everything under this banner is copied from the files in
+ * design/motion/yui540/source (MIT, © 2026 yui540): her selectors
+ * renamed into this app's namespace, her keyframe values and easings
+ * kept to the digit. Where a demo played once (two chained animations
+ * with delays), the chain is merged into one infinite timeline — the
+ * same values at the same relative spacing, expressed as percentages of
+ * a cycle with a rest, so each segment keeps its own ease exactly as
+ * the chain gave it.
+ *
+ * Colour is the one translation: her grey ramp on white becomes the
+ * same ramp in this app's ink on near-black, darkest-on-white mapping
+ * to brightest-on-dark. The variables keep her hex names so any port
+ * can be read against its source file.
+ */
+.tri-ma {
+  --g666: rgb(229 243 242 / 0.62);
+  --g777: rgb(229 243 242 / 0.55);
+  --g888: rgb(229 243 242 / 0.48);
+  --g999: rgb(229 243 242 / 0.42);
+  --gaaa: rgb(229 243 242 / 0.36);
+  --gbbb: rgb(229 243 242 / 0.3);
+  --gccc: rgb(229 243 242 / 0.25);
+  --ge0: rgb(229 243 242 / 0.12);
+  /* Printed marks on a light sheet — the QR modules, the note rules. */
+  --gink: rgb(10 12 12 / 0.55);
+}
+
+/* Her 320 stage, scaled into whatever box the card gives it. */
+.tri-yui {
+  position: relative;
+}
+.tri-yui__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: 320px;
+  transform-origin: top left;
+  display: grid;
+  place-content: center;
+}
+
+/*
+ * Hover gating. Paused, not stopped: animation-play-state keeps the
+ * frame, so leaving a card freezes its demo mid-gesture and coming back
+ * continues from exactly there. A pause cannot ease, so the drawing
+ * also dims over half a second on leave — the fade is the wind-down.
+ * Pseudo-elements carry half of yui540's animations, so they are gated
+ * by name alongside the elements.
+ */
+.tri-play-hover .tri-ma {
+  opacity: 0.55;
+  transition: opacity 480ms var(--tri-ease-out);
+}
+.tri-play-hover:hover .tri-ma {
+  opacity: 1;
+}
+/*
+ * !important, and it is load-bearing. Every port below sets its motion
+ * with the `animation:` SHORTHAND, exactly as yui540 wrote it — and the
+ * shorthand resets animation-play-state to `running`. Those rules come
+ * later in this file at equal specificity, so without this they win the
+ * cascade and a hover-gated demo plays forever. Rewriting her shorthands
+ * into longhand would have meant editing every ported rule, which is the
+ * one thing these ports are not allowed to do.
+ */
+.tri-play-hover :is(.tri-ma, .tri-ma *),
+.tri-play-hover .tri-ma *::before,
+.tri-play-hover .tri-ma *::after {
+  animation-play-state: paused !important;
+}
+.tri-play-hover:hover :is(.tri-ma, .tri-ma *),
+.tri-play-hover:hover .tri-ma *::before,
+.tri-play-hover:hover .tri-ma *::after {
+  animation-play-state: running !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Run of service — pop-up stack (2026-04-18/tips-4)                   */
+/* ------------------------------------------------------------------ */
+
+.tri-pop {
+  position: absolute;
+  bottom: 35%;
+  width: 100%;
+  display: grid;
+  row-gap: 3px;
+  justify-items: center;
+  align-content: end;
+}
+.tri-pop__block {
+  position: relative;
+  width: 120px;
+  height: 40px;
+  border-radius: 8px;
+  transform-origin: bottom center;
+}
+/* Her jump (0.7s, delay 0.3s), rebaked onto a 2.8s cycle: 0.3s→10.7%,
+   then her 40/60/80% frames at 20.7/25.7/30.7, landed by 35.7. From and
+   to are both translateY(0), so the loop has no seam. */
+.tri-pop__block:nth-child(1) {
+  background-color: var(--gaaa);
+  animation: tri-pop-jump 2.8s ease-in-out infinite both;
+}
+/* Her push, verbatim — once, on mount. The rail's art always plays, so
+   the block builds itself the moment the card exists. */
+.tri-pop__block:nth-child(2) {
+  background-color: var(--g888);
+  animation: tri-pop-push 0.5s ease-in-out 0.2s both;
+}
+@keyframes tri-pop-jump {
+  0%,
+  10.7% {
+    transform: translateY(0);
+  }
+  20.7% {
+    transform: translateY(-40%) rotate(6deg);
+  }
+  25.7% {
+    transform: translateY(0%);
+  }
+  30.7% {
+    transform: translateY(-20%) rotate(-3deg);
+  }
+  35.7%,
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes tri-pop-push {
+  from {
+    height: 0;
+  }
+  60% {
+    height: 48px;
+  }
+  to {
+    height: 40px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Catches idle — dominoes (2026-04-18/tips-2)                         */
+/* ------------------------------------------------------------------ */
+
+.tri-dom {
+  display: grid;
+  column-gap: 20px;
+  grid-template-columns: repeat(4, auto);
+  place-content: center;
+}
+.tri-dom__block {
+  position: relative;
+  width: 20px;
+  aspect-ratio: 20/60;
+  border-radius: 5px;
+  transform-origin: right bottom;
+}
+/* Her four falls (0.65s at delays 0.2–0.5s, end angles 60/61/66/90 with
+   the rock-back at 80%), rebaked onto one 3.8s cycle; the row stands
+   back up together toward 75%, last tile first. */
+.tri-dom__block:nth-child(1) {
+  background-color: var(--g777);
+  animation: tri-dom-1 3.8s ease-in-out infinite both;
+}
+.tri-dom__block:nth-child(2) {
+  background-color: var(--gbbb);
+  animation: tri-dom-2 3.8s ease-in-out infinite both;
+}
+.tri-dom__block:nth-child(3) {
+  background-color: var(--gaaa);
+  animation: tri-dom-3 3.8s ease-in-out infinite both;
+}
+.tri-dom__block:nth-child(4) {
+  background-color: var(--g999);
+  animation: tri-dom-4 3.8s ease-in-out infinite both;
+}
+@keyframes tri-dom-1 {
+  0%, 5.3% { transform: rotate(0deg); }
+  15.5% { transform: rotate(60deg); }
+  18.9% { transform: rotate(55deg); }
+  22.4%, 67.1% { transform: rotate(60deg); }
+  75%, 100% { transform: rotate(0deg); }
+}
+@keyframes tri-dom-2 {
+  0%, 7.9% { transform: rotate(0deg); }
+  18.2% { transform: rotate(61deg); }
+  21.6% { transform: rotate(56deg); }
+  25%, 64.5% { transform: rotate(61deg); }
+  75%, 100% { transform: rotate(0deg); }
+}
+@keyframes tri-dom-3 {
+  0%, 10.5% { transform: rotate(0deg); }
+  20.8% { transform: rotate(66deg); }
+  24.2% { transform: rotate(60deg); }
+  27.6%, 61.8% { transform: rotate(66deg); }
+  75%, 100% { transform: rotate(0deg); }
+}
+@keyframes tri-dom-4 {
+  0%, 13.2% { transform: rotate(0deg); }
+  23.4% { transform: rotate(90deg); }
+  26.8% { transform: rotate(85deg); }
+  30.3%, 59.2% { transform: rotate(90deg); }
+  75%, 100% { transform: rotate(0deg); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Transcript — scroll unroll (2026-04-25/tips-1)                      */
+/* ------------------------------------------------------------------ */
+
+/* Her .makimono, name for name. The whole demo ran 0→2.7s (draw at 0,
+   reverse chains at 1.7s); everything below is that timeline on a 3.4s
+   cycle — 1s draw = 29.4%, the 1.7s turn = 50%, the reverse done at
+   79.4%, then rest. */
+/* All six of the scroll's animations share one -1.2s delay: a paused
+   hover demo sits at its start, and this one's start is everything
+   rolled away. Parked at 35%% the scroll rests open with its lines up,
+   and her stagger is untouched — it lives in the baked percentages. */
+.tri-scroll {
+  position: relative;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(1.18);
+  width: fit-content;
+}
+.tri-scroll__title {
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 0;
+}
+/* Her glyph spans, as blank blocks — the words this panel is waiting
+   for belong to the pill under it, which already carries the sentence. */
+.tri-scroll__title span {
+  display: inline-block;
+  width: 24px;
+  height: 30px;
+  margin: 0 3px;
+  border-radius: 6px;
+  background-color: var(--g666);
+  transform-origin: bottom center;
+  transform: translateY(100%);
+}
+.tri-scroll__title span:nth-child(1) { animation: tri-scroll-s1 3.4s ease-in-out -1.2s infinite both; }
+.tri-scroll__title span:nth-child(2) { animation: tri-scroll-s2 3.4s ease-in-out -1.2s infinite both; }
+.tri-scroll__title span:nth-child(3) { animation: tri-scroll-s3 3.4s ease-in-out -1.2s infinite both; }
+.tri-scroll__title span:nth-child(4) { animation: tri-scroll-s4 3.4s ease-in-out -1.2s infinite both; }
+/* Her slide-in (0.55s, the -8% overshoot with the 0.95/1.15 stretch at
+   60%) and slide-out (0.3s to 100% with the 1.2/0.6 squash), at her
+   stagger: in at 0.65/0.55/0.45/0.35s, out at 1.85–2.15s. */
+@keyframes tri-scroll-s1 {
+  0%, 19.1% { transform: translateY(100%); }
+  28.8% { transform: translateY(-8%) scale(0.95, 1.15); }
+  35.3%, 54.4% { transform: translateY(0); }
+  63.2% { transform: translateY(100%) scale(1.2, 0.6); }
+  100% { transform: translateY(100%); }
+}
+@keyframes tri-scroll-s2 {
+  0%, 16.2% { transform: translateY(100%); }
+  25.9% { transform: translateY(-8%) scale(0.95, 1.15); }
+  32.4%, 57.4% { transform: translateY(0); }
+  66.2% { transform: translateY(100%) scale(1.2, 0.6); }
+  100% { transform: translateY(100%); }
+}
+@keyframes tri-scroll-s3 {
+  0%, 13.2% { transform: translateY(100%); }
+  22.9% { transform: translateY(-8%) scale(0.95, 1.15); }
+  29.4%, 60.3% { transform: translateY(0); }
+  69.1% { transform: translateY(100%) scale(1.2, 0.6); }
+  100% { transform: translateY(100%); }
+}
+@keyframes tri-scroll-s4 {
+  0%, 10.3% { transform: translateY(100%); }
+  20% { transform: translateY(-8%) scale(0.95, 1.15); }
+  26.5%, 63.2% { transform: translateY(0); }
+  72.1% { transform: translateY(100%) scale(1.2, 0.6); }
+  100% { transform: translateY(100%); }
+}
+.tri-scroll__line {
+  position: absolute;
+  bottom: -40%;
+  left: -40%;
+  width: 180%;
+  height: 20%;
+  overflow: hidden;
+  border-radius: 999px;
+}
+.tri-scroll__line::before {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background-color: var(--gccc);
+  border-radius: 999px;
+  animation: tri-scroll-line 3.4s ease-in-out -1.2s infinite both;
+}
+@keyframes tri-scroll-line {
+  0% { transform: translateX(101%); }
+  29.4%, 50% { transform: translateX(0); }
+  79.4%, 100% { transform: translateX(101%); }
+}
+.tri-scroll__roll {
+  position: absolute;
+  bottom: -40%;
+  right: -70%;
+  height: 160%;
+  aspect-ratio: 1;
+  background: linear-gradient(to bottom, var(--gccc) 0 50%, var(--gaaa) 0);
+  border-radius: 999px;
+  overflow: hidden;
+  animation: tri-scroll-roll 3.4s ease-in-out -1.2s infinite both;
+}
+.tri-scroll__roll::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background-color: var(--g666);
+}
+@keyframes tri-scroll-roll {
+  0% { transform: translateX(0) rotate(180deg); }
+  29.4%, 50% { transform: translateX(-420%) rotate(-180deg); }
+  79.4%, 100% { transform: translateX(0) rotate(180deg); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Companion — rolling blocks (2026-05-14/tips-3)                      */
+/* ------------------------------------------------------------------ */
+
+/* Her loop untouched: cycle, angles, the left block's whole feed. Her
+   ::before faces are real divs here so the QR furniture can ride them;
+   her ground sheet is gone — the square button is the ground. */
+.tri-roll {
+  position: absolute;
+  inset: 0;
+  transform: translate(0, -6%) scale(1.4);
+}
+.tri-roll__box {
+  --size: 70px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--size) * 2);
+  height: var(--size);
+}
+.tri-roll__main {
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  transform-origin: right bottom;
+  animation: tri-roll-right 1.9s ease-in-out -0.85s infinite both;
+}
+.tri-roll__main-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 20%;
+  background-color: var(--g999);
+  transform-origin: right top;
+  animation: tri-roll-right-inner 1.9s ease-in-out -0.85s infinite both;
+}
+@keyframes tri-roll-right {
+  0%, 10.53% { transform: rotate(0deg); }
+  28.95%, 100% { transform: rotate(90deg); }
+}
+@keyframes tri-roll-right-inner {
+  0%, 23.68% { transform: rotate(0deg); }
+  31.58% { transform: rotate(8deg); }
+  39.47%, 100% { transform: rotate(0deg); }
+}
+.tri-roll__left {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--size);
+  height: var(--size);
+  transform: translateX(-30%);
+}
+.tri-roll__left-face {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background-color: var(--gccc);
+  border-radius: 20%;
+  animation: tri-roll-feed 1.9s ease-in-out -0.85s infinite both;
+}
+@keyframes tri-roll-feed {
+  0%, 10.53% {
+    width: 100%;
+    height: 100%;
+    transform: translateX(-50%) translateY(100%);
+  }
+  29.47% {
+    width: 90%;
+    height: 125%;
+    transform: translateX(-50%) translateY(0);
+  }
+  42.11%, 52.63% {
+    width: 100%;
+    height: 100%;
+    transform: translateX(-50%) translateY(0);
+  }
+  68.42% {
+    width: 90%;
+    height: 120%;
+    transform: translateX(-50%) translateY(0);
+  }
+  84.21%, 100% {
+    width: 120%;
+    height: 60%;
+    transform: translateX(-50%) translateY(100%);
+  }
+}
+/* The code furniture: a finder ring on the feeder, modules on the
+   roller — printed in the app's own dark, like ink on the grey. */
+.tri-roll__finder {
+  position: absolute;
+  top: 15%;
+  left: 15%;
+  width: 32%;
+  aspect-ratio: 1;
+  border: 5px solid var(--gink);
+}
+.tri-roll__dot {
+  position: absolute;
+  width: 16%;
+  aspect-ratio: 1;
+  background-color: var(--gink);
+}
+.tri-roll__dot--a { right: 18%; bottom: 18%; }
+.tri-roll__dot--b { top: 15%; left: 15%; }
+.tri-roll__dot--c { top: 15%; right: 20%; }
+.tri-roll__dot--d { bottom: 20%; left: 22%; }
+.tri-roll__dot--e { top: 45%; left: 48%; }
+
+/* ------------------------------------------------------------------ */
+/* Sermon notes — tissue box (2026-05-14/tips-1)                       */
+/* ------------------------------------------------------------------ */
+
+/* Hers verbatim, wrapper scale folded onto the element; each sheet
+   carries three rules — every tissue a page of the outline. */
+.tri-tissue {
+  position: relative;
+  width: 150px;
+  height: 60px;
+  transform: scale(1.4);
+}
+.tri-tissue::before,
+.tri-tissue::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+}
+.tri-tissue::before {
+  inset: 0;
+  background-color: var(--g999);
+  border-radius: 20px 20px 5px 5px;
+}
+.tri-tissue::after {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background-color: var(--g777);
+  border-radius: 0 0 5px 5px;
+}
+.tri-tissue__paper1,
+.tri-tissue__paper2 {
+  position: absolute;
+  bottom: 99%;
+  left: 50%;
+  width: 70%;
+  height: 50%;
+  transform: translate(-50%, 0);
+  transform-origin: center bottom;
+  background-color: rgb(229 243 242 / 0.5);
+  clip-path: polygon(0 0, 100% 0, 98% 100%, 2% 100%);
+}
+.tri-tissue__paper1 {
+  animation: tri-tissue-pull 1.4s ease-in-out 0s infinite both;
+}
+.tri-tissue__paper2 {
+  animation: tri-tissue-push 1.4s ease-in-out 0s infinite both;
+}
+@keyframes tri-tissue-pull {
+  0%, 14.29% {
+    opacity: 1;
+    height: 50%;
+    transform: translate(-50%, 0);
+  }
+  37.5% {
+    height: 80%;
+    transform: translate(-50%, 0);
+  }
+  51.43% {
+    opacity: 1;
+  }
+  60.71%, 100% {
+    opacity: 0;
+    height: 80%;
+    transform: translate(-50%, -200%) rotate(20deg);
+  }
+}
+@keyframes tri-tissue-push {
+  0%, 25% {
+    height: 50%;
+    bottom: 0;
+  }
+  55% {
+    height: 80%;
+  }
+  75%, 100% {
+    height: 50%;
+    bottom: 99%;
+  }
+}
+.tri-tissue__rule {
+  position: absolute;
+  left: 18%;
+  height: 9%;
+  min-height: 2px;
+  border-radius: 99px;
+  background-color: var(--gink);
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifications — orbit (2026-05-02/tips-4)                           */
+/* ------------------------------------------------------------------ */
+
+.tri-orbit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+}
+.tri-orbit__box {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 1;
+  background-color: var(--ge0);
+  border-radius: 50%;
+}
+.tri-orbit__big {
+  box-sizing: border-box;
+  position: absolute;
+  inset: -100%;
+  border-radius: 50%;
+  border: 2px solid var(--ge0);
+  animation: tri-orbit-spin 6s linear 0s infinite;
+}
+.tri-orbit__big::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 20px;
+  aspect-ratio: 1;
+  background-color: var(--gccc);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.tri-orbit__small {
+  position: absolute;
+  inset: 5px;
+  animation: tri-orbit-small 1.6s ease-in-out 0s infinite;
+}
+.tri-orbit__small::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 40%;
+  aspect-ratio: 1;
+  background-color: var(--gaaa);
+  border-radius: 50%;
+  transform: translate(-50%, 0);
+}
+.tri-orbit__orbit {
+  position: absolute;
+  inset: 0;
+  animation: tri-orbit-spin 3.2s linear 0s infinite;
+}
+.tri-orbit__large {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 60%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -100%);
+}
+.tri-orbit__large::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, var(--gccc) 0 50%, var(--gaaa) 0);
+  border-radius: 50%;
+  animation: tri-orbit-spin 3.2s linear 0s infinite;
+}
+@keyframes tri-orbit-spin {
+  from { transform: rotate(0); }
+  to { transform: rotate(360deg); }
+}
+@keyframes tri-orbit-small {
+  from { transform: rotate(0); }
+  80%, to { transform: rotate(360deg); }
+}
+
+/* ------------------------------------------------------------------ */
+/* The kept room — balancing blocks (2026-04-18/tips-1)                */
+/* ------------------------------------------------------------------ */
+
+/* Her three pieces, entry tilt and three-frame wobble merged onto a
+   3.2s cycle: each ends where it began, so the settle repeats. Her
+   half-and-half gradients kept, in grey. */
+.tri-bal {
+  display: grid;
+  justify-items: center;
+}
+.tri-bal__large {
+  position: relative;
+  width: 65px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(to top, var(--gaaa) 0 50%, var(--g777) 0);
+  animation: tri-bal-large 3.2s ease-in-out infinite both;
+}
+@keyframes tri-bal-large {
+  0% { transform: translateX(0); }
+  21.9% { transform: translate(50%, 3%) rotate(30deg); }
+  40.6% { transform: translate(-50%, 3%) rotate(-35deg); }
+  50% { transform: translate(10%, 1%) rotate(10deg); }
+  59.4%, 100% { transform: translateX(0); }
+}
+.tri-bal__bar {
+  width: 120px;
+  height: 12px;
+  border-radius: 999px;
+  background-color: var(--gaaa);
+  animation: tri-bal-bar 3.2s ease-in-out infinite both;
+}
+@keyframes tri-bal-bar {
+  0% { transform: translateX(0); }
+  18.8% { transform: translateX(8%) rotate(6deg); }
+  37.5% { transform: translateX(-8%) rotate(-6deg); }
+  46.9% { transform: translateX(2%) rotate(2deg); }
+  56.3%, 100% { transform: translateX(0); }
+}
+.tri-bal__small {
+  position: relative;
+  width: 35px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: linear-gradient(to top right, var(--gaaa) 0 50%, var(--g777) 0);
+  animation: tri-bal-small 3.2s ease-in-out infinite both;
+}
+@keyframes tri-bal-small {
+  0% { transform: translateX(0); }
+  15.6% { transform: translateX(30%) rotate(25deg); }
+  34.4% { transform: translateX(-30%) rotate(-25deg); }
+  43.8% { transform: translateX(10%) rotate(5deg); }
+  53.1%, 100% { transform: translateX(0); }
+}
+
+/* ------------------------------------------------------------------ */
+/* ON AIR — loading-3's equalizer bars (2025-03-11/loading-3.svg)      */
+/* ------------------------------------------------------------------ */
+
+/* Her cascade verbatim, including the unitless delay on 6n that CSS
+   drops — the bar pattern this produces is the one her loader shows. */
+.tri-eq * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.tri-eq__wrap {
+  animation: tri-eq-outer 1.1s ease-in-out infinite both;
+}
+.tri-eq__wrap:nth-child(2n) {
+  --scale-y: 2.25;
+  animation-delay: 0.5s;
+}
+.tri-eq__wrap:nth-child(3n) {
+  --scale-y: 3.5;
+  animation-delay: 0.9s;
+}
+.tri-eq__wrap:nth-child(4n) {
+  --scale-y: 2.5;
+  animation-delay: 1s;
+}
+.tri-eq__wrap:nth-child(5n) {
+  --scale-y: 3.25;
+  animation-delay: 0.75s;
+}
+.tri-eq__wrap:nth-child(6n) {
+  --scale-y: 4.5;
+  animation-delay: 1.2;
+}
+.tri-eq__wrap:nth-child(10n) {
+  --scale-y: 5;
+  animation-delay: 0.8s;
+}
+.tri-eq__line {
+  animation: tri-eq-inner 0.15s ease-in-out 0s infinite both;
+}
+.tri-eq__wrap:nth-child(2n) .tri-eq__line {
+  animation-delay: 0.1s;
+}
+@keyframes tri-eq-outer {
+  from, 30%, to {
+    transform: scaleY(1);
+  }
+  15% {
+    transform: scaleY(var(--scale-y));
+  }
+}
+@keyframes tri-eq-inner {
+  from, to {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The bento's open cue — the expand arrow (2026-05-02/tips-1)         */
+/* ------------------------------------------------------------------ */
+
+/* Scales in on tile hover, breathes with her arrow-up while it stays,
+   scales back out on leave. */
+.tri-cue {
+  display: block;
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  transform: scale(0);
+  transition:
+    transform 280ms var(--tri-ease-out),
+    opacity 280ms var(--tri-ease-out);
+}
+.group\/tile:hover .tri-cue {
+  opacity: 1;
+  transform: scale(1);
+}
+/* Her 55px arrow stage, shrunk to cue size. */
+.tri-cue__stage {
+  position: relative;
+  display: block;
+  width: 55px;
+  height: 55px;
+  transform: scale(0.25);
+  transform-origin: top left;
+}
+.tri-cue__arrow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 100%;
+  background-color: rgb(229 243 242 / 0.75);
+  border-radius: 16px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  animation: tri-cue-up 0.8s ease-in-out infinite both;
+  animation-play-state: paused;
+}
+.group\/tile:hover .tri-cue__arrow {
+  animation-play-state: running;
+}
+@keyframes tri-cue-up {
+  from, to {
+    height: 100%;
+  }
+  50% {
+    height: 140%;
+  }
+  75% {
+    height: 90%;
+  }
+}
+.tri-cue__sharp {
+  position: absolute;
+  inset: 0;
+}
+.tri-cue__sharp::before,
+.tri-cue__sharp::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 16px;
+  background-color: rgb(229 243 242 / 0.75);
+  border-radius: 16px;
+}
+.tri-cue__sharp--top::before,
+.tri-cue__sharp--top::after {
+  top: 0;
+  transform-origin: top center;
+}
+.tri-cue__sharp--top::before {
+  transform: rotate(-45deg) translateX(-30%);
+}
+.tri-cue__sharp--top::after {
+  transform: rotate(45deg) translateX(30%);
+}
+.tri-cue__sharp--bottom::before,
+.tri-cue__sharp--bottom::after {
+  bottom: 0;
+  transform-origin: bottom center;
+}
+.tri-cue__sharp--bottom::before {
+  transform: rotate(-45deg) translateX(30%);
+}
+.tri-cue__sharp--bottom::after {
+  transform: rotate(45deg) translateX(-30%);
+}
+
+/* Every port stops outright under reduced motion — none of the movement
+   carries information the card's sentence does not. */
+@media (prefers-reduced-motion: reduce) {
+  .tri-ma,
+  .tri-ma *,
+  .tri-ma *::before,
+  .tri-ma *::after,
+  .tri-cue__arrow {
+    animation: none !important;
+  }
+  .tri-cue {
+    transition: none;
+  }
+}

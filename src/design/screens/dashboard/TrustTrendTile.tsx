@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { Panel } from '../parts';
+import { SparkleIcon } from '../../../ui';
 import { useBoxSize } from './useBoxSize';
 
 /*
@@ -190,7 +191,7 @@ const AXIS_TYPE = {
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-export function TrustTrendTile({ className }: { className?: string }) {
+export function TrustTrendTile({ className, onOpen }: { className?: string; onOpen?: () => void }) {
   /* Real pixels rather than a stretched viewBox: preserveAspectRatio="none"
      would scale the 1.4px stroke and the labels with the box, so the same
      chart would show a hairline on a wide artboard and a fat rule on a
@@ -249,7 +250,13 @@ export function TrustTrendTile({ className }: { className?: string }) {
   const hov = hover != null ? { p: HISTORY[hover], pt: trustPts[hover] } : null;
 
   return (
-    <Panel title="trust trend" className={className}>
+    <Panel
+      title="trust trend"
+      icon={<SparkleIcon size={13} />}
+      blurb="how well the app has been reading this church, service by service."
+      onOpen={onOpen}
+      className={className}
+    >
       <div className="flex h-full flex-col gap-[var(--tri-gap)]">
         {/* (a) the span, and where the climb has got to */}
         <div className="flex shrink-0 items-baseline justify-between gap-[var(--tri-gap)]">

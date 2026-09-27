@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import StatusOrbSvg from '../orb/StatusOrbSvg';
+import SvgOrbsPill from '../orb/SvgOrbsPill';
+import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
+import { useOrbPhrase, useOrbShape, type OrbFacts } from '../orb/orbIdle';
+import { LiveTranscript } from './transcript/LiveTranscript';
+import { D27_HEIGHT } from './transcript/StripShell';
 import {
   ActionMenu,
   Button,
@@ -40,15 +44,20 @@ import {
   type SegmentOption,
   ImportIcon,
   PresentationIcon,
+  BookIcon,
+  PaletteIcon,
   QrIcon,
 } from '../../ui';
 import { BOOKS, CHAPTER_COUNTS } from '../../lib/books';
 import { parseVerse } from '../../lib/scriptureText';
 import { AppShell } from './AppShell';
 import { DashboardBento } from './dashboard';
+import { ProfileView } from './dashboard/ProfileView';
+import { SettingsSurface } from './Settings';
 import { ViewEnter } from './viewEnter';
 import { RunHeaderActions } from './run/RunHeaderActions';
 import { RunOfService } from './run/RunRail';
+import { DominoArt, EmptyMark, EqBars, GridArt, ListeningArt } from './emptyArt';
 import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
 import { AddSongDialog } from './songs/AddSongDialog';
 import { SongEditor, type EditorSession } from './songs/SongEditor';
@@ -56,7 +65,7 @@ import { DOCK_CLEARANCE, TabDock, type DockAction } from './songs/TabDock';
 import { useSongDrafts } from './songs/useSongDrafts';
 import { NEW_PREFIX, cardsToSections, isNewId, type SongBase, type SongDraft } from '../../../shared/songDraft';
 import './songs/songs.css';
-import { SlideCanvas } from './slide';
+import { SlideCanvas, type SlidePart } from './slide';
 import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
 import { formatTimerDisplay } from '../../../shared/timerDisplay';
 import { getTimerColor } from '../../../shared/timerColor';
@@ -90,12 +99,13 @@ import { useForesight } from './foresight';
  * ./liveContent, not deleted.
  *
  * Proportions come off the wireframe and are part of the spec: rail 18% of
- * width, context bar 5% of height, the stage 48%, tab strip 4%, browser
- * 38%. The tab strip sits mid-screen by design.
+ * width, context bar 5% of height, the stage 48%, browser 38%. The tab
+ * strip that sat mid-screen between the stage and the browser now runs down
+ * the browser's left edge, and the browser has its height (LibraryTabs).
  */
 
 /*
- * The bottom strip — five tabs.
+ * The library's six tabs.
  *
  * The drawing carried "themes" twice and the duplicate was kept for a while
  * as a visible question: an unassigned tab that opens an empty panel asks
@@ -111,9 +121,150 @@ const TABS = [
   { id: 'scriptures', label: 'verses' },
   { id: 'themes', label: 'themes' },
   { id: 'songs', label: 'songs' },
-  { id: 'slides', label: 'presentation slides' },
+  { id: 'slides', label: 'slides' },
   { id: 'media', label: 'media' },
+  /* The free photo and video library on the internet, one click away
+     instead of a shelf inside media. The media tab keeps its search shelf
+     too: that is where it was, and moving it would break a habit. */
+  { id: 'online', label: 'online' },
 ];
+
+/*
+ * The six tabs, down the left of the browser rather than across the top of
+ * it. Across, they cost a full row of height between the stage and the
+ * browser; down the side they cost a narrow column and the browser gets the
+ * height back, which is what it is short of — a verse table, a song list
+ * and a slide grid all want more rows, not wider ones.
+ *
+ * The pills sit together on one panel, the same surface as the browser
+ * beside it, so the six read as one control rather than six loose
+ * buttons. Each pill is a control — tri-rounded-control, the smoothed 18px
+ * corner every field and button has, a soft rounded rect and not a capsule
+ * — and the panel's corner is that plus the --tri-card-gap inset, so the
+ * two curves stay concentric and no pill corner crowds the panel's. Words
+ * are control-sized, with a glyph ahead of each so the column can be
+ * scanned without reading it.
+ *
+ * The lit pill is ONE surface that slides to the tab chosen, not a fill
+ * that blinks off one pill and on at another: the eye follows it, and the
+ * old and new tab are never both half-lit. 200ms on a strong ease-out, so
+ * it has arrived before the browser below has finished swapping. A switch
+ * made from the keyboard jumps instead — arrowing through tabs is repeated
+ * and a slide on every press would lag the key. Reduced motion jumps too.
+ * Pressing a pill dips it to --tri-press-scale, the press every button gets.
+ *
+ * Every row is --tri-field-h tall with --tri-card-gap between, so where the
+ * light sits is arithmetic on the index — nothing is measured, and a change
+ * of density moves it with the pills.
+ *
+ * The column is as wide as the longest label in bold, reserved by an
+ * invisible bold copy under every label, so choosing a tab (which bolds it)
+ * never nudges the browser sideways.
+ */
+const TAB_ICONS: Record<string, (p: { size?: number; className?: string }) => ReactNode> = {
+  scriptures: BookIcon,
+  themes: PaletteIcon,
+  songs: MusicIcon,
+  slides: PresentationIcon,
+  media: MediaIcon,
+  online: GlobeIcon,
+};
+
+function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => void }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  /* Set by the key handler, cleared by a click: whether this change should
+     jump rather than slide. It changes in the same render as the tab, so
+     the light gets its transition (or loses it) exactly when it moves. */
+  const [jump, setJump] = useState(false);
+  const go = (to: number) => {
+    const i = (to + TABS.length) % TABS.length;
+    setJump(true);
+    onChange(i);
+    refs.current[i]?.focus();
+  };
+  return (
+    <Panel
+      className="shrink-0"
+      style={{ borderRadius: 'calc(var(--tri-radius-control) + var(--tri-card-gap))' }}
+      bodyStyle={{ padding: 'var(--tri-card-gap)' }}
+    >
+      <div
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label="library"
+        className="relative flex flex-col gap-[var(--tri-card-gap)]"
+      >
+        <span
+          aria-hidden="true"
+          className={cx(
+            'tri-rounded-control pointer-events-none absolute inset-x-0 top-0 h-[var(--tri-field-h)] bg-[rgb(255_255_255_/_0.07)]',
+            'transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none',
+            jump && 'transition-none',
+          )}
+          style={{
+            /* The edge every surface has, and a hairline of light along the
+               top, so the lit pill sits a touch above the others. */
+            boxShadow:
+              'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.06)',
+            transform: `translateY(calc(${tab} * (var(--tri-field-h) + var(--tri-card-gap))))`,
+          }}
+        />
+        {TABS.map((t, i) => {
+          const Icon = TAB_ICONS[t.id];
+          const on = i === tab;
+          return (
+            <button
+              key={t.id}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              tabIndex={on ? 0 : -1}
+              onClick={() => {
+                setJump(false);
+                onChange(i);
+              }}
+              onKeyDown={(e) => {
+                const to =
+                  e.key === 'ArrowDown' ? i + 1
+                  : e.key === 'ArrowUp' ? i - 1
+                  : e.key === 'Home' ? 0
+                  : e.key === 'End' ? TABS.length - 1
+                  : null;
+                if (to === null) return;
+                e.preventDefault();
+                go(to);
+              }}
+              className={cx(
+                'tri-rounded-control relative flex h-[var(--tri-field-h)] shrink-0 items-center gap-2 pl-3 pr-4 text-left text-[length:var(--tri-control-size)] lowercase',
+                'transition-[color,transform] duration-150 ease-out active:scale-[var(--tri-press-scale)]',
+                on
+                  ? 'font-semibold text-[var(--tri-ink)]'
+                  : 'text-[rgb(229_243_242_/_0.58)] hover:bg-[rgb(255_255_255_/_0.025)] hover:text-[rgb(229_243_242_/_0.85)]',
+              )}
+              style={EDGE}
+            >
+              {Icon && (
+                <Icon
+                  size={14}
+                  className={cx('shrink-0 transition-opacity duration-150', on ? 'opacity-100' : 'opacity-60')}
+                />
+              )}
+              <span className="grid">
+                <span className="col-start-1 row-start-1 whitespace-nowrap">{t.label}</span>
+                <span aria-hidden="true" className="invisible col-start-1 row-start-1 h-0 whitespace-nowrap font-semibold">
+                  {t.label}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
 
 
 interface ThemeSettings {
@@ -161,6 +312,19 @@ const SAFE_MARGIN = { min: 3, max: 20, step: 0.5 } as const;
    SAFE_MARGIN is shared. 0 butts the two lines together; 3em is most of a
    line of space, past which the reference has visibly left the verse. */
 const REF_GAP = { min: 0, max: 3, step: 0.05 } as const;
+
+/*
+ * The parts of a slide, in the order they sit on it: the words, the line
+ * under them, the box they keep to, the picture behind. Named for what an
+ * operator sees, not for the fields they set — "text", not "size and
+ * layout and shadow and font".
+ */
+const PART_TABS: { id: SlidePart; label: string }[] = [
+  { id: 'verse', label: 'verse text' },
+  { id: 'reference', label: 'reference' },
+  { id: 'margin', label: 'safe margin' },
+  { id: 'background', label: 'background' },
+];
 
 /* The picker's options, straight off the shared vocabulary so this screen,
    Settings and the wall cannot disagree about what the choices are. */
@@ -223,15 +387,36 @@ function useTextTransition() {
 }
 
 /*
- * The two postures of this screen: the operator's own working surface, or
- * the dashboard the rest of the team watches.
+ * The three postures of this screen: the operator's own working surface,
+ * the dashboard the rest of the team watches, and the profile of whoever is
+ * preaching today.
  *
  * Not a panel swap — everything under the context bar changes, the rail
  * included, because the dashboard is read rather than worked and has no use
- * for a control column. The bar is what the two share, which is what makes
+ * for a control column. The bar is what the three share, which is what makes
  * this a switch and not a tab.
+ *
+ * Profile earns a place beside the other two rather than living behind a
+ * press on the preachers tile: it is the one screen an operator opens
+ * BEFORE a service, to check the app has learned this preacher, and a thing
+ * you reach for at a fixed moment every week should be reachable in one
+ * press from anywhere — not two, through a card on a view you were not
+ * otherwise going to.
  */
-const VIEWS = ['operator', 'dashboard'] as const;
+/*
+ * Settings is the fourth, and it is a posture rather than a card.
+ *
+ * It arrives here because the app's top tab bar is going away and the nine
+ * pages of settings have to land somewhere. A bento tile was the other
+ * candidate and it is the wrong shape: a tile flies open into one box,
+ * where settings is a rail of nine pages that an operator scans down. The
+ * profile proved the posture — a surface you READ rather than work, given
+ * the whole window — and settings is the same kind of thing.
+ *
+ * It sits last because it is the one you reach for least during a service,
+ * and the order of these pills is how often you press them.
+ */
+const VIEWS = ['operator', 'dashboard', 'profile', 'settings'] as const;
 type ViewMode = (typeof VIEWS)[number];
 
 /* SEGMENT_TYPES, the "+" menu and the rail's drawing live in ./run/ — see
@@ -281,6 +466,11 @@ function ThemesEditor({
   /* A corner of the guide is in someone's hand — see SlideCanvas. */
   const [cornerHeld, setCornerHeld] = useState(false);
   const [refHeld, setRefHeld] = useState(false);
+  /* Which part of the slide is being worked on. Never null: the panel
+     always has something to show, and a press on bare picture means the
+     background rather than "nothing". */
+  const [selected, setSelected] = useState<SlidePart>('verse');
+  const onSelect = (part: SlidePart | null) => setSelected(part ?? 'background');
   const blurb = TEXT_TRANSITIONS.find((t) => t.id === tx.id)?.blurb;
 
   return (
@@ -313,53 +503,104 @@ function ThemesEditor({
             the sliders would run to absurd lengths across a full half — but
             they are columns of content now, spaced by type, not two boxes
             with a seam between them. */}
-        <div className="flex min-h-0 shrink-0 gap-6 pt-2">
-          {/*
-            Verse layout leads the column and the dimness slider follows it.
-            The picker is the only control here with a shape to recognise —
-            four cards you aim at — and putting it first gives the eye
-            something to land on at the top of the panel instead of a row of
-            sliders that all read alike. Dimness and blur then sit together,
-            which is what they are: the two controls that act on the picture
-            behind the text rather than on the text.
-          */}
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <TextPositionPicker label="verse layout" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={2} />
-            <Slider label="background dimness" value={theme.dimness} onChange={(dimness) => onChange({ ...theme, dimness })} />
-            <Slider label="background blur" value={theme.blur} onChange={(blur) => onChange({ ...theme, blur })} min={0} max={12} />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <Slider label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
-            {/* Two sizes that no longer pull on each other: the first is the
-                scripture, the second is the John 3:16 line. They used to be
-                "text" (which scaled BOTH, because it set the container) and
-                "verse" (which scaled only the body), so moving either moved
-                the verse and neither label was true. */}
-            <Slider label="verse text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
-            <Slider label="reference size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
-            {/* Also set by dragging the reference itself on the picture. */}
-            <Slider
-              label="reference gap"
-              value={theme.refGap}
-              onChange={(refGap) => onChange({ ...theme, refGap })}
-              min={REF_GAP.min}
-              max={REF_GAP.max}
-              step={REF_GAP.step}
-              immediate={refHeld}
-            />
-            {/* Also set by dragging any corner of the guide on the picture;
-                this stays the keyboard's way in, and the precise one. */}
-            <Slider
-              label="safe margin"
-              value={theme.safeMargin}
-              onChange={(safeMargin) => onChange({ ...theme, safeMargin })}
-              min={SAFE_MARGIN.min}
-              max={SAFE_MARGIN.max}
-              step={SAFE_MARGIN.step}
-              immediate={cornerHeld}
-            />
-            <DisplayFontPicker value={theme.font} onChange={(font) => onChange({ ...theme, font })} />
-          </div>
+        {/*
+          The parts of the slide, as things to pick.
+          
+          The canvas is the subject, so the canvas is the control: press the
+          verse on the picture and the verse's settings are what this panel
+          shows. This strip is the same selection stated in words, for the
+          times the thing you want is hard to hit — a reference at 3% margin
+          is four pixels tall — and so the panel has a visible table of
+          contents rather than a hidden one.
+        */}
+        <div className="flex shrink-0 flex-wrap gap-1.5 pt-2">
+          {PART_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onSelect(t.id)}
+              aria-pressed={selected === t.id}
+              className={cx(
+                'tri-rounded-control px-3 py-1.5 text-[length:var(--tri-size-xs)] lowercase',
+                'transition-colors active:scale-[var(--tri-press-scale)]',
+                selected === t.id
+                  ? 'bg-white/[0.1] text-[var(--tri-ink)] shadow-[inset_0_0_0_var(--tri-border)_rgb(255_255_255_/_0.14)]'
+                  : 'text-[var(--tri-ink-muted)] hover:bg-white/[0.05] hover:text-[var(--tri-ink)]',
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/*
+          The selected part's controls, and only those.
+          
+          Every slider used to be on screen at once — eight of them in two
+          columns — and finding the one you wanted meant reading all eight
+          labels. They are grouped by what they act on instead, which is the
+          grouping the eye already has from the picture: the verse, the
+          reference under it, the margin round both, the background behind
+          everything. Four short panels, one at a time.
+        */}
+        <div className="flex min-h-0 shrink-0 flex-col gap-4 pt-1">
+          {selected === 'verse' && (
+            <>
+              <Slider label="text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
+              <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} />
+              <Slider label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
+              <DisplayFontPicker value={theme.font} onChange={(font) => onChange({ ...theme, font })} />
+            </>
+          )}
+
+          {selected === 'reference' && (
+            <>
+              <Slider label="reference size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
+              {/* Also set by dragging the reference itself on the picture. */}
+              <Slider
+                label="gap from the verse"
+                value={theme.refGap}
+                onChange={(refGap) => onChange({ ...theme, refGap })}
+                min={REF_GAP.min}
+                max={REF_GAP.max}
+                step={REF_GAP.step}
+                immediate={refHeld}
+              />
+              <p className="px-1 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
+                drag the reference up or down on the picture to set the gap by hand
+              </p>
+            </>
+          )}
+
+          {selected === 'margin' && (
+            <>
+              {/* Also set by dragging any corner of the guide on the picture;
+                  this stays the keyboard's way in, and the precise one. */}
+              <Slider
+                label="safe margin"
+                value={theme.safeMargin}
+                onChange={(safeMargin) => onChange({ ...theme, safeMargin })}
+                min={SAFE_MARGIN.min}
+                max={SAFE_MARGIN.max}
+                step={SAFE_MARGIN.step}
+                immediate={cornerHeld}
+              />
+              <p className="px-1 text-[length:var(--tri-size-xs)] lowercase leading-relaxed text-[var(--tri-ink-muted)]">
+                the dashed box is the area the words keep to. drag any of its
+                corners on the picture, or use the slider for an exact number.
+              </p>
+            </>
+          )}
+
+          {selected === 'background' && (
+            <>
+              <Slider label="dimness" value={theme.dimness} onChange={(dimness) => onChange({ ...theme, dimness })} />
+              <Slider label="blur" value={theme.blur} onChange={(blur) => onChange({ ...theme, blur })} min={0} max={12} />
+              <p className="px-1 text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
+                the picture itself is chosen in the row of backgrounds below
+              </p>
+            </>
+          )}
         </div>
 
         {/*
@@ -413,6 +654,8 @@ function ThemesEditor({
         onSafeDrag={setCornerHeld}
         onRefGap={(refGap) => onChange({ ...theme, refGap })}
         onRefGapDrag={setRefHeld}
+        selected={selected}
+        onSelect={onSelect}
       />
     </div>
   );
@@ -635,6 +878,8 @@ function ThemePreview({
   onSafeDrag,
   onRefGap,
   onRefGapDrag,
+  selected,
+  onSelect,
 }: {
   theme: ThemeSettings;
   transition: { id: TextTransition; ms: number; play: number };
@@ -642,6 +887,8 @@ function ThemePreview({
   onSafeDrag: (dragging: boolean) => void;
   onRefGap: (next: number) => void;
   onRefGapDrag: (dragging: boolean) => void;
+  selected: SlidePart;
+  onSelect: (part: SlidePart | null) => void;
 }) {
   return (
     /*
@@ -668,6 +915,8 @@ function ThemePreview({
         onRefGapDrag={onRefGapDrag}
         refGapRange={REF_GAP}
         transition={transition}
+        selected={selected}
+        onSelect={onSelect}
       />
     </div>
   );
@@ -1896,11 +2145,7 @@ function SongGrid({
           thing being searched. */}
       <LibraryPane header={false}>
         {matches.length === 0 ? (
-          <div className="flex h-full items-center justify-center px-5">
-            <p className="text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.38)]">
-              nothing matches
-            </p>
-          </div>
+          <EmptyMark art={<GridArt />} play="hover" line="nothing matches" hint="try a line of the words" />
         ) : (
           /*
             Five across, fixed. Everywhere else in this app a grid counts
@@ -2814,14 +3059,14 @@ function ProposalStack() {
     : CATCHES;
 
   if (live && cards.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center px-4">
-        <p className="text-center text-[length:var(--tri-size-xs)] lowercase leading-[1.6] text-[rgb(229_243_242_/_0.32)]">
-          {engine.asr === 'listening'
-            ? 'listening — nothing caught yet'
-            : 'start listening and catches land here'}
-        </p>
-      </div>
+    /* Two different pictures, because they are two different states and the
+       booth has to tell them apart at a glance: a flat line means no signal,
+       the drifting field means the engine is up and nothing has come yet. */
+    return engine.asr === 'listening' ? (
+      <EmptyMark art={<ListeningArt />} line="listening, nothing caught yet" />
+    ) : (
+      /* The chain waits to be set off; it only runs under the pointer. */
+      <EmptyMark w={170} h={170} plain art={<DominoArt />} play="hover" line="not listening yet" hint="catches land here" />
     );
   }
 
@@ -2935,83 +3180,89 @@ function SegmentAdd({ seg, size = 22 }: { seg: RunSegment; size?: number }) {
  * Idle is a STILL sphere. An orb that moves when nothing is happening is
  * lying, and the whole point of putting it in the bar is that a glance at
  * it is worth something. Frozen stops the clock wherever it was.
+ *
+ * The table itself is ORB_BY_STATE in orb/statusLooks.ts, shared with the
+ * Thinking orb 2 sheet so the sheet shows exactly what the bar does.
  */
-interface OrbLook {
-  style: string;
-  /** The accent dots' colour — the only colour the state gets. */
-  accent: string;
-  /** 0 holds the orb exactly where it is. */
-  speed: number;
-  opacity: number;
-}
-
-const INK = '#e5f3f2';
-const RED = '#ef5350';    // not connected
-const ORANGE = '#ffa726'; // connecting, or held
-const GREEN = '#66bb6a';  // connected
-
-const ORB_BY_STATE: Record<string, OrbLook> = {
-  'idle':          { style: 'nest',       accent: RED,    speed: 0,    opacity: 0.45 },
-  'connecting':    { style: 'ping',       accent: ORANGE, speed: 1,    opacity: 0.8 },
-  'listening':     { style: 'noise',      accent: GREEN,  speed: 1,    opacity: 0.9 },
-  /* gyro, not spot: a roaming light on a dark sphere is invisible at 28px.
-     A gimbal lining up a core is "held up for inspection" and reads. */
-  'in preview':    { style: 'gyro',       accent: GREEN,  speed: 1,    opacity: 0.9 },
-  'live':          { style: 'nested',     accent: GREEN,  speed: 1,    opacity: 1 },
-  'auto live':     { style: 'chase',      accent: GREEN,  speed: 1.3,  opacity: 1 },
-  'correction':    { style: 'ratchet',    accent: GREEN,  speed: 1,    opacity: 0.9 },
-  'prayer mode':   { style: 'tide',       accent: GREEN,  speed: 0.55, opacity: 0.6 },
-  'practice mode': { style: 'nested',     accent: GREEN,  speed: 1,    opacity: 0.85 },
-  'output frozen': { style: 'nested',     accent: ORANGE, speed: 0,    opacity: 0.55 },
-  'media / QR':    { style: 'grid',       accent: GREEN,  speed: 1,    opacity: 0.9 },
-  'engine error':  { style: 'bounce',     accent: RED,    speed: 1,    opacity: 1 },
-  'no display':    { style: 'terminator', accent: RED,    speed: 0.8,  opacity: 0.7 },
-  'no mic signal': { style: 'sag',        accent: RED,    speed: 0.8,  opacity: 0.7 },
-};
-
 const STATE_LABELS = LIVE_STATES.map((s) => s.label);
 
 /**
  * The orb in the context bar, gear-sized. `label` is one of the fourteen
  * state labels; anything else reads as idle, which is the honest default.
+ *
+ * The state sets the colour, speed and light; the SHAPE is one style from
+ * that state's pool, picked when the state first comes up in a session and
+ * kept until the operator stops (see pickStatusLook). The name on hover is
+ * the state's, whichever style it is wearing.
  */
-function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) {
+function StatusOrb({ label, onClick, facts }: { label: string; onClick?: () => void; facts: OrbFacts }) {
   const look = ORB_BY_STATE[label] ?? ORB_BY_STATE.idle;
+  /* The session's shape for this state — or, during a long smooth stretch
+     of listening, a borrowed one. See orb/orbIdle. */
+  const pick = useOrbShape(label);
   const [named, setNamed] = useState(false);
+  /* Bumped on every hover, so leaving and coming back draws another
+     fragment rather than the same one for the length of the service. */
+  const [asked, setAsked] = useState(0);
+  const phrase = useOrbPhrase(label, facts, asked);
+  const show = () => {
+    setAsked((n) => n + 1);
+    setNamed(true);
+  };
   return (
     <div className="relative flex aspect-square shrink-0" style={{ height: 'var(--tri-topbar-h)' }}>
       <button
         type="button"
         onClick={onClick}
-        onPointerEnter={() => setNamed(true)}
+        onPointerEnter={show}
         onPointerLeave={() => setNamed(false)}
-        onFocus={() => setNamed(true)}
+        onFocus={show}
         onBlur={() => setNamed(false)}
         aria-label={`engine: ${label} — change state`}
         className="flex h-full w-full items-center justify-center"
       >
-        {/* SVG + CSS, not the WebGPU dot ball: five elements animated on
-            the compositor, and it draws on a machine with no GPU driver,
-            where the dot ball showed an error sentence instead. The verb
-            is the bar's job, not the orb's. */}
-        <StatusOrbSvg
-          style={look.style}
-          ink={INK}
+        {/* The dot ball, drawn as SVG by the same geometry as the WebGPU
+            one, so it draws on a machine with no GPU driver. No pill, no
+            label: the ball fills its 46px square with a 4px margin. `dots`
+            is a MULTIPLIER on the style's own count (150 × 0.6 = 90), not a
+            count — the full 150 is mush at this size. Speed 0 draws once
+            and stops, so idle and frozen cost nothing; 30fps is plenty
+            for a 30px ball and halves what a moving one costs. */}
+        <SvgOrbsPill
+          style={pick.style}
+          startAt={pick.startAt ?? 0}
+          dotColor={INK}
           accent={look.accent}
           speed={look.speed}
-          opacity={look.opacity}
-          size={30}
+          dotOpacity={look.opacity}
+          showsPill={false}
+          showsLabel={false}
+          ball={30}
+          dots={0.6}
+          fps={30}
+          scheme="dark"
         />
       </button>
       {/*
-        The state's NAME, on demand only.
+        What it is doing, on demand only.
 
-        It used to sit in the bar as a permanent chip — "state · prayer
-        mode ›" — and that chip was paying full rent on the widest strip
-        of the screen for a word the operator already knows. The orb is
-        the thing they look at for status; asking it is a hover, changing
-        it is a click, and the bar it vacated now carries the log, which
-        is the one thing in this row that actually changes on its own.
+        A chip used to sit in the bar permanently — "state · prayer mode ›"
+        — and it was paying full rent on the widest strip of the screen for
+        a word the operator already knows. The orb is the thing they look
+        at for status; asking it is a hover, changing it is a click, and
+        the bar it vacated now carries the log.
+
+        The hover is a short machine fragment rather than the state's name:
+        "mic open", "38 words", "held back". The NAME has three other homes
+        that are better than a tooltip — the colour, which is read across a
+        booth without hovering anything; the log line under this bar, which
+        says what the service is doing in a sentence; and the aria-label
+        below, which is what a screen reader gets. Spending the hover on a
+        fourth copy of a word the operator already knows was waste; spent
+        on what the engine is measuring this second, it is worth a glance.
+
+        The numbers are real — the mic level, the lines committed, the
+        clock. A fragment the engine cannot fill in is never shown.
       */}
       <span
         role="status"
@@ -3026,7 +3277,7 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
           boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.12)',
         }}
       >
-        {label}
+        {phrase}
       </span>
     </div>
   );
@@ -3219,193 +3470,6 @@ function useServiceLog(stateLabel: string) {
   return { entries, say };
 }
 
-
-/**
- * How many sentences of the sermon the context bar holds at once.
- *
- * Two, not three. The strip is a glance, not a reading surface — the owner
- * asked for the current sentence and the one that set it up, and nothing
- * more. The full log is a click away on the dashboard, which is exactly why
- * the pill now opens it.
- */
-const TRANSCRIPT_ROWS = 2;
-
-/*
- * The ladder, as numbers, indexed by distance from the newest line.
- *
- * One rung per row, so LADDER.length must track TRANSCRIPT_ROWS. At two
- * rows the older line is the only context there is, so it drops to 0.55
- * rather than the 0.25 a third row used to get — dimmed enough to be
- * plainly behind the current sentence, bright enough to still be read. See
- * .tri-transcript-line in tokens.css for how a row gets from one rung to
- * the next.
- */
-const LADDER = [1, 0.55];
-
-/*
- * A sentence Deepgram has not finished hearing is dimmer than one it has.
- *
- * It sits between the newest rung and the one below, which is the point:
- * the operator can tell at a glance that the bottom line may still change
- * its mind. When the line goes final the row is the SAME DOM node (see the
- * key below), so it brightens to 1 over the ladder duration instead of the
- * text jumping.
- */
-const PARTIAL_ALPHA = 0.72;
-
-/**
- * The preacher's speech in the top context bar — two sentences deep,
- * newest at the bottom, the older one dimming a rung as the next arrives.
- *
- * Replaces a single line that was thrown away the instant the next one
- * landed. The owner's complaint was exactly that: nobody can read one
- * sentence in the time it takes to say the next, so the strip showed text
- * that could not be used. Depth plus a ladder of opacity makes the bar
- * readable at a glance and gives the current sentence its context.
- *
- * The strip is a glance and nothing more, which is why the whole pill is a
- * button: the scrollable log of everything said lives on the dashboard, and
- * the natural thing to do when two lines are not enough is to reach for the
- * text itself. Clicking it goes there.
- *
- * Why the rows are built as a fixed-length array with the partial folded in
- * as the last entry: every row then knows its distance from the newest, and
- * that distance is the ONLY input to its opacity. When a sentence lands,
- * every row's distance goes up by one and CSS moves them all together —
- * there is no per-row state, no timer, and nothing to fall out of step.
- */
-function HeaderKineticFocus({
-  spoken,
-  asr,
-  onOpenDashboard,
-}: {
-  spoken: { lines: { id: number; text: string }[]; partial: string };
-  asr: string;
-  onOpenDashboard: () => void;
-}) {
-  const isLive = asr === 'listening';
-  const hasRealSpeech = spoken.lines.length > 0 || Boolean(spoken.partial);
-
-  /*
-   * Newest last. The partial is appended as its own row rather than
-   * replacing the newest final, because it IS the next sentence — showing
-   * it in place of the last one would throw away the very context this
-   * change exists to keep.
-   *
-   * Its key is one past the newest final's id, which is the id the engine
-   * will hand the final when it commits it (spokenId is a plain counter —
-   * see onTranscriptLine in engine.tsx). React therefore keeps the same
-   * element across the settle, and the row transitions from provisional to
-   * full strength rather than unmounting and flashing back in.
-   */
-  const rows = useMemo(() => {
-    const settled = spoken.lines.map((l) => ({ ...l, partial: false }));
-    if (spoken.partial) {
-      const nextId = (spoken.lines[spoken.lines.length - 1]?.id ?? -1) + 1;
-      settled.push({ id: nextId, text: spoken.partial, partial: true });
-    }
-    if (!hasRealSpeech) {
-      /* Nothing has been heard yet. One placeholder, at the newest rung, so
-         the strip says what it is for instead of reading as broken.
-         Never sample scripture: an operator glancing at this strip mid-service
-         must not be able to mistake filler for something the preacher said. */
-      return [
-        {
-          id: -1,
-          text: isLive ? 'listening for the pulpit…' : 'transcripts appear here',
-          partial: true,
-        },
-      ];
-    }
-    return settled.slice(-TRANSCRIPT_ROWS);
-  }, [spoken.lines, spoken.partial, hasRealSpeech, isLive]);
-
-  const newestId = rows[rows.length - 1]?.id;
-
-  return (
-    <button
-      type="button"
-      onClick={onOpenDashboard}
-      className={cx(
-        '@container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',
-        'border border-white/10 bg-white/[0.04] px-8 backdrop-blur-md',
-        /* The same neutral lift every other control on this strip uses when
-           the pointer is over it. No colour: the only coloured thing in this
-           pill is the live dot, and that means something. */
-        'transition-colors hover:border-white/20 hover:bg-white/[0.08]',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tri-accent-yellow)]',
-      )}
-      /* Two rows tall, and never shorter than the controls beside it —
-         see --tri-topbar-live-h. Pinned rather than left to the content so
-         a one-line transcript does not sit in a short pill that jumps taller
-         on the second sentence. */
-      style={{ height: 'var(--tri-topbar-live-h)', paddingBlock: '6px' }}
-      title="live preacher transcript — click to open the dashboard, where the full transcript is"
-      aria-label="Live preacher transcript. Opens the dashboard, where the full transcript is."
-    >
-      {/*
-        The live dot is taken OUT of the text flow and parked in the corner.
-        Inline it cost about 18px of every line, and at 1280 this strip is
-        already the narrowest thing on the row — the owner's complaint was as
-        much about lines being short as about there being one of them, and
-        18px is a word. Top-right rather than top-left because the text is
-        read left-to-right from a hard margin: a marker on that margin pushes
-        the first character off it.
-      */}
-      <span
-        aria-label={isLive ? 'listening' : 'not listening'}
-        className={cx(
-          'absolute right-2.5 top-2 size-1.5 rounded-full transition-all',
-          isLive ? 'animate-pulse bg-[#6ee7b7] shadow-[0_0_8px_#10b981]' : 'bg-white/30',
-        )}
-      />
-
-      {/*
-        Bottom-anchored. Before the second sentence lands the stack sits at
-        the FOOT of the pill, so the newest line is always on the same
-        baseline — it does not walk down the pill as the service fills up.
-      */}
-      <div className="flex min-w-0 flex-1 flex-col justify-end overflow-hidden text-center">
-        {rows.map((row, i) => {
-          /* Distance from the newest, which is the rung. */
-          const depth = rows.length - 1 - i;
-          const alpha = row.partial && depth === 0 ? PARTIAL_ALPHA : (LADDER[depth] ?? 0);
-          return (
-            /* A span, not a paragraph: the pill is a button now, and a <p>
-               inside one is invalid nesting. `block` keeps the row a row. */
-            <span
-              key={row.id}
-              className={cx(
-                'tri-transcript-line block truncate text-center font-medium tracking-wide select-text',
-                /* Only the arriving row animates in; the rest are
-                   transitioning down and must not restart their keyframe. */
-                row.id === newestId && 'tri-transcript-line--new',
-              )}
-              style={
-                {
-                  '--tri-line-a': alpha,
-                  fontSize: '11.5px',
-                  /* The rung height is a token so the rows and the pill that
-                     holds them are computed from the same number. */
-                  lineHeight: 'var(--tri-transcript-leading)',
-                  color: 'var(--tri-ink)',
-                } as React.CSSProperties
-              }
-            >
-              {row.text}
-              {row.partial && depth === 0 && (
-                <span
-                  className="ml-1 inline-block h-[0.85em] w-[2px] translate-y-[1px] animate-pulse rounded-sm bg-[var(--tri-accent-yellow)]"
-                  aria-hidden="true"
-                />
-              )}
-            </span>
-          );
-        })}
-      </div>
-    </button>
-  );
-}
 
 /**
  * Import button bento pill with an icon-led dropdown menu for Image, Presentation Slides, and Songs.
@@ -3616,27 +3680,53 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
  */
 
 /**
- * operator | dashboard. Top-left on both views, exactly the rail's width, so
- * the orb and everything after it sit in the same place whichever view is up.
+ * operator | dashboard | profile. Top-left on every view, exactly the rail's
+ * width, so the orb and everything after it sit in the same place whichever
+ * view is up — and so the group reads as the rail's own header rather than
+ * as three buttons floating over the corner.
+ *
+ * This was once unpinned from the rail, because at 1400 the rail is ~250px
+ * and three words pinned to it truncated to "opera…/dashbo…/prof…". The
+ * pinning is back, with the fix that was missing: the three share the rail
+ * by `basis-0 grow`, so they are equal thirds of whatever it is, and the
+ * labels shrink with `text-[clamp()]` rather than being cut. At 1920 the
+ * rail is 342px and the words sit at full size with room to spare; as the
+ * window narrows they step down to 12px before anything is ever elided.
+ *
+ * The gap is small on purpose: at gap-5 the three read as three separate
+ * buttons that happen to be near each other rather than one control with
+ * three positions.
  */
 function ViewTabs({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
   return (
+    /* It used to be pinned to exactly the rail's width so everything after
+       it began at the same x on every view. Four pills do not fit that: at
+       three they were comfortable thirds, at four "operator" and
+       "dashboard" were clipped off their own left edge. The alignment was
+       worth less than being able to read the nav, so the strip now sizes
+       to its words with the rail as a MINIMUM — three-pill views are
+       unchanged, and the fourth is allowed to push past. */
     <div
-      className="flex shrink-0 items-stretch gap-5 pl-1"
-      style={{ width: 'var(--tri-rail-w)' }}
+      className="flex shrink-0 items-stretch gap-1.5 pl-1 pr-2"
+      style={{ minWidth: 'var(--tri-rail-w)' }}
     >
       {VIEWS.map((m) => {
         const active = m === view;
         return (
           /* Words, not boxes — the same idiom as the app's own nav a row
-             above. The active one is bright and carries a short rule. */
+             above. The active one is bright. `basis-0 grow` makes the three
+             equal thirds of whatever the rail is, and `min-w-0` lets them
+             shrink on a narrow window instead of pushing past the rail. The
+             label size clamps rather than truncating: a nav you cannot read
+             is worse than a nav set a point smaller. */
           <button
             key={m}
             type="button"
             onClick={() => onChange(m)}
             aria-pressed={active}
+            style={{ fontSize: 'clamp(12px, 1.02vw, 14.5px)' }}
             className={cx(
-              'flex h-8 cursor-pointer items-center rounded-full border px-3.5 text-[14.5px] lowercase tracking-wide transition-colors select-none',
+              'flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-full border px-3 lowercase tracking-wide transition-colors select-none',
               active
                 ? 'border-white/25 bg-white/[0.12] font-semibold text-white'
                 : 'border-white/[0.14] font-medium text-[rgb(255_255_255_/_0.6)] hover:border-white/30 hover:text-white',
@@ -3913,6 +4003,179 @@ function ListenControl() {
           ))}
         </span>
       )}
+    </button>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * ON AIR — the main action, as the studio's sign.
+ *
+ * Start listening is the act that opens the service, so it wears the weight
+ * a radio station's sign carries, in the card at the foot of the rail. A
+ * real sign is a housing with letters cut into the face: dark, the letters
+ * are still faintly there — an unlit sign is how a sign says off, it never
+ * says "off air" — and lit, the lamp is BEHIND them, hottest above centre,
+ * bleeding past the box. Gold, because gold is already the app's "now,
+ * look here" colour. While the engine connects it flickers like a warming
+ * tube: catches, drops, catches. Chosen 2026-09-27 over a console switch,
+ * a bare wordmark and a transport key — and it carries those two's hardware
+ * on its housing at the owner's ask: the switch's pilot lamp and the key's
+ * mic glyph, at the left edge.
+ *
+ * It is real: press = start/stop listening, same wiring as the header's
+ * ListenControl.
+ *
+ * It is the card, not a button inside one: it fills its grid cell and wears
+ * the panel radius, so it sits in the bento on the same footing as the run
+ * of service above it rather than as a box inside a box with a rim of dead
+ * space round it, and exactly as tall as the transcript ticker it shares
+ * the foot of the window with. The mic marking travels with the lettering
+ * as one centred object; there is no pilot lamp, because the lit sign IS
+ * the lamp.
+ * ------------------------------------------------------------------------- */
+
+/** Machined-surface grain, so the housing reads as material, not fill. */
+const GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E\")";
+
+const SIGN_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)';
+
+function OnAirSign() {
+  const engine = useEngine();
+  const on = engine.asr === 'listening' || engine.asr === 'connecting';
+  const connecting = engine.asr === 'connecting';
+  const disabled = !engine.caps.bridge;
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => engine.listen(!on)}
+      title={
+        disabled
+          ? 'no engine in this window — run the app with SANDBOX=1'
+          : on
+            ? 'stop listening'
+            : 'start listening for the service'
+      }
+      className="group relative flex w-full shrink-0 cursor-pointer select-none items-center justify-center overflow-hidden tri-rounded-surface transition-transform active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+      style={{
+        /* Exactly as tall as the transcript ticker beside it: the two share
+           the foot of the window, so a sign even a pixel off reads as a
+           misalignment rather than as two objects on one line. Same token,
+           so they keep agreeing across density. */
+        height: D27_HEIGHT,
+        transitionDuration: '120ms',
+        transitionTimingFunction: SIGN_EASE,
+        background: `${GRAIN}, linear-gradient(180deg, #131817 0%, #0b0e0d 100%)`,
+        boxShadow: on
+          ? 'inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -10px 22px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6), 0 0 34px rgb(255 190 60 / 0.13)'
+          : 'inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -10px 22px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6)',
+      }}
+    >
+      {/* The lamp, behind the face. Off it does not exist. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 tri-rounded-surface transition-opacity"
+        style={{
+          transitionDuration: '260ms',
+          transitionTimingFunction: SIGN_EASE,
+          opacity: on ? 1 : 0,
+          background:
+            'radial-gradient(120% 115% at 50% 20%, rgb(240 186 66 / 0.30) 0%, rgb(240 186 66 / 0.10) 46%, transparent 72%)',
+          animation: connecting ? 'tri-sign-flicker 1.4s steps(1) infinite' : undefined,
+        }}
+      />
+
+      {/*
+        The mic rides WITH the words, not off in a corner.
+
+        It was parked in a gutter at the left edge, which made the sign
+        lopsided: a big centred word with a small mark floating beside it,
+        belonging to neither the housing nor the letters. On a real sign the
+        marking sits on the same optical line as the type, so it travels with
+        it — one object, centred as a whole.
+      */}
+      <span className="relative flex flex-col items-center gap-[3px]">
+        {/* The trailing letter-space of the last R is real width, so the
+            pair would hang right of centre. Half of it is taken back here
+            rather than on the word, which keeps the mic-to-O gap honest. */}
+        <span
+          className="flex items-baseline gap-[0.3em]"
+          style={{ fontSize: 18, marginRight: '0.23em' }}
+        >
+          <span
+            aria-hidden
+            className="transition-colors"
+            style={{
+              transitionDuration: '260ms',
+              /* On the caps' baseline, then nudged to the optical middle of
+                 the letterform: a glyph box's centre is not a cap's centre. */
+              transform: 'translateY(1px)',
+              color: on ? 'rgb(255 214 130 / 0.92)' : 'rgb(214 180 118 / 0.58)',
+              filter: on ? 'drop-shadow(0 0 6px rgb(255 190 60 / 0.55))' : undefined,
+            }}
+          >
+            {/* While the room is being heard the mark is a meter, not a
+                mic — a moving glyph on this sign always means a live mic. */}
+            {engine.asr === 'listening' ? <EqBars size={14} /> : <MicIcon size={14} />}
+          </span>
+          <span
+            className="font-extrabold uppercase transition-colors"
+            style={{
+              transitionDuration: '260ms',
+              fontSize: 'inherit',
+              /* The tracking is the sign: wide-set caps read as signage
+                 rather than as a label. The indent gives back the trailing
+                 letter-space so the pair centres true. */
+              letterSpacing: '0.46em',
+              textIndent: '0.46em',
+              color: on ? '#ffe9ae' : 'rgb(214 180 118 / 0.58)',
+              textShadow: on
+                ? '0 0 5px rgb(255 214 90 / 0.9), 0 0 16px rgb(255 190 60 / 0.5), 0 0 40px rgb(255 170 40 / 0.28)'
+                : 'none',
+            }}
+          >
+            on air
+          </span>
+        </span>
+        {/*
+          Engraved on the housing, not printed on the light — and only while
+          the sign is dark. Lit, it says nothing: a sign that is on is the
+          whole message, and "press to end" under a live ON AIR reads as an
+          instruction to kill the service.
+        */}
+        {!on && (
+          <span
+            className="text-[9.5px] lowercase tracking-[0.08em]"
+            style={{
+              color: 'rgb(229 243 242 / 0.38)',
+              textShadow: '0 1px 0 rgb(0 0 0 / 0.7)',
+            }}
+          >
+            click to go live
+          </span>
+        )}
+        {connecting && (
+          <span
+            className="text-[9.5px] lowercase tracking-[0.08em]"
+            style={{ color: 'rgb(229 243 242 / 0.38)', textShadow: '0 1px 0 rgb(0 0 0 / 0.7)' }}
+          >
+            warming up…
+          </span>
+        )}
+      </span>
+      {/* A warming tube does not fade in — it catches, drops, catches. */}
+      <style>{`
+        @keyframes tri-sign-flicker {
+          0% { opacity: 0.15 } 7% { opacity: 0.8 } 11% { opacity: 0.3 }
+          22% { opacity: 1 } 30% { opacity: 0.45 } 42% { opacity: 1 }
+          70% { opacity: 0.85 } 100% { opacity: 1 }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [style*='tri-sign-flicker'] { animation: none !important; }
+        }
+      `}</style>
     </button>
   );
 }
@@ -4686,6 +4949,31 @@ function LiveBody({ state }: { state?: string }) {
     });
   }, [latestProposal?.id, projector]);
 
+  /*
+   * What the orb's hover may report, all of it measured.
+   *
+   * `since` is stamped when the engine starts listening and cleared when it
+   * stops, so "12 min in" means twelve minutes of this stretch, not of the
+   * app being open. The word count is over what the engine has actually
+   * committed; the partial in flight is left out of it, because a number
+   * that ticks backwards when Deepgram revises a phrase is worse than no
+   * number. Everything is derived here rather than kept in state: this is
+   * read on a hover, a few times a service, and a ticking counter in the
+   * bar would re-render the whole screen once a second for it.
+   */
+  const since = useRef<number | null>(null);
+  if (engine.asr === 'listening') {
+    if (since.current === null) since.current = Date.now();
+  } else {
+    since.current = null;
+  }
+  const orbFacts: OrbFacts = {
+    level: engine.level,
+    lines: engine.spoken.lines.length,
+    words: engine.spoken.lines.reduce((n, l) => n + wordCount(l.text), 0),
+    uptime: since.current ? (Date.now() - since.current) / 1000 : undefined,
+  };
+
   /* The bar's contents. The log listens to the state so a change speaks
      for itself, and the one action any line offers lands back here. */
   const log = useServiceLog(stateLabel);
@@ -4815,7 +5103,7 @@ function LiveBody({ state }: { state?: string }) {
         edge. If the browser turns out to be starved at 1280, that is the
         trade to revisit — not the rail.
       */}
-      {view === 'dashboard' ? (
+      {view === 'dashboard' || view === 'profile' || view === 'settings' ? (
         <div className="flex h-full w-full min-w-0 flex-col gap-[var(--tri-gap)] p-2.5">
           {/* Top header row */}
           <div
@@ -4823,7 +5111,7 @@ function LiveBody({ state }: { state?: string }) {
             style={{ height: 'var(--tri-topbar-h)' }}
           >
             <ViewTabs view={view} onChange={setView} />
-            <StatusOrb label={stateLabel} onClick={stepState} />
+            <StatusOrb label={stateLabel} onClick={stepState} facts={orbFacts} />
             <ListenControl />
 
             {/* Middle stretch spacer */}
@@ -4848,9 +5136,23 @@ function LiveBody({ state }: { state?: string }) {
             </div>
           </div>
 
-          {/* The bento is the whole dashboard — the log is a card in it. */}
+          {/* The bento is the whole dashboard — the log is a card in it.
+              Profile borrows this same frame: it is read rather than
+              worked, like the dashboard, so it wants the header and the
+              full width, not the operator's rail-and-stage grid. */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
-            <DashboardBento log={log.entries} onLogAction={goManual} />
+            {view === 'settings' ? (
+              /* The same surface the sandbox draws, given the posture's
+                 full width. It brings its own nine-page rail, so it wants
+                 the frame without the bento's padding. */
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <SettingsSurface pageId="S-10a" />
+              </div>
+            ) : view === 'profile' ? (
+              <ProfileView />
+            ) : (
+              <DashboardBento log={log.entries} onLogAction={goManual} onViewProfile={() => setView('profile')} />
+            )}
           </div>
         </div>
       ) : (
@@ -4882,11 +5184,13 @@ function LiveBody({ state }: { state?: string }) {
           className="grid h-full gap-[var(--tri-gap)] p-2.5"
           style={{
             gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
-            /* Header, stage, browser, ticker. The header and the ticker span
-               both columns: the tabs sit over the rail, top-left, and the
-               transcript runs along the foot of the window. Both views now
-               share one header. The rail gives up the header's height for
-               it — a call reversed on purpose, 46px against a column. */
+            /* Header, stage, browser, ticker. The header spans both
+               columns: the tabs sit over the rail, top-left. The ticker is
+               the right-hand column's alone — beside it the rail carries
+               the ON AIR sign, cut to the ticker's own height. Both views
+               share one header.
+               The rail gives up the header's height for it — a call
+               reversed on purpose, 46px against a column. */
             gridTemplateRows: 'var(--tri-topbar-h) minmax(0, auto) minmax(30%, 1fr) auto',
           }}
         >
@@ -4895,7 +5199,7 @@ function LiveBody({ state }: { state?: string }) {
             style={{ height: 'var(--tri-topbar-h)' }}
           >
             <ViewTabs view={view} onChange={setView} />
-            <StatusOrb label={stateLabel} onClick={stepState} />
+            <StatusOrb label={stateLabel} onClick={stepState} facts={orbFacts} />
             <ListenControl />
             <div className="flex-1" />
             <ImportBentoMenu
@@ -4914,7 +5218,7 @@ function LiveBody({ state }: { state?: string }) {
 
           <div
             data-drop-segment=""
-            className="row-span-2 grid min-h-0 grid-rows-subgrid"
+            className="row-span-3 grid min-h-0 grid-rows-subgrid"
           >
             {/* Out of flow inside its cell: the run can be any length, and a
                 long one must scroll inside the row the stage sized rather
@@ -4923,7 +5227,11 @@ function LiveBody({ state }: { state?: string }) {
             <Panel
               title={`run of service (${run.segments.length})`}
               className="absolute inset-0"
-              right={<RunHeaderActions say={say} />}
+              /* Only once the run has something in it. While it is empty
+                 the empty state carries the same two actions at a size you
+                 cannot miss, and a second, smaller pair in the header was
+                 the same offer made twice in one card. */
+              right={run.segments.length > 0 ? <RunHeaderActions say={say} /> : undefined}
             >
               <RunOfService
                 renderAdd={(seg) => <SegmentAdd seg={seg} />}
@@ -4932,6 +5240,7 @@ function LiveBody({ state }: { state?: string }) {
             </Panel>
             </div>
 
+            {/* Catches, down to the ticker's row. */}
             <Panel
               className="min-h-0"
               bodyClass="pt-3"
@@ -4940,6 +5249,10 @@ function LiveBody({ state }: { state?: string }) {
               <HeardMotion />
               <ProposalStack />
             </Panel>
+
+            {/* The ticker's row, under the rail: the ON AIR sign, the
+                screen's main action. It is its own card — see OnAirSign. */}
+            <OnAirSign />
           </div>
 
           <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-subgrid">
@@ -4974,28 +5287,12 @@ function LiveBody({ state }: { state?: string }) {
               }}
             />
 
-            <div className="flex h-[var(--tri-field-h)] shrink-0 items-stretch gap-[var(--tri-gap)]">
-              {TABS.map((t, i) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(i)}
-                  className={cx(
-                    'tri-rounded-control flex flex-1 items-center justify-center text-[length:var(--tri-size-xs)] lowercase transition-colors',
-                    i === tab
-                      ? 'bg-[rgb(255_255_255_/_0.06)] text-[var(--tri-ink)] font-semibold'
-                      : 'text-[rgb(229_243_242_/_0.62)]',
-                  )}
-                  style={EDGE}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
             </div>
 
+            <div className="flex min-h-0 min-w-0 gap-[var(--tri-gap)]">
+            <LibraryTabs tab={tab} onChange={setTab} />
             <Panel
-              className="min-h-0"
+              className="min-h-0 min-w-0 flex-1"
               /* Themes sits on the panel like every other tab — see
                  ThemesEditor. Its inset is the stage's, --tri-gap all round,
                  because it seats a projector the same way the stage does. */
@@ -5021,16 +5318,32 @@ function LiveBody({ state }: { state?: string }) {
                   }}
                 />
               ) : null}
+              {TABS[tab]?.id === 'online' ? (
+                /* The same search the media tab's third shelf opens, and a
+                   pick does what a pick there does: the file is saved to
+                   this laptop, joins the library, becomes the preview's
+                   background, and the browser goes back to verses. */
+                <StockSearch
+                  onPick={(media) => {
+                    addMedia(media);
+                    setPreviewTheme((prev) => ({ ...prev, backgroundId: media.id }));
+                    setTab(0);
+                  }}
+                />
+              ) : null}
             </Panel>
+            </div>
           </div>
 
           {/* The live transcript, along the foot of the window. Not the
               header — that is controls — and not beside the verses, which
               the owner turned down. The bottom edge is where a live stream
               conventionally runs, and nothing else claimed it. Two lines,
-              full width; the whole log is on the dashboard. */}
-          <div className="col-span-2 flex min-w-0 items-stretch">
-            <HeaderKineticFocus
+              under the right-hand column only: the owner does not want it
+              under the rail, which has its own card beside it. The whole
+              log is on the dashboard. */}
+          <div className="col-start-2 flex min-w-0 items-stretch">
+            <LiveTranscript
               spoken={engine.spoken}
               asr={engine.asr}
               onOpenDashboard={() => setView('dashboard')}

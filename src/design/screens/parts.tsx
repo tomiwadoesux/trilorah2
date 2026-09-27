@@ -14,6 +14,8 @@ import { cx } from '../../ui';
 /** Panel — the card every region of a screen sits in. */
 export function Panel({
   title,
+  blurb,
+  onOpen,
   icon,
   right,
   children,
@@ -26,6 +28,32 @@ export function Panel({
   unavailable = false,
 }: {
   title?: string;
+  /**
+   * One sentence under the title, saying what the card is for.
+   *
+   * The Supabase-bento shape the owner pointed at: icon and name on one
+   * line, a sentence directly beneath it, the card's own content below
+   * that. It replaces the habit of pushing the explanation out to the
+   * right of the header, where it competes with the name for the same
+   * line and gets truncated first on a narrow tile.
+   *
+   * Only worth giving a card whose name does not already say it. "service
+   * timer" needs no gloss; "readiness" and "outputs" do.
+   */
+  blurb?: string;
+  /**
+   * What the blurb does when pressed. Given one, the sentence becomes the
+   * card's own way in: the words stay exactly as they read, and a green
+   * arrow lands after the last one.
+   *
+   * The whole card still opens — this does not replace that, and must not,
+   * because a card the operator has learned to press anywhere would become
+   * a card with one live word in it. What the arrow adds is a TARGET: an
+   * affordance you can see without hovering, on a surface that otherwise
+   * gives no sign it is pressable. The rest of the card is the shortcut for
+   * whoever already knows; this is the sign for whoever does not.
+   */
+  onOpen?: () => void;
   /** A small glyph in a square before the title. On a tile that opens it
       turns mint with the tile's hover, alongside its card art. */
   icon?: ReactNode;
@@ -89,30 +117,54 @@ export function Panel({
           /* Symmetric: the actions sit the same distance off the right edge
              as the title sits off the left, so the bar reads as one line
              with matched margins rather than a title and a cluster pushed
-             into a corner. */
-          className="flex h-[var(--tri-bar-h)] shrink-0 items-center justify-between gap-x-2 px-4"
+             into a corner.
+
+             With a blurb the bar stops being a fixed-height row: the
+             sentence sets the height, and the padding under it is what
+             separates the pair from the content rather than the leftover
+             space in a 38px strip. Without one the row keeps --tri-bar-h
+             exactly, so every card that had no blurb is untouched. */
+          className={cx(
+            'flex shrink-0 gap-x-2 px-4',
+            blurb ? 'flex-col pb-2.5 pt-3' : 'h-[var(--tri-bar-h)] items-center justify-between',
+          )}
         >
           {/* `length:` because text-[var(...)] is ambiguous to Tailwind — it
               reads it as a colour and never sets a size, which left this
               label at the browser default. */}
-          <span className="flex min-w-0 items-center gap-2">
-            {icon && (
-              <span
-                aria-hidden
-                className={cx(
-                  'grid size-[22px] shrink-0 place-items-center rounded-[7px] bg-[rgb(255_255_255_/_0.05)] text-[rgb(229_243_242_/_0.62)]',
-                  'shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.08)] transition-[color,box-shadow] duration-300',
-                  'group-hover/tile:text-[#8fd3c0] group-hover/tile:shadow-[inset_0_0_0_1px_rgb(143_211_192_/_0.35)]',
-                )}
-              >
-                {icon}
+          <span className={cx('flex min-w-0 items-center gap-2', blurb && 'w-full justify-between')}>
+            <span className="flex min-w-0 items-center gap-2">
+              {icon && (
+                <span
+                  aria-hidden
+                  className={cx(
+                    'grid size-[22px] shrink-0 place-items-center rounded-[7px] bg-[rgb(255_255_255_/_0.05)] text-[rgb(229_243_242_/_0.62)]',
+                    'shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.08)] transition-[color,box-shadow] duration-300',
+                    'group-hover/tile:text-[#8fd3c0] group-hover/tile:shadow-[inset_0_0_0_1px_rgb(143_211_192_/_0.35)]',
+                  )}
+                >
+                  {icon}
+                </span>
+              )}
+              <span className="truncate text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
+                {title}
               </span>
-            )}
-            <span className="truncate text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
-              {title}
             </span>
+            {blurb && right}
           </span>
-          {right}
+          {/* The sentence lines up with the TITLE, not the icon: indented
+              by the icon's width plus its gap, so the two read as one
+              stacked block rather than the sentence starting under a
+              square it has nothing to do with. */}
+          {blurb && (
+            <p
+              className="mt-1 text-[length:var(--tri-size-xs)] leading-snug"
+              style={{ color: 'rgb(229 243 242 / 0.45)', paddingLeft: icon ? 30 : 0 }}
+            >
+              {onOpen ? <BlurbLink onOpen={onOpen}>{blurb}</BlurbLink> : blurb}
+            </p>
+          )}
+          {!blurb && right}
         </header>
       )}
       {/* The base padding is conditional rather than overridden by bodyClass:
@@ -138,6 +190,47 @@ export function Panel({
         )}
       </div>
     </section>
+  );
+}
+
+/*
+ * The blurb, as the card's way in.
+ *
+ * An inline button rather than a block: the arrow has to sit after the LAST
+ * WORD of the sentence, not out at the right edge of the card. An arrow
+ * parked in the corner reads as "next", which is a different promise —
+ * this one means "this sentence takes you in".
+ *
+ * `inline` with the arrow inside the same flow is what keeps the two
+ * together when the sentence wraps: the arrow follows the final word onto
+ * whatever line it lands on, so the pair never separates. The arrow is in
+ * a whitespace-nowrap span with a non-breaking space before it so it can
+ * never be the only thing on a line of its own.
+ *
+ * Green only here. The card's own content stays colourless (the bento is
+ * deliberately so), which is exactly what lets one small green mark per
+ * card carry "this is the thing to press" without the board turning into a
+ * field of buttons.
+ */
+function BlurbLink({ children, onOpen }: { children: ReactNode; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        /* The card behind this is pressable too. Without this the press
+           counts twice — once here, once on the card — which on an
+           Expandable tile opens and immediately re-opens it. */
+        e.stopPropagation();
+        onOpen();
+      }}
+      className="group/blurb cursor-pointer text-left transition-colors hover:text-[rgb(229_243_242_/_0.72)]"
+    >
+      {children}
+      {/* The arrow chip that used to end every blurb is gone: the expand
+          cue in the tile's corner is the one "this opens" signal now, and
+          two arrows saying it twice made both mean less. The blurb still
+          presses. */}
+    </button>
   );
 }
 

@@ -1,16 +1,30 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 /*
- * The preachers the dashboard knows — SAMPLE DATA, for now.
+ * The preachers the dashboard knows — from the engine, with a sample
+ * fallback.
  *
- * The engine keeps real profiles (window.api.listPreacherProfiles /
- * getPreacherStats, the old PREACHERS tab in src/screens/Preachers.tsx), but
- * none of the numbers this surface wants to show — a trust history per
- * service, recent services, what was misheard — exist there yet. So the
- * tile, the list and the profile all read from this one store, which holds
- * a handful of made-up preachers and whatever is added in the session.
- * Nothing here reaches the engine: adding a preacher or picking today's is
- * local until profiles are wired.
+ * This store used to be sample data end to end, and said so. It is now the
+ * real thing: `load()` reads window.api.listPreacherProfiles() and
+ * getPreacherStats(), and add / setActive / remove write through to
+ * createPreacherProfile, setActivePreacher and deletePreacherProfile. That
+ * is what the old PREACHERS tab did (src/screens/Preachers.tsx) and it is
+ * why that tab can go.
+ *
+ * Two things the engine does NOT keep, which the surfaces here want:
+ *
+ *   history / recent   a trust reading per past service. The engine holds
+ *                      only today's totals, so these stay empty until a
+ *                      local service log exists. An empty array draws an
+ *                      empty chart, which is honest; inventing a curve
+ *                      would not be.
+ *   misses / teaching  soundsLike, vocabulary and ignoreTails have engine
+ *                      homes (preachers/vocabulary.ts, correctionLedger.ts)
+ *                      but no read IPC yet. Same rule: empty, not invented.
+ *
+ * SAMPLE stays as the fallback for when there is no engine at all — the
+ * design sandbox runs in a plain browser, and a board of empty cards is not
+ * a useful thing to design against.
  *
  * A module-level store rather than component state because three surfaces
  * read it — the tile face, the list it opens, the profile the list opens —
@@ -35,6 +49,29 @@ export interface ServiceRow {
   /** 0..1 */
   accuracy: number;
   minutes: number;
+}
+
+/**
+ * A word the engine keeps mis-hearing, and what it really is.
+ *
+ * Two kinds, and the difference matters to the operator:
+ *   learned  the correction ledger built this alias itself, from a
+ *            correction someone made during a service
+ *   taught   a person typed it in before a service
+ *
+ * Both end up in the same table the resolver reads (see
+ * electron/preachers/correctionLedger.ts aliases and
+ * electron/preachers/vocabulary.ts terms) — the split exists so the screen
+ * can say "the app worked this out" versus "you told it".
+ */
+export interface SoundsLike {
+  /** What the recogniser produces — "rawmeans". */
+  heard: string;
+  /** What it means — "Romans". */
+  means: string;
+  source: 'learned' | 'taught';
+  /** Times this alias has fired. 0 for one just typed in. */
+  hits: number;
 }
 
 export interface Miss {
@@ -64,6 +101,29 @@ export interface Preacher {
   history: ServicePoint[];
   recent: ServiceRow[];
   misses: Miss[];
+  /** Words the engine mishears, learned and taught (see SoundsLike). */
+  soundsLike: SoundsLike[];
+  /**
+   * Names, titles and church words the ASR mangles, boosted for this
+   * preacher — electron/preachers/vocabulary.ts. Plain strings: the engine
+   * matches anything that SOUNDS like one of them.
+   */
+  vocabulary: string[];
+  /**
+   * Words this preacher habitually adds after a reference ("amen", "say
+   * verse ten") — stripped from the tail before resolving. Maps to
+   * `ignoreTails` in electron/engine/commandConfig.ts.
+   */
+  ignoreTails: string[];
+  /**
+   * Whether this preacher's spoken commands ("next slide", "let us pray")
+   * fire anything. Voice commands are on for the app by default and the
+   * dashboard tile is the kill switch for all of them; this is the per
+   * preacher exception — a guest who says "go on" every other sentence, or
+   * a pastor who simply does not use them. Undefined means "follow the
+   * app", which is how every existing profile reads.
+   */
+  voiceCommands?: boolean;
 }
 
 /* The same three defaults Settings stores (autoModeMinTrust / MinSamples /
@@ -135,6 +195,10 @@ function seed(
     verses: number[];
     minutes: number[];
     misses: Miss[];
+    soundsLike?: SoundsLike[];
+    vocabulary?: string[];
+    ignoreTails?: string[];
+    voiceCommands?: boolean;
   },
 ): Preacher {
   const history = climb(n, SUNDAYS.slice(s.ago), s.start, [s.trust, s.precision]);
@@ -154,6 +218,10 @@ function seed(
     history,
     recent: recentFrom(history, s.verses, s.minutes),
     misses: s.misses,
+    soundsLike: s.soundsLike ?? [],
+    vocabulary: s.vocabulary ?? [],
+    ignoreTails: s.ignoreTails ?? [],
+    voiceCommands: s.voiceCommands ?? true,
   };
 }
 
@@ -174,6 +242,10 @@ function blank(id: string, name: string, role: PreacherRole): Preacher {
     history: [],
     recent: [],
     misses: [],
+    soundsLike: [],
+    vocabulary: [],
+    ignoreTails: [],
+    voiceCommands: true,
   };
 }
 
@@ -186,6 +258,19 @@ const SEED: Preacher[] = [
       { heard: 'first john four eight', caught: '1 John 4:18', meant: '1 John 4:8', date: '20 sep' },
       { heard: 'psalm twenty three verse one', caught: 'Psalm 23', meant: 'Psalm 23:1', date: '06 sep' },
     ],
+    /* The ledger's own alias table plus two a person typed in. "rawmeans"
+       is the case this panel exists for: the recogniser is consistent about
+       getting it wrong, so one entry fixes every Sunday after. */
+    soundsLike: [
+      { heard: 'rawmeans', means: 'Romans', source: 'learned', hits: 23 },
+      { heard: 'rome and', means: 'Romans', source: 'learned', hits: 9 },
+      { heard: 'thessa loanians', means: 'Thessalonians', source: 'taught', hits: 4 },
+      { heard: 'fill ippians', means: 'Philippians', source: 'learned', hits: 6 },
+      { heard: 'ecclesiastes tees', means: 'Ecclesiastes', source: 'taught', hits: 0 },
+    ],
+    vocabulary: ['Pastor Ayotomiwa', 'Bethel House', 'Deacon Femi', 'agape'],
+    ignoreTails: ['amen', 'are you with me', 'say it with me'],
+    voiceCommands: true,
   }),
   seed('pastor-ade', 'Pastor Ade', 'pastor', 10, {
     ago: 1, samples: 268, precision: 0.96, trust: 0.93, corrections: 0, avg: 42,
@@ -222,7 +307,18 @@ export interface PreachersState {
   activeId: string | null;
 }
 
-let state: PreachersState = { preachers: SEED, activeId: 'pastor-dan' };
+const api = () => (typeof window === 'undefined' ? undefined : window.api);
+
+/* No engine (the design sandbox in a plain browser) → the sample board, so
+   there is something to design against. With an engine, start empty and let
+   load() fill it: seeding real screens with invented preachers would put
+   five people who do not exist in front of an operator. */
+const hasEngine = () => !!api()?.listPreacherProfiles;
+
+let state: PreachersState = hasEngine()
+  ? { preachers: [], activeId: null }
+  : { preachers: SEED, activeId: 'pastor-dan' };
+
 const listeners = new Set<() => void>();
 
 function commit(next: PreachersState) {
@@ -237,8 +333,101 @@ function subscribe(listener: () => void) {
   };
 }
 
+/**
+ * One engine profile as this surface's Preacher.
+ *
+ * The stats the engine keeps (PreacherStats) are exactly the ones the gates
+ * read — samples, services, precision, trustLowerBound,
+ * correctionsLastService — so they map straight across. Everything the
+ * engine does not track stays at its blank value rather than being guessed.
+ */
+function fromEngine(
+  profile: { id: string; name: string },
+  stats: PreacherStats | undefined,
+  previous: Preacher | undefined,
+): Preacher {
+  const base = previous ?? blank(profile.id, profile.name, roleOf(profile.name));
+  return {
+    ...base,
+    id: profile.id,
+    name: stats?.name ?? profile.name,
+    samples: stats?.samples ?? 0,
+    services: stats?.services ?? 0,
+    precision: stats?.precision ?? 0,
+    trustLowerBound: stats?.trustLowerBound ?? 0,
+    correctionsLastService: stats?.correctionsLastService ?? 0,
+  };
+}
+
+/* The engine stores a name, not a role. The title in front of it is the
+   only signal there is, and it is the one people actually type. */
+function roleOf(name: string): PreacherRole {
+  const first = name.trim().split(/\s+/)[0]?.toLowerCase().replace(/\./g, '') ?? '';
+  if (first === 'pastor' || first === 'pst' || first === 'rev' || first === 'dr') return 'pastor';
+  if (first === 'min' || first === 'minister' || first === 'evang') return 'minister';
+  return 'guest';
+}
+
+let loading: Promise<void> | null = null;
+
+/**
+ * Pull profiles and stats from the engine into the store.
+ *
+ * Both lists can know a preacher the other does not — a profile folder with
+ * no services yet, or stats for someone whose profile was removed — so they
+ * are merged by id rather than joined, the same way the old PREACHERS tab
+ * did it. Existing rows are kept and updated in place so anything taught in
+ * this session (a sounds-like row, a vocabulary word) is not dropped by a
+ * refresh.
+ */
+export async function loadPreachers(): Promise<void> {
+  const a = api();
+  if (!a?.listPreacherProfiles) return;
+  try {
+    const [profiles, stats] = await Promise.all([
+      a.listPreacherProfiles(),
+      a.getPreacherStats?.().catch(() => undefined) ?? Promise.resolve(undefined),
+    ]);
+    const statById = new Map((stats ?? []).map((x) => [x.id, x]));
+    const prevById = new Map(state.preachers.map((p) => [p.id, p]));
+
+    const merged: Preacher[] = (profiles ?? []).map((p) =>
+      fromEngine(p, statById.get(p.id), prevById.get(p.id)),
+    );
+    for (const x of stats ?? []) {
+      if (!merged.some((m) => m.id === x.id)) {
+        merged.push(fromEngine({ id: x.id, name: x.name }, x, prevById.get(x.id)));
+      }
+    }
+
+    /* An active id that no longer names anyone would leave the dashboard
+       saying nobody is preaching while the engine thinks otherwise. */
+    const activeId = merged.some((m) => m.id === state.activeId) ? state.activeId : null;
+    commit({ preachers: merged, activeId });
+  } catch {
+    /* Leaving the last good list up beats blanking the board mid-service. */
+  }
+}
+
+/** Load once per session, on the first surface that asks. */
+function ensureLoaded(): void {
+  if (loading || !hasEngine()) return;
+  loading = loadPreachers();
+}
+
 export function usePreachers(): PreachersState {
+  /* The load is kicked off from an effect rather than at module scope: a
+     store that fetches on import runs in tests and in the sandbox too. */
+  useEffect(() => {
+    ensureLoaded();
+  }, []);
   return useSyncExternalStore(subscribe, () => state, () => state);
+}
+
+/** Tell the store who the engine says is preaching, without a round trip. */
+export function noteActivePreacher(id: string | null): void {
+  if (state.activeId === id) return;
+  commit({ ...state, activeId: id });
 }
 
 /** Collapses stray spaces so "pastor  dan " and "Pastor Dan" are one person. */
@@ -251,6 +440,17 @@ export function findByName(name: string): Preacher | undefined {
   return state.preachers.find((p) => p.name.toLowerCase() === key);
 }
 
+/*
+ * The three writes.
+ *
+ * Each one moves the local list FIRST and tells the engine after. The
+ * operator pressing "set for today" thirty seconds before a service starts
+ * should see it land instantly, not wait on a disk write — and if the
+ * engine refuses, the reload that follows puts the truth back. The one
+ * thing never done optimistically is inventing an id the engine did not
+ * agree to, which is why create waits for its answer before settling.
+ */
+
 /** Adds a preacher at the top of the list, with no history. */
 export function addPreacher(name: string, role: PreacherRole): Preacher | null {
   const clean = cleanName(name);
@@ -260,12 +460,34 @@ export function addPreacher(name: string, role: PreacherRole): Preacher | null {
   for (let n = 2; state.preachers.some((p) => p.id === id); n++) id = `${base}-${n}`;
   const p = blank(id, clean, role);
   commit({ ...state, preachers: [p, ...state.preachers] });
+
+  const a = api();
+  if (a?.createPreacherProfile) {
+    void a
+      .createPreacherProfile(id, clean)
+      .then(() => loadPreachers())
+      .catch(() => undefined);
+  }
   return p;
 }
 
 export function setActivePreacher(id: string) {
   if (state.activeId === id || !state.preachers.some((p) => p.id === id)) return;
   commit({ ...state, activeId: id });
+
+  /* This is the call the whole tab removal turned on: it is what tells the
+     engine whose vocabulary to load, whose correction ledger to write, and
+     whose trust gates auto mode should read. Without it the app adapts to
+     nobody. */
+  const a = api();
+  if (a?.setActivePreacher) {
+    void a
+      .setActivePreacher(id)
+      .then((res) => {
+        if (!res?.success) void loadPreachers();
+      })
+      .catch(() => undefined);
+  }
 }
 
 export function removePreacher(id: string) {
@@ -273,4 +495,9 @@ export function removePreacher(id: string) {
     preachers: state.preachers.filter((p) => p.id !== id),
     activeId: state.activeId === id ? null : state.activeId,
   });
+
+  const a = api();
+  if (a?.deletePreacherProfile) {
+    void a.deletePreacherProfile(id).catch(() => undefined);
+  }
 }

@@ -4,7 +4,7 @@ import { Button, PlusIcon, SearchField, SegmentedControl, cx, surface } from '..
 import { Panel, Pill } from '../parts';
 import { FIELD } from '../settingsRows';
 import { FlightPopup } from '../songs/FlightPopup';
-import { OrbitArt, type OrbitDot } from './CardArt';
+
 import { Expandable } from './expand';
 import {
   GATES,
@@ -49,7 +49,7 @@ const STAGE: Record<TrainingStage, { label: string; tone: 'quiet' | 'warn' | 'ok
   auto: { label: 'auto ready', tone: 'auto' },
 };
 
-function StagePill({ p }: { p: Preacher }) {
+export function StagePill({ p }: { p: Preacher }) {
   const s = STAGE[stageOf(p)];
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
@@ -79,7 +79,7 @@ function tintOf(id: string): string {
   return TINTS[h % TINTS.length];
 }
 
-function Avatar({ p, size = 28, ring = false }: { p: Preacher; size?: number; ring?: boolean }) {
+export function Avatar({ p, size = 28, ring = false }: { p: Preacher; size?: number; ring?: boolean }) {
   const tint = tintOf(p.id);
   return (
     <span
@@ -102,7 +102,7 @@ function Avatar({ p, size = 28, ring = false }: { p: Preacher; size?: number; ri
 }
 
 /** Trust against the auto-mode line, with the line drawn on the track. */
-function TrustBar({ value, className }: { value: number; className?: string }) {
+export function TrustBar({ value, className }: { value: number; className?: string }) {
   return (
     <span className={cx('relative block h-[4px] rounded-full bg-white/[0.07]', className)}>
       <span
@@ -137,7 +137,7 @@ function Block({ title, right, children, className }: { title: string; right?: R
 }
 
 /** Enter and Space press a div that stands in for a button. */
-function pressKeys(action: () => void) {
+export function pressKeys(action: () => void) {
   return (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -150,6 +150,35 @@ function pressKeys(action: () => void) {
 /* The tile                                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+ * One card, again.
+ *
+ * It was split in two for a moment — "preaching today" beside "everyone" —
+ * and that was one division too many for what it holds. Today's preacher
+ * and the roster are the same subject read at two distances, and neither
+ * half had enough in it to earn its own header: the left card ran out of
+ * content before it ran out of height, and the right one was mostly a
+ * drawing. Back in one card they fill it, and the band's second cell is
+ * left empty for whatever earns it.
+ *
+ * The orbit drawing is gone with the split. It placed every preacher on a
+ * ring by how far along their training was, which is a real fact drawn
+ * honestly — but at this size the rings read as an ornament rather than a
+ * chart, and it was the largest thing on the card while saying the least.
+ *
+ * And then most of the words went too. The card had been answering the
+ * whole question — services, verses caught, accuracy, a trust bar, the
+ * percentage under it, the gate it was heading for, a tally of the roster
+ * by stage. All true, all available one press away in the profile, and
+ * together they turned a card you GLANCE at into one you have to read.
+ * A bento tile's job is to say which card to open, not to save you from
+ * opening it.
+ *
+ * So: who is preaching, and how well the app knows them. That is the
+ * sentence in the blurb and now it is also the whole card — a name and a
+ * stage pill. The numbers are not lost, they are behind the press, which
+ * is the one thing every part of this card already does.
+ */
 function Face({
   preachers,
   active,
@@ -162,108 +191,75 @@ function Face({
   onAdd: () => void;
 }) {
   const others = preachers.filter((p) => p.id !== active?.id);
-  const [hovered, setHovered] = useState(false);
-  /* Everyone, as dots on the orbit: the further along their training, the
-     closer to the centre. The drawing is the list, not a picture of one. */
-  const RING: Record<TrainingStage, number> = { auto: 0, mature: 1, training: 2, new: 3 };
-  const dots: OrbitDot[] = preachers.map((p) => ({ id: p.id, ring: RING[stageOf(p)], today: p.id === active?.id }));
-  const counts = (['auto', 'mature', 'training', 'new'] as const)
-    .map((s) => [s, preachers.filter((p) => stageOf(p) === s).length] as const)
-    .filter(([, n]) => n > 0)
-    .map(([s, n]) => `${n} ${STAGE[s].label}`);
 
   return (
-    <Panel title="preachers" icon={<PersonIcon width={13} height={13} />} className="min-h-0 flex-1">
+    <Panel
+      title="preachers"
+      icon={<PersonIcon width={13} height={13} />}
+      blurb="who is preaching today, and how well the app knows them."
+      onOpen={onOpen}
+      className="min-h-0 flex-1"
+      right={
+        <span className="text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
+          {preachers.length} {preachers.length === 1 ? 'preacher' : 'preachers'}
+        </span>
+      }
+    >
       <div
         role="button"
         tabIndex={0}
-        onPointerEnter={() => setHovered(true)}
-        onPointerLeave={() => setHovered(false)}
-        onFocus={() => setHovered(true)}
-        onBlur={() => setHovered(false)}
         onClick={onOpen}
         onKeyDown={pressKeys(onOpen)}
         aria-label="open the preachers list"
-        className="grid h-full min-h-0 cursor-pointer grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-2 text-left outline-none"
+        className="flex h-full min-h-0 cursor-pointer flex-col gap-3 text-left outline-none"
       >
-        {/* Today's preacher. */}
-        <div
-          className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-h-0 min-w-0 flex-col justify-between gap-2 px-3 py-2.5')}
-          style={{ borderRadius: 10 }}
-        >
-          {active ? (
-            <>
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Avatar p={active} size={34} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold text-[var(--tri-ink)]">{active.name}</p>
-                  <p className="truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
-                    preaching today · {active.role}
-                  </p>
-                </div>
-                <StagePill p={active} />
-              </div>
-              <p className="truncate text-[length:var(--tri-size-xs)] lowercase tabular-nums" style={{ color: MUTED }}>
-                {active.services ? (
-                  <>
-                    <span style={{ color: INK_SOFT }}>{active.services}</span> services ·{' '}
-                    <span style={{ color: INK_SOFT }}>{active.samples}</span> verses caught ·{' '}
-                    <span style={{ color: INK_SOFT }}>{pct(active.precision)}</span> accurate
-                  </>
-                ) : (
-                  'first service with the app — it starts learning them today'
-                )}
+        {/* Today: who is on, and the one word for how far training has
+            got. The top of the card, because during a service it is the
+            only part of this anyone needs at a glance. */}
+        {active ? (
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Avatar p={active} size={34} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-semibold text-[var(--tri-ink)]">{active.name}</p>
+              <p className="truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
+                preaching today · {active.role}
               </p>
-              <div className="flex flex-col gap-1.5">
-                <TrustBar value={active.trustLowerBound} />
-                <p className="flex justify-between text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
-                  <span>
-                    trust <span style={{ color: INK_SOFT }}>{active.services ? pct(active.trustLowerBound) : '—'}</span>
-                  </span>
-                  <span>auto at {pct(GATES.trust)}</span>
-                </p>
-              </div>
-            </>
-          ) : (
-            <p className="my-auto text-[length:var(--tri-size-xs)] leading-relaxed lowercase" style={{ color: MUTED }}>
-              nobody is set for today — open the list and pick who is preaching
-            </p>
-          )}
-        </div>
+            </div>
+            <StagePill p={active} />
+          </div>
+        ) : (
+          <p className="text-[length:var(--tri-size-xs)] leading-relaxed lowercase" style={{ color: MUTED }}>
+            nobody is set for today — open the list and pick who is preaching
+          </p>
+        )}
 
-        {/* Everyone else, and the way to add one more — over the orbit. */}
-        <div
-          className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'relative flex min-h-0 min-w-0 flex-col justify-between gap-2 overflow-hidden px-3 py-2.5')}
-          style={{ borderRadius: 10 }}
-        >
-          <OrbitArt dots={dots} hovered={hovered} className="-bottom-3 -right-4 h-[118%] w-[92%]" />
-          <div className="relative flex min-w-0 items-center justify-between gap-2">
+        {/* A rule, then everyone else. One card, two distances: the line is
+            what the second header used to be. */}
+        <div className="mt-auto border-t border-white/[0.07] pt-3">
+          <div className="flex min-w-0 items-center justify-between gap-2">
             <span className="flex -space-x-2">
-              {others.slice(0, 4).map((p) => (
+              {others.slice(0, 5).map((p) => (
                 <Avatar key={p.id} p={p} size={26} ring />
               ))}
-              {others.length > 4 && (
+              {others.length > 5 && (
                 <span
                   className="grid size-[26px] place-items-center rounded-full bg-white/[0.08] text-[10px] font-semibold tabular-nums"
                   style={{ color: INK_SOFT, boxShadow: '0 0 0 2px rgb(20 20 22)' }}
                 >
-                  +{others.length - 4}
+                  +{others.length - 5}
+                </span>
+              )}
+              {others.length === 0 && (
+                <span className="text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
+                  nobody else yet
                 </span>
               )}
             </span>
-            <span className="shrink-0 text-[length:var(--tri-size-xs)] lowercase tabular-nums" style={{ color: INK_SOFT }}>
-              {preachers.length} {preachers.length === 1 ? 'preacher' : 'preachers'} ›
+            {/* Its own press: the card opens either way, but this one opens
+                it with the name field already waiting. */}
+            <span className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              <Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} />
             </span>
-          </div>
-          <p className="relative truncate text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
-            {counts.length ? counts.join(' · ') : 'no one yet'}
-          </p>
-          {/* Its own press: the tile opens either way, but this one opens it
-              with the name field already waiting. */}
-          {/* Compact and left: the bottom-right corner belongs to the orbit,
-              and a full-width button laid over it hid the drawing's centre. */}
-          <div className="relative self-start" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            <Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} />
           </div>
         </div>
       </div>
@@ -389,7 +385,7 @@ export function PreachersTile({ className }: { className?: string }) {
 /* The list                                                            */
 /* ------------------------------------------------------------------ */
 
-function PreacherList({
+export function PreacherList({
   preachers,
   activeId,
   query,
@@ -620,7 +616,7 @@ function PreacherRow({
 /* The profile                                                         */
 /* ------------------------------------------------------------------ */
 
-function ProfileHeader({ p, active }: { p: Preacher; active: boolean }) {
+export function ProfileHeader({ p, active }: { p: Preacher; active: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-3 pr-2">
       <Avatar p={p} size={44} />
@@ -768,7 +764,18 @@ function accuracyInk(v: number): string {
   return v >= 0.9 ? MINT : v >= 0.8 ? GOLD : ROSE;
 }
 
-function ProfileBody({ p, onRemove }: { p: Preacher; onRemove: () => void }) {
+export function ProfileBody({
+  p,
+  onRemove,
+  children,
+}: {
+  p: Preacher;
+  onRemove: () => void;
+  /* Anything the caller wants under the report and above the footer. The
+     tile's flown box passes nothing; the full-window profile passes the
+     teaching panels (./Teaching). */
+  children?: ReactNode;
+}) {
   const [confirm, setConfirm] = useState(false);
   const none = p.services === 0;
   const stats: [string, string][] = [
@@ -903,6 +910,8 @@ function ProfileBody({ p, onRemove }: { p: Preacher; onRemove: () => void }) {
             )}
           </Block>
         </div>
+
+        {children}
 
         <footer className="flex items-center justify-between gap-3 pt-1">
           <p className="text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: 'rgb(229 243 242 / 0.3)' }}>

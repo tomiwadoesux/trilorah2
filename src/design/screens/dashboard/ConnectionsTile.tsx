@@ -1,100 +1,102 @@
 import { useEffect, useState } from 'react';
 import { Panel, Dot } from '../parts';
+import { PlusIcon, GlobeIcon } from '../../../ui';
 
 /*
- * The outputs list — one question, answered from across a dark booth: is
- * everything we push to still listening?
+ * The connections list — the OTHER SOFTWARE this app talks to.
  *
- * Each row says its state twice, as a word and as a colour, because at booth
- * distance the dot is all that carries and up close the word is what tells
- * "connecting" apart from "disabled" — the two states whose dots are the
+ * Narrowed on 2026-09-27 at the owner's word. It used to also carry the
+ * Bible database, the microphone and the displays, and those are a
+ * different kind of fact: they are this machine's own equipment, always
+ * present, nothing to connect to and nothing a church chooses. They read
+ * as connections only because they had a green dot next to them. The
+ * pre-flight card already answers "is the mic working, is there a Bible,
+ * is a display assigned" — that is where a machine fact belongs.
+ *
+ * What is left is software running somewhere else that we hold a
+ * conversation with: a switcher, a stream deck, the cloud. Each one is
+ * something a church either has or does not, can set up or take away, and
+ * can lose in the middle of a service — which is what makes a live status
+ * worth a row at all.
+ *
+ * So the list is open-ended, and says so: the last row is the way to add
+ * one. A fixed list could only ever be wrong for a church that runs
+ * something it does not name.
+ *
+ * Each row says its state twice, as a word and as a colour, because at
+ * booth distance the dot is all that carries and up close the word is what
+ * tells "connecting" apart from "off" — the two states whose dots are the
  * easiest pair to confuse.
- *
- * The rows split the region evenly instead of standing at --tri-row-h. A row
- * height is a promise about how many rows fit, and this panel is handed a box
- * it does not choose; sharing the region means the list is always exactly as
- * tall as the tile, so it can neither scroll nor end in white space, and a
- * fourth output makes every row shorter rather than pushing one out of sight.
  */
 
-type OutputState = 'connected' | 'not connected' | 'connecting' | 'disabled';
+type LinkState = 'connected' | 'not connected' | 'connecting' | 'off';
 
-interface Output {
+type LinkId = 'obs' | 'vmix' | 'companion' | 'cloud';
+
+interface Link {
   /* The row is keyed by which integration it is, not by its position: the
-     list is fixed and the same three names come back every poll. */
-  id: OutputId;
+     same names come back every poll. */
+  id: LinkId;
   name: string;
-  state: OutputState;
+  state: LinkState;
 }
 
-type OutputId = 'vmix' | 'obs' | 'projector' | 'remote' | 'mic' | 'bible';
-
-interface Output {
-  id: OutputId;
-  name: string;
-  state: OutputState;
-}
-
-const STATE_TONE: Record<OutputState, 'ok' | 'warn' | 'danger' | 'idle'> = {
+const STATE_TONE: Record<LinkState, 'ok' | 'warn' | 'danger' | 'idle'> = {
   connected: 'ok',
   'not connected': 'danger',
   connecting: 'warn',
-  disabled: 'idle',
+  off: 'idle',
 };
 
-/* The word takes the dot's colour, so the pair reads as one statement rather
-   than as a label with an indicator next to it. Disabled is the exception:
-   nothing is wrong, so it drops out of the status palette into plain muted
-   ink and stops competing for the eye. */
-const STATE_INK: Record<OutputState, string> = {
+/* The word takes the dot's colour, so the pair reads as one statement
+   rather than as a label with an indicator next to it. Off is the
+   exception: nothing is wrong, so it drops out of the status palette into
+   plain muted ink and stops competing for the eye. */
+const STATE_INK: Record<LinkState, string> = {
   connected: '#8fd3c0',
   'not connected': '#eac7c6',
   connecting: '#e4d87a',
-  disabled: 'rgb(229 243 242 / 0.35)',
+  off: 'rgb(229 243 242 / 0.35)',
 };
 
-/* What the state means, in the booth's words. Shown under the name on
+/* What the state means, in the booth's words. Shown beside the name on
    hover: the dot says how it is, this says what to do about it. */
-const STATE_WHY: Record<OutputState, string> = {
+const STATE_WHY: Record<LinkState, string> = {
   connected: 'talking to it',
   'not connected': 'set up, but not reachable — open the card',
   connecting: 'checking…',
-  disabled: 'off — turn it on in the card',
+  off: 'not set up',
 };
 
-const ROWS: { id: OutputId; name: string }[] = [
-  { id: 'vmix', name: 'vMix' },
+const ROWS: { id: LinkId; name: string }[] = [
   { id: 'obs', name: 'OBS Studio' },
-  { id: 'projector', name: 'Projector / Stage' },
-  { id: 'remote', name: 'Remote Control' },
-  { id: 'mic', name: 'Microphone & ASR' },
-  { id: 'bible', name: 'Bible Database' },
+  { id: 'vmix', name: 'vMix' },
+  { id: 'companion', name: 'Stream Deck' },
+  { id: 'cloud', name: 'Trilorah Cloud' },
 ];
 
 /* What the design surface shows when there is no engine behind it. */
-const SAMPLE: Record<OutputId, OutputState> = {
-  vmix: 'connected',
-  obs: 'not connected',
-  projector: 'connected',
-  remote: 'connected',
-  mic: 'connected',
-  bible: 'connected',
+const SAMPLE: Record<LinkId, LinkState> = {
+  obs: 'connected',
+  vmix: 'off',
+  companion: 'connected',
+  cloud: 'not connected',
 };
 
 const POLL_MS = 6000;
 
-function fromVmix(s: VmixStatus): OutputState {
-  if (!s.enabled) return 'disabled';
+function fromVmix(s: VmixStatus): LinkState {
+  if (!s.enabled) return 'off';
   return s.reachable ? 'connected' : 'not connected';
 }
 
-function fromObs(s: ObsStatus): OutputState {
-  if (!s.enabled) return 'disabled';
+function fromObs(s: ObsStatus): LinkState {
+  if (!s.enabled) return 'off';
   return s.connected ? 'connected' : 'not connected';
 }
 
-function useOutputs(): Output[] {
-  const [states, setStates] = useState<Partial<Record<OutputId, OutputState>>>({});
+function useLinks(): Link[] {
+  const [states, setStates] = useState<Partial<Record<LinkId, LinkState>>>({});
 
   useEffect(() => {
     const api = typeof window === 'undefined' ? undefined : window.api;
@@ -104,56 +106,52 @@ function useOutputs(): Output[] {
     }
     let alive = true;
 
-    const settle = (id: OutputId, state: OutputState) => {
+    const settle = (id: LinkId, state: LinkState) => {
       if (alive) setStates((prev) => (prev[id] === state ? prev : { ...prev, [id]: state }));
     };
 
     const poll = () => {
-      if (api.vmixStatus) {
-        api.vmixStatus()
-          .then((s) => settle('vmix', fromVmix(s)))
-          .catch(() => settle('vmix', 'not connected'));
-      } else {
-        settle('vmix', 'disabled');
-      }
-
       if (api.obsStatus) {
         api.obsStatus()
           .then((s) => settle('obs', fromObs(s)))
           .catch(() => settle('obs', 'not connected'));
       } else {
-        settle('obs', 'disabled');
+        settle('obs', 'off');
       }
 
-      if (api.getDisplaysStatus) {
-        api.getDisplaysStatus()
-          .then((d) => settle('projector', d && (d.hasExternal || d.totalDisplays > 0) ? 'connected' : 'not connected'))
-          .catch(() => settle('projector', 'not connected'));
+      if (api.vmixStatus) {
+        api.vmixStatus()
+          .then((s) => settle('vmix', fromVmix(s)))
+          .catch(() => settle('vmix', 'not connected'));
       } else {
-        settle('projector', 'connected');
+        settle('vmix', 'off');
       }
 
-      if (api.getSettings) {
-        api.getSettings()
-          .then((s: any) => {
-            settle('remote', s?.remoteControlEnabled ? 'connected' : 'disabled');
-            settle('mic', s?.micDeviceId || s?.engine ? 'connected' : 'connected');
+      /* A Stream Deck talks over the same socket a paired phone does, so a
+         live socket IS the connection. `remoteConnected` is the right call
+         and `remoteListDevices` the wrong one: the second answers who MAY
+         connect, which stays true all week and would show a dot for a deck
+         that is unplugged. */
+      if (api.remoteConnected) {
+        api.remoteConnected()
+          .then((d: unknown) => settle('companion', Array.isArray(d) && d.length > 0 ? 'connected' : 'off'))
+          .catch(() => settle('companion', 'off'));
+      } else {
+        settle('companion', 'off');
+      }
+
+      /* Signed in is not the same as reachable — but from across a booth
+         the question is only "will the phones get anything", and being
+         signed out is the commonest reason they will not. */
+      if (api.cloudStatus) {
+        api.cloudStatus()
+          .then((c: any) => {
+            if (!c?.configured) return settle('cloud', 'off');
+            settle('cloud', c.signedIn ? 'connected' : 'not connected');
           })
-          .catch(() => {
-            settle('remote', 'disabled');
-            settle('mic', 'connected');
-          });
+          .catch(() => settle('cloud', 'not connected'));
       } else {
-        settle('remote', 'disabled');
-        settle('mic', 'connected');
-      }
-
-      if (api.getDbStatus) {
-        api.getDbStatus()
-          .then((d) => settle('bible', d && d.connected ? 'connected' : 'not connected'))
-          .catch(() => settle('bible', 'not connected'));
-      } else {
-        settle('bible', 'connected');
+        settle('cloud', 'off');
       }
     };
 
@@ -168,70 +166,88 @@ function useOutputs(): Output[] {
   return ROWS.map((row) => ({ ...row, state: states[row.id] ?? 'connecting' }));
 }
 
-/* One weight for every line inside this tile — the column headers and the
-   rules between the rows. It is a table, and the lines here are separating
-   ROWS from each other, which is a rule's actual job; the Panel header has
-   none, because there is nothing under it to separate from. */
+/* The rules between the rows. They separate ROWS from each other, which
+   is a rule's actual job; the Panel header has none, because there is
+   nothing under it to separate from. No column headers either: the name
+   and the state are the only two things on a row and neither needs
+   naming. */
 const RULE = 'inset 0 -1px 0 rgb(255 255 255 / 0.07)';
+const MUTED = 'rgb(229 243 242 / 0.45)';
 
-export function ConnectionsTile({ className }: { className?: string }) {
-  const outputs = useOutputs();
+export function ConnectionsTile({
+  className,
+  onOpen,
+  onAdd,
+}: {
+  className?: string;
+  /** A press anywhere on the list. */
+  onOpen?: () => void;
+  /** The last row — where a church says it runs something not listed. */
+  onAdd?: () => void;
+}) {
+  const links = useLinks();
   return (
-    <Panel className={className} bodyClass="pt-3">
-      <div className="flex h-full flex-col">
-        <div
-          className="flex shrink-0 items-baseline justify-between gap-2 pb-1.5 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]"
-          style={{ boxShadow: RULE }}
-        >
-          <span>connection</span>
-          <span>status</span>
-        </div>
-
-        <ul className="flex min-h-0 flex-1 flex-col">
-          {outputs.map((output, i) => (
+    <Panel
+      title="connected"
+      icon={<GlobeIcon size={13} />}
+      blurb="other software this app talks to during a service."
+      onOpen={onOpen}
+      className={className}
+    >
+      <ul className="flex h-full min-h-0 flex-col" onClick={onOpen}>
+        {links.map((link) => {
+          const off = link.state === 'off';
+          return (
             <li
-              key={output.id}
-              className="group/row flex min-h-0 flex-1 items-center gap-2 py-1"
-              /* The rule rides on the row rather than sitting between rows as
-                 an element of its own — a divider would take height the rows
-                 are already dividing between them. The last row goes without,
-                 so the list does not end on a line. */
-              style={i < outputs.length - 1 ? { boxShadow: RULE } : undefined}
+              key={link.id}
+              className="group/row flex min-h-0 flex-1 items-center gap-2"
+              /* The rule rides on the row rather than sitting between rows
+                 as an element of its own — a divider would take height the
+                 rows are already dividing between them. Every row carries
+                 one, the add row included, so the list reads as one that
+                 continues rather than one that has stopped. */
+              style={{ boxShadow: RULE }}
             >
-              {/* Where the app's own mark goes once there is one. Empty on
-                  purpose: a letter here would read as content and get
-                  mistaken for a real icon.
-
-                  20px is a ceiling, not a size. It is the only fixed
-                  dimension left in the row, so on a short tile — a window
-                  under the 900 artboard, or the touch tier's taller type — it
-                  would be the one thing that refuses to give, and the squares
-                  would ride over the rules and out through the floor. The
-                  max-height hands it back to the row and the ratio keeps it
-                  square on the way down. */}
+              {/* A row that is off is off as a whole: name and state both
+                  step back, so the eye lands on what is actually running. */}
               <span
-                aria-hidden
-                className="aspect-square h-[20px] max-h-full w-auto shrink-0 rounded-[5px] bg-[rgb(229_243_242_/_0.14)]"
-              />
-              <span className="min-w-0 flex-1 truncate text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">
-                {output.name}
-                <span className="ml-2 hidden text-[length:var(--tri-size-xs)] font-normal lowercase text-[rgb(229_243_242_/_0.45)] group-hover/row:inline">
-                  {STATE_WHY[output.state]}
+                className="min-w-0 flex-1 truncate text-[length:var(--tri-size)]"
+                style={{ color: off ? MUTED : 'var(--tri-ink)' }}
+              >
+                {link.name}
+                <span className="ml-2 hidden text-[length:var(--tri-size-xs)] lowercase group-hover/row:inline" style={{ color: MUTED }}>
+                  {STATE_WHY[link.state]}
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-1.5">
-                <span
-                  className="text-[length:var(--tri-size-xs)] lowercase"
-                  style={{ color: STATE_INK[output.state] }}
-                >
-                  {output.state}
-                </span>
-                <Dot tone={STATE_TONE[output.state]} />
+              <span
+                className="flex shrink-0 items-center gap-1.5 text-[length:var(--tri-size-xs)] lowercase"
+                style={{ color: STATE_INK[link.state] }}
+              >
+                {link.state}
+                {!off && <Dot tone={STATE_TONE[link.state]} />}
               </span>
             </li>
-          ))}
-        </ul>
-      </div>
+          );
+        })}
+
+        {/* The list is open: a church may run something none of these rows
+            names. Same height as the others so the rhythm holds, and last,
+            so it reads as an offer rather than an instruction. */}
+        <li className="flex min-h-0 flex-1 items-center">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd?.();
+            }}
+            className="flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left transition-colors hover:bg-white/[0.05]"
+            style={{ color: MUTED }}
+          >
+            <PlusIcon size={11} className="shrink-0" />
+            <span className="truncate text-[length:var(--tri-size-xs)] lowercase">connect something else</span>
+          </button>
+        </li>
+      </ul>
     </Panel>
   );
 }

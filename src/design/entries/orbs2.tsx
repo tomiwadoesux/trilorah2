@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Select, type SelectOption } from '../../ui';
 import { Sheet, Group, Cell, Note, Spec, Stage } from '../Sheet';
 import ThinkingOrbsPill, { ThinkingOrbsGallery } from '../orb/ThinkingOrbsPill';
+import SvgOrbsPill from '../orb/SvgOrbsPill';
+import { ORB_BY_STATE, STATUS_ORB_INK, type OrbLook, type OrbPick } from '../orb/statusLooks';
 import { HoverGallery } from '../orb/HoverGallery';
 import { ORB2_STYLES, measureOrb2, hasWebGPU, type Orb2Weight } from '../orb/orb2';
 import { measureRenderer, type Weight } from '../orb/renderers';
@@ -142,9 +144,216 @@ function WeightMeter({ w, peak }: { w?: Orb2Weight; peak: number }) {
 /* The sheet                                                           */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* SVG · no GPU                                                        */
+/* ------------------------------------------------------------------ */
+
+/** A fixed box, so the orb's own 100%-wide field cannot stretch the grid. */
+const box = (px: number) => ({ width: px, height: px, minHeight: px });
+
+type Look = { style: string; accent: string; speed: number; opacity: number };
+
+/**
+ * The same look drawn both ways, WebGPU on the left and SVG on the right,
+ * with identical props. `hold` remounts both at speed 0: each starts its
+ * clock at zero, so a held pair shows the SAME frame and any difference
+ * between the two is the renderer, not the timing.
+ */
+function OrbPair({ look, ball, dots = 1, fps = 0, hold, dotColor = STATUS_ORB_INK }: {
+  look: Look;
+  ball: number;
+  dots?: number;
+  fps?: number;
+  hold: boolean;
+  dotColor?: string;
+}) {
+  const common = {
+    style: look.style,
+    dotColor,
+    accent: look.accent,
+    speed: hold ? 0 : look.speed,
+    startAt: hold ? 0.3 : 0,
+    dotOpacity: look.opacity,
+    showsPill: false,
+    showsLabel: false,
+    ball,
+    dots,
+    scheme: 'dark' as const,
+    containerStyle: box(ball),
+  };
+  const k = `${look.style}-${hold ? 'h' : 'm'}`;
+  return (
+    <div className="flex items-center gap-2">
+      <ThinkingOrbsPill key={`g-${k}`} {...common} />
+      <SvgOrbsPill key={`s-${k}`} {...common} fps={fps} />
+    </div>
+  );
+}
+
+const COLOUR_NAME: Record<string, string> = { '#ef5350': 'red', '#ffa726': 'orange', '#66bb6a': 'green' };
+
+/** The bar's orb as it ships: 30px, 90 dots, 30fps. */
+function BarOrb({ look, pick, moving = true }: { look: OrbLook; pick: OrbPick; moving?: boolean }) {
+  return (
+    <SvgOrbsPill
+      style={pick.style}
+      startAt={look.speed === 0 ? (pick.startAt ?? 0) : 0.3}
+      dotColor={STATUS_ORB_INK}
+      accent={look.accent}
+      speed={moving ? look.speed : 0}
+      dotOpacity={look.opacity}
+      showsPill={false}
+      showsLabel={false}
+      ball={30}
+      dots={0.6}
+      fps={30}
+      scheme="dark"
+      containerStyle={box(30)}
+    />
+  );
+}
+
+/**
+ * Every state's pool, from the bar's own table. A row plays while it is
+ * pointed at (or all of them, with "play all"); each style is shown
+ * enlarged and at the size the bar ships. Still states stay still.
+ */
+function StatusPools() {
+  const [hot, setHot] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
+  return (
+    <>
+      <div className="mb-4">
+        <Button label={all ? 'hold all' : 'play all'} onClick={() => setAll((v) => !v)} />
+      </div>
+      <div className="flex flex-col">
+        {Object.entries(ORB_BY_STATE).map(([name, look]) => {
+          const moving = look.speed !== 0 && (all || hot === name);
+          return (
+            <div
+              key={name}
+              onPointerEnter={() => setHot(name)}
+              onPointerLeave={() => setHot((h) => (h === name ? null : h))}
+              className="flex items-center gap-6 border-t border-white/[0.06] py-3 first:border-t-0"
+            >
+              <div className="w-36 shrink-0">
+                <div className="font-mono text-[11px] text-neutral-200">{name}</div>
+                <div className="font-mono text-[9px] text-neutral-500">
+                  {COLOUR_NAME[look.accent] ?? look.accent} · {look.speed === 0 ? 'still' : `speed ${look.speed}`}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-8">
+                {look.pool.map((p) => (
+                  <div key={p.style} className="flex flex-col items-center gap-1.5">
+                    <div className="flex items-end gap-2">
+                      <SvgOrbsPill
+                        style={p.style}
+                        startAt={look.speed === 0 ? (p.startAt ?? 0) : 0.3}
+                        dotColor={STATUS_ORB_INK}
+                        accent={look.accent}
+                        speed={moving ? look.speed : 0}
+                        dotOpacity={look.opacity}
+                        showsPill={false}
+                        showsLabel={false}
+                        ball={56}
+                        scheme="dark"
+                        containerStyle={box(56)}
+                      />
+                      <BarOrb look={look} pick={p} moving={moving} />
+                    </div>
+                    <span className="font-mono text-[9px] text-neutral-500">{p.style}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+/**
+ * One session's worth of picks, rolled locally the way the bar rolls them
+ * (never the same style as last roll where the pool has another), so the
+ * sheet can show what "stop and start again" does without touching the
+ * app's own session.
+ */
+function rollSession(prev: Record<string, OrbPick> | null): Record<string, OrbPick> {
+  const out: Record<string, OrbPick> = {};
+  for (const [name, look] of Object.entries(ORB_BY_STATE)) {
+    const before = prev?.[name];
+    const choices = look.pool.length > 1 && before ? look.pool.filter((p) => p.style !== before.style) : look.pool;
+    out[name] = choices[Math.floor(Math.random() * choices.length)] ?? look.pool[0];
+  }
+  return out;
+}
+
+function RolledSession() {
+  const [picks, setPicks] = useState<Record<string, OrbPick>>(() => rollSession(null));
+  return (
+    <>
+      <div className="mb-4">
+        <Button label="stop and start again" onClick={() => setPicks((p) => rollSession(p))} />
+      </div>
+      <div className="grid gap-x-4 gap-y-5" style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+        {Object.entries(ORB_BY_STATE).map(([name, look]) => (
+          <div key={name} className="flex flex-col items-center gap-1.5">
+            <BarOrb look={look} pick={picks[name]} />
+            <div className="text-center font-mono text-[10px] leading-tight text-neutral-300">{name}</div>
+            <div className="-mt-1 text-center font-mono text-[9px] leading-tight text-neutral-500">{picks[name].style}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/**
+ * One style as an SVG orb that plays while pointed at and freezes where it
+ * stopped. Speed eases, so it starts and stops like the bar does.
+ */
+function SvgStyleCell({ id, name, playing, selected, onSelect }: {
+  id: string;
+  name: string;
+  playing: boolean;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
+      onClick={() => onSelect(id)}
+      className={
+        'flex flex-col items-center gap-1.5 rounded-md py-2 transition-colors duration-150 ' +
+        (selected ? 'bg-white/[0.07]' : 'hover:bg-white/[0.04]')
+      }
+    >
+      <SvgOrbsPill
+        style={id}
+        speed={playing || hover ? 1 : 0}
+        startAt={0.3}
+        dotColor={TRI.dot}
+        accent={TRI.accent}
+        showsPill={false}
+        showsLabel={false}
+        ball={64}
+        scheme="dark"
+        containerStyle={box(64)}
+      />
+      <span className="font-mono text-[10px] text-neutral-400">{name.toLowerCase()}</span>
+    </button>
+  );
+}
+
 export function TriThinkingOrb2() {
   const { weights, reference, done, remeasure } = useOrb2Weights();
   const [selected, setSelected] = useState('twinkle');
+  const [playAllSvg, setPlayAllSvg] = useState(false);
+  const [holdPairs, setHoldPairs] = useState(false);
   const [hoverCost, setHoverCost] = useState<{ us: number; moving: number } | null>(null);
   const [sortByWeight, setSortByWeight] = useState(false);
   const gpu = hasWebGPU();
@@ -178,6 +387,104 @@ export function TriThinkingOrb2() {
           submits a pass.
         </Note>
       )}
+
+      <Group
+        title="WebGPU vs SVG"
+        hint="the same style, the same props, drawn both ways — left is the WebGPU orb, right is the SVG one"
+      >
+        <Stage>
+          <div className="mb-5 flex flex-wrap items-end gap-3">
+            <Select label="style" value={selected} options={STYLE_OPTIONS} onChange={setSelected} className="max-w-[300px]" />
+            <Button label={holdPairs ? 'play' : 'hold on one frame'} onClick={() => setHoldPairs((v) => !v)} />
+          </div>
+          <div className="flex flex-wrap items-start gap-10">
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex w-[336px] justify-between font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                <span className="w-40 text-center">webgpu</span>
+                <span className="w-40 text-center">svg</span>
+              </div>
+              <OrbPair
+                look={{ style: selected, accent: TRI.accent, speed: 1, opacity: 1 }}
+                dotColor={TRI.dot}
+                ball={160}
+                hold={holdPairs}
+              />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Cell label="webgpu · pill + label, as shipped">
+                <div className="inline-flex">
+                  <ThinkingOrbsPill key={`pg-${selected}-${holdPairs}`} style={selected} scheme="dark" speed={holdPairs ? 0 : 1} startAt={holdPairs ? 0.3 : 0} />
+                </div>
+              </Cell>
+              <Cell label="svg · pill + label">
+                <div className="inline-flex">
+                  <SvgOrbsPill key={`ps-${selected}-${holdPairs}`} style={selected} scheme="dark" speed={holdPairs ? 0 : 1} startAt={holdPairs ? 0.3 : 0} />
+                </div>
+              </Cell>
+            </div>
+          </div>
+        </Stage>
+      </Group>
+
+      <Note>
+        <strong>Left is WebGPU, right is SVG, with identical props.</strong> "Hold on one frame" stops
+        both on the same frame, so any difference is the renderer, not the timing; moving, they can
+        drift a few milliseconds apart because the WebGPU one starts its clock only once the GPU
+        answers. The app itself only ever draws the SVG one. On a PC with no GPU driver the left
+        side is empty and the right side still draws.
+      </Note>
+
+      <Group
+        title="The Live bar · one session"
+        hint="what the bar would wear in one service, one style per state; press the button to roll the next service"
+      >
+        <Stage>
+          <RolledSession />
+        </Stage>
+      </Group>
+
+      <Group
+        title="The Live bar · every state's pool"
+        hint="each state's styles, enlarged and at bar size (30px); point at a row to play it"
+      >
+        <Stage>
+          <StatusPools />
+        </Stage>
+      </Group>
+
+      <Note>
+        <strong>A state is a colour and a family of motions, not one animation.</strong> The first
+        time a state comes up in a service the bar picks one style from its pool and keeps it for
+        the rest of that service, so listening never changes shape mid-sermon. Stopping ends the
+        service: start again and every state rolls afresh, never landing on the same style as last
+        time. The name on hover is always the state's. Listening, in preview, live and auto live
+        follow each other in the same green, so they never share a style; states in other colours
+        borrow freely. Idle and output frozen are still, on a frame picked to read as a calm sphere,
+        and a still SVG orb draws once and then costs nothing.
+      </Note>
+
+      <Group
+        title="All 38 · svg"
+        hint="hover one to play it, click to load it into the pill below"
+      >
+        <Stage>
+          <div className="mb-3">
+            <Button label={playAllSvg ? 'hold all' : 'play all'} onClick={() => setPlayAllSvg((v) => !v)} />
+          </div>
+          <div className="grid gap-x-2 gap-y-3" style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr))' }}>
+            {ORB2_STYLES.map((s) => (
+              <SvgStyleCell
+                key={s.id}
+                id={s.id}
+                name={s.name}
+                playing={playAllSvg}
+                selected={s.id === selected}
+                onSelect={setSelected}
+              />
+            ))}
+          </div>
+        </Stage>
+      </Group>
 
       <Group
         title="Hover to play"
@@ -266,6 +573,14 @@ export function TriThinkingOrb2() {
                 </div>
                 <div className="inline-flex">
                   <ThinkingOrbsPill key={`c-${selected}`} style={selected} scheme="dark" showsPill={false} />
+                </div>
+              </Cell>
+              <Cell label="svg · same geometry, no gpu · the one the live bar uses">
+                <div className="inline-flex">
+                  <SvgOrbsPill key={`s-${selected}`} style={selected} scheme="dark" />
+                </div>
+                <div className="inline-flex">
+                  <SvgOrbsPill key={`t-${selected}`} style={selected} scheme="dark" showsPill={false} ball={30} dots={0.6} fps={30} />
                 </div>
               </Cell>
               <Cell label="in trilorah ink · #E5F3F2 dots, #E4D87A accent, panel grey">

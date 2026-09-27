@@ -615,3 +615,23 @@ export function CupIcon({ size = 14, className }: IconProps) {
     </svg>
   );
 }
+
+/**
+ * A painter's palette — themes. Drawn to sit with the book, the note and
+ * the screen in the library's tab column: same 16 box, same 1.4 stroke.
+ */
+export function PaletteIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" className={className}>
+      <path
+        d="M8 2.2C4.6 2.2 2 4.7 2 7.9c0 3.1 2.4 5.6 5.4 5.6.9 0 1.4-.5 1.4-1.2 0-.4-.2-.7-.4-1-.2-.3-.3-.6-.3-.9 0-.7.6-1.2 1.3-1.2h1.5c2 0 3.3-1.5 3.3-3.4C14.2 3.9 11.4 2.2 8 2.2Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <circle cx="5.1" cy="7.3" r="1" fill="currentColor" />
+      <circle cx="7.3" cy="4.9" r="1" fill="currentColor" />
+      <circle cx="10.4" cy="5.3" r="1" fill="currentColor" />
+    </svg>
+  );
+}

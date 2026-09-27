@@ -21,9 +21,12 @@ const ROWS: Row[] = [
   { kind: 'text', key: 'vmixHost', label: 'vMix host', blurb: '', value: 'localhost', when: ['vmixEnabled', true] },
   { kind: 'number', key: 'vmixPort', label: 'vMix port', blurb: '', value: 8088, when: ['vmixEnabled', true] },
   { kind: 'action', key: 'vmixStatus', label: 'Test vMix', blurb: '', button: 'check', note: 'not checked', when: ['vmixEnabled', true] },
-  { kind: 'toggle', key: 'remoteControlEnabled', label: 'Remote control', blurb: 'Let a paired phone or Stream Deck send commands on the church network.', value: true },
-  { kind: 'action', key: 'pairing', label: 'Paired devices', blurb: 'Devices that may control the app. Pair with a six-digit code shown on this screen; revoke any of them here.', button: 'pair a device', note: 'ws://localhost:8081 · 1 device paired' },
+  { kind: 'toggle', key: 'remoteControlEnabled', label: 'Stream Deck & remote', blurb: 'Let a Stream Deck, Bitfocus Companion or a paired phone send commands on the church network.', value: true },
+  { kind: 'action', key: 'pairing', label: 'Paired devices', blurb: 'Devices that may control the app. Pair with a six-digit code shown on this screen; revoke any of them here.', button: 'pair a device', note: 'ws://localhost:8081 · 1 device paired', when: ['remoteControlEnabled', true] },
   { kind: 'note', key: 'externalControlDocs', text: 'Stream Deck / Bitfocus Companion send JSON like {"action":"START_LISTENING"}. Commands: START_LISTENING · STOP_LISTENING · CLEAR_SCREEN · PUSH_PREVIEW · NEXT · PREVIOUS.' },
+  { kind: 'status', key: 'cloudStatus', label: 'Trilorah Cloud', blurb: 'Carries verses to the phones that scanned the QR, and keeps finished services. Signed out, every push is dropped and the phone page stays empty.', state: 'danger', text: 'signed out' },
+  { kind: 'action', key: 'cloudSignIn', label: 'Church account', blurb: '', button: 'sign in', note: 'not signed in' },
+  { kind: 'note', key: 'addMore', text: 'Running something else — ProPresenter, a NDI feed, MIDI cues? Tell us what your church uses and it goes on the list.' },
 ];
 
 export function ConnectedTile({ className }: { className?: string }) {
@@ -32,12 +35,14 @@ export function ConnectedTile({ className }: { className?: string }) {
       className={className}
       title="Connected"
       glyph={false}
-      blurb="Software the app talks to — the switcher, the stream, the Stream Deck."
+      blurb="Other software this app talks to — the switcher, the Stream Deck, the cloud."
       size={{ w: 680, h: 640 }}
+      /* The tile is not itself a button: the add row inside it is one, and
+         a button inside a button is invalid and swallows the inner press.
+         The list handles its own opening instead — a press anywhere on it,
+         and on the add row, arrives at the same box. */
       tile={({ onOpen }) => (
-        <button type="button" onClick={onOpen} className="flex min-h-0 w-full flex-1 flex-col text-left">
-          <ConnectionsTile className="min-h-0 w-full flex-1" />
-        </button>
+        <ConnectionsTile className="min-h-0 w-full flex-1" onOpen={onOpen} onAdd={onOpen} />
       )}
     >
       <RowList rows={ROWS} />

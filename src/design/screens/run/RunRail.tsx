@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
+  ActionMenu,
+  ArrowIcon,
   BookIcon,
+  Button,
+  HistoryIcon,
   ChevronDownIcon,
+  ClockIcon,
+  CopyIcon,
   MediaIcon,
   MusicIcon,
   NoteIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,
+  type ActionMenuGroup,
   cx,
   surface,
 } from '../../../ui';
@@ -15,13 +22,13 @@ import { formatMinutes } from '../../../../shared/runPlan';
 import { formatClock } from '../../../../shared/runOfServiceParse';
 import { useDrag } from '../drag';
 import { useEngine } from '../engine';
-import { Empty } from '../parts';
 import { useProjector } from '../projector';
 import { useRun, type QueueItem, type RunSegment } from '../run';
 import { ContextMenu, useContextMenu, type ContextMenuItem } from './ContextMenu';
 import { RunSongEditor, type LibrarySong } from './RunSongEditor';
 import { SEGMENT_TYPES, segmentIcon, segmentTypeLabel } from './segmentTypes';
 import './run.css';
+import { EmptyMark, PopStackArt } from '../emptyArt';
 
 /*
  * The run of service, as drawn in the rail.
@@ -35,6 +42,11 @@ import './run.css';
  */
 
 const EMPTY_SEGMENT_HINT = 'use + , or hold a row below and drag it here';
+
+/* What a church actually plans a segment at. Not a spinner: this is picked
+   from a menu mid-week, and eight rounded choices cover a printed order of
+   service better than a field nobody wants to type into. */
+const PLANNED_MINUTES = [5, 10, 15, 20, 30, 40, 45, 60];
 
 /** The hover ✕ on a queued item. Parent row needs the `group` class. */
 function RemoveItem({ onClick }: { onClick: () => void }) {
@@ -225,6 +237,7 @@ function QueuedItemRow({
 function SegmentCard({
   seg,
   index,
+  total,
   over,
   dropProps,
   renderAdd,
@@ -232,6 +245,8 @@ function SegmentCard({
 }: {
   seg: RunSegment;
   index: number;
+  /** How many cards the run has — the last one has nowhere to move down. */
+  total: number;
   over: boolean;
   dropProps: { 'data-drop-segment': string };
   renderAdd: (seg: RunSegment) => ReactNode;
@@ -256,7 +271,31 @@ function SegmentCard({
     setRenaming(false);
   };
 
+  /*
+   * The card's menu, in the order a Sunday reaches for it: where it sits,
+   * then what it is, then what is in it, then the destructive pair.
+   *
+   * Moving is here because dragging a 200px card mid-service is a
+   * precision gesture and these two rows are not; inserting is here
+   * because the header's + appends to the END of the run, which is never
+   * where a segment added mid-service belongs. Rows that cannot act are
+   * left out rather than shown dead: the first card has no "move up", an
+   * empty one has nothing to clear.
+   */
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
   const items: ContextMenuItem[] = [
+    ...(isFirst ? [] : [{ id: 'up', label: 'move up', icon: <ArrowIcon size={11} className="-rotate-90" /> }]),
+    ...(isLast ? [] : [{ id: 'down', label: 'move down', icon: <ArrowIcon size={11} className="rotate-90" /> }]),
+    {
+      id: 'insert',
+      label: 'add a segment',
+      icon: <PlusIcon size={12} />,
+      items: [
+        { id: 'insert:above', label: 'above this one', icon: <ArrowIcon size={11} className="-rotate-90" /> },
+        { id: 'insert:below', label: 'below this one', icon: <ArrowIcon size={11} className="rotate-90" /> },
+      ],
+    },
     { id: 'rename', label: 'rename', icon: <PencilIcon size={12} /> },
     {
       id: 'type',
@@ -269,6 +308,23 @@ function SegmentCard({
         checked: t.value === seg.type,
       })),
     },
+    {
+      id: 'minutes',
+      label: 'planned length',
+      icon: <ClockIcon size={12} />,
+      items: [
+        ...PLANNED_MINUTES.map((m) => ({
+          id: `minutes:${m}`,
+          label: formatMinutes(m),
+          checked: seg.durationMin === m,
+        })),
+        { id: 'minutes:none', label: 'no length', checked: seg.durationMin === undefined },
+      ],
+    },
+    { id: 'duplicate', label: 'duplicate', icon: <CopyIcon size={12} /> },
+    ...(seg.items.length === 0
+      ? []
+      : [{ id: 'clear', label: `remove the ${seg.items.length} queued`, icon: <TrashIcon size={11} />, danger: true }]),
     { id: 'remove', label: 'remove from the run', icon: <TrashIcon size={11} />, danger: true },
   ];
 
@@ -298,6 +354,9 @@ function SegmentCard({
           <div className="flex min-w-0 flex-1 items-center gap-2 py-1">
             <span className="w-4 shrink-0 text-right text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.38)]">
               {index + 1}
+            </span>
+            <span className="grid size-[14px] shrink-0 place-items-center text-[rgb(143_211_192_/_0.5)]">
+              {segmentIcon(seg.type, 12)}
             </span>
             <input
               ref={nameRef}
@@ -331,6 +390,19 @@ function SegmentCard({
                 how a service is talked about over comms. */}
             <span className="w-4 shrink-0 text-right text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.38)]">
               {index + 1}
+            </span>
+            {/* The type's mark, worn on the card and not only in its menu:
+                seven near-identical slabs told apart by words alone made
+                the rail read as a list of labels. Mint at the item marks'
+                voltage — wayfinding, not content — and a step brighter on
+                the open card, whose contents it is naming. */}
+            <span
+              className={cx(
+                'grid size-[14px] shrink-0 place-items-center transition-colors',
+                open ? 'text-[rgb(143_211_192_/_0.85)]' : 'text-[rgb(143_211_192_/_0.5)]',
+              )}
+            >
+              {segmentIcon(seg.type, 12)}
             </span>
             <span className="flex min-w-0 flex-col">
               <span className="flex min-w-0 items-center gap-1.5">
@@ -407,7 +479,7 @@ function SegmentCard({
         <div className="px-2 pb-2">
           {/* The rule starts where the name starts, not at the card edge —
               contents belong to the name, not to the slab. */}
-          <div aria-hidden className="mb-1 ml-[26px] h-px bg-[rgb(255_255_255_/_0.07)]" />
+          <div aria-hidden className="mb-1 ml-[48px] h-px bg-[rgb(255_255_255_/_0.07)]" />
           {/* Separated by shape, not by rule. Hairlines here fought the one
               under the header — two grades of horizontal line in a 200px
               card, with the lesser one running longer. A faint well under
@@ -416,7 +488,10 @@ function SegmentCard({
               the only line in the card. */}
           <ul className="flex flex-col gap-[3px]">
             {seg.items.length === 0 ? (
-              <li className="px-2 py-[3px] text-[length:var(--tri-size-xs)] lowercase leading-snug text-[rgb(229_243_242_/_0.32)]">
+              /* A dashed well, not a sentence adrift: the hint names a drop
+                 target, so it is drawn as one — the same shape the card
+                 itself takes when a drag is over it. */
+              <li className="grid place-items-center rounded-[8px] border border-dashed border-[rgb(255_255_255_/_0.1)] px-3 py-[7px] text-center text-[length:var(--tri-size-xs)] lowercase leading-snug text-[rgb(229_243_242_/_0.32)]">
                 {EMPTY_SEGMENT_HINT}
               </li>
             ) : (
@@ -442,8 +517,23 @@ function SegmentCard({
           if (picked.id === 'rename') {
             setDraft(seg.label);
             setRenaming(true);
-          } else if (picked.id === 'remove') run.removeSegment(seg.key);
-          else if (picked.id.startsWith('type:')) {
+          } else if (picked.id === 'up') run.moveSegment(seg.key, -1);
+          else if (picked.id === 'down') run.moveSegment(seg.key, 1);
+          else if (picked.id === 'duplicate') run.duplicateSegment(seg.key);
+          else if (picked.id === 'clear') run.clearSegment(seg.key);
+          else if (picked.id === 'remove') run.removeSegment(seg.key);
+          else if (picked.id.startsWith('insert:')) {
+            /* A blank custom segment, named for what it is. The operator is
+               about to rename it or set its type, and both are one more
+               right-click away on the card that appears. */
+            run.insertSegment(seg.key, picked.id.slice(7) as 'above' | 'below', {
+              id: 'custom',
+              label: segmentTypeLabel('custom'),
+            });
+          } else if (picked.id.startsWith('minutes:')) {
+            const rest = picked.id.slice(8);
+            run.setSegmentDuration(seg.key, rest === 'none' ? undefined : Number(rest));
+          } else if (picked.id.startsWith('type:')) {
             const id = picked.id.slice(5);
             /* The name follows the type only while it is still the old
                type's stock name — see run.setSegmentType. */
@@ -466,6 +556,51 @@ function SegmentCard({
  * margin, the chevron, marked items. The cards variant's ghost numerals are
  * gone at the owner's call, and so now is the count pill.
  */
+
+/*
+ * The empty rail's own way in — the header's + and clock again, at a size
+ * you cannot miss, directly under the sentence that names them. The + here
+ * offers only "add segment": the scan and paste flows live in the header,
+ * whose review popovers they belong to. The clock loads straight away, as
+ * the header's does when the rail is empty — there is nothing to replace.
+ */
+const EMPTY_ADD: ActionMenuGroup[] = [
+  {
+    items: [
+      {
+        id: 'segment',
+        label: 'add segment',
+        icon: <PlusIcon size={13} />,
+        arrange: true,
+        items: SEGMENT_TYPES.map((t) => ({ id: t.value, label: t.label })),
+      },
+    ],
+  },
+];
+
+function RunEmptyActions() {
+  const run = useRun();
+  return (
+    <div
+      className="mt-4 flex items-center gap-3"
+      style={{ '--tri-control-h': '40px', '--tri-control-pad-x': '13px' } as CSSProperties}
+    >
+      <ActionMenu
+        groups={EMPTY_ADD}
+        onArrange={(_parent, picked) => run.addSegments(picked)}
+        trigger={<Button label="" icon={<PlusIcon size={17} />} title="add to the run" />}
+      />
+      <Button
+        label=""
+        tone="ash"
+        icon={<HistoryIcon size={16} />}
+        title="load the default order of service"
+        onClick={() => run.loadSundayTemplate()}
+      />
+    </div>
+  );
+}
+
 export function RunOfService({
   renderAdd,
   fallbackSongs,
@@ -482,7 +617,15 @@ export function RunOfService({
   return (
     <>
       {run.segments.length === 0 ? (
-        <Empty>nothing in the run yet — use + to build one, or the clock for the default order</Empty>
+        <EmptyMark
+          w={180}
+          h={180}
+          plain
+          art={<PopStackArt />}
+          line="nothing in the run yet"
+          hint="use + to build one, or the clock for the default order"
+          below={<RunEmptyActions />}
+        />
       ) : (
         /* The panel body clips; the list scrolls inside it, so a long service
            never pushes the cards out of reach under the panel's edge. */
@@ -492,6 +635,7 @@ export function RunOfService({
               key={seg.key}
               seg={seg}
               index={i}
+              total={run.segments.length}
               over={drag.over === seg.key}
               dropProps={drag.dropProps(seg.key)}
               renderAdd={renderAdd}

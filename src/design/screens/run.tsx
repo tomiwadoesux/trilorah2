@@ -93,6 +93,17 @@ interface RunValue {
   addSegments: (picked: PlannedSegment[]) => void;
   /** Take a whole segment out of the run, queued contents and all. */
   removeSegment: (key: string) => void;
+  /** Swap a segment with its neighbour. Ends of the list are no-ops, so a
+      caller can offer the action unconditionally and let it decline. */
+  moveSegment: (key: string, delta: -1 | 1) => void;
+  /** A new segment beside an existing one rather than at the end. */
+  insertSegment: (key: string, where: 'above' | 'below', picked: PlannedSegment) => void;
+  /** The same segment again, contents and all, directly below it. */
+  duplicateSegment: (key: string) => void;
+  /** Empty a segment without removing it. */
+  clearSegment: (key: string) => void;
+  /** How long the segment is planned to run. undefined clears it. */
+  setSegmentDuration: (key: string, minutes: number | undefined) => void;
   renameSegment: (key: string, label: string) => void;
   /** Change what kind of segment it is. The label follows only if it was
       still the old type's stock label — a name someone typed is theirs. */
@@ -179,6 +190,65 @@ export function RunProvider({ children }: { children: ReactNode }) {
   const removeSegment = useCallback((key: string) => {
     setSegments((prev) => prev.filter((s) => s.key !== key));
     setOpen((prev) => prev.filter((k) => k !== key));
+  }, []);
+
+  /* Reordering is a swap, not a splice-and-insert: the two calls a menu can
+     make are "up" and "down", and a swap is exactly that. Out of range is a
+     no-op rather than an error — the first card's "move up" simply declines. */
+  const moveSegment = useCallback((key: string, delta: -1 | 1) => {
+    setSegments((prev) => {
+      const at = prev.findIndex((s) => s.key === key);
+      const to = at + delta;
+      if (at < 0 || to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[at], next[to]] = [next[to], next[at]];
+      return next;
+    });
+  }, []);
+
+  const insertSegment = useCallback((key: string, where: 'above' | 'below', picked: PlannedSegment) => {
+    setSegments((prev) => {
+      const at = prev.findIndex((s) => s.key === key);
+      if (at < 0) return prev;
+      const next = [...prev];
+      next.splice(where === 'above' ? at : at + 1, 0, make(picked));
+      return next;
+    });
+  }, []);
+
+  /* A copy carries its queue, with fresh keys — two rows sharing a key is
+     how a remove takes both. The name gains nothing: the operator is about
+     to rename it or leave two worship blocks, and either is legible. */
+  const duplicateSegment = useCallback((key: string) => {
+    setSegments((prev) => {
+      const at = prev.findIndex((s) => s.key === key);
+      if (at < 0) return prev;
+      const src = prev[at];
+      const copy: RunSegment = {
+        ...src,
+        key: `${src.type}-${(seq.current += 1)}`,
+        items: src.items.map((i) => ({ ...i, key: `${i.source}-${(seq.current += 1)}` })),
+      };
+      const next = [...prev];
+      next.splice(at + 1, 0, copy);
+      return next;
+    });
+  }, []);
+
+  const clearSegment = useCallback((key: string) => {
+    setSegments((prev) => prev.map((s) => (s.key === key ? { ...s, items: [] } : s)));
+  }, []);
+
+  const setSegmentDuration = useCallback((key: string, minutes: number | undefined) => {
+    setSegments((prev) =>
+      prev.map((s) => {
+        if (s.key !== key) return s;
+        const next = { ...s };
+        if (minutes === undefined) delete next.durationMin;
+        else next.durationMin = minutes;
+        return next;
+      }),
+    );
   }, []);
 
   const queue = useCallback((segmentKey: string, item: Omit<QueueItem, 'key'>) => {
@@ -341,6 +411,11 @@ export function RunProvider({ children }: { children: ReactNode }) {
       segments,
       addSegments,
       removeSegment,
+      moveSegment,
+      insertSegment,
+      duplicateSegment,
+      clearSegment,
+      setSegmentDuration,
       renameSegment,
       setSegmentType,
       patchItem,
@@ -357,6 +432,11 @@ export function RunProvider({ children }: { children: ReactNode }) {
       segments,
       addSegments,
       removeSegment,
+      moveSegment,
+      insertSegment,
+      duplicateSegment,
+      clearSegment,
+      setSegmentDuration,
       renameSegment,
       setSegmentType,
       patchItem,

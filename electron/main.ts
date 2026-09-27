@@ -1271,6 +1271,14 @@ ipcMain.on('process-text', (_event, text) => {
   console.log('📥 Manual input:', text)
   sendTranscript(text, true)
   emitTranscript(text)
+  /*
+   * Manual input is speech the operator typed instead of said, so it
+   * belongs on the transcript surfaces like any other sentence. Without
+   * this it drove detection perfectly and left the preacher transcript, the
+   * bottom strip and the sermon notes blank — the one path where the app
+   * caught a verse and could not show what had been said to catch it.
+   */
+  emitTranscriptLine(text, true)
 })
 
 /*

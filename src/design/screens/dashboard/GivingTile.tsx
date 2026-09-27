@@ -1,4 +1,5 @@
 import { Panel } from '../parts';
+import { GiftIcon } from '../../../ui';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
 
@@ -21,32 +22,87 @@ const ROWS: Row[] = [
   { kind: 'text', key: 'givingNote', label: 'Note', blurb: 'A line shown above the giving buttons.', value: 'Thank you for partnering with us.' },
 ];
 
-const METHODS: { key: string; label: string }[] = [
-  { key: 'givingZelle', label: 'zelle' },
-  { key: 'givingVenmo', label: 'venmo' },
-  { key: 'givingCashApp', label: 'cash app' },
-  { key: 'givingPaypal', label: 'paypal' },
-  { key: 'givingBankInfo', label: 'bank' },
-  { key: 'givingCustomUrl', label: 'giving page' },
+/* Each service in its own colour, the one people know it by. Unset, a
+   method wears plain ink instead — colour means "this one is live". */
+const METHODS: { key: string; label: string; ink: string }[] = [
+  { key: 'givingZelle', label: 'zelle', ink: '#a879e6' },
+  { key: 'givingVenmo', label: 'venmo', ink: '#4aa3ea' },
+  { key: 'givingCashApp', label: 'cash app', ink: '#57c76a' },
+  { key: 'givingPaypal', label: 'paypal', ink: '#5b8ede' },
+  { key: 'givingBankInfo', label: 'bank', ink: '#8fd3c0' },
+  { key: 'givingCustomUrl', label: 'giving page', ink: '#e4d87a' },
 ];
 
-/* Where a method's mark goes once there is art for it. Until then the
-   name, set in the method's own colour when it is configured. */
-function Mark({ label, active, value }: { label: string; active: boolean; value?: string }) {
-  return (
-    <span
-      title={active && value ? value : 'not set up'}
-      className="flex min-h-0 items-center justify-center rounded-[10px] border text-[length:var(--tri-size-xs)] lowercase transition-[filter,border-color] hover:brightness-150"
-      style={{
-        color: active ? '#8fd3c0' : 'rgb(229 243 242 / 0.3)',
-        borderColor: active ? 'rgb(143 211 192 / 0.3)' : 'rgb(255 255 255 / 0.08)',
-        background: active ? 'rgb(143 211 192 / 0.05)' : 'transparent',
-      }}
-    >
-      {label}
-    </span>
-  );
+/* The card shows the handle people actually pay to, so the trailing half
+   of a long one is what matters: @vrcministries reads, https://vrcmini…
+   does not. A URL loses its scheme first, then its head. */
+function payAddress(key: string, value: string): string {
+  if (!value) return '';
+  if (key === 'givingCustomUrl') {
+    const bare = value.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return bare.length > 26 ? `…${bare.slice(-25)}` : bare;
+  }
+  return value.length > 26 ? `…${value.slice(-25)}` : value;
 }
+
+/*
+ * The marks.
+ *
+ * Each service draws its own glyph rather than borrowing a logo file: a
+ * wordmark at this size is unreadable, and a downloaded asset is a licence
+ * question on a church's screen. These are the shapes people recognise —
+ * Zelle's Z, Venmo's V, Cash App's $, PayPal's P, a bank's columns, a link
+ * — set in the service's own colour when it is configured and in plain ink
+ * when it is not, so the card reads at a glance as "these three are on".
+ */
+function MethodMark({ id, color }: { id: string; color: string }) {
+  const common = { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none' } as const;
+  switch (id) {
+    case 'givingZelle':
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M12 2.5v3M12 18.5v3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M7 6.5h10L7 17.5h10" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case 'givingVenmo':
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M6 5.5h4.4c.8 3.2 1.2 6 1.3 8.4 1.8-3 3.3-6.1 3.7-8.4H20c-1.2 5.3-4 10.4-7 13H9.2C7.9 13.6 7 9.4 6 5.5Z" fill={color} />
+        </svg>
+      );
+    case 'givingCashApp':
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M12 3v2.2M12 18.8V21" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M15.6 8.2A4.2 4.2 0 0 0 12.4 7h-1a2.4 2.4 0 0 0-.7 4.7l3 1a2.4 2.4 0 0 1-.7 4.7h-1a4.2 4.2 0 0 1-3.2-1.2" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    case 'givingPaypal':
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M8.5 20 10.8 4.5h4.4c2.6 0 4 1.5 3.6 3.9-.4 2.6-2.3 4.1-5.1 4.1h-2.3L10.7 20H8.5Z" fill={color} opacity="0.55" />
+          <path d="M6 17 8.3 1.5" stroke="none" />
+          <path d="M6.2 20 8.5 4.5h4.4c2.6 0 4 1.5 3.6 3.9-.4 2.6-2.3 4.1-5.1 4.1H9.1L8.4 20H6.2Z" fill={color} />
+        </svg>
+      );
+    case 'givingBankInfo':
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M3.5 9.5 12 4.5l8.5 5" stroke={color} strokeWidth="1.8" strokeLinejoin="round" />
+          <path d="M6 10.5v7M10 10.5v7M14 10.5v7M18 10.5v7M3.5 19.5h17" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common} aria-hidden>
+          <path d="M10 13.8a3.4 3.4 0 0 0 5 .4l2.6-2.6a3.4 3.4 0 0 0-4.8-4.8l-1.3 1.3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M14 10.2a3.4 3.4 0 0 0-5-.4l-2.6 2.6a3.4 3.4 0 0 0 4.8 4.8l1.3-1.3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      );
+  }
+}
+
 
 export function GivingTile({ className, face = 'strip' }: { className?: string; face?: 'strip' | 'card' }) {
   const set = new Set(ROWS.filter((r) => r.kind === 'text' && r.value).map((r) => r.key));
@@ -60,11 +116,67 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
       size={{ w: 640, h: 560 }}
       tile={({ onOpen }) =>
         face === 'card' ? (
-          <Panel title="giving" className="min-h-0 flex-1">
-            <button type="button" onClick={onOpen} className="grid h-full w-full grid-cols-3 grid-rows-2 gap-2 text-left">
+          /*
+            A list, not a grid of chips.
+            
+            The six names in boxes said only which methods exist — the one
+            thing nobody needs to look up, since it is the same every week.
+            What the booth is actually asked for mid-service is the HANDLE:
+            "what's the Zelle?" So each method is a row — mark and name at
+            the left, the number or handle at the right — and the rows that
+            are set up carry their service's own colour, which is what makes
+            "three of six are on" readable without counting.
+          */
+          <Panel
+            title="giving"
+            icon={<GiftIcon size={13} />}
+            blurb="the ways this church takes an offering."
+            onOpen={onOpen}
+            className="min-h-0 flex-1"
+            bodyClass="pt-1"
+          >
+            <button
+              type="button"
+              onClick={onOpen}
+              className="flex h-full w-full flex-col justify-between text-left"
+            >
               {METHODS.map((m) => {
                 const row = ROWS.find((r) => r.key === m.key);
-                return <Mark key={m.key} label={m.label} active={set.has(m.key)} value={row?.kind === 'text' ? row.value : undefined} />;
+                const value = row?.kind === 'text' ? String(row.value ?? '') : '';
+                const active = set.has(m.key);
+                const ink = active ? m.ink : 'rgb(229 243 242 / 0.28)';
+                return (
+                  <span
+                    key={m.key}
+                    className="flex min-h-0 flex-1 items-center gap-2.5 border-b border-[rgb(255_255_255_/_0.05)] px-0.5 last:border-b-0"
+                  >
+                    <span
+                      className="grid size-[26px] shrink-0 place-items-center rounded-[8px]"
+                      style={{
+                        background: active ? `color-mix(in srgb, ${m.ink} 12%, transparent)` : 'rgb(255 255 255 / 0.035)',
+                        boxShadow: `inset 0 0 0 1px ${active ? `color-mix(in srgb, ${m.ink} 30%, transparent)` : 'rgb(255 255 255 / 0.07)'}`,
+                      }}
+                    >
+                      <MethodMark id={m.key} color={ink} />
+                    </span>
+                    <span
+                      className="min-w-0 flex-1 truncate text-[length:var(--tri-size)] lowercase"
+                      style={{ color: active ? 'var(--tri-ink)' : 'rgb(229 243 242 / 0.4)' }}
+                    >
+                      {m.label}
+                    </span>
+                    <span
+                      className="shrink-0 truncate text-right text-[length:var(--tri-size-xs)] tabular-nums"
+                      style={{
+                        maxWidth: '55%',
+                        color: active ? 'rgb(229 243 242 / 0.62)' : 'rgb(229 243 242 / 0.22)',
+                      }}
+                      title={value || undefined}
+                    >
+                      {active ? payAddress(m.key, value) : 'not set up'}
+                    </span>
+                  </span>
+                );
               })}
             </button>
           </Panel>
@@ -95,7 +207,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
               })}
             </span>
             <span className="shrink-0 text-[length:var(--tri-size-eyebrow)] tabular-nums text-[rgb(229_243_242_/_0.45)]">
-              {on.length} of {METHODS.length} ›
+              {on.length} of {METHODS.length}
             </span>
           </button>
         </Panel>

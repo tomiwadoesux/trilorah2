@@ -80,7 +80,13 @@ const PAGES: Page[] = [
     icon: <BookIcon size={ICON} />,
     rows: [
       { kind: 'select', key: 'engineLanguage', label: 'Engine language', blurb: 'Which language pack the reference resolver and voice commands use.', value: 'en', options: ['en', 'es', 'fr', 'pt', 'hi', 'zh'] },
-      { kind: 'select', key: 'asrLanguage', label: 'Speech language', blurb: 'What the transcriber listens for. Usually the same as the engine language.', value: 'en-US', options: ['en-US', 'en-GB', 'es-ES', 'fr-FR', 'pt-BR', 'hi-IN', 'zh-CN'] },
+      /* Free text, not a select: the seven codes that used to be the whole
+         list left out es-419, fr-CA, de, ko, ru, it and ja, and a closed
+         list is a wall for any church that speaks one of them. Deepgram
+         and Whisper both take far more codes than anyone should enumerate
+         here, so the blurb names the common ones and the field accepts
+         whatever the transcriber does. */
+      { kind: 'text', key: 'asrLanguage', label: 'Speech language', blurb: 'What the transcriber listens for — a language code such as en-US, en-GB, es-ES, es-419, fr-FR, fr-CA, pt-BR, de, it, hi-IN, zh-CN, ko or ja. Usually the same language as the engine above.', value: 'en-US', placeholder: 'en-US' },
       { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live; this is what it goes back to.', value: 'KJV', options: ['KJV'] },
       { kind: 'note', key: 'uiLanguage', text: 'UI language is not built yet — the app is English-only for now. The setting is here so it is not forgotten.' },
     ],
@@ -201,28 +207,91 @@ const PAGES: Page[] = [
 /* The page                                                            */
 /* ------------------------------------------------------------------ */
 
+/*
+ * A page of settings, backed by the engine.
+ *
+ * Every row here used to live in local state and nothing else: a toggle
+ * moved, looked changed, and was gone on reload. That is worse than an
+ * inert control, because the operator believes they configured something.
+ * The whole screen was a mock of itself.
+ *
+ * Now `values` is seeded from the real settings store and every change is
+ * written back. The row's own `value` stays as the fallback for a key the
+ * store has never held, so a page still draws before the read lands and
+ * still draws in the sandbox where there is no engine at all.
+ *
+ * The save says so, too — see `saved`. A church laptop mid-setup that
+ * accepts a change in silence is indistinguishable from one that dropped
+ * it, and the value gets retyped three times. The old screen learned that
+ * the hard way (src/screens/Settings.tsx) and the lesson comes with it.
+ */
 function PageBody({ page }: { page: Page }) {
   const [values, setValues] = useState<Record<string, unknown>>(() => seedValues(page.rows));
   const [showAdvanced, setShowAdvanced] = useState(false);
+  /** Which key last settled, and how it went. */
+  const [saved, setSaved] = useState<{ key: string; ok: boolean } | null>(null);
+
+  /* Seed from the store. Runs per page rather than once for the whole
+     screen: a page is a handful of keys and the read is cheap, where a
+     single shared cache would have to be invalidated by every write. */
+  useEffect(() => {
+    let alive = true;
+    void window.api?.getSettings?.()
+      .then((stored) => {
+        if (!alive || !stored) return;
+        setValues((v) => {
+          const next = { ...v };
+          for (const row of page.rows) {
+            const held = (stored as Record<string, unknown>)[row.key];
+            if (held !== undefined) next[row.key] = held;
+          }
+          return next;
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [page]);
   /* The Bible list is whatever bible.db actually holds, never a guess. The
      old hardcoded list offered NKJV and NIV against a database that has
      neither — pick one and every verse on the projector reads "not found". */
   const [versions, setVersions] = useState<string[] | null>(null);
+  /* Same rule for the language pack: offering a language the app has no
+     pack for means a church picks it and the resolver quietly keeps
+     speaking English. The engine knows which packs are installed. */
+  const [languages, setLanguages] = useState<string[] | null>(null);
   useEffect(() => {
     let alive = true;
     void window.api?.getAvailableVersions?.().then((v) => {
       if (alive && Array.isArray(v) && v.length) setVersions(v);
     });
+    void window.api?.getAvailableLanguages?.().then((l) => {
+      if (alive && Array.isArray(l) && l.length) setLanguages(l.map((x) => x.code));
+    }).catch(() => undefined);
     return () => {
       alive = false;
     };
   }, []);
-  const withLiveOptions = (r: Row): Row =>
-    r.key === 'displayVersion' && versions && 'options' in r ? { ...r, options: versions } : r;
+  const withLiveOptions = (r: Row): Row => {
+    if (r.key === 'displayVersion' && versions && 'options' in r) return { ...r, options: versions };
+    if (r.key === 'engineLanguage' && languages && 'options' in r) return { ...r, options: languages };
+    return r;
+  };
   const visible = page.rows.map(withLiveOptions).filter((r) => rowVisible(r, values));
   const normal = visible.filter((r) => !r.advanced);
   const advanced = visible.filter((r) => r.advanced);
-  const set = (key: string) => (next: unknown) => setValues((v) => ({ ...v, [key]: next }));
+  const set = (key: string) => (next: unknown) => {
+    /* Local first: the operator's own input is never yanked back while a
+       write is in flight. */
+    setValues((v) => ({ ...v, [key]: next }));
+    const api = window.api;
+    if (!api?.setSetting) return;
+    void api
+      .setSetting(key, next)
+      .then((ok) => setSaved({ key, ok: ok !== false }))
+      .catch(() => setSaved({ key, ok: false }));
+  };
   const n = PAGES.indexOf(page) + 1;
 
   return (
@@ -235,7 +304,13 @@ function PageBody({ page }: { page: Page }) {
 
       <div className="mt-8">
         {normal.map((row) => (
-          <SettingRow key={row.key} row={row} value={values[row.key]} onChange={set(row.key)} />
+          <SettingRow
+            key={row.key}
+            row={row}
+            value={values[row.key]}
+            onChange={set(row.key)}
+            saved={saved?.key === row.key ? saved.ok : undefined}
+          />
         ))}
       </div>
 
@@ -255,7 +330,13 @@ function PageBody({ page }: { page: Page }) {
           {showAdvanced && (
             <div className="mt-2">
               {advanced.map((row) => (
-                <SettingRow key={row.key} row={row} value={values[row.key]} onChange={set(row.key)} />
+                <SettingRow
+                  key={row.key}
+                  row={row}
+                  value={values[row.key]}
+                  onChange={set(row.key)}
+                  saved={saved?.key === row.key ? saved.ok : undefined}
+                />
               ))}
               <div className="flex justify-end pt-4">
                 <Button label="reset these to defaults" icon={<ResetIcon size={12} />} />

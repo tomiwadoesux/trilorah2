@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cx, surface, Button, CheckIcon, PlusIcon } from '../../../ui';
 import { Panel, Pill } from '../parts';
 import { Expandable } from './expand';
@@ -100,14 +100,39 @@ function PhraseEditor() {
   const remove = (id: string, phrase: string) =>
     setCommands((cs) => cs.map((c) => (c.id === id ? { ...c, phrases: c.phrases.filter((p) => p !== phrase) } : c)));
 
+  /* The master switch.
+     Per-preacher control lives in each profile — that is where an operator
+     goes to say "this pastor doesn't use them". This one is the kill switch
+     for the moment a command misfires mid-sermon and nobody has time to
+     find a profile: one press and the app is back to listening for
+     scripture only, for everyone. */
+  const [enabled, setEnabled] = useState(true);
+  useEffect(() => {
+    const api = typeof window === 'undefined' ? undefined : window.api;
+    if (!api?.getSetting) return;
+    let alive = true;
+    void Promise.resolve(api.getSetting('voiceCommandsEnabled'))
+      .then((v) => {
+        if (alive && typeof v === 'boolean') setEnabled(v);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const toggle = (next: boolean) => {
+    setEnabled(next);
+    void window.api?.setSetting?.('voiceCommandsEnabled', next).catch(() => undefined);
+  };
+
   return (
     <div className="flex flex-col">
       <div className="flex items-center justify-between py-4" style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.06)' }}>
         <div>
           <div className="text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">Voice commands</div>
-          <p className="mt-1 text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.5)]">Recognised from the pastor's own speech. Off, and the app only listens for scripture.</p>
+          <p className="mt-1 text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.5)]">Recognised from the pastor's own speech. Off, and the app only listens for scripture — for everyone. To turn them off for one pastor, use their profile.</p>
         </div>
-        <Toggle on onChange={() => undefined} />
+        <Toggle on={enabled} onChange={toggle} />
       </div>
       {commands.map((c) => (
         <div key={c.id} className="py-4" style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.06)' }}>
@@ -151,7 +176,7 @@ export function VoiceCommandsTile({ className }: { className?: string }) {
             <button type="button" onClick={onOpen} className="flex shrink-0 items-baseline justify-between text-left">
               <span className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">voice commands</span>
               <span className="text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
-                {COMMANDS.length} commands · {phraseCount} phrases ›
+                {COMMANDS.length} commands · {phraseCount} phrases
               </span>
             </button>
 

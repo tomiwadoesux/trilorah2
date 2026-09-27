@@ -1,4 +1,6 @@
 import { Panel } from '../parts';
+import { HistoryIcon } from '../../../ui';
+import { Expandable } from './expand';
 import { LogHistory, type HistoryEntry } from '../LogHistory';
 
 /*
@@ -16,8 +18,30 @@ export function NotificationsTile({
   className?: string;
 }) {
   return (
-    <Panel title="notifications" className={className} bodyClass="px-2 pb-2">
+    <Expandable
+      className={className}
+      title="Notifications"
+      glyph={false}
+      blurb="Everything the app has done this service, newest first."
+      size={{ w: 640, h: 680 }}
+      /* The card shows the last few; the box shows the service. Same list
+         either way — see LogHistory — because a log that reformats itself
+         when it grows is a log you have to re-learn at the moment you most
+         need to read it quickly. */
+      tile={({ onOpen }) => (
+        <Panel
+          title="notifications"
+          icon={<HistoryIcon size={13} />}
+          blurb="what the app has done, newest first."
+          onOpen={onOpen}
+          className="min-h-0 w-full flex-1"
+          bodyClass="px-2 pb-2"
+        >
+          <LogHistory entries={entries} onAction={onAction} className="h-full" />
+        </Panel>
+      )}
+    >
       <LogHistory entries={entries} onAction={onAction} className="h-full" />
-    </Panel>
+    </Expandable>
   );
 }

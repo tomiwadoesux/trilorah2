@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Panel } from '../parts';
+import { ClockIcon } from '../../../ui';
 import { Expandable } from './expand';
-import { useBoxSize } from './useBoxSize';
 import { formatTimerDisplay } from '../../../../shared/timerDisplay';
-import { getTimerInk } from '../../../../shared/timerColor';
+import { getTimerColor } from '../../../../shared/timerColor';
 import { PauseIcon, PlayIcon, ResetIcon, TrashIcon } from '../../../ui';
 
 interface Snapshot {
@@ -81,16 +81,14 @@ function faceMs(t: Snapshot, takenAt: number): number {
  * .timer-screen-digits in src/output.css sets exactly this stack for the
  * full-screen timer the preacher reads. The bento face is the same clock at
  * a smaller size, so it wears the same face — a booth glancing between the
- * tile and the wall should not see two different timers. Both pages load
- * Orbitron (index.html / design.html / output.html).
+ * tile and the wall should not see two different timers. index.html,
+ * design.html and output.html all load Orbitron and Share Tech Mono.
  */
 const TIMER_FONT = "'Orbitron', 'Share Tech Mono', monospace";
 
-/* The tile's clock, and the width it needs at that size — six 52px boxes,
-   two 16px colons and the gaps between them, all times the scale. FaceFit
-   shrinks below this only when the card is narrower than that. */
-const TILE_FACE_SCALE = 1.15;
-const TILE_FACE_W = Math.round((52 * 6 + 16 * 2 + 4 * 7) * TILE_FACE_SCALE);
+/* The screen's other face — titles, the clock, captions (.timer-screen-title
+   and friends in src/output.css). */
+const SCREEN_MONO = "'Share Tech Mono', 'Orbitron', monospace";
 
 /** Six digits, HHMMSS, from a duration in seconds. */
 export function secondsToDigits(totalSec: number): string {
@@ -132,36 +130,62 @@ function popDigit(digits: string): string {
 }
 
 /**
- * Six boxes in three pairs, with a ':' between the pairs.
+ * The timer as the preacher's screen shows it — a small copy of the
+ * full-screen HDMI timer (.role-timer in src/output.css), not a separate
+ * dashboard design. Name top-left, room clock top-right, one big number in
+ * the phase colour with its glow, "OF 45:00" under it, and the same
+ * overtime / extra-time labels. What the booth sees on the card is what the
+ * pulpit sees on the wall.
+ *
+ * Sizes are container units, taken from output.css's vw/vh one-for-one, so
+ * the copy keeps the screen's proportions at any card size.
  *
  * Read-only while a timer runs: the number showing then is the truth being
  * projected behind the preacher, and a stray keypress must not be able to
- * move it. Stopped, the whole clock is one control — click or Enter to type,
+ * move it. Stopped, the number is one control — click or Enter to type,
  * Enter or blur to keep it, Escape to put back what was there.
  */
-function DigitFace({
-  digits,
-  editing,
+function ScreenFace({
+  name,
+  display,
+  target,
   color,
+  over,
+  extraLabel,
+  idle,
+  stateLabel,
+  footerRight,
+  editing,
   onBeginEdit,
   onDigits,
+  digits,
   onCommit,
   onCancel,
-  scale = 1,
-  negative = false,
   active = true,
+  className,
+  style,
 }: {
-  digits: string;
-  editing: boolean;
+  name: string;
+  /** The big number, already formatted. */
+  display: string;
+  /** Length of the phase being counted ("45:00"), or null. */
+  target: string | null;
   color: string;
+  over: boolean;
+  extraLabel: string | null;
+  /** No timer yet: the caption reads as standby. */
+  idle: boolean;
+  stateLabel: string | null;
+  /** Replaces the state word bottom-right (the idle START button). */
+  footerRight?: ReactNode;
+  editing: boolean;
   onBeginEdit: () => void;
+  digits: string;
   onDigits: (next: string) => void;
   onCommit: () => void;
   onCancel: () => void;
-  scale?: number;
-  negative?: boolean;
   /*
-   * Whether this copy of the face is the one the operator can actually see.
+   * Whether this copy is the one the operator can actually see.
    *
    * The tile stays mounted underneath the popup (Expandable dims it to 0.25
    * rather than unmounting), so while the popup is open BOTH faces exist and
@@ -170,8 +194,11 @@ function DigitFace({
    * of edit mode. Only the visible one takes focus or listens to blur.
    */
   active?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const clock = useRoomClock();
 
   useEffect(() => {
     if (editing && active) ref.current?.focus();
@@ -209,89 +236,166 @@ function DigitFace({
     }
   };
 
-  const pairs = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 6)];
-
-  const boxW = Math.round(52 * scale);
-  const boxH = Math.round(70 * scale);
-  const fontSize = Math.round(44 * scale);
-  const gap = Math.round(4 * scale);
+  const RED = '#ef4444';
 
   return (
+    /* Two boxes because container units resolve against an ANCESTOR
+       container: the outer one is the container, the inner one can then
+       size its padding and type in cq units against it. */
     <div
-      ref={ref}
-      role="group"
-      tabIndex={0}
-      aria-label={
-        editing
-          ? 'Timer duration — type digits to set'
-          : `Timer ${digits.slice(0, 2)} hours ${digits.slice(2, 4)} minutes ${digits.slice(4, 6)} seconds`
-      }
-      onKeyDown={handleKey}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!editing) onBeginEdit();
+      className={`flex overflow-hidden rounded-[var(--tri-radius-control)] text-white select-none ${className ?? ''}`}
+      style={{
+        containerType: 'size',
+        background: '#080808',
+        boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.07)',
+        ...style,
       }}
-      onBlur={() => {
-        if (editing && active) onCommit();
-      }}
-      className="flex select-none items-center justify-center rounded-[var(--tri-radius-control)] outline-none focus-visible:ring-1 focus-visible:ring-white/25"
-      style={{ cursor: editing ? 'text' : 'pointer', gap }}
     >
-      {negative && (
-        <span
-          className="font-black leading-none"
-          style={{ color, fontSize, marginRight: Math.round(2 * scale), fontFamily: TIMER_FONT }}
-        >
-          −
-        </span>
-      )}
-      {pairs.map((pair, pi) => (
-        <div key={pi} className="flex items-center" style={{ gap }}>
-          {pi > 0 && (
-            <span
-              className="text-center font-black leading-none"
-              style={{
-                color,
-                fontSize,
-                fontFamily: TIMER_FONT,
-                opacity: 0.4,
-                width: Math.round(16 * scale),
-                /* A colon sits on the baseline and would hang low against
-                   digits that fill their whole box, so lift it to the optical
-                   centre. */
-                transform: `translateY(${Math.round(-0.07 * fontSize)}px)`,
-              }}
-            >
-              :
-            </span>
-          )}
-          {[pair[0], pair[1]].map((digit, di) => (
-            <div
-              key={di}
-              className="flex items-center justify-center rounded-[var(--tri-radius-control)] border transition-colors"
-              style={{
-                width: boxW,
-                height: boxH,
-                borderColor: editing ? 'rgb(255 255 255 / 0.22)' : 'rgb(255 255 255 / 0.10)',
-                backgroundColor: editing ? 'rgb(255 255 255 / 0.07)' : 'rgb(255 255 255 / 0.04)',
-              }}
-            >
-              <span
-                className="font-black tabular-nums leading-none"
-                style={{ color, fontSize, fontFamily: TIMER_FONT }}
-              >
-                {digit}
-              </span>
-            </div>
-          ))}
+      <div className="flex min-w-0 flex-1 flex-col justify-between" style={{ padding: '5cqh 6cqw' }}>
+        {/* Top bar: the timer's name, and the room clock. */}
+        <div className="flex w-full items-center justify-between">
+          <span
+            className="truncate font-bold uppercase"
+            style={{ fontFamily: SCREEN_MONO, fontSize: 'max(9px, 2.6cqw)', letterSpacing: '0.15em', color: 'rgb(255 255 255 / 0.7)' }}
+          >
+            {name}
+          </span>
+          <span
+            className="shrink-0 font-bold tabular-nums"
+            style={{ fontFamily: SCREEN_MONO, fontSize: 'max(10px, 3cqw)', letterSpacing: '0.08em', color: 'rgb(255 255 255 / 0.9)' }}
+          >
+            {clock}
+          </span>
         </div>
-      ))}
+
+        {/* Centre: the number. */}
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+          {over && target && (
+            <div
+              className="font-bold uppercase tabular-nums"
+              style={{ fontFamily: SCREEN_MONO, fontSize: 'max(9px, 3.8cqw)', letterSpacing: '0.1em', color: 'rgb(255 255 255 / 0.45)', marginBottom: '1.5cqh' }}
+            >
+              target: {target}
+            </div>
+          )}
+          <div
+            ref={ref}
+            role="group"
+            tabIndex={0}
+            aria-label={editing ? 'Timer duration — type digits to set' : `Timer ${display}`}
+            onKeyDown={handleKey}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!editing) onBeginEdit();
+            }}
+            onBlur={() => {
+              if (editing && active) onCommit();
+            }}
+            className="rounded-[var(--tri-radius-control)] outline-none focus-visible:ring-1 focus-visible:ring-white/25"
+            style={{ cursor: editing ? 'text' : 'pointer', padding: '0 1.5cqw' }}
+          >
+            <span
+              className="block font-black tabular-nums"
+              style={{
+                fontFamily: TIMER_FONT,
+                fontSize: 'min(18cqw, 34cqh)',
+                lineHeight: 0.9,
+                letterSpacing: '0.04em',
+                color: over ? RED : color,
+                textShadow: over ? `0 0 1.8cqw ${RED}99` : `0 0 1.6cqw ${color}60`,
+                transition: 'color 400ms ease, text-shadow 400ms ease',
+                /* Typing is shown by the number dimming a touch and an
+                   underline, not by a different face. */
+                opacity: editing ? 0.85 : 1,
+                textDecoration: editing ? 'underline' : 'none',
+                textDecorationThickness: '0.04em',
+                textUnderlineOffset: '0.12em',
+                textDecorationColor: 'rgb(255 255 255 / 0.3)',
+              }}
+            >
+              {display}
+            </span>
+          </div>
+          {over ? (
+            <div
+              className="font-extrabold uppercase"
+              style={{
+                fontSize: 'max(8px, 2.2cqw)',
+                letterSpacing: '0.25em',
+                color: RED,
+                background: 'rgb(239 68 68 / 0.15)',
+                border: '1px solid rgb(239 68 68 / 0.4)',
+                borderRadius: 999,
+                padding: '0.6cqh 2.5cqw',
+                marginTop: '2.5cqh',
+              }}
+            >
+              overtime exceeded
+            </div>
+          ) : idle ? (
+            <div
+              className="font-bold uppercase"
+              style={{ fontFamily: SCREEN_MONO, fontSize: 'max(8px, 2.5cqw)', letterSpacing: '0.25em', color: 'rgb(255 255 255 / 0.45)', marginTop: '2cqh' }}
+            >
+              standby · service ready
+            </div>
+          ) : (
+            target && (
+              <div
+                className="font-bold uppercase tabular-nums"
+                style={{ fontFamily: SCREEN_MONO, fontSize: 'max(8px, 2.5cqw)', letterSpacing: '0.1em', color: 'rgb(255 255 255 / 0.45)', marginTop: '2cqh' }}
+              >
+                of {target}
+              </div>
+            )
+          )}
+          {extraLabel && (
+            <div
+              className="font-bold uppercase"
+              style={{
+                fontSize: 'max(8px, 2cqw)',
+                letterSpacing: '0.15em',
+                color: '#34d399',
+                background: 'rgb(16 185 129 / 0.15)',
+                border: '1px solid rgb(16 185 129 / 0.35)',
+                borderRadius: 999,
+                padding: '0.4cqh 1.8cqw',
+                marginTop: '2cqh',
+              }}
+            >
+              {extraLabel}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom bar: what the output is, and what the clock is doing. */}
+        <div
+          className="flex w-full items-center justify-between"
+          style={{ fontSize: 'max(8px, 1.8cqw)', color: 'rgb(255 255 255 / 0.4)' }}
+        >
+          <span style={{ fontFamily: 'var(--verse-font, Georgia, serif)', fontSize: 'max(8px, 2cqw)', color: 'rgb(255 255 255 / 0.65)' }}>
+            STAGE TIMER
+          </span>
+          {footerRight ??
+            (stateLabel && (
+              <span className="font-semibold uppercase" style={{ letterSpacing: '0.15em' }}>
+                {stateLabel}
+              </span>
+            ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function clockAt(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+/** The room clock the screen shows top-right, on the same format. */
+function useRoomClock(): string {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 export function TimersTile({ className }: { className?: string }) {
@@ -397,7 +501,7 @@ export function TimersTile({ className }: { className?: string }) {
    * single delete could uncover an older timer — or, worse, leave a forgotten
    * running one underneath that silently owns the face and refuses to be
    * typed into. One press, one predictable outcome: an empty store and 45:00
-   * back on the boxes.
+   * back on the face.
    */
   const handleRemove = () => {
     if (window.api?.removeTimer) {
@@ -522,7 +626,7 @@ export function TimersTile({ className }: { className?: string }) {
     ? activeTimer.phaseTotalMs ?? (activeTimer.durationSec ?? 0) * 1000
     : digitsToSeconds(draft) * 1000;
   /*
-   * What the six boxes read.
+   * What the face reads.
    *
    * A RUNNING clock owns the face outright. Otherwise the operator's draft
    * wins as soon as they are editing — including over a PAUSED timer, which
@@ -532,7 +636,6 @@ export function TimersTile({ className }: { className?: string }) {
    * keystrokes vanished, and the next start used a duration nobody had seen.
    */
   const showingDraft = !activeTimer || (activeTimer.state !== 'running' && editing);
-  const faceDigits = showingDraft ? draft : secondsToDigits(Math.abs(faceMsNow) / 1000);
 
   /* Colour follows whatever the boxes are actually SHOWING. Deriving it from
      the timer while the digits came from the draft meant a stopped clock left
@@ -543,15 +646,16 @@ export function TimersTile({ className }: { className?: string }) {
       (activeTimer.overrunning ||
         (activeTimer.kind === 'countdown' && !activeTimer.inExtension && !activeTimer.extraSec && faceMsNow < 0))
   );
-  const faceInk = faceOver
-    ? 'var(--tri-ink-danger)'
-    : showingDraft
-      ? 'var(--tri-ink)'
-      : getTimerInk(faceMsNow, phaseMs);
+  /* The screen's own colours: green at rest, through amber to red as the
+     phase runs out (getTimerColor, the one the HDMI timer uses). A draft
+     that has not started reads in the screen's standby green. */
+  const faceColor = showingDraft ? '#22c55e' : getTimerColor(faceMsNow, phaseMs);
+  const faceDisplay = formatTimerDisplay(showingDraft ? digitsToSeconds(draft) * 1000 : faceMsNow);
+  const faceTarget = !showingDraft && phaseMs > 0 ? formatTimerDisplay(phaseMs) : null;
 
   const extraBadge =
     activeTimer?.extraSec && activeTimer.extraSec > 0
-      ? `+${Math.round(activeTimer.extraSec / 60)} min ${activeTimer.inExtension ? 'extra time' : 'granted'}`
+      ? `+${Math.round(activeTimer.extraSec / 60)} min ${activeTimer.inExtension ? 'extra time' : 'extension'}`
       : null;
 
   /* One definition of the controls, drawn at two sizes, so the tile and the
@@ -628,52 +732,24 @@ export function TimersTile({ className }: { className?: string }) {
     </div>
   );
 
-  /*
-   * The face is laid out at a fixed pixel size, which is what lets the six
-   * boxes keep their proportions. On a narrow booth window that width can
-   * exceed the card, so the whole block is scaled down to whatever fits
-   * rather than clipped — the clock stays as large as the card can hold and
-   * never loses a digit off the edge. Wide cards hit the cap and draw at
-   * full size, which is the common case.
-   */
-  const FaceFit = ({ width, children }: { width: number; children: ReactNode }) => {
-    const { ref, width: avail } = useBoxSize<HTMLDivElement>();
-    const fit = avail > 0 ? Math.min(1, avail / width) : 1;
-    /* min-w-0 is what makes the measurement honest: without it this box is a
-       flex item sized by its content, so it grows to the face's full width
-       and reports that back — the scale would always come out 1 and the
-       clock would still overhang. Constrained, it reports the width the card
-       actually has. The scaled child keeps its own box, so the row's height
-       is reserved from the unscaled size and nothing below it shifts. */
-    return (
-      <div ref={ref} className="flex w-full min-w-0 justify-center">
-        <div
-          style={{
-            transform: `scale(${fit})`,
-            transformOrigin: 'center',
-            /* Give back the height the shrink frees, or a scaled-down clock
-               would leave a band of dead space under it. */
-            marginBlock: fit < 1 ? `${((fit - 1) * 81) / 2}px` : undefined,
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    );
-  };
-
-  const theFace = (scale: number, active: boolean) => (
-    <DigitFace
+  const theFace = (active: boolean, extra: { className?: string; style?: React.CSSProperties; footerRight?: ReactNode } = {}) => (
+    <ScreenFace
       active={active}
-      digits={faceDigits}
+      name={activeTimer?.name ?? name}
+      display={faceDisplay}
+      target={faceTarget}
+      color={faceColor}
+      over={faceOver}
+      extraLabel={extraBadge}
+      idle={!activeTimer}
+      stateLabel={activeTimer?.state ?? null}
+      digits={draft}
       editing={editing}
-      color={faceInk}
       onBeginEdit={beginEdit}
       onDigits={setDraft}
       onCommit={commitEdit}
       onCancel={cancelEdit}
-      scale={scale}
-      negative={faceOver}
+      {...extra}
     />
   );
 
@@ -686,6 +762,9 @@ export function TimersTile({ className }: { className?: string }) {
       tile={({ onOpen, open }) => (
         <Panel
           title={`service timer${timers.length > 1 ? ` (${timers.length})` : ''}`}
+          icon={<ClockIcon size={13} />}
+          blurb="how long is left, on the wall and the stage monitor."
+          onOpen={onOpen}
           className="min-h-0 flex-1 transition-colors hover:border-neutral-700"
           bodyClass="p-3.5 flex flex-col"
         >
@@ -700,44 +779,26 @@ export function TimersTile({ className }: { className?: string }) {
             button under it, because "start the sermon clock" is the only move
             worth making without opening anything.
           */}
-          <div
-            onClick={onOpen}
-            className="group/face flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 text-left"
-          >
-            {running || activeTimer ? (
-              <>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[rgb(229_243_242_/_0.45)]">
-                  {faceOver ? 'overtime' : activeTimer?.inExtension ? 'extra time' : (activeTimer?.name ?? name)}
-                </span>
-                <FaceFit width={TILE_FACE_W}>{theFace(TILE_FACE_SCALE, !open)}</FaceFit>
-                {extraBadge && (
-                  <span className="rounded border border-white/12 bg-white/[0.08] px-2 py-0.5 text-[10px] font-bold text-[rgb(229_243_242_/_0.75)]">
-                    {extraBadge}
-                  </span>
-                )}
-                {/* Started · ends, on hover. Read off the clock rather than
-                    stored: the snapshot only knows what is left. */}
-                {running && activeTimer && (
-                  <span className="text-[10px] tabular-nums text-[rgb(229_243_242_/_0)] transition-colors group-hover/face:text-[rgb(229_243_242_/_0.5)]">
-                    started {clockAt(Date.now() - ((activeTimer.phaseTotalMs ?? 0) - activeTimer.remainingMs))} · ends {clockAt(Date.now() + activeTimer.remainingMs)}
-                  </span>
-                )}
-              </>
-            ) : (
-              <>
-                <FaceFit width={TILE_FACE_W}>{theFace(TILE_FACE_SCALE, !open)}</FaceFit>
+          {/* The tile is the screen, small: the same face the preacher
+              reads. Pressing it opens the controls. Idle, the one move
+              worth making without opening anything — start — sits where
+              the screen shows the clock's state. */}
+          <div onClick={onOpen} className="flex min-h-0 flex-1 cursor-pointer">
+            {theFace(!open, {
+              className: 'min-h-0 flex-1',
+              footerRight: !activeTimer ? (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     void handleStartFace();
                   }}
-                  className="rounded-[var(--tri-radius-control)] border border-white/15 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--tri-ink)] transition-colors hover:bg-white/[0.15]"
+                  className="rounded-[var(--tri-radius-control)] border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--tri-ink)] transition-colors hover:bg-white/[0.15]"
                 >
                   start timer
                 </button>
-              </>
-            )}
+              ) : undefined,
+            })}
           </div>
         </Panel>
       )}
@@ -761,7 +822,7 @@ export function TimersTile({ className }: { className?: string }) {
             className="w-64 rounded-[var(--tri-radius-control)] border border-white/10 bg-white/[0.04] px-3 py-1.5 text-center text-sm font-semibold uppercase tracking-wider text-[var(--tri-ink)] outline-none transition-colors focus:border-white/28 disabled:opacity-60"
           />
 
-          {theFace(1, true)}
+          {theFace(true, { className: 'w-full', style: { aspectRatio: '16 / 9' } })}
 
           <span className="text-[11px] text-[rgb(229_243_242_/_0.45)]">
             {running
@@ -772,12 +833,6 @@ export function TimersTile({ className }: { className?: string }) {
                 ? 'type the digits — they fill from the right · esc to undo'
                 : 'click the clock to type a duration'}
           </span>
-
-          {extraBadge && (
-            <span className="rounded-full border border-white/12 bg-white/8 px-3 py-0.5 text-xs font-bold text-[rgb(229_243_242_/_0.75)]">
-              {extraBadge}
-            </span>
-          )}
 
           {controls(false)}
         </div>

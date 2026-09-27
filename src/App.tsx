@@ -10,14 +10,13 @@ import { Tour } from './components/Tour';
    ./screens/Live — swapping this import back is the whole rollback. */
 import { LiveHost } from './screens/LiveHost';
 import { Bible } from './screens/Bible';
-import { Songs } from './screens/Songs';
 import { Presentations } from './screens/Presentations';
 import { Themes } from './screens/Themes';
 import { Schedule } from './screens/Schedule';
 import { Preachers } from './screens/Preachers';
-import { Notes } from './screens/Notes';
 import { Settings } from './screens/Settings';
 import { Cloud } from './screens/Cloud';
+import { noteActivePreacher } from './design/screens/dashboard/preachers';
 
 /**
  * Mounts every engine listener exactly once for the app's lifetime and
@@ -130,6 +129,12 @@ function useEngineWiring() {
         live().setDisplayVersion(settings.defaultVersion);
       }
       if (preacherId) {
+        /* The dashboard keeps its own preacher list (design/screens/
+           dashboard/preachers.ts) and loads it lazily. Telling it who is
+           active here means the bento and the profile open on the right
+           person rather than on "nobody is set for today" until something
+           is pressed. */
+        noteActivePreacher(preacherId);
         void api.listPreacherProfiles().then((profiles) => {
           const profile = profiles.find((p) => p.id === preacherId);
           app().setActivePreacher(preacherId, profile?.name ?? preacherId);
@@ -285,12 +290,10 @@ export default function App() {
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-5xl px-6 pb-24 pt-10">
             {tab === 'bible' && <Bible />}
-            {tab === 'songs' && <Songs />}
             {tab === 'presentations' && <Presentations />}
             {tab === 'themes' && <Themes />}
             {tab === 'schedule' && <Schedule />}
             {tab === 'preachers' && <Preachers />}
-            {tab === 'notes' && <Notes />}
             {tab === 'settings' && <Settings />}
             {tab === 'cloud' && <Cloud />}
           </div>

@@ -1,0 +1,13 @@
+import WebSocket from 'ws';
+const list=(await (await fetch('http://127.0.0.1:9222/json/list')).json()).filter(t=>t.type==='page');
+const t=list.find(x=>x.url.includes('localhost')&&!x.url.includes('design.html'));
+const ws=new WebSocket(t.webSocketDebuggerUrl,{perMessageDeflate:false});
+const seq={next:1};
+const rpc=(m,p={})=>new Promise((res,rej)=>{const id=seq.next++;const on=r=>{let x;try{x=JSON.parse(r)}catch{return}if(x.id!==id)return;ws.off('message',on);x.error?rej(new Error(x.error.message)):res(x.result)};ws.on('message',on);ws.send(JSON.stringify({id,method:m,params:p}))});
+await new Promise((r,j)=>{ws.once('open',r);ws.once('error',j)});
+const ev=e=>rpc('Runtime.evaluate',{expression:e,returnByValue:true});
+const r=await ev(`JSON.stringify([...document.querySelectorAll('button')].map(b=>b.textContent.trim()).filter(Boolean).slice(0,60))`);
+console.log(r.result?.value);
+const vp=await ev(`JSON.stringify({w:innerWidth,h:innerHeight,body:document.body.scrollHeight})`);
+console.log('viewport',vp.result?.value);
+ws.close();

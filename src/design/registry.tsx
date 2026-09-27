@@ -4,6 +4,9 @@ import { Buttons, Panels, Pills, Meters, FormsAndEmpty, OutputSurface } from './
 import { TriThinkingOrb } from './entries/orbs';
 import { TriThinkingOrb2 } from './entries/orbs2';
 import { HeardStack } from './entries/heardStack';
+import { TriTranscript } from './entries/transcript';
+import { EmptyStates } from './entries/emptyStates';
+import { MotionLibrary } from './entries/motion/MotionLibrary';
 import { TriButton, TriSlider, TriDashboardButton, TriDisplayFontPicker, TriTextPositionPicker, TriSelect, TriSegmentedControl, TriScriptureReferenceInput, TriTypeScale, TriSurfaceTones } from './entries/trilorah';
 
 /*
@@ -47,6 +50,9 @@ export const REGISTRY: EntryGroup[] = [
       { id: 'C-65', title: 'Thinking orb', Component: TriThinkingOrb },
       { id: 'C-65b', title: 'Thinking orb 2', Component: TriThinkingOrb2 },
       { id: 'D-111', title: 'Dashboard row', Component: TriDashboardButton },
+      { id: 'D-27', title: 'Live transcript', Component: TriTranscript },
+      { id: 'D-30', title: 'Empty states', Component: EmptyStates },
+      { id: 'M-01', title: 'Motion library', Component: MotionLibrary },
       { id: 'S-02d+', title: 'Multiple detections', Component: HeardStack },
     ],
   },

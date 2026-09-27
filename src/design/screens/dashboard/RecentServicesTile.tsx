@@ -1,4 +1,6 @@
-import { Empty, Panel } from '../parts';
+import { Panel } from '../parts';
+import { HistoryIcon } from '../../../ui';
+import { EmptyMark, ChartArt } from '../emptyArt';
 
 /*
  * The last few Sundays — the one tile on the dashboard that is not about now.
@@ -82,7 +84,7 @@ function accuracyInk(accuracy: number): string {
   return '#eac7c6';
 }
 
-export function RecentServicesTile({ className }: { className?: string }) {
+export function RecentServicesTile({ className, onOpen }: { className?: string; onOpen?: () => void }) {
   /* A church before its first recorded service, or a fresh install. The
      column headers and the summary line go with the rows rather than
      standing over an empty region: both of them are claims about services
@@ -91,7 +93,7 @@ export function RecentServicesTile({ className }: { className?: string }) {
   if (SERVICES.length === 0) {
     return (
       <Panel className={className} bodyClass="pt-3">
-        <Empty>no services recorded yet</Empty>
+        <EmptyMark art={<ChartArt />} line="no services yet" />
       </Panel>
     );
   }
@@ -99,6 +101,10 @@ export function RecentServicesTile({ className }: { className?: string }) {
   return (
     <Panel
       className={className}
+      title="recent services"
+      icon={<HistoryIcon size={13} />}
+      blurb="the last few Sundays, and how each one went."
+      onOpen={onOpen}
       bodyClass="pt-3"
     >
       <div className="flex h-full flex-col">

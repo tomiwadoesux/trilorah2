@@ -894,7 +894,6 @@ function ReviewRow({ item }: { item: ReviewItem }) {
 function ServiceReview({ onBack }: { onBack: () => void }) {
   const reviewItems = useLiveStore((s) => s.reviewItems);
   const setGeneratedNotes = useLiveStore((s) => s.setGeneratedNotes);
-  const setTab = useAppStore((s) => s.setTab);
   const [summaryResult, setSummaryResult] = useState<string | null>(null);
   const [busy, setBusy] = useState<'summary' | 'notes' | null>(null);
 
@@ -915,8 +914,12 @@ function ServiceReview({ onBack }: { onBack: () => void }) {
     try {
       const notes = await window.api?.generateSermonNotes();
       if (notes) {
+        /* The NOTES tab is gone — the sermon-notes card on the dashboard
+           owns the outline and both exports now. The notes still land in
+           the live store, which is what that card reads, so this only
+           stopped jumping somewhere. */
         setGeneratedNotes(notes);
-        setTab('notes');
+        setSummaryResult('notes generated — see the sermon notes card');
       }
     } catch {
       setSummaryResult('could not generate notes');

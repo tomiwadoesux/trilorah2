@@ -3,24 +3,20 @@ import { create } from 'zustand';
 export type TabId =
   | 'live'
   | 'bible'
-  | 'songs'
   | 'presentations'
   | 'themes'
   | 'schedule'
   | 'preachers'
-  | 'notes'
   | 'settings'
   | 'cloud';
 
 export const TABS: readonly { id: TabId; label: string }[] = [
   { id: 'live', label: 'LIVE' },
   { id: 'bible', label: 'BIBLE' },
-  { id: 'songs', label: 'SONGS' },
   { id: 'presentations', label: 'MEDIA' },
   { id: 'themes', label: 'THEMES' },
   { id: 'schedule', label: 'SCHEDULE' },
   { id: 'preachers', label: 'PREACHERS' },
-  { id: 'notes', label: 'NOTES' },
   { id: 'settings', label: 'SETTINGS' },
   { id: 'cloud', label: 'CLOUD' },
 ];

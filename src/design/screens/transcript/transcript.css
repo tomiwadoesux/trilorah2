@@ -1,0 +1,78 @@
+/*
+ * Word motion shared by the D-27 transcript designs.
+ *
+ * A word is keyed by its line id and index (see words.ts), so it mounts
+ * ONCE — the arrival keyframe below therefore plays once per word, and a
+ * re-render never restarts it. Its strength (softer while the engine is
+ * still guessing, full once committed) is an opacity TRANSITION on the same
+ * element, so committing a line brightens words in place.
+ */
+.tri-word {
+  transition:
+    opacity 240ms var(--tri-ease-out),
+    color 240ms var(--tri-ease-out);
+}
+
+/* Arrival: out of a 2px blur, not out of nowhere, and quick — a word that
+   takes longer to appear than it took to say reads as lag. */
+/* `backwards` so a word given a stagger delay waits in its `from` state
+   (invisible) rather than showing at full strength and then fading in. */
+.tri-word--in {
+  animation: tri-word-in 170ms var(--tri-ease-out) backwards;
+}
+
+@keyframes tri-word-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+/* A word the engine revised: the new spelling crossfades in over the old
+   one's place rather than blinking. */
+.tri-word-swap {
+  animation: tri-word-swap 160ms var(--tri-ease-out);
+}
+
+@keyframes tri-word-swap {
+  from {
+    opacity: 0.25;
+    filter: blur(1.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-word--in,
+  .tri-word-swap {
+    animation-duration: 120ms;
+  }
+}
+
+/*
+ * Pages: the caption being turned away fades and lifts 4px, quickly, while
+ * the new one arrives in its place. `forwards` because it is removed right
+ * after — there is no resting state to fall back to.
+ */
+.tri-page-out {
+  animation: tri-page-out 160ms var(--tri-ease-out) forwards;
+  pointer-events: none;
+}
+
+@keyframes tri-page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-page-out {
+    animation-name: tri-page-fade;
+  }
+}
+
+@keyframes tri-page-fade {
+  to {
+    opacity: 0;
+  }
+}

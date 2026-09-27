@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { cx, Button, Select, Slider, SegmentedControl } from '../../ui';
 import { Dot } from './parts';
 
@@ -305,7 +305,25 @@ function FontChooser({ value, faces, onChange }: { value: string; faces: FontFac
    have to re-find. Wide controls (the key list, the display map, the font
    chooser) drop under the text instead: they are the row's content, not a
    control beside it. */
-export function SettingRow({ row, value, onChange }: { row: Row; value: unknown; onChange: (next: unknown) => void }) {
+export function SettingRow({
+  row,
+  value,
+  onChange,
+  onAction,
+  saved,
+}: {
+  row: Row;
+  value: unknown;
+  onChange: (next: unknown) => void;
+  /** An `action` row's press. Undefined leaves the button inert. */
+  onAction?: () => void;
+  /**
+   * This row's last write: true saved, false failed, undefined quiet.
+   * A screen that accepts a change in silence is indistinguishable from
+   * one that dropped it.
+   */
+  saved?: boolean;
+}) {
   if (row.kind === 'note') {
     return (
       <p className="max-w-[560px] py-2 text-[length:var(--tri-size-xs)] leading-relaxed" style={{ color: MUTED }}>
@@ -363,7 +381,10 @@ export function SettingRow({ row, value, onChange }: { row: Row; value: unknown;
       control = (
         <span className="flex items-center gap-3">
           {row.note && <span className="whitespace-nowrap text-[length:var(--tri-size-xs)]" style={{ color: MUTED }}>{row.note}</span>}
-          <Button label={row.button} tone={row.tone} />
+          {/* No handler → disabled rather than dead. A button that looks
+              pressable and does nothing is how "sign in" sat on the
+              Connected tile doing nothing at all. */}
+          <Button label={row.button} tone={row.tone} onClick={onAction} disabled={!onAction} />
         </span>
       );
       break;
@@ -392,21 +413,104 @@ export function SettingRow({ row, value, onChange }: { row: Row; value: unknown;
           <p className="mt-1 max-w-[520px] text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">{row.blurb}</p>
         )}
       </div>
-      <div className={cx('flex', wide ? 'justify-start' : 'shrink-0 justify-end')} style={wide ? undefined : { minWidth: 120 }}>
+      <div className={cx('flex items-center gap-2.5', wide ? 'justify-start' : 'shrink-0 justify-end')} style={wide ? undefined : { minWidth: 120 }}>
         {control}
+        {saved !== undefined && (
+          <span
+            className="whitespace-nowrap text-[length:var(--tri-size-eyebrow)] lowercase"
+            style={{ color: saved ? '#8fd3c0' : '#eac7c6' }}
+          >
+            {saved ? '✓ saved' : 'not saved'}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
 /** A run of rows with local state — what a page and an expanded tile share. */
-export function RowList({ rows, className }: { rows: Row[]; className?: string }) {
+/*
+ * A list of rows, optionally backed by the engine.
+ *
+ * It used to keep every value in local state and nothing else, which is
+ * why every surface built on it — the design Settings screen, the Connected
+ * tile's expanded view — looked complete and saved nothing. A toggle that
+ * springs back on reload is worse than no toggle: the operator believes
+ * they changed something.
+ *
+ * Two opt-in props fix that without touching any existing caller:
+ *
+ *   persist   read the real value out of the settings store and write it
+ *             back on change. Row `value` becomes the fallback for a key
+ *             the store has not got.
+ *   onAction  what an `action` row's button does. Without it those rows
+ *             stay inert, which is at least honest — before, they looked
+ *             pressable and were not.
+ *
+ * Left alone, RowList behaves exactly as it did, so the sandbox entries
+ * that render sample rows keep working.
+ */
+export function RowList({
+  rows,
+  className,
+  persist = false,
+  onAction,
+}: {
+  rows: Row[];
+  className?: string;
+  /** Read and write these rows through window.api settings. */
+  persist?: boolean;
+  /** Handle an `action` row's press. Given the row key. */
+  onAction?: (key: string) => void;
+}) {
   const [values, setValues] = useState<Record<string, unknown>>(() => seedValues(rows));
-  const set = (key: string) => (next: unknown) => setValues((v) => ({ ...v, [key]: next }));
+
+  /* The store is the truth where there is one. Seeded values stay as the
+     fallback so a key the engine has never held still draws something. */
+  useEffect(() => {
+    if (!persist) return;
+    const api = typeof window === 'undefined' ? undefined : window.api;
+    if (!api?.getSettings) return;
+    let alive = true;
+    void api
+      .getSettings()
+      .then((stored) => {
+        if (!alive || !stored) return;
+        setValues((v) => {
+          const next = { ...v };
+          for (const row of rows) {
+            const held = (stored as Record<string, unknown>)[row.key];
+            if (held !== undefined) next[row.key] = held;
+          }
+          return next;
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+    // Rows are module-level constants at every call site.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [persist]);
+
+  const set = (key: string) => (next: unknown) => {
+    setValues((v) => ({ ...v, [key]: next }));
+    if (!persist) return;
+    /* Optimistic, like every other control in the app: the typed value
+       stays put even if the write is slow. */
+    void window.api?.setSetting?.(key, next).catch(() => undefined);
+  };
+
   return (
     <div className={className}>
       {rows.filter((r) => rowVisible(r, values)).map((row) => (
-        <SettingRow key={row.key} row={row} value={values[row.key]} onChange={set(row.key)} />
+        <SettingRow
+          key={row.key}
+          row={row}
+          value={values[row.key]}
+          onChange={set(row.key)}
+          onAction={onAction ? () => onAction(row.key) : undefined}
+        />
       ))}
     </div>
   );

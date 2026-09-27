@@ -1,5 +1,6 @@
-import { cx, surface } from '../../../ui';
 import { Panel, Dot } from '../parts';
+import { CheckIcon } from '../../../ui';
+import { Expandable } from './expand';
 
 /*
  * Readiness — the one question asked twenty minutes before a service, by
@@ -44,7 +45,7 @@ export interface ReadinessCheck {
 const CHECKS: readonly ReadinessCheck[] = [
   { id: 'display', label: 'output display assigned', state: 'ok', detail: '4 displays' },
   { id: 'mic', label: 'microphone signal', state: 'ok', detail: 'scarlett solo' },
-  { id: 'model', label: 'speech model', state: 'ok', detail: 'whisper-local, offline capable' },
+  { id: 'model', label: 'speech model', state: 'ok', detail: 'whisper-local' },
   { id: 'bible', label: 'bible database', state: 'ok', detail: '6 versions' },
   { id: 'disk', label: 'disk space for the recording', state: 'ok', detail: '54 gb free' },
 ];
@@ -89,15 +90,47 @@ function troubleWords(n: number): string {
  * and coming back is a one-line swap here.
  */
 export function ReadinessTile({ className }: { className?: string }) {
-  return <ReadinessTileFull className={className} />;
+  return (
+    <Expandable
+      className={className}
+      title="Readiness"
+      glyph={false}
+      blurb="Every pre-flight check, and what each one found."
+      size={{ w: 620, h: 520 }}
+      tile={({ onOpen }) => <ReadinessTileFull className="min-h-0 w-full flex-1" onOpen={onOpen} />}
+    >
+      {/* The card gives a verdict; the box shows the working. Each check
+          listed with what it actually found, so "ready for service" can be
+          audited rather than trusted. */}
+      <ul className="flex flex-col">
+        {CHECKS.map((c, i) => (
+          <li
+            key={c.id}
+            className="flex items-center gap-3 py-2.5"
+            style={i < CHECKS.length - 1 ? { boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.06)' } : undefined}
+          >
+            <Dot tone={STATE_TONE[c.state]} />
+            <span className="min-w-0 flex-1 truncate text-[length:var(--tri-size)] lowercase text-[var(--tri-ink)]">
+              {c.label}
+            </span>
+            <span className="shrink-0 text-[length:var(--tri-size-xs)] lowercase" style={{ color: STATE_INK[c.state] }}>
+              {c.detail}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Expandable>
+  );
 }
 
 export function ReadinessTileFull({
   className,
   checks = CHECKS,
+  onOpen,
 }: {
   className?: string;
   checks?: readonly ReadinessCheck[];
+  onOpen?: () => void;
 }) {
   const trouble = checks.filter((c) => c.state !== 'ok');
   const unknown = checks.length === 0;
@@ -107,51 +140,35 @@ export function ReadinessTileFull({
   return (
     <Panel
       title="readiness"
+      icon={<CheckIcon size={13} />}
+      blurb="everything checked before the service starts."
+      onOpen={onOpen}
       className={className}
       tone={ready || unknown ? 'default' : worst === 'fail' ? 'danger' : 'live'}
     >
-      <div className="flex h-full min-h-0 flex-col gap-2">
-        {/* The checks, as blocks in a row — S-03's arrangement. Each is the
-            thing checked, what it found, and a bar that is full when it
-            passed. Five short blocks read faster than one long sentence. */}
-        <div
-          className="grid min-h-0 flex-1 gap-2"
-          style={{ gridTemplateColumns: `repeat(${Math.max(1, checks.length)}, minmax(0, 1fr))` }}
-        >
-          {checks.map((check) => (
-            <div
-              key={check.id}
-              className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-h-[46px] min-w-0 flex-col justify-between gap-1 px-2.5 py-1.5')}
-              style={{ borderRadius: 10 }}
-            >
-              <span className="truncate text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: MUTED }}>
-                {check.label}
-              </span>
-              <span className="truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: STATE_INK[check.state] }}>
-                {check.detail}
-              </span>
-              <span className="h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
-                <span
-                  className="block h-full rounded-full"
-                  style={{ width: check.state === 'ok' ? '100%' : check.state === 'warn' ? '55%' : '15%', background: STATE_INK[check.state] }}
-                />
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* The verdict, as a foot line rather than a headline: the blocks
-            already said it, this is the count. */}
-        <p className="flex shrink-0 items-center gap-2 truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
+      {/* Verdict first, at reading size, then the proof: what was checked,
+          as one muted line. Five blocks with five bars said "ok" five
+          times; one sentence says it once and names its evidence. */}
+      <div className="flex h-full min-h-0 flex-col justify-center gap-1.5">
+        <p className="flex items-center gap-2 text-[length:calc(var(--tri-size-base)+3px)] text-[var(--tri-ink)]">
           <Dot tone={unknown ? 'idle' : ready ? 'ok' : STATE_TONE[worst]} />
-          {unknown ? (
-            'pre-flight has not reported yet'
-          ) : ready ? (
-            <>ready for service · <span className="tabular-nums">{checks.length}</span> of <span className="tabular-nums">{checks.length}</span> checks passed</>
-          ) : (
-            <><span className="tabular-nums">{trouble.length}</span> {troubleWords(trouble.length)} · <span className="tabular-nums">{checks.length - trouble.length}</span> of <span className="tabular-nums">{checks.length}</span> passed</>
-          )}
+          {unknown ? 'pre-flight has not run' : ready ? 'ready for service' : `${trouble.length} ${troubleWords(trouble.length)}`}
         </p>
+        {ready && (
+          <p className="truncate text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
+            {checks.map((c) => c.detail).join(' · ')}
+          </p>
+        )}
+        {!ready && !unknown && (
+          <ul className="flex min-h-0 flex-col gap-0.5">
+            {trouble.map((c) => (
+              <li key={c.id} className="flex items-baseline gap-2 truncate text-[length:var(--tri-size-xs)] lowercase">
+                <span style={{ color: STATE_INK[c.state] }}>{c.label}</span>
+                <span style={{ color: MUTED }}>{c.detail}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Panel>
   );

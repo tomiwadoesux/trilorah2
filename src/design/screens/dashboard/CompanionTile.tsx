@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cx, surface, Button, SegmentedControl } from '../../../ui';
 import { Panel } from '../parts';
+import { QrRollArt } from '../emptyArt';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
 
@@ -180,8 +181,14 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
                   dangerouslySetInnerHTML={{ __html: qrSvg }}
                 />
               ) : (
-                <span className="px-3 text-center text-[length:var(--tri-size-eyebrow)] leading-relaxed text-[rgb(229_243_242_/_0.35)]">
-                  no code yet
+                /* Deliberately not a QR skeleton: a drawing faithful
+                   enough to read as a code is faithful enough for a
+                   congregant's phone to lock onto, hunt and fail — the
+                   failed-image read this tile's comment warns about,
+                   reached from the other side. The square is real and
+                   drawn; the modules are absent. */
+                <span className="tri-play-hover flex h-full w-full items-center justify-center p-2">
+                  <QrRollArt />
                 </span>
               )}
             </button>

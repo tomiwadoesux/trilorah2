@@ -1542,3 +1542,11 @@ export function ThinkingOrbsGallery({
  * needs the shader and the packer, not just the components.
  */
 export { WGSL, ORB_STYLES, orbDots, sizeDotScale, orbPhase, packDots, orbInk, MAX_DOTS, DOT_FLOATS, MAX_DPR };
+/* Added for the SVG renderer (SvgOrbsPill), which reuses this file's
+   geometry and defaults rather than copying them. Nothing above changed. */
+export {
+  DRAWS, NOP, ORB_KNOBS0, fitFactor, DOT_COL, ACC_COL, ensureAccentShare, useOrbDark, STYLES,
+  LOOP_ID, LOOP_INDEX, SPEED, REVERSE, START_AT, DOT_SCALE, SHOWS_PILL, SHOWS_LABEL, SCHEME,
+  ACCENT_COLOR, INK_DARK, INK_LIGHT, KNOBS, BALL, GAP, PAD_TOP, PAD_RIGHT, PAD_BOTTOM, PAD_LEFT,
+  FONT, FONT_SIZE, LABEL_OPACITY,
+};

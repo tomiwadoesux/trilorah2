@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cx, surface } from '../../ui';
+import { EmptyMark, OrbitLogArt } from './emptyArt';
 
 /*
  * The service log, as a column of cards.
@@ -81,9 +82,15 @@ export function LogHistory({
     >
       <style>{KEYFRAMES}</style>
       {ordered.length === 0 ? (
-        <p className="px-3 pt-3 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.28)]">
-          nothing has happened yet — what the service does will be kept here
-        </p>
+        <EmptyMark
+          art={<OrbitLogArt />}
+          w={170}
+          h={170}
+          plain
+          play="hover"
+          line="nothing has happened yet"
+          hint="what the service does lands here"
+        />
       ) : (
         ordered.map((e, i) => (
           <article

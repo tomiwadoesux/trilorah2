@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Transition } from 'motion/react';
 import { cx, PlusIcon } from '../../../ui';
+import { ExpandCue } from '../emptyArt';
 
 /*
  * A tile that opens.
@@ -233,14 +234,10 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
             className="tri-rounded-surface pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/0 transition-[box-shadow] duration-200 group-hover/tile:ring-white/20"
           />
         )}
-        {glyph && (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute right-3 top-2.5 text-[12px] leading-none text-white/0 transition-colors duration-200 group-hover/tile:text-white/55"
-          >
-            ⤢
-          </span>
-        )}
+        {/* The static ⤢ became a cue that moves: expand arrows that scale
+            in under the pointer, breathe apart while it stays, and scale
+            back out when it leaves. */}
+        {glyph && <ExpandCue />}
       </div>
 
       {shellEl && flight && createPortal(

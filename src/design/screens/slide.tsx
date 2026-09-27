@@ -34,6 +34,15 @@ import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 /** What a screen is showing, borrowed from the app's own ScreenState. */
 export type StageScreen = 'live' | 'clear' | 'black' | 'logo';
 
+/**
+ * A part of the slide the editor can be pointed at.
+ *
+ * 'background' is the picture behind everything, and is what a press on
+ * empty canvas selects — there is always something selected, so the control
+ * panel never has to render an "in between" state.
+ */
+export type SlidePart = 'verse' | 'reference' | 'margin' | 'background';
+
 export interface SlideCanvasProps {
   theme: SlideTheme;
   /** The slide to draw. Null draws the background and whatever `empty` says. */
@@ -84,6 +93,18 @@ export interface SlideCanvasProps {
   onRefGapDrag?: (dragging: boolean) => void;
   /** The gap's bounds, shared with its slider. */
   refGapRange?: { min: number; max: number; step: number };
+  /**
+   * Which part of the slide the editor is working on, and how it is picked.
+   *
+   * The canvas is the thing being edited, so it is also the thing you point
+   * at: press the verse to work on the verse, the reference to work on the
+   * reference, the dashed guide's edge to work on the margin. The editor
+   * then shows that part's controls instead of all of them at once. Without
+   * a `selected` prop the canvas is inert and draws no outlines, which is
+   * what every caller but the editor wants.
+   */
+  selected?: SlidePart | null;
+  onSelect?: (part: SlidePart | null) => void;
   /**
    * How the words arrive, played HERE. `play` is a counter: bump it and the
    * text block re-mounts and runs the entrance once — which is how the
@@ -176,7 +197,30 @@ export function SlideCanvas({
   refGapRange = { min: 0, max: 3, step: 0.05 },
   safeRange = { min: 3, max: 20, step: 0.5 },
   transition,
+  selected = null,
+  onSelect,
 }: SlideCanvasProps) {
+  /* Pointing is the editor's alone: a stage box or the wall must not put a
+     ring round the verse because a pointer crossed it. */
+  const pickable = !!onSelect;
+  /* A press on a part selects it; a press on anything else falls through to
+     the picture, which is the background. Stated once here so every part
+     selects the same way. */
+  const pick = (part: SlidePart) => (e: ReactPointerEvent<HTMLElement>) => {
+    if (!pickable || e.button !== 0) return;
+    e.stopPropagation();
+    onSelect?.(part);
+  };
+  /*
+   * The ring round the selected part. Drawn OUTSIDE the text with an
+   * outline and an offset rather than a border, so selecting something
+   * never moves it — a box that shifts when you point at it is a box you
+   * cannot aim at twice.
+   */
+  const ringFor = (part: SlidePart): React.CSSProperties =>
+    pickable && selected === part
+      ? { outline: '1.5px solid var(--tri-accent-yellow)', outlineOffset: 3, borderRadius: 3 }
+      : {};
   const library = useMediaLibrary();
   const media = library.find((item) => item.id === theme.backgroundId) ?? library[0];
   const atBottom = theme.layout !== 'top';
@@ -290,6 +334,9 @@ export function SlideCanvas({
   const picture = (
     <div
       ref={pictureRef}
+      /* The fallback target: a press that no part claimed lands here, and
+         the background is what the editor then shows. */
+      onPointerDown={pick('background')}
       className="relative h-full w-full overflow-hidden [corner-shape:var(--tri-corner)]"
       style={{
         /* A size container so the entrance keyframes can be stated as a
@@ -315,7 +362,13 @@ export function SlideCanvas({
       {guide && (
         <span
           aria-hidden
-          className="pointer-events-none absolute z-10 border border-dashed border-white/40"
+          /* Always pointer-transparent: the verse sits inside this rectangle
+             and must stay reachable through it. The margin is selected by
+             its corners and its label, which are real targets; the dashed
+             edge is what the selection is SHOWN on. */
+          className={`pointer-events-none absolute z-10 border border-dashed ${
+            pickable && selected === 'margin' ? 'border-[var(--tri-accent-yellow)]' : 'border-white/40'
+          }`}
           /*
            * THE safe rectangle — and the words' box below is positioned by
            * the identical declaration, on purpose. `inset: N%` is N% of the
@@ -387,7 +440,10 @@ export function SlideCanvas({
             {!atBottom && slide.reference && (
               <p
                 className="m-0 font-semibold tracking-[0.08em] opacity-75"
-                onPointerDown={onRefDown}
+                onPointerDown={(e) => {
+                  pick('reference')(e);
+                  onRefDown(e);
+                }}
                 onPointerMove={onRefMove}
                 onPointerUp={onRefUp}
                 onPointerCancel={onRefUp}
@@ -400,6 +456,7 @@ export function SlideCanvas({
                   cursor: refDraggable ? 'ns-resize' : undefined,
                   touchAction: refDraggable ? 'none' : undefined,
                   color: refDragging ? 'var(--tri-accent-yellow)' : undefined,
+                  ...ringFor('reference'),
                 }}
               >
                 {slide.reference}
@@ -409,15 +466,32 @@ export function SlideCanvas({
                 wrapper — so nothing here scales it a second time. The margin
                 is only ever the space BETWEEN body lines; the space to the
                 reference belongs to the reference, above or below. */}
-            {slide.lines.map((line, i) => (
-              <p key={`${line.version}-${i}`} className={i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}>
-                {line.text}
-              </p>
-            ))}
+            {/* The body's lines are wrapped so the whole verse is one thing
+                to point at and one thing to ring. Without the wrapper each
+                line would be its own target and a two-line verse would show
+                two rings. `display: contents` when nothing is pickable, so
+                a stage box's layout is byte-for-byte what it was. */}
+            <span
+              onPointerDown={pick('verse')}
+              style={{
+                display: pickable ? 'block' : 'contents',
+                cursor: pickable ? 'pointer' : undefined,
+                ...ringFor('verse'),
+              }}
+            >
+              {slide.lines.map((line, i) => (
+                <p key={`${line.version}-${i}`} className={i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}>
+                  {line.text}
+                </p>
+              ))}
+            </span>
             {atBottom && slide.reference && (
               <p
                 className="m-0 font-semibold tracking-[0.08em] opacity-75"
-                onPointerDown={onRefDown}
+                onPointerDown={(e) => {
+                  pick('reference')(e);
+                  onRefDown(e);
+                }}
                 onPointerMove={onRefMove}
                 onPointerUp={onRefUp}
                 onPointerCancel={onRefUp}
@@ -427,6 +501,7 @@ export function SlideCanvas({
                   cursor: refDraggable ? 'ns-resize' : undefined,
                   touchAction: refDraggable ? 'none' : undefined,
                   color: refDragging ? 'var(--tri-accent-yellow)' : undefined,
+                  ...ringFor('reference'),
                 }}
               >
                 {slide.reference}
@@ -468,7 +543,13 @@ export function SlideCanvas({
             key={c.id}
             role="presentation"
             title="drag to set the safe margin"
-            onPointerDown={(e) => onCornerDown(e, c.sx, c.sy)}
+            onPointerDown={(e) => {
+              /* Grabbing a corner is also how the margin is selected, so a
+                 drag leaves its own controls on screen rather than whatever
+                 was selected before it. */
+              pick('margin')(e);
+              onCornerDown(e, c.sx, c.sy);
+            }}
             onPointerMove={onCornerMove}
             onPointerUp={onCornerUp}
             onPointerCancel={onCornerUp}

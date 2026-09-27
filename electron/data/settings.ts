@@ -1,5 +1,6 @@
 import StoreModule from 'electron-store'
 import type { ScheduleEntry } from '../../shared/types'
+import { SERVICE_DEFAULTS } from '../asr/serviceDefaults'
 
 const Store: typeof StoreModule =
   typeof (StoreModule as any).default === 'function'
@@ -231,11 +232,16 @@ export function getStore(): StoreModule<Settings> {
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(String(store.get('publicWebUrl') ?? ''))) {
       store.set('publicWebUrl', defaults.publicWebUrl)
     }
-    if (!store.get('deepgramApiKey') && process.env.DEEPGRAM_API_KEY) {
-      store.set('deepgramApiKey', process.env.DEEPGRAM_API_KEY)
+    // Precedence: a developer's .env.local beats the key compiled into the
+    // build, which beats nothing. The Settings screen no longer offers these
+    // fields, so for a church install the compiled key is the only source.
+    const seedDeepgram = process.env.DEEPGRAM_API_KEY || SERVICE_DEFAULTS.deepgramApiKey
+    if (!store.get('deepgramApiKey') && seedDeepgram) {
+      store.set('deepgramApiKey', seedDeepgram)
     }
-    if (!store.get('hfToken') && process.env.HF_API_TOKEN) {
-      store.set('hfToken', process.env.HF_API_TOKEN)
+    const seedHf = process.env.HF_API_TOKEN || SERVICE_DEFAULTS.hfToken
+    if (!store.get('hfToken') && seedHf) {
+      store.set('hfToken', seedHf)
     }
     if (!store.get('pixabayApiKey') && process.env.PIXABAY_API_KEY) {
       store.set('pixabayApiKey', process.env.PIXABAY_API_KEY)
