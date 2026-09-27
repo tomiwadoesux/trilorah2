@@ -30,14 +30,24 @@ import fs from 'node:fs'
 const ROOT = path.join(import.meta.dirname, '..')
 const DB_PATH = path.join(ROOT, 'bible.db')
 
+/**
+ * Pinned to a commit, not `master`. On 2026-09-23 upstream "refreshed" its
+ * files: es_rvr and zh_cuv were deleted and replaced by RVR 1960 and the CUNP
+ * — both still under copyright — and the KJV file was rewritten. Following
+ * `master` broke the release build with a 404, and swapping in the new names
+ * would have quietly shipped licensed text. This commit is the last one with
+ * the public-domain files every installer up to 0.3.9 was built from.
+ */
+const THIAGO = 'https://raw.githubusercontent.com/thiagobodruk/bible/13225a15fa5e3e3043495b0c82df56c3fdfeb7f4/json'
+
 const SOURCES = [
-  { version: 'KJV', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_kjv.json' },
-  { version: 'BBE', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_bbe.json' },
+  { version: 'KJV', url: `${THIAGO}/en_kjv.json` },
+  { version: 'BBE', url: `${THIAGO}/en_bbe.json` },
   // Multilingual, public-domain:
-  { version: 'RVR', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/es_rvr.json' }, // Reina-Valera (Spanish)
-  { version: 'APEE', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/fr_apee.json' }, // Bible de l'Épée (French)
-  { version: 'AA', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/pt_aa.json' }, // Almeida Atualizada (Portuguese)
-  { version: 'CUV', url: 'https://raw.githubusercontent.com/thiagobodruk/bible/master/json/zh_cuv.json' } // Chinese Union Version
+  { version: 'RVR', url: `${THIAGO}/es_rvr.json` }, // Reina-Valera (Spanish)
+  { version: 'APEE', url: `${THIAGO}/fr_apee.json` }, // Bible de l'Épée (French)
+  { version: 'AA', url: `${THIAGO}/pt_aa.json` }, // Almeida Atualizada (Portuguese)
+  { version: 'CUV', url: `${THIAGO}/zh_cuv.json` } // Chinese Union Version
   // Hindi: no public-domain JSON in this source yet — add
   // { version: 'XXX', url: '...' } here when a licensed/PD source is chosen.
 ]
