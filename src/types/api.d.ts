@@ -637,6 +637,9 @@ interface WindowApi {
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
   pickMediaFile?(): Promise<{ success: boolean; url?: string; src?: string; kind?: 'video' | 'photo'; name?: string; canceled?: boolean; error?: string }>;
   getDisplaysStatus?(): Promise<{ totalDisplays: number; hasExternal: boolean; primary: { id: number; bounds: any }; externals: Array<{ id: number; bounds: any }> }>;
+  getOutputsStatus?(): Promise<OutputsStatus>;
+  /** A display came or went, an output opened or closed, or a job or display choice changed. */
+  onOutputsChanged?(callback: () => void): Unsubscribe;
   // Stock backgrounds — electron/media/stockImages.ts
   getStockProviders?(): Promise<StockProvider[]>;
   searchStock?(
@@ -768,6 +771,22 @@ interface AlertTokenSlot {
 type ScreenState = 'live' | 'clear' | 'black' | 'logo';
 type OutputRole = 'projector' | 'stream' | 'stage' | 'timer';
 type AlertTarget = 'all' | 'projector' | 'stream' | 'stage' | 'timer';
+
+/** The connected displays and where each output goes — mirrors electron/output/outputsStatus.ts. */
+interface OutputsStatus {
+  displays: Array<{ id: number; name: string; w: number; h: number; primary: boolean }>;
+  outputs: Array<{
+    id: string;
+    role: OutputRole;
+    open: boolean;
+    /** Null: a window on the primary, no external display left for it. */
+    displayId: number | null;
+    fullscreen: boolean;
+    /** The operator's pinned display while connected; null hands externals out in order. */
+    chosenDisplayId: number | null;
+  }>;
+  screenState: ScreenState;
+}
 
 interface ScreenAlert {
   id: string;

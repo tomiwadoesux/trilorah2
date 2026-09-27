@@ -203,9 +203,12 @@ function OutputSurface() {
 
     const loadTheme = () => {
       void api.getSettings().then((s) => setTheme(themeFromSettings(s))).catch(() => undefined);
+      /* The job is read with the theme, not once at open: outputRoles is on
+         the engine's repaint list, and a job changed from the dashboard's
+         outputs card has to reach a window that is already on the wall. */
+      void api.getOutputRole?.(outputId).then((r) => r && setRole(r)).catch(() => undefined);
     };
     loadTheme();
-    void api.getOutputRole?.(outputId).then((r) => r && setRole(r)).catch(() => undefined);
     void api.getScreenState?.().then((s) => s && setScreen(s)).catch(() => undefined);
     void api.getAlert?.().then((a) => setAlert(a ?? null)).catch(() => undefined);
     void api.getVerseQueue?.().then((q) => setQueue(q ?? [])).catch(() => undefined);

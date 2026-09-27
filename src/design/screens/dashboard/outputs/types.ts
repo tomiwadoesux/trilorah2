@@ -11,8 +11,13 @@
 /** The job an output does. Mirrors OutputRole in electron/output/outputState.ts. */
 export type Role = 'projector' | 'stream' | 'stage' | 'timer';
 
-/** What the screen is doing right now. Mirrors ScreenState. */
-export type ScreenState = 'live' | 'clear' | 'black' | 'logo';
+/**
+ * What the screen is doing right now. Mirrors ScreenState, plus 'off' — the
+ * card's own word for an output whose window is not open, so it shows
+ * nothing whatever the engine's state is. Without it a closed projector
+ * would read "live".
+ */
+export type ScreenState = 'live' | 'clear' | 'black' | 'logo' | 'off';
 
 export interface Screen {
   /** Output id — 'main' | 'alternate' | 'third' | 'timer'. */
@@ -69,6 +74,7 @@ export const STATE_WORD: Record<ScreenState, string> = {
   clear: 'cleared',
   black: 'black',
   logo: 'logo',
+  off: 'not open',
 };
 
 /**
@@ -87,6 +93,7 @@ export const STATE_INK: Record<ScreenState, string> = {
   clear: GOLD,
   black: FAINT,
   logo: FAINT,
+  off: FAINT,
 };
 
 export const STATE_TONE: Record<ScreenState, 'ok' | 'warn' | 'danger' | 'idle'> = {
@@ -94,6 +101,7 @@ export const STATE_TONE: Record<ScreenState, 'ok' | 'warn' | 'danger' | 'idle'> 
   clear: 'warn',
   black: 'idle',
   logo: 'idle',
+  off: 'idle',
 };
 
 /* ------------------------------------------------------------------ */

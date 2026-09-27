@@ -276,6 +276,14 @@ contextBridge.exposeInMainWorld('api', {
   pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
   pickMediaFile: () => ipcRenderer.invoke('pick-media-file'),
   getDisplaysStatus: () => ipcRenderer.invoke('get-displays-status'),
+  // The connected displays and where each output goes — the outputs card
+  // and Settings draw this. Asked again whenever on-outputs-changed fires.
+  getOutputsStatus: () => ipcRenderer.invoke('get-outputs-status'),
+  onOutputsChanged: (callback: () => void) => {
+    const subscription = () => callback()
+    ipcRenderer.on('on-outputs-changed', subscription)
+    return () => ipcRenderer.removeListener('on-outputs-changed', subscription)
+  },
   // Stock backgrounds (Pixabay / Pexels), searched from the media tab
   getStockProviders: () => ipcRenderer.invoke('get-stock-providers'),
   searchStock: (params: any) => ipcRenderer.invoke('search-stock', params),

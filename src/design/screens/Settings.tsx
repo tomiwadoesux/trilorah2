@@ -4,6 +4,7 @@ import { AppShell, type ShellModel } from './AppShell';
 import { Pill } from './parts';
 import { useArtboard } from './artboard';
 import { SettingRow, seedValues, rowVisible, SCRIPTURE_FACES, type Row } from './settingsRows';
+import { displayMapFrom, useOutputsStatus } from './dashboard/outputs/fromEngine';
 
 /*
  * S-10 — Settings.
@@ -273,9 +274,15 @@ function PageBody({ page }: { page: Page }) {
       alive = false;
     };
   }, []);
+  /* And for the display map: the displays actually connected. It used to
+     draw a built-in screen, an "Epson EB-L200" and a virtual stream on
+     every machine. In the app it stays empty until the engine answers
+     rather than show a projector that is not plugged in. */
+  const outputs = useOutputsStatus(page.rows.some((r) => r.kind === 'displays'));
   const withLiveOptions = (r: Row): Row => {
     if (r.key === 'displayVersion' && versions && 'options' in r) return { ...r, options: versions };
     if (r.key === 'engineLanguage' && languages && 'options' in r) return { ...r, options: languages };
+    if (r.kind === 'displays' && window.api) return { ...r, displays: outputs ? displayMapFrom(outputs) : [] };
     return r;
   };
   const visible = page.rows.map(withLiveOptions).filter((r) => rowVisible(r, values));
