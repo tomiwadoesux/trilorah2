@@ -71,6 +71,7 @@ import { TimerStore } from './engine/timers'
 import { ScreenStateMachine, roleFor, ROLE_TITLES, isScreenState } from './output/outputState'
 import { Readable } from 'node:stream'
 import { placeOutput } from './output/displays'
+import { describeOutputs } from './output/outputsStatus'
 import type { LiveContent } from '../shared/liveContent'
 import { buildQrCard } from '../shared/qrCard'
 import { searchBible } from './data/bibleSearch'
@@ -1048,6 +1049,24 @@ const outputWindows: Record<string, BrowserWindow | null> = {
   third: null
 }
 
+/** Output ids whose window is open right now. */
+function openOutputIds(): string[] {
+  return Object.keys(outputWindows).filter((id) => {
+    const win = outputWindows[id]
+    return !!win && !win.isDestroyed()
+  })
+}
+
+/**
+ * The dashboard's outputs card and the Settings display map draw what
+ * `get-outputs-status` answers. This tells them to ask again: a display came
+ * or went, an output window opened or closed, or a job or a display choice
+ * changed. Without it they would show the room as it was when they mounted.
+ */
+function notifyOutputsChanged(): void {
+  broadcastToWindows('on-outputs-changed', null)
+}
+
 /** Where this output belongs right now, per the operator's choice and what
  *  is actually plugged in. Read fresh every time: displays come and go, and
  *  so does the setting. */
@@ -1140,8 +1159,10 @@ function createOutputWindow(id: string, title: string) {
   }
   win.on('closed', () => {
     outputWindows[id] = null
+    notifyOutputsChanged()
   })
   outputWindows[id] = win
+  notifyOutputsChanged()
 }
 
 function createWindow() {
@@ -1898,6 +1919,20 @@ ipcMain.handle('get-displays-status', () => {
   }
 })
 
+// What the outputs card and the Settings display map draw: the displays that
+// are really connected, where each output is or will open, and which are open.
+ipcMain.handle('get-outputs-status', () =>
+  describeOutputs({
+    displays: electronScreen.getAllDisplays(),
+    primaryId: electronScreen.getPrimaryDisplay().id,
+    roleOverrides: getSetting('outputRoles') as Record<string, unknown>,
+    displayOverrides: getSetting('outputDisplays') as Partial<Record<string, number>>,
+    openIds: openOutputIds(),
+    screenState: screen.get(),
+    platform: process.platform
+  })
+)
+
 // Stock backgrounds: search a free library (Pixabay now, Pexels when keyed)
 // and keep a copy of whatever is picked next to the native picker's copies.
 ipcMain.handle('get-stock-providers', () => stockProviders())
@@ -2250,6 +2285,7 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
   if (key === 'outputDisplays') {
     for (const id of Object.keys(outputWindows)) moveOutputToItsDisplay(id)
   }
+  if (key === 'outputDisplays' || key === 'outputRoles') notifyOutputsChanged()
   return true
 })
 
@@ -2790,9 +2826,12 @@ function onDisplaysChanged(): void {
   displayShuffleTimer = setTimeout(() => {
     displayShuffleTimer = null
     const open = Object.keys(outputWindows).filter((id) => outputWindows[id])
-    if (open.length === 0) return
-    console.log(`🖥️ Displays changed — replacing ${open.length} output window(s)`)
-    for (const id of open) moveOutputToItsDisplay(id)
+    if (open.length > 0) {
+      console.log(`🖥️ Displays changed — replacing ${open.length} output window(s)`)
+      for (const id of open) moveOutputToItsDisplay(id)
+    }
+    // The dashboard and Settings list the displays too, open outputs or not.
+    notifyOutputsChanged()
   }, 700)
 }
 

@@ -1,31 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cx } from '../../../ui';
 import { Expandable } from './expand';
-import { RowList, type Row } from '../settingsRows';
+import { SettingRow, type Row } from '../settingsRows';
 import { OUTPUTS_STYLES, SHIPPED_OUTPUTS, outputsStyle } from './outputs/styles';
 import { ROLE_NAME, ROLE_AUDIENCE, ROLE_SHOWS, SAMPLE, STATE_WORD, type Role, type Screen } from './outputs/types';
+import { AUTOMATIC, displayChoice, displayOptions, saveDisplay, saveRole, screensFrom, useOutputsStatus } from './outputs/fromEngine';
 
 /*
  * The outputs card — which screens are plugged in and what each one does.
  *
  * Fills the cell band 2 held empty. The face is a picture (./outputs);
  * pressing it lifts the tile onto the settings, one group per screen: what
- * it is, which job it does, which display it is on. The engine has every
- * fact shown (electron/output/outputState.ts, output/displays.ts,
- * `get-displays-status`); the wiring is the one thing left, so the card
- * reads SAMPLE for now and says so here, not on its face.
+ * it is, which job it does, which display it is on. In the app every fact
+ * is the engine's (./outputs/fromEngine): the displays really connected,
+ * where each output is or will open, whether its window is open. It used to
+ * read SAMPLE everywhere, so every church saw an Epson and a BlackMagic
+ * whatever was on their desk. Changing a job or a display writes the
+ * settings the engine already acts on — outputRoles repaints the open
+ * windows, outputDisplays moves them.
  *
  * On the design page a dashed bar sits over the card and switches between
- * the designs under review (./outputs/styles). The pick survives a reload.
- * The app's own window never shows the bar.
+ * the designs under review (./outputs/styles), all drawn on SAMPLE so each
+ * is judged on the same room. The pick survives a reload. The app's own
+ * window never shows the bar.
  */
 
 const PICK_KEY = 'tri.outputs.design';
 const ROLES: Role[] = ['projector', 'stream', 'stage', 'timer'];
 
-/* What the popup lists a screen could be moved to. The engine's real list
-   comes from `get-displays-status`; these are the sample's. */
-const DISPLAYS = ['Epson EB-2247U', 'BlackMagic HDMI', 'Dell P2419H', 'this laptop'];
+/* The sample's displays, for the design page's picker. */
+const SAMPLE_DISPLAYS = ['Epson EB-2247U', 'BlackMagic HDMI', 'Dell P2419H', 'this laptop'];
 
 function onDesignPage() {
   return typeof location !== 'undefined' && /design\.html$/.test(location.pathname);
@@ -47,38 +51,105 @@ function writePick(id: string) {
   }
 }
 
+interface Picker {
+  options: string[];
+  choice: (s: Screen) => string;
+  blurb: string;
+}
+
+type RowEntry = { row: Row; onChange?: (next: unknown) => void };
+
 /* One group per screen. The status line says where it is and what it is
    doing; the two choices under it are the whole of what an operator can
-   change about a screen from here. */
-function rowsFor(screens: Screen[]): Row[] {
-  return screens.flatMap((s): Row[] => [
+   change about a screen from here. Each row carries its own change, so
+   the box follows the card rather than keeping a copy that drifts. */
+function rowsFor(
+  screens: Screen[],
+  picker: Picker,
+  onRole: (id: string, role: Role) => void,
+  onDisplay: (id: string, choice: string) => void,
+): RowEntry[] {
+  return screens.flatMap((s): RowEntry[] => [
     {
-      kind: 'status',
-      key: `${s.id}.status`,
-      label: `${ROLE_NAME[s.role]} — for ${ROLE_AUDIENCE[s.role]}`,
-      blurb: ROLE_SHOWS[s.role],
-      state: s.windowed ? 'warn' : s.state === 'live' ? 'ok' : 'idle',
-      text: s.windowed ? 'no display of its own — a window on this laptop' : `${s.display} · ${s.size ? `${s.size.w}×${s.size.h}` : ''} · ${STATE_WORD[s.state]}`,
+      row: {
+        kind: 'status',
+        key: `${s.id}.status`,
+        label: `${ROLE_NAME[s.role]} — for ${ROLE_AUDIENCE[s.role]}`,
+        blurb: ROLE_SHOWS[s.role],
+        state: s.windowed ? 'warn' : s.state === 'live' ? 'ok' : 'idle',
+        text: s.windowed
+          ? 'no display of its own — a window on this laptop'
+          : [s.display, s.size && `${s.size.w}×${s.size.h}`, STATE_WORD[s.state]].filter(Boolean).join(' · '),
+      },
     },
-    { kind: 'segment', key: `${s.id}.role`, label: 'job', blurb: '', value: s.role, options: ROLES },
-    { kind: 'select', key: `${s.id}.display`, label: 'display', blurb: 'Which screen it opens on. Unset, externals are handed out in order.', value: s.windowed ? 'this laptop' : s.display, options: DISPLAYS },
+    {
+      row: { kind: 'segment', key: `${s.id}.role`, label: 'job', blurb: '', value: s.role, options: ROLES },
+      onChange: (next: unknown) => onRole(s.id, next as Role),
+    },
+    {
+      row: { kind: 'select', key: `${s.id}.display`, label: 'display', blurb: picker.blurb, value: picker.choice(s), options: picker.options },
+      onChange: (next: unknown) => onDisplay(s.id, String(next)),
+    },
   ]);
 }
 
 export function OutputsTile({ className }: { className?: string }) {
   const [design] = useState(onDesignPage);
   const [pick, setPick] = useState(() => (design ? readPick() : null) ?? SHIPPED_OUTPUTS);
-  const [screens, setScreens] = useState<Screen[]>(SAMPLE);
+  /* The app's card is the engine's. The design page, and a browser tab with
+     no engine behind it, draw the sample. Until the engine answers, the app
+     draws nothing rather than a room that is not there. */
+  const [engine] = useState(() => !design && typeof window !== 'undefined' && !!window.api);
+  const status = useOutputsStatus();
+  const [sample, setSample] = useState<Screen[]>(SAMPLE);
+  const screens = engine ? (status ? screensFrom(status) : []) : sample;
 
   useEffect(() => {
     if (design) writePick(pick);
   }, [design, pick]);
 
-  /* Local until the engine takes it: sets, or cycles, a screen's job. */
-  const onRole = (id: string, role?: Role) =>
-    setScreens((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, role: role ?? ROLES[(ROLES.indexOf(s.role) + 1) % ROLES.length] } : s)),
-    );
+  /* The shared Select reports one pick twice (pointer-down, then click).
+     A display pick already on its way to the engine is not sent again: each
+     one moves an open window, and the wall should move once. Emptied when
+     the engine's next answer lands. */
+  const sending = useRef(new Map<string, string>());
+  useEffect(() => {
+    sending.current.clear();
+  }, [status]);
+
+  /* Sets, or cycles, a screen's job. */
+  const onRole = (id: string, role?: Role) => {
+    const s = screens.find((x) => x.id === id);
+    if (!s) return;
+    const next = role ?? ROLES[(ROLES.indexOf(s.role) + 1) % ROLES.length];
+    if (next === s.role) return;
+    if (engine) void saveRole(id, next).catch(() => undefined);
+    else setSample((prev) => prev.map((x) => (x.id === id ? { ...x, role: next } : x)));
+  };
+
+  const onDisplay = (id: string, choice: string) => {
+    if (!engine) {
+      setSample((prev) => prev.map((x) => (x.id === id ? { ...x, display: choice, windowed: choice === 'this laptop' } : x)));
+      return;
+    }
+    if (!status || choice === displayChoice(status, id) || sending.current.get(id) === choice) return;
+    sending.current.set(id, choice);
+    const d = status.displays.find((x) => x.name === choice);
+    void saveDisplay(id, d ? d.id : null).catch(() => undefined);
+  };
+
+  const picker: Picker =
+    engine && status
+      ? {
+          options: displayOptions(status),
+          choice: (s) => displayChoice(status, s.id),
+          blurb: `Which screen it opens on. ${AUTOMATIC} hands the external screens out in order.`,
+        }
+      : {
+          options: SAMPLE_DISPLAYS,
+          choice: (s) => (s.windowed ? 'this laptop' : s.display),
+          blurb: 'Which screen it opens on. Unset, externals are handed out in order.',
+        };
 
   const style = outputsStyle(design ? pick : SHIPPED_OUTPUTS);
   const Face = style.Component;
@@ -93,7 +164,11 @@ export function OutputsTile({ className }: { className?: string }) {
         size={{ w: 640, h: 620 }}
         tile={({ onOpen }) => <Face screens={screens} onRole={onRole} onOpen={onOpen} className="min-h-0 w-full flex-1" />}
       >
-        <RowList rows={rowsFor(screens)} />
+        <div>
+          {rowsFor(screens, picker, onRole, onDisplay).map(({ row, onChange }) => (
+            <SettingRow key={row.key} row={row} value={'value' in row ? row.value : undefined} onChange={onChange ?? (() => undefined)} />
+          ))}
+        </div>
       </Expandable>
       {design && (
         <div

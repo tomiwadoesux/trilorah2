@@ -31,7 +31,7 @@ export interface DisplayInfo {
   name: string;
   w: number;
   h: number;
-  role: 'projector' | 'stream' | 'stage' | null;
+  role: 'projector' | 'stream' | 'stage' | 'timer' | null;
   /** The display the app itself is on — it cannot also be the projector. */
   isOperator?: boolean;
 }
@@ -205,6 +205,8 @@ function DisplayMap({ displays }: { displays: DisplayInfo[] }) {
     projector: '#8fd3c0',
     stream: '#e4d87a',
     stage: 'rgb(229 243 242 / 0.7)',
+    /* Stage and timer are both for the preacher, so they share an ink. */
+    timer: 'rgb(229 243 242 / 0.7)',
   };
   return (
     <div className="flex flex-wrap items-end gap-4">
