@@ -63,7 +63,7 @@ contextBridge.exposeInMainWorld('api', {
   sendText: (text: string) => ipcRenderer.send('process-text', text),
 
   // Push preview to live
-  pushToLive: () => ipcRenderer.send('push-to-live'),
+  pushToLive: (reference?: string, version?: string) => ipcRenderer.send('push-to-live', reference, version),
 
   // Import presentation (PPTX → images)
   importPresentation: () => ipcRenderer.invoke('import-presentation'),

@@ -1,0 +1,144 @@
+/* Header surfaces stay local to the live workspace and follow its density. */
+.tri-live-header {
+  gap: var(--tri-gap);
+  padding: 0 var(--tri-gap);
+  border: var(--tri-border) solid #262b2e;
+  border-radius: 10px;
+  background: #141719;
+}
+
+.tri-live-header .tri-header-control {
+  --header-bg: #252c32;
+  --header-hover: #303a43;
+  --header-active: #38444e;
+  --header-edge: #39444b;
+  --header-accent: #afc3d2;
+  --header-ink: #d0dce3;
+  height: var(--tri-control-h);
+  padding: 0 var(--tri-control-pad-x);
+  border: var(--tri-border) solid var(--header-edge);
+  border-radius: calc(var(--tri-control-h) * 0.25);
+  corner-shape: var(--tri-corner);
+  background: var(--header-bg);
+  color: var(--header-ink);
+  font-size: var(--tri-control-size);
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.tri-live-header button.tri-header-control { cursor: pointer; }
+.tri-live-header button.tri-header-control:hover:not(:disabled) {
+  background: var(--header-hover);
+  border-color: var(--header-accent);
+  color: #f1f4f0;
+}
+.tri-live-header button.tri-header-control:focus-visible {
+  outline: 2px solid var(--header-accent);
+  outline-offset: 2px;
+}
+.tri-live-header .tri-header-control[aria-pressed='true'],
+.tri-live-header .tri-header-control[aria-expanded='true'] {
+  background: var(--header-active);
+  border-color: var(--header-accent);
+  color: #f1f4f0;
+}
+.tri-live-header button.tri-header-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.tri-header-views { gap: var(--tri-gap); }
+.tri-live-header .tri-header-view { font-weight: 600; }
+.tri-live-header .tri-header-view[aria-pressed='true'] {
+  box-shadow: inset 0 -2px 0 var(--header-accent);
+}
+.tri-live-header .tri-header-view[data-view='operator'] {
+  --header-bg: #283429;
+  --header-hover: #344235;
+  --header-active: #3a4937;
+  --header-edge: #43523e;
+  --header-accent: #bbcba6;
+  --header-ink: #d6e0cf;
+}
+.tri-live-header .tri-header-view[data-view='dashboard'] {
+  --header-bg: #25313d;
+  --header-hover: #303f4e;
+  --header-active: #364b5f;
+  --header-edge: #3b4b5b;
+  --header-accent: #afc7df;
+  --header-ink: #cedae6;
+}
+.tri-live-header .tri-header-view[data-view='profile'] {
+  --header-bg: #312b3a;
+  --header-hover: #3d3549;
+  --header-active: #483d54;
+  --header-edge: #4a3f56;
+  --header-accent: #cebbdf;
+  --header-ink: #ded3e7;
+}
+.tri-live-header .tri-header-view[data-view='settings'] {
+  --header-bg: #363025;
+  --header-hover: #443b2e;
+  --header-active: #514432;
+  --header-edge: #514735;
+  --header-accent: #d8c59e;
+  --header-ink: #e0d6c4;
+}
+
+.tri-live-header .tri-header-orb { margin-left: var(--tri-gap); }
+.tri-live-header .tri-header-orb .tri-header-control {
+  --header-bg: #202627;
+  --header-hover: #2b3333;
+  --header-edge: #35413e;
+  padding: 0;
+  overflow: hidden;
+}
+.tri-header-orb .tri-header-control > * { max-width: 100%; max-height: 100%; }
+.tri-live-header .tri-header-listen {
+  --header-bg: #243b32;
+  --header-hover: #2e4b3e;
+  --header-active: #335944;
+  --header-edge: #3f5a4c;
+  --header-accent: #a3c6ad;
+  --header-ink: #d4e8dc;
+  font-weight: 600;
+}
+.tri-live-header .tri-header-listen[data-error='true'] {
+  --header-bg: #432e2e;
+  --header-hover: #543737;
+  --header-edge: #754d4d;
+  --header-accent: #e0a8a8;
+  --header-ink: #efd1d1;
+}
+.tri-live-header .tri-header-import {
+  --header-bg: #2b3239;
+  --header-hover: #36414b;
+  --header-active: #3d4a55;
+  --header-edge: #46515c;
+  --header-accent: #adbed0;
+}
+.tri-live-header .tri-header-clock {
+  --header-bg: #212933;
+  --header-hover: #2b3745;
+  --header-edge: #384859;
+  --header-accent: #9fb7d0;
+}
+.tri-header-log-slot { width: var(--tri-rail-w); flex-shrink: 1; }
+.tri-live-header .tri-header-log {
+  --header-bg: #20322f;
+  --header-edge: #385048;
+  --header-ink: #cce2d8;
+}
+.tri-header-status-dot { background: #83bfa4; }
+.tri-live-header .tri-header-log[data-attention='true'] {
+  --header-bg: #393224;
+  --header-edge: #655b3b;
+}
+.tri-header-log[data-attention='true'] .tri-header-status-dot { background: #d4c185; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-live-header .tri-header-control { transition: none; }
+}

@@ -518,7 +518,7 @@ interface WindowApi {
   startListening(deviceLabel?: string): void;
   stopListening(): void;
   sendText(text: string): void;
-  pushToLive(): void;
+  pushToLive(reference?: string, version?: string): void;
   openOutput(outputId?: string | number): void;
 
   /* Presentations ---------------------------------------------------- */

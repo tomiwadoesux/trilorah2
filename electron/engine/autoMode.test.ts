@@ -26,6 +26,11 @@ const clear = [mk('John', 90), mk('Jonah', 60)]
 const clash = [mk('John', 70), mk('Jonah', 62)]
 
 describe('AutoModeController.decide', () => {
+  it('cannot auto-push when the live surface is controlled manually', () => {
+    const { ctl, events } = setup()
+    expect(ctl.decide('p1', clear, { manualOnly: true, graceWindow: true }).action).toBe('preview')
+    expect(events).toEqual([])
+  })
   it('previews when the switch is off, even if eligible', () => {
     const { ctl, events } = setup({ enabled: false })
     const d = ctl.decide('p1', clear)

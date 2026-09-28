@@ -32,6 +32,7 @@ export interface VerseDetection {
   source?: string
   isPreview?: boolean
   version?: string
+  explicitBook?: boolean
 }
 
 /** Payload ScriptureSession emits toward the display layer. */

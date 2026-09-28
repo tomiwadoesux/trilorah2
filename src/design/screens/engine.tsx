@@ -94,13 +94,9 @@ export interface EngineValue {
   /** Stage a reference in the ENGINE's preview. Does not reach the room. */
   show: (ref: string) => boolean;
   /** Promote whatever the ENGINE has in preview. Not the local stage. */
-  pushEnginePreview: () => void;
-  /**
-   * Put a reference in front of the congregation — resolve it, then promote
-   * it, as one act. See the note on the implementation: this is a round
-   * trip, not a call.
-   */
-  pushReference: (ref: string) => boolean;
+  pushEnginePreview: (reference?: string, version?: string) => void;
+  /** Load and promote the selected reference in one main-process operation. */
+  pushReference: (ref: string, version?: string) => boolean;
   setScreen: (s: ScreenState) => void;
   openProjector: () => void;
   /** Look a reading up in the bible database. Null when there is no db. */
@@ -192,15 +188,6 @@ const SPOKEN_CAP = 12;
 /** How many unanswered proposals the rail will hold. */
 const PROPOSAL_CAP = 4;
 
-/* "Genesis 1:6" and "genesis  1:6" are the same verse. The engine composes
-   its reference from resolver output and the database composes the row's
-   from its own columns; they agree today and comparing them loosely is
-   cheaper than depending on that. */
-function sameRef(a: string, b: string): boolean {
-  const flat = (x: string) => x.replace(/\s+/g, ' ').trim().toLowerCase();
-  return flat(a) === flat(b);
-}
-
 function referenceOf(d: Detection): string {
   const verse = d.verse == null ? '' : `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `-${d.endVerse}` : ''}`;
   return `${d.book} ${d.chapter}${verse}`;
@@ -231,30 +218,6 @@ export function EngineProvider({ children }: { children: ReactNode }) {
      component that reacts to one should not also re-render every time
      another one happens. */
   const liveListeners = useRef(new Set<(item: LiveItem) => void>());
-
-  /*
-   * A push in flight.
-   *
-   * Putting a verse in front of a congregation is a ROUND TRIP, not a call,
-   * and this is the piece that makes it one. There is no channel that
-   * renders arbitrary text on the projector — a reference is handed to the
-   * resolver, the resolver files it as the engine's preview, and only
-   * pushToLive() promotes that. So "go live" is: resolve, wait for the
-   * engine to say it has it, promote.
-   *
-   * The wait is what this ref holds. Without it, pushToLive() fires while
-   * the resolver is still working and promotes whatever was in preview
-   * BEFORE — which is the last verse, in front of everybody.
-   *
-   * The timer is the other half. A reference the resolver cannot place
-   * never comes back, and an armed push that waits forever would fire
-   * during the next reading instead. It gives up rather than guessing.
-   */
-  const armed = useRef<{ ref: string; timer: number } | null>(null);
-  const disarm = useCallback(() => {
-    if (armed.current) window.clearTimeout(armed.current.timer);
-    armed.current = null;
-  }, []);
 
   /* Ask the database whether it is there. It answers under DESIGN_MODE=1
      too, which is exactly why db and resolver are separate capabilities. */
@@ -340,15 +303,6 @@ export function EngineProvider({ children }: { children: ReactNode }) {
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
         const reference = referenceOf(d);
 
-        /* Our own push coming back round. Promote it and say nothing — it
-           is not a proposal, it is the operator's own decision arriving at
-           the far end of the trip they started. */
-        if (armed.current && sameRef(armed.current.ref, reference)) {
-          disarm();
-          api.pushToLive();
-          return;
-        }
-
         const verses = d.verses?.length ? d.verses : d.verse != null && d.text ? [{ verse: d.verse, text: d.text }] : [];
         const text = d.text || verses.map((v) => v.text).join(' ');
         if (!text) return;
@@ -399,7 +353,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     );
 
     return () => off.forEach((fn) => fn?.());
-  }, [api, disarm]);
+  }, [api]);
 
   /*
    * Starting the microphone, and why this does not say "connecting".
@@ -469,34 +423,16 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     [api],
   );
 
-  const pushEnginePreview = useCallback(() => api?.pushToLive(), [api]);
-
-  /** How long to wait for the resolver before giving up on a push. */
-  const ARM_MS = 1500;
+  const pushEnginePreview = useCallback((reference?: string, version?: string) => api?.pushToLive(reference, version), [api]);
 
   const pushReference = useCallback(
-    (ref: string) => {
+    (ref: string, version?: string) => {
       if (!api) return false;
-      disarm();
-      armed.current = {
-        ref,
-        timer: window.setTimeout(() => {
-          armed.current = null;
-          /* Deliberately NOT pushing on timeout. The engine did not
-             acknowledge the reference, so what sits in its preview is
-             something else, and promoting it would put the wrong verse up.
-             The local stage still moved, so the operator can see the
-             disagreement and try again. */
-        }, ARM_MS),
-      };
-      return show(ref);
+      api.pushToLive(ref, version);
+      return true;
     },
-    [api, show, disarm],
+    [api],
   );
-
-  /* Nothing should stay armed across an unmount — a hot reload mid-push
-     would otherwise leave a timer holding a reference to a dead handler. */
-  useEffect(() => disarm, [disarm]);
 
   const setScreen = useCallback(
     (s: ScreenState) => {

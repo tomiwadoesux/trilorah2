@@ -32,6 +32,7 @@ export interface ResolvedReference {
   rangeEnd?: number | null
   confidence: number
   source: 'resolver'
+  explicitBook?: boolean
 }
 
 type VerseCallback = (data: ResolvedReference) => void
@@ -441,9 +442,18 @@ export class SpokenReferenceResolver {
    *  recogniser's own isFinal, so a partial parks its result here and the final
    *  releases it. Whisper sends finals only and is unaffected either way. */
   private heldEmit: (() => void) | null = null
+  private heldAt = 0
 
   /** Whether the chunk being walked right now was the recogniser's final. */
   private utteranceFinal = true
+  private explicitBook = false
+  private committedVerse = false
+  private partialContext: {
+    pendingBook: string | null
+    pendingChapter: number | null
+    pendingAt: number
+    pendingAdjacent: boolean
+  } | null = null
 
   constructor(onDetection: VerseCallback, opts: ResolverOptions = {}) {
     this.onDetection = onDetection
@@ -480,9 +490,29 @@ export class SpokenReferenceResolver {
 
   /** Feed one ASR chunk. Partial chunks refresh state; finals detect fully. */
   process(text: string, isFinal: boolean): void {
+    // Each partial replaces the recognizer's previous hypothesis.
+    if (this.partialContext) {
+      const words = mergeCompounds(normalizeWords(text), this.compounds)
+      // A provider can split "John ... chapter three" into separate chunks.
+      const continuation = isFinal && this.pendingBook && this.now() - this.pendingAt <= PENDING_TTL_MS &&
+        (this.chapterWords.has(words[0]) || this.verseWords.has(words[0])) &&
+        this.findBookMatches(words).length === 0
+      if (!continuation) Object.assign(this, this.partialContext)
+    }
+    if (!isFinal && !this.partialContext) {
+      this.partialContext = {
+        pendingBook: this.pendingBook,
+        pendingChapter: this.pendingChapter,
+        pendingAt: this.pendingAt,
+        pendingAdjacent: this.pendingAdjacent
+      }
+    }
+    if (text.trim()) this.heldEmit = null
+    this.explicitBook = false
+    this.committedVerse = false
     this.utteranceFinal = isFinal
     try {
-      this.walkChunk(text, isFinal)
+      if (text.trim()) this.walkChunk(text, isFinal)
     } finally {
       // A final releases whatever the partials settled on, including when the
       // final itself parsed nothing new — Deepgram often closes an utterance
@@ -491,9 +521,21 @@ export class SpokenReferenceResolver {
       if (isFinal && this.heldEmit) {
         const held = this.heldEmit
         this.heldEmit = null
-        held()
+        if (this.now() - this.heldAt <= PENDING_TTL_MS) held()
+      }
+      if (isFinal) {
+        this.partialContext = null
+        // Bare numbers may finish a chapter-only reference, not reopen one
+        // that already has a verse in a different utterance.
+        if (this.committedVerse) this.pendingAdjacent = false
       }
     }
+  }
+
+  discardPartial(): void {
+    if (this.partialContext) Object.assign(this, this.partialContext)
+    this.partialContext = null
+    this.heldEmit = null
   }
 
   private walkChunk(text: string, isFinal: boolean): void {
@@ -511,6 +553,7 @@ export class SpokenReferenceResolver {
     const rawWords = mergeCompounds(normalizeWords(text), this.compounds)
     if (rawWords.length === 0) return
     const books = this.findBookMatches(rawWords)
+    this.explicitBook ||= books.length > 0
 
     // Strip book-name words BEFORE number extraction, so "1 John 3 16"
     // never reads the leading "1" as a number.
@@ -590,6 +633,7 @@ export class SpokenReferenceResolver {
           const verse = m[2] !== undefined ? chineseNumberValue(m[2]) : null
           const rangeEnd = m[3] !== undefined ? chineseNumberValue(m[3]) : null
           if (chapter !== null) {
+            this.explicitBook = true
             this.emit(canonical, chapter, verse, rangeEnd, verse !== null ? 0.95 : 0.9, now)
           }
         } else if (this.bareBookGate()) {
@@ -697,15 +741,7 @@ export class SpokenReferenceResolver {
             this.emit(this.pendingBook, this.pendingChapter, num.value, rangeEnd, 0.95, now)
           } else {
             // Bare "verse N" — session attaches it to current context.
-            this.onDetection({
-              type: 'verse',
-              book: '',
-              chapter: null,
-              verse: num.value,
-              rangeEnd,
-              confidence: 0.86,
-              source: 'resolver'
-            })
+            this.emit('', null, num.value, rangeEnd, 0.86, now)
           }
           i += 1 + num.consumed + (range?.consumed ?? 0)
           continue
@@ -858,12 +894,14 @@ export class SpokenReferenceResolver {
     // when isFinal arrives is the complete reading — 4:21, never the 4:20 that
     // the truncated "romans four twenty" parsed to a moment earlier.
     if (!this.utteranceFinal) {
-      this.heldEmit = () => this.commit(book, chapter, verse, rangeEnd, confidence, this.now())
+      const explicitBook = this.explicitBook
+      this.heldAt = now
+      this.heldEmit = () => this.commit(book, chapter, verse, rangeEnd, confidence, this.now(), explicitBook)
       return
     }
 
     this.heldEmit = null
-    this.commit(book, chapter, verse, rangeEnd, confidence, now)
+    this.commit(book, chapter, verse, rangeEnd, confidence, now, this.explicitBook)
   }
 
   /** The emit proper, once the utterance that produced it has settled. */
@@ -873,7 +911,8 @@ export class SpokenReferenceResolver {
     verse: number | null,
     rangeEnd: number | null,
     confidence: number,
-    now: number
+    now: number,
+    explicitBook: boolean
   ): void {
     const key = `${book}|${chapter}|${verse}|${rangeEnd ?? ''}`
     if (key === this.lastEmitKey && now - this.lastEmitAt < DEDUP_WINDOW_MS) {
@@ -881,6 +920,7 @@ export class SpokenReferenceResolver {
     }
     this.lastEmitKey = key
     this.lastEmitAt = now
+    this.committedVerse = verse !== null
     if (chapter !== null) {
       this.pendingBook = book
       this.pendingChapter = chapter
@@ -899,7 +939,8 @@ export class SpokenReferenceResolver {
       rangeEnd,
       endVerse: rangeEnd,
       confidence,
-      source: 'resolver'
+      source: 'resolver',
+      explicitBook
     })
   }
 }
@@ -942,6 +983,10 @@ export function connectML(onVerse: (data: any) => void): void {
 export function sendTranscript(text: string, isFinal = false): void {
   if (!resolver) return
   resolver.process(text, isFinal)
+}
+
+export function discardPartialReference(): void {
+  resolver?.discardPartial()
 }
 
 export function disconnectML(): void {

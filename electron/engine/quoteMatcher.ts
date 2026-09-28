@@ -415,46 +415,48 @@ export class QuoteMatcher {
    */
   findAllQuotedVerses(): QuoteMatch[] {
     if (!this.isLoaded || this.rollingWords.length < WINDOW_SIZE) return []
-    const matches: QuoteMatch[] = []
-    const seenRefs = new Set<string>()
-    for (let i = 0; i <= this.rollingWords.length - WINDOW_SIZE; i++) {
-      const win = this.rollingWords.slice(i, i + WINDOW_SIZE)
-      const rarestWord = this.getRarestWord(win)
-      const candidates = this.wordIndex[rarestWord]
-      if (!candidates) continue
-      for (const verseIdx of candidates) {
-        const verse = this.verses[verseIdx]
-        if (!verse || verse.words.length < WINDOW_SIZE) continue
-        if (seenRefs.has(verse.ref)) continue
-        for (let j = 0; j <= verse.words.length - WINDOW_SIZE; j++) {
-          const verseSlice = verse.words.slice(j, j + WINDOW_SIZE)
-          const matchCount = this.countMatches(win, verseSlice)
+    const matches = new Map<string, QuoteMatch>()
+    // General verses need six matches; familiar passages can match five-word windows.
+    for (const windowSize of [DEFAULT_MIN_MATCHES, WINDOW_SIZE]) {
+      for (let i = 0; i <= this.rollingWords.length - windowSize; i++) {
+        const win = this.rollingWords.slice(i, i + windowSize)
+        const rarestWord = this.getRarestWord(win)
+        const candidates = this.wordIndex[rarestWord]
+        if (!candidates) continue
+        for (const verseIdx of candidates) {
+          const verse = this.verses[verseIdx]
+          if (!verse || verse.words.length < windowSize) continue
+          if (matches.get(verse.ref)?.confidence === 1) continue
           const minRequired = getMinMatches(verse.ref)
-          if (matchCount >= minRequired) {
-            let substantiveMatches = 0
-            for (let k = 0; k < WINDOW_SIZE && k < win.length && k < verseSlice.length; k++) {
-              if (win[k] === verseSlice[k] && !STOPWORDS.has(win[k])) {
-                substantiveMatches++
+          if (minRequired > windowSize) continue
+          for (let j = 0; j <= verse.words.length - windowSize; j++) {
+            const verseSlice = verse.words.slice(j, j + windowSize)
+            const matchCount = this.countMatches(win, verseSlice)
+            if (matchCount >= minRequired) {
+              let substantiveMatches = 0
+              for (let k = 0; k < windowSize; k++) {
+                if (win[k] === verseSlice[k] && !STOPWORDS.has(win[k])) {
+                  substantiveMatches++
+                }
               }
+              if (substantiveMatches < 2) continue
+              const confidence = matchCount / windowSize
+              if ((matches.get(verse.ref)?.confidence ?? 0) >= confidence) continue
+              matches.set(verse.ref, {
+                ref: verse.ref,
+                bookId: verse.bookId,
+                chapter: verse.chapter,
+                verse: verse.verse,
+                confidence,
+                lowConfidence: confidence < 0.8
+              })
+              if (confidence === 1) break
             }
-            if (substantiveMatches < 2) break
-            seenRefs.add(verse.ref)
-            const confidence = matchCount / WINDOW_SIZE
-            matches.push({
-              ref: verse.ref,
-              bookId: verse.bookId,
-              chapter: verse.chapter,
-              verse: verse.verse,
-              confidence,
-              lowConfidence: confidence < 0.8
-            })
-            break
           }
         }
       }
     }
-    matches.sort((a, b) => b.confidence - a.confidence)
-    return matches
+    return [...matches.values()].sort((a, b) => b.confidence - a.confidence)
   }
 
   /**

@@ -94,6 +94,8 @@ export class FalsePositiveFilter {
     recentTranscript: string[],
     currentSegment: SegmentType
   ): boolean {
+    // A named book with complete numbers is a reference, even outside a sermon.
+    if (detection.explicitBook && detection.chapter > 0 && (detection.verse ?? 0) > 0 && (detection.confidence ?? 0) >= 0.85) return false
     if (currentSegment === 'worship') {
       console.log(
         `🚫 Blocked during worship: ${detection.book} ${detection.chapter}:${detection.verse}`

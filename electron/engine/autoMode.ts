@@ -34,6 +34,7 @@ export interface AutoModeDeps {
 }
 
 export interface DecideOptions {
+  manualOnly?: boolean
   /** Grace window on: hold as preview until the preacher starts reading. */
   graceWindow?: boolean
   clashMarginPts?: number
@@ -62,6 +63,10 @@ export class AutoModeController {
 
   decide(preacherId: string, candidates: Candidate[], opts: DecideOptions = {}): AutoModeDecision {
     const list = [...candidates]
+    if (opts.manualOnly) {
+      this.pending = null
+      return { action: 'preview', reason: 'operator controls live scripture', candidates: list }
+    }
     if (list.length === 0) {
       return { action: 'preview', reason: 'no candidates', candidates: list }
     }

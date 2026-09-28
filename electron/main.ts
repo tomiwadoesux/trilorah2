@@ -27,6 +27,7 @@ import {
   connectML,
   disconnectML,
   sendTranscript,
+  discardPartialReference,
   setBareBookGate,
   setResolverLanguage,
   makePackNumberParser
@@ -46,6 +47,7 @@ import {
 // --- 2026-09 engine additions (IDEAS-BACKLOG.md / BUILD-MAP.md) ---
 import { buildCandidates, candidatesFromQuotes, type Candidate } from './engine/candidates'
 import { AutoModeController } from './engine/autoMode'
+import { VerseDelivery, detectionKey, readVersePreview, type VersePushSource } from './engine/verseDelivery'
 import { CommandLog } from './preachers/commandLog'
 import { VocabularyStore, applyVocabulary, deepgramKeywords } from './preachers/vocabulary'
 import { exportFixturesFromLedger } from './preachers/evalExport'
@@ -228,6 +230,8 @@ let slowPath: SlowPathOrchestrator | null = null
 const postServiceSummary = new PostServiceSummary()
 
 let currentPreviewData: any = null
+const verseDelivery = new VerseDelivery()
+let previewRevision = 0
 
 /* ---------------- agentic layer state (added post-recovery) ---------------- */
 
@@ -374,12 +378,13 @@ function remoteState() {
   const ref = currentPreviewData
     ? `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
     : null
-  const pid = activePreacherId()
   return {
     listening: isListening,
     pendingRef: currentPreviewData?.isPreview ? ref : null,
-    liveRef: currentPreviewData && !currentPreviewData.isPreview ? ref : null,
-    autoMode: pid ? !!ledger?.isAutoModeEnabled(pid) : false,
+    liveRef: verseDelivery.live
+      ? `${verseDelivery.live.book} ${verseDelivery.live.chapter}:${verseDelivery.live.verse}`
+      : null,
+    autoMode: false,
     screen: screen.get(),
     alert: alerts.current() ? { id: alerts.current()!.id, text: alerts.current()!.text } : null
   }
@@ -412,12 +417,7 @@ function songStore(): SongStore {
 const intentEngine = new IntentEngine({
   onStateChange: (state) => emitIntentState(state),
   onReadingStarted: () => {
-    // The telepathic moment: the preacher started reading the armed verse.
-    // Auto mode pushes it live; otherwise the state change is the UI hint.
-    const preacherId = getSetting('activePreacherId')
-    if (preacherId && autoMode.shouldAutoPushOnReadingStarted(preacherId)) {
-      pushPreviewToLive('auto (reading started)')
-    }
+    // Reading is an operator hint; it cannot promote a verse to the wall.
   },
   onDefer: () => console.log('🗂️ Defer window open — next detection goes to the queue')
 })
@@ -517,7 +517,6 @@ const voiceCallbacks: VoiceCommandCallbacks = {
   },
   onVerseCorrection: (verse) => {
     const pid = activePreacherId()
-    const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
     const heard = lastDisplayedRef
       ? `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}:${lastDisplayedRef.verse}`
       : ''
@@ -537,13 +536,10 @@ const voiceCallbacks: VoiceCommandCallbacks = {
         ledger.recordCorrection(pid, heard, corrected, 'voice')
       }
     }
-    if (session.applyVerseCorrection(verse) && wasLive) {
-      pushPreviewToLive('correction')
-    }
+    session.applyVerseCorrection(verse)
   },
   onChapterCorrection: (chapter) => {
     const pid = activePreacherId()
-    const wasLive = Boolean(currentPreviewData && !currentPreviewData.isPreview)
     if (pid && ledger && lastDisplayedRef) {
       ledger.recordDetection(pid, false)
       ledger.recordCorrection(
@@ -553,12 +549,10 @@ const voiceCallbacks: VoiceCommandCallbacks = {
         'voice'
       )
     }
-    if (session.applyChapterCorrection(chapter) && wasLive) {
-      pushPreviewToLive('correction')
-    }
+    session.applyChapterCorrection(chapter)
   },
   onDismiss: () => {
-    emitVerseAutoDismiss()
+    dismissLiveVerse()
     intentEngine.onDisplayCleared()
   },
   onHold: () => {
@@ -570,7 +564,7 @@ const voiceCallbacks: VoiceCommandCallbacks = {
     emitPrayerMode(inPrayer)
     // Taking a verse down because the room went into prayer is a projector
     // write triggered by nothing but speech. Opt-in.
-    if (inPrayer && getSetting('autoScreenActions')) emitVerseAutoDismiss()
+    if (inPrayer && getSetting('autoScreenActions')) dismissLiveVerse()
   },
   onNavigate: (direction) => {
     session.exitReadingMode()
@@ -595,16 +589,24 @@ function noteOperatorReversal(kind: 'display-dismiss' | 'display-hold' | 'naviga
   }
 }
 
-/** Preview → live, from the operator button, auto mode, or grace window. */
-function pushPreviewToLive(via: string): void {
-  if (!currentPreviewData) return
+function dismissLiveVerse(): void {
+  verseDelivery.clearLive()
+  displayTimingManager.onVerseCleared()
+  emitVerseAutoDismiss()
+  broadcastState()
+}
+
+/** Promote a preview only from an explicit operator or remote action. */
+function pushPreviewToLive(via: VersePushSource): void {
+  const liveVerse = verseDelivery.promote(via)
+  if (!liveVerse) return
   console.log(
     `🔴 Pushing to LIVE (${via}):`,
     `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
   )
   currentLiveContent = null
   screen.onContentPushed()
-  emitVerseDetected({ ...currentPreviewData, isPreview: false })
+  emitVerseDetected(liveVerse)
   displayTimingManager.onVerseDisplayed(currentPreviewData.text)
   intentEngine.disarmGraceWindow()
   // Congregation poll (if one is open) closes with this verse as the label.
@@ -634,34 +636,19 @@ function pushPreviewToLive(via: string): void {
   }
 }
 
-/** Re-render the current verse in a different translation (voice or UI). */
+/** Stage the current reference in a different translation (voice or UI). */
 function reEmitCurrentVerseInVersion(version: string): void {
   if (!currentPreviewData || !db) return
-  const bookId = resolveBookId(currentPreviewData.book)
-  if (bookId === undefined) return
   try {
-    const verses: { verse: number; text: string }[] = []
     const start = currentPreviewData.verse
     const end = currentPreviewData.endVerse ?? currentPreviewData.verse
-    for (let v = start; v <= end; v++) {
-      const row = db
-        .prepare(
-          `SELECT verse as text FROM bible
-           WHERE Book = ? AND Chapter = ? AND Versecount = ? AND Version = ?`
-        )
-        .get(bookId, currentPreviewData.chapter, v, version) as { text: string } | undefined
-      verses.push({ verse: v, text: row?.text || `Verse ${v} not found` })
-    }
-    currentPreviewData = {
-      ...currentPreviewData,
-      text: verses.map((v) => v.text).join(' '),
-      verses,
-      version
-    }
-    // Switching translation re-renders what is already up; it is not a push,
-    // so it must not lift a CLEAR. A spoken "switch to NIV" used to un-clear
-    // the screen through here.
-    if (!currentPreviewData.isPreview) screen.onContentPushed()
+    const reference = `${currentPreviewData.book} ${currentPreviewData.chapter}:${start}-${end}`
+    const preview = readVersePreview(db, reference, version)
+    if (!preview) return
+    currentPreviewData = verseDelivery.stage({ ...currentPreviewData, ...preview })
+    session.version = version
+    session.setCurrentVerseText(preview.text)
+    previewRevision++
     emitVerseDetected(currentPreviewData)
     emitVersionChanged(version)
   } catch (e) {
@@ -670,42 +657,26 @@ function reEmitCurrentVerseInVersion(version: string): void {
 }
 
 const session = new ScriptureSession((display: any) => {
-  const bookId = resolveBookId(display.book)
-  const displayVersion = getSetting('displayVersion') || 'KJV'
-  const verses: { verse: number; text: string }[] = []
-  if (db && bookId !== undefined) {
-    try {
-      for (let v = display.verseStart; v <= display.verseEnd; v++) {
-        const row = db
-          .prepare(
-            `SELECT verse as text FROM bible
-             WHERE Book = ? AND Chapter = ? AND Versecount = ? AND Version = ?`
-          )
-          .get(bookId, display.chapter, v, displayVersion) as { text: string } | undefined
-        verses.push({
-          verse: v,
-          text: row?.text || `Verse ${v} not found`
-        })
-      }
-    } catch (e) {
-      console.error('❌ DB error:', e)
-    }
+  if (!db) return
+  const displayVersion = display.version || getSetting('displayVersion') || 'KJV'
+  const reference = `${display.book} ${display.chapter}:${display.verseStart}-${display.verseEnd}`
+  let preview
+  try {
+    preview = readVersePreview(db, reference, displayVersion)
+  } catch (e) {
+    console.error('❌ DB error:', e)
+    return
   }
+  if (!preview) return
   const detection: any = {
-    book: display.book,
-    chapter: display.chapter,
-    verse: display.verseStart,
-    endVerse: display.verseEnd !== display.verseStart ? display.verseEnd : undefined,
-    text: verses.map((v) => v.text).join(' '),
-    verses,
-    isRange: display.verseEnd !== display.verseStart,
-    isPreview: display.isPreview,
-    version: displayVersion,
+    ...preview,
+    confidence: lastResolverConfidence,
     // Pass range metadata
     rangeEnd: display.rangeEnd,
     chunkSize: display.chunkSize
   }
-  currentPreviewData = detection
+  currentPreviewData = verseDelivery.stage(detection)
+  previewRevision++
   // Only a LIVE push lifts a CLEAR. This used to run for previews too, so a
   // reference the engine merely HEARD un-cleared the projector — the verse
   // itself stayed off, but the operator's blank screen came back on. The
@@ -722,7 +693,10 @@ const session = new ScriptureSession((display: any) => {
     0.7,
     !detection.isPreview
   )
-  if (cloudVerseId) detection.cloudId = cloudVerseId
+  if (cloudVerseId) {
+    detection.cloudId = cloudVerseId
+    currentPreviewData.cloudId = cloudVerseId
+  }
   if (!detection.isPreview) {
     displayTimingManager.onVerseDisplayed(detection.text)
   }
@@ -771,19 +745,34 @@ const session = new ScriptureSession((display: any) => {
       })
     }
     const decision = autoMode.decide(preacherId, candidates, {
+      manualOnly: true,
       graceWindow: !!getSetting('graceWindowEnabled'),
       clashMarginPts: getSetting('clashMarginPts')
     })
     if (decision.action === 'arm-grace') {
-      // Hold as preview; goes live the moment the preacher starts reading.
+      // Hold as preview; reading provides a hint for the operator.
       intentEngine.armGraceWindow(refStr, detection.text)
-    } else if (decision.action === 'auto-push') {
-      pushPreviewToLive('auto mode')
     }
     // 'hold-clash' and 'preview': stays on preview; UI shows the candidates.
   }
   broadcastState()
 })
+
+function stageVerseReference(reference: string, version = getSetting('displayVersion') || 'KJV'): boolean {
+  if (!db) return false
+  try {
+    const preview = readVersePreview(db, reference, version)
+    if (!preview) return false
+    session.onReferenceDetected({
+      book: preview.book, chapter: preview.chapter, verse: preview.verse,
+      rangeEnd: preview.endVerse, version
+    })
+    return true
+  } catch (error) {
+    console.error('Could not load selected verse:', error)
+    return false
+  }
+}
 
 function startASR(deviceLabel?: string) {
   if (isListening) return
@@ -815,24 +804,29 @@ function startASR(deviceLabel?: string) {
         pushTranscriptChunk(text, true, segType, wordTimings)
       }
       const words = text.toLowerCase().split(/\s+/).filter(Boolean)
-      recentTranscriptBuffer.push(...words)
-      if (recentTranscriptBuffer.length > 30) {
-        recentTranscriptBuffer = recentTranscriptBuffer.slice(-30)
+      if (isFinal) {
+        recentTranscriptBuffer.push(...words)
+        if (recentTranscriptBuffer.length > 30) {
+          recentTranscriptBuffer = recentTranscriptBuffer.slice(-30)
+        }
       }
       // Intent engine sees everything — it tracks what the preacher is DOING.
       intentEngine.process(text)
       // Natural voice commands consume their chunk entirely (a version
       // switch must not also get parsed for verse references).
       if (isFinal && voiceCommands && getSetting('voiceCommandsEnabled')) {
-        if (voiceCommands.process(text)) return
+        if (voiceCommands.process(text)) {
+          discardPartialReference()
+          return
+        }
       }
       session.processTranscript(text)
-      if (transitionDetector && getSetting('agentEnabled')) {
+      if (isFinal && transitionDetector && getSetting('agentEnabled')) {
         transitionDetector.processTranscript(text)
       }
       if (getSetting('agentEnabled')) {
         displayTimingManager.onTranscript(text, isFinal)
-        if (transitionDetector) {
+        if (isFinal && transitionDetector) {
           mediaMatcher.processTranscript(
             text,
             transitionDetector.getCurrentSegment().type
@@ -848,7 +842,7 @@ function startASR(deviceLabel?: string) {
         })
       }
       const quoteMatcher = getQuoteMatcher()
-      quoteMatcher.updateRollingWords(text)
+      if (isFinal) quoteMatcher.updateRollingWords(text)
       if (isFinal) {
         handleASRText(text)
       } else {
@@ -922,14 +916,7 @@ function handleMLVerseDetection(data: any) {
     console.log(`🗂️ Queued (deferred): ${ref}`)
     return
   }
-  const refString = `${data.book} ${data.chapter}:${data.verse || 1}`
-  if (!shouldEmit(refString)) {
-    console.log('⏭️ Skipping duplicate:', refString)
-    if (data.verse) {
-      session.cancelVerseTimer()
-    }
-    return
-  }
+  const refString = `${data.book} ${data.chapter}:${data.verse ?? ''}`
   if (data.confidence < 0.85) {
     console.log('⏭️ Low confidence:', refString, data.confidence)
     return
@@ -939,12 +926,17 @@ function handleMLVerseDetection(data: any) {
   if (getSetting('falsePositiveFilterEnabled') && transitionDetector) {
     const segment = transitionDetector.getCurrentSegment()
     if (falsePositiveFilter.shouldBlock(
-      { book: data.book, chapter: data.chapter, verse: data.verse, confidence: data.confidence },
+      { book: data.book, chapter: data.chapter, verse: data.verse, confidence: data.confidence, explicitBook: data.explicitBook },
       recentTranscriptBuffer,
       segment.type
     )) {
       return
     }
+  }
+  if (data.book && data.chapter && data.verse && !verseExists(data.book, data.chapter, data.verse)) return
+  if (!shouldEmit(detectionKey(data))) {
+    console.log('⏭️ Skipping duplicate:', refString)
+    return
   }
   session.onReferenceDetected({
     book: data.book,
@@ -986,9 +978,16 @@ function handleASRText(text: string) {
     if (session.isUnambiguousNav(text)) return
   }
   if (session.onCommand(text)) {
+    discardPartialReference()
     return
   }
+  const before = previewRevision
   sendTranscript(text, true)
+  if (previewRevision !== before) {
+    // A complete spoken reference wins over older words in the quote buffer.
+    getQuoteMatcher().clearBuffer()
+    return
+  }
   // "bring up the Lord's Prayer" — a passage called by its heading rather
   // than its numbers. Goes to preview like any other detection. One per
   // name per minute: a preacher repeats the name while teaching from it.
@@ -1009,6 +1008,7 @@ function handleASRText(text: string) {
   const quoteResults = quoteMatcher.tryDetectQuotes()
   if (quoteResults.length > 0) {
     const best = quoteResults[0]
+    lastResolverConfidence = best.confidence
     const bestBook = best.ref.split(' ').slice(0, -1).join(' ')
     console.log(
       `📜 Quote match: ${best.ref} (+${quoteResults.length - 1} candidates)`
@@ -1356,7 +1356,8 @@ ipcMain.on('stop-listening', () => {
      app. */
 })
 
-ipcMain.on('push-to-live', () => {
+ipcMain.on('push-to-live', (_event, reference?: string, version?: string) => {
+  if (reference !== undefined && (typeof reference !== 'string' || !stageVerseReference(reference, version))) return
   pushPreviewToLive('operator')
 })
 
@@ -1366,6 +1367,7 @@ ipcMain.on('push-to-live', () => {
 ipcMain.handle('auto-mode-set', (_event, { preacherId, enabled }) => {
   const pid = preacherId || activePreacherId()
   if (!pid || !ledger) return { success: false, error: 'no preacher' }
+  if (enabled) return { success: false, enabled: false, error: 'Live scripture requires an operator press' }
   const ok = ledger.setAutoModeEnabled(pid, !!enabled)
   broadcastState()
   return { success: ok, enabled: ledger.isAutoModeEnabled(pid), eligible: ledger.stats(pid).autoModeEligible }
@@ -1594,11 +1596,10 @@ ipcMain.handle(
 ipcMain.handle('get-verse-queue', () => verseQueue)
 
 ipcMain.handle('show-queued-verse', (_event, ref: string) => {
+  if (typeof ref !== 'string' || !stageVerseReference(ref)) return { success: false }
   const idx = verseQueue.findIndex((q) => q.ref === ref)
   if (idx >= 0) verseQueue.splice(idx, 1)
   emitQueueUpdated(verseQueue)
-  // Route through the resolver like spoken text — same display path.
-  sendTranscript(ref, true)
   return { success: true }
 })
 
@@ -1660,6 +1661,7 @@ let currentLiveContent: LiveContent | null = null
 ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
   if (!content || typeof content !== 'object' || (content.kind !== 'song' && content.kind !== 'slide')) return { success: false }
   currentLiveContent = content
+  verseDelivery.clearLive()
   console.log(`🎵 Live: ${content.kind === 'song' ? `${content.title} — ${content.label}` : content.title}`)
   screen.onContentPushed()
   broadcastToWindows('on-live-content', content)
@@ -1670,6 +1672,7 @@ ipcMain.handle('get-live-content', () => currentLiveContent)
 
 ipcMain.handle('show-media', (_event, imagePath: string, kind?: 'photo' | 'video') => {
   currentLiveContent = null
+  verseDelivery.clearLive()
   // Trust the extension over the caller: a row dragged in before `kind`
   // existed carries none, and a video sent down the image path shows nothing.
   const isVideo = kind === 'video' || /\.(mp4|m4v|mov|webm)$/i.test(imagePath)
@@ -1691,6 +1694,7 @@ ipcMain.handle('media-control', (_event, action: { type: 'play' | 'pause' | 'tog
 
 ipcMain.handle('clear-media', () => {
   currentLiveContent = null
+  verseDelivery.clearLive()
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-show-clean-background')
   })
@@ -2951,7 +2955,7 @@ app.whenReady().then(() => {
   quoteMatcher.loadIndex()
   displayTimingManager.setAutoDisplayTimeout(getSetting('autoDisplayTimeout'))
   displayTimingManager.setDismissCallback(() => {
-    emitVerseAutoDismiss()
+    dismissLiveVerse()
   })
   mediaMatcher.onSuggestion((result) => {
     emitMediaSuggestion(result)
@@ -3072,7 +3076,7 @@ app.whenReady().then(() => {
       pushPreview: () => pushPreviewToLive('remote'),
       approvePending: () => pushPreviewToLive('remote'),
       dismissPending: () => {
-        emitVerseAutoDismiss()
+        dismissLiveVerse()
         intentEngine.onDisplayCleared()
         toRenderer('dismiss-pending')
       },
@@ -3086,11 +3090,11 @@ app.whenReady().then(() => {
       },
       setAutoMode: (enabled) => {
         const pid = activePreacherId()
-        if (pid && ledger) ledger.setAutoModeEnabled(pid, enabled)
+        if (!enabled && pid && ledger) ledger.setAutoModeEnabled(pid, false)
         broadcastState()
       },
       typeReference: (ref) => {
-        sendTranscript(ref, true)
+        stageVerseReference(ref)
         emitTranscript(ref)
       },
       setMode: (mode) => toRenderer('set-mode', mode),

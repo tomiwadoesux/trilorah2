@@ -263,14 +263,14 @@ function OutputSurface() {
           },
         );
         setShown((current) =>
-          current && sameRef(current.detection, detection) ? { ...current, slides } : current,
+          current?.detection === detection ? { ...current, slides } : current,
         );
       })();
     };
 
     const subs: ((() => void) | undefined)[] = [
       // Previews stay in the operator's app — the congregation only ever
-      // sees a verse after Push to Live (or trusted auto mode) fires
+      // sees a verse after an operator Push to Live fires
       // on-verse-detected. The stage monitor is the one exception: it shows
       // the pending verse as "up next" so the preacher knows it's coming.
       api.onVerseDetected((d) => display(d, false)),

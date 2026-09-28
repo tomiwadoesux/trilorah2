@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppStore, TABS } from './stores/appStore';
 import { useLiveStore } from './stores/liveStore';
-import { fetchVerseText, sameRef, pct } from './lib/verse';
+import { fetchVerseText, formatRef, pct } from './lib/verse';
 import { startMicCapture, stopMicCapture } from './lib/micCapture';
 import { listAudioInputs, onDeviceChange } from './lib/audioDevices';
 import { LevelMeter, hasEngine } from './components/ui';
@@ -37,7 +37,7 @@ function useEngineWiring() {
       void fetchVerseText(detection).then((text) => {
         if (text == null) return;
         const current = target === 'preview' ? live().preview : live().live;
-        if (current && sameRef(current.detection, detection)) {
+        if (current?.detection === detection) {
           setter({ detection, text });
         }
       });
@@ -76,10 +76,9 @@ function useEngineWiring() {
             app().setListeningSince(null);
             break;
           case 'push-preview': {
-            api.pushToLive();
             const p = live().preview;
             if (p) {
-              live().setLive(p);
+              api.pushToLive(formatRef(p.detection), p.detection.version);
             }
             break;
           }

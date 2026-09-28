@@ -6,6 +6,7 @@ export interface ReferenceInput {
   chapter?: number | null
   verse?: number | null
   rangeEnd?: number | null
+  version?: string
 }
 
 export class ScriptureSession {
@@ -29,6 +30,7 @@ export class ScriptureSession {
   currentVerseText: string
   matchedWordsCount: number
   verseWords: string[]
+  version?: string
 
   constructor(emitDisplay: (display: VerseDisplayPayload) => void) {
     this.emitDisplay = emitDisplay
@@ -127,8 +129,11 @@ export class ScriptureSession {
     this.currentVerse = null
     this.readingMode = false
     this.lastVerseDisplayTime = 0
+    this.lastAutoAdvanceTime = 0
     this.currentVerseText = ''
     this.matchedWordsCount = 0
+    this.verseWords = []
+    this.version = undefined
   }
 
   clearTimers() {
@@ -140,7 +145,7 @@ export class ScriptureSession {
 
   /**
    * Cancel the pending "default to verse 1" timer
-   * Called when we detect a verse (even if skipped as duplicate)
+   * Called when a verse replaces the pending chapter-only reference.
    */
   cancelVerseTimer() {
     if (this.chapterTimer) {
@@ -158,6 +163,11 @@ export class ScriptureSession {
 
   onReferenceDetected(ref: ReferenceInput) {
     console.log('📥 Session received:', JSON.stringify(ref))
+    if (ref.book && ref.book !== this.book) {
+      this.reset()
+      this.book = ref.book
+    }
+    this.version = ref.version
     if (ref.book && !ref.chapter && !ref.verse) {
       console.log(
         `📚 Book-only detected: "${ref.book}" - waiting for chapter/verse`
@@ -168,15 +178,6 @@ export class ScriptureSession {
     if (!ref.chapter && !this.chapter) {
       console.log(`⏭️ Ignored: No chapter context established`)
       return
-    }
-    const isBareUpdate = !ref.book && ref.verse
-    if (this.readingMode && isBareUpdate) {
-      console.log(`🔒 Reading Mode: Ignored bare verse ${ref.verse} update`)
-      return
-    }
-    if (ref.book && ref.book !== this.book) {
-      this.reset()
-      this.book = ref.book
     }
     if (ref.chapter && ref.chapter !== this.chapter) {
       this.chapter = ref.chapter
@@ -247,7 +248,8 @@ export class ScriptureSession {
       this.goBack()
       return true
     }
-    const verseMatch = t.match(/\bverse\s+(\d+)\b/)
+    // A complete reference belongs to the resolver, not the previous book.
+    const verseMatch = t.replace(/[^\w\s]/g, ' ').trim().match(/^(?:please\s+)?(?:go to\s+)?verse\s+(\d+)(?:\s+please)?$/)
     if (verseMatch) {
       this.lastCommandTime = now
       if (this.book && this.chapter) {
@@ -450,6 +452,7 @@ export class ScriptureSession {
       verseEnd: verse,
       rangeEnd: this.endVerse ?? undefined,
       chunkSize: this.CHUNK_SIZE,
+      version: this.version,
       isPreview: true
     })
   }
@@ -466,6 +469,7 @@ export class ScriptureSession {
       verseEnd: end,
       rangeEnd: this.endVerse ?? undefined,
       chunkSize: this.CHUNK_SIZE,
+      version: this.version,
       isPreview: true
     })
   }

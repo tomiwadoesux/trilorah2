@@ -85,6 +85,7 @@ import { RunProvider, useRun, type RunSegment } from './run';
 import { DragKeyframes, DragProvider, useDrag } from './drag';
 import { Panel } from './parts';
 import { useForesight } from './foresight';
+import './liveHeader.css';
 
 /*
  * S-02 — LIVE, the control surface.
@@ -3073,7 +3074,7 @@ function ProposalStack() {
   return (
     <FadeScroller className="h-full" contentClassName="flex flex-col gap-[var(--tri-gap)]">
       {cards.map((c, i) => {
-        const handleActivate = () => {
+        const handleActivate = (toLive: boolean) => {
           if (c.missing) return;
           const slides: VerseSlide[] = c.slides && c.slides.length > 0
             ? c.slides
@@ -3097,14 +3098,12 @@ function ProposalStack() {
             origin: 'engine',
           };
           projector.stage(item);
-          projector.send(item);
-          if (live) {
-            engine.pushEnginePreview();
-            if (c.ref) engine.pushReference(c.ref);
-            engine.dismissProposal(c.id);
-          }
-          if (window.api?.pushToLive) {
-            window.api.pushToLive();
+          if (toLive) {
+            if (live) {
+              engine.pushReference(c.ref, c.version);
+              engine.dismissProposal(c.id);
+            }
+            projector.send(item);
           }
         };
 
@@ -3113,8 +3112,8 @@ function ProposalStack() {
             key={c.id}
             heard={c}
             index={i}
-            onSelect={!c.missing ? handleActivate : undefined}
-            onLive={!c.missing ? handleActivate : undefined}
+            onSelect={!c.missing ? () => handleActivate(false) : undefined}
+            onLive={!c.missing ? () => handleActivate(true) : undefined}
             onDismiss={live ? () => engine.dismissProposal(c.id) : undefined}
           />
         );
@@ -3210,7 +3209,7 @@ function StatusOrb({ label, onClick, facts }: { label: string; onClick?: () => v
     setNamed(true);
   };
   return (
-    <div className="relative flex aspect-square shrink-0" style={{ height: 'var(--tri-topbar-h)' }}>
+    <div className="tri-header-orb relative flex aspect-square shrink-0" style={{ height: 'var(--tri-control-h)' }}>
       <button
         type="button"
         onClick={onClick}
@@ -3219,11 +3218,11 @@ function StatusOrb({ label, onClick, facts }: { label: string; onClick?: () => v
         onFocus={show}
         onBlur={() => setNamed(false)}
         aria-label={`engine: ${label} — change state`}
-        className="flex h-full w-full items-center justify-center"
+        className="tri-header-control flex h-full w-full items-center justify-center"
       >
         {/* The dot ball, drawn as SVG by the same geometry as the WebGPU
-            one, so it draws on a machine with no GPU driver. No pill, no
-            label: the ball fills its 46px square with a 4px margin. `dots`
+            one, so it draws on a machine with no GPU driver. Its surface
+            shares the header's control height. `dots`
             is a MULTIPLIER on the style's own count (150 × 0.6 = 90), not a
             count — the full 150 is mush at this size. Speed 0 draws once
             and stops, so idle and frozen cost nothing; 30fps is plenty
@@ -3510,8 +3509,7 @@ function ImportBentoMenu({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cx(
-          'flex h-8 shrink-0 cursor-pointer items-center gap-1.5 text-[13.5px] font-medium lowercase transition-colors rounded-full border border-white/[0.14] bg-white/[0.03] px-3 hover:border-white/30 hover:bg-white/[0.07]',
-          open ? 'border-white/30 text-white' : 'text-[rgb(229_243_242_/_0.75)] hover:text-white',
+          'tri-header-control tri-header-import flex shrink-0 cursor-pointer items-center gap-1.5 lowercase',
         )}
         title="import images, presentation slides, or songs"
         aria-expanded={open}
@@ -3679,58 +3677,30 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
  * the worst mis-click in the app.
  */
 
-/**
- * operator | dashboard | profile. Top-left on every view, exactly the rail's
- * width, so the orb and everything after it sit in the same place whichever
- * view is up — and so the group reads as the rail's own header rather than
- * as three buttons floating over the corner.
- *
- * This was once unpinned from the rail, because at 1400 the rail is ~250px
- * and three words pinned to it truncated to "opera…/dashbo…/prof…". The
- * pinning is back, with the fix that was missing: the three share the rail
- * by `basis-0 grow`, so they are equal thirds of whatever it is, and the
- * labels shrink with `text-[clamp()]` rather than being cut. At 1920 the
- * rail is 342px and the words sit at full size with room to spare; as the
- * window narrows they step down to 12px before anything is ever elided.
- *
- * The gap is small on purpose: at gap-5 the three read as three separate
- * buttons that happen to be near each other rather than one control with
- * three positions.
- */
+/** Each view keeps its own muted surface; selection strengthens its edge. */
 function ViewTabs({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
   return (
     /* It used to be pinned to exactly the rail's width so everything after
-       it began at the same x on every view. Four pills do not fit that: at
+       it began at the same x on every view. Four controls do not fit that: at
        three they were comfortable thirds, at four "operator" and
        "dashboard" were clipped off their own left edge. The alignment was
        worth less than being able to read the nav, so the strip now sizes
-       to its words with the rail as a MINIMUM — three-pill views are
+       to its words with the rail as a MINIMUM — three-control views are
        unchanged, and the fourth is allowed to push past. */
     <div
-      className="flex shrink-0 items-stretch gap-1.5 pl-1 pr-2"
+      className="tri-header-views flex shrink-0 items-stretch"
       style={{ minWidth: 'var(--tri-rail-w)' }}
     >
       {VIEWS.map((m) => {
         const active = m === view;
         return (
-          /* Words, not boxes — the same idiom as the app's own nav a row
-             above. The active one is bright. `basis-0 grow` makes the three
-             equal thirds of whatever the rail is, and `min-w-0` lets them
-             shrink on a narrow window instead of pushing past the rail. The
-             label size clamps rather than truncating: a nav you cannot read
-             is worse than a nav set a point smaller. */
           <button
             key={m}
             type="button"
             onClick={() => onChange(m)}
             aria-pressed={active}
-            style={{ fontSize: 'clamp(12px, 1.02vw, 14.5px)' }}
-            className={cx(
-              'flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-full border px-3 lowercase tracking-wide transition-colors select-none',
-              active
-                ? 'border-white/25 bg-white/[0.12] font-semibold text-white'
-                : 'border-white/[0.14] font-medium text-[rgb(255_255_255_/_0.6)] hover:border-white/30 hover:text-white',
-            )}
+            data-view={m}
+            className="tri-header-control tri-header-view flex shrink-0 cursor-pointer items-center justify-center lowercase select-none"
           >
             {m}
           </button>
@@ -3814,7 +3784,7 @@ function DigitalClockBento() {
     <button
       type="button"
       onClick={toggle}
-      className="relative flex h-8 shrink-0 cursor-pointer items-center gap-2 text-[13.5px] lowercase text-[var(--tri-ink)] transition-colors hover:text-white rounded-full border border-white/[0.14] bg-white/[0.03] px-3 hover:border-white/30 hover:bg-white/[0.07]"
+      className="tri-header-control tri-header-clock relative flex shrink-0 cursor-pointer items-center gap-2 lowercase"
       title={
         notice
           ? 'No timer currently set'
@@ -3879,13 +3849,14 @@ function ServiceLogBar({
   return (
     <div
       className={cx(
-        'relative flex h-8 min-w-0 flex-1 items-center justify-between overflow-hidden rounded-full border border-white/[0.14] bg-white/[0.03] px-3 text-[13.5px] lowercase text-[var(--tri-ink)]',
+        'tri-header-control tri-header-log relative flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden lowercase',
         className,
       )}
+      data-attention={hasAction || undefined}
       style={style}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400/85 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+        <span className="tri-header-status-dot h-1.5 w-1.5 shrink-0 rounded-full" />
         <span className="min-w-0 truncate tracking-wide text-[rgb(229_243_242_/_0.85)]">
           {text}
         </span>
@@ -3962,6 +3933,8 @@ function ListenControl() {
       type="button"
       disabled={!caps.bridge}
       onClick={() => engine.listen(!on)}
+      aria-pressed={on}
+      data-error={asr === 'error' || undefined}
       title={
         caps.bridge
           ? on
@@ -3969,15 +3942,7 @@ function ListenControl() {
             : 'start listening for the service'
           : 'no engine in this window — run the app with SANDBOX=1'
       }
-      className={cx(
-        'tri-rounded-control flex shrink-0 cursor-pointer items-center gap-2 px-4 text-[13.5px] font-medium lowercase transition-colors',
-        !caps.bridge
-          ? 'cursor-not-allowed text-[rgb(229_243_242_/_0.4)]'
-          : on
-            ? 'bg-[rgb(255_255_255_/_0.12)] text-white'
-            : 'bg-[rgb(255_255_255_/_0.07)] text-[rgb(229_243_242_/_0.9)] hover:bg-[rgb(255_255_255_/_0.11)] hover:text-white',
-      )}
-      style={{ ...EDGE, height: 'var(--tri-topbar-h)' }}
+      className="tri-header-control tri-header-listen flex shrink-0 items-center gap-2 lowercase"
     >
       <MicIcon size={12} />
       {label}
@@ -4415,21 +4380,7 @@ function Stage({
   const staged = toSlide(preview, 0);
   const onAir = toSlide(live, slide);
 
-  /*
-   * Going live is two acts that have to happen together, and the order
-   * matters.
-   *
-   * The real projector is driven by handing a REFERENCE to the resolver —
-   * there is no channel that renders arbitrary text — so the engine gets
-   * told first and this surface mirrors it locally. When there is no engine
-   * (a browser tab, or DESIGN_MODE=1 with the services skipped) the local
-   * half still runs, which is what makes the whole screen demonstrable with
-   * nothing behind it.
-   *
-   * An engine-authored proposal is pushed with pushToLive() instead: main
-   * already holds it as the current preview, and re-resolving the same
-   * reference would send it round the detection path a second time.
-   */
+  // Pass the staged identity so a newer speech preview cannot replace it.
   const goLive = () => {
     if (!preview) return;
     /* The wall slices a range by the church's own setting, so the choice made
@@ -4438,8 +4389,7 @@ function Stage({
     if ((preview.verses?.length ?? 0) > 1) {
       void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) > 1);
     }
-    if (preview.origin === 'engine') engine.pushEnginePreview();
-    else if (preview.reference) engine.pushReference(preview.reference);
+    if (preview.reference) engine.pushReference(preview.reference, preview.version);
     projector.promote();
     onPromoteTheme?.();
   };
@@ -5107,7 +5057,7 @@ function LiveBody({ state }: { state?: string }) {
         <div className="flex h-full w-full min-w-0 flex-col gap-[var(--tri-gap)] p-2.5">
           {/* Top header row */}
           <div
-            className="flex shrink-0 items-center gap-5 border-b border-white/[0.07]"
+            className="tri-live-header flex min-w-0 shrink-0 items-center"
             style={{ height: 'var(--tri-topbar-h)' }}
           >
             <ViewTabs view={view} onChange={setView} />
@@ -5115,7 +5065,7 @@ function LiveBody({ state }: { state?: string }) {
             <ListenControl />
 
             {/* Middle stretch spacer */}
-            <div className="flex-1" />
+            <div className="min-w-0 flex-1" />
 
             {/* Import Bento Pill Menu beside timer */}
             <ImportBentoMenu
@@ -5129,8 +5079,7 @@ function LiveBody({ state }: { state?: string }) {
 
             {/* Right: separate logs bento card matching the width of the empty space below */}
             <div
-              className="flex shrink-0 items-stretch"
-              style={{ width: 'var(--tri-rail-w)' }}
+              className="tri-header-log-slot flex min-w-0 items-stretch"
             >
               <ServiceLogBar entries={log.entries} onAction={goManual} />
             </div>
@@ -5195,13 +5144,13 @@ function LiveBody({ state }: { state?: string }) {
           }}
         >
           <div
-            className="col-span-2 flex min-w-0 items-center gap-5 border-b border-white/[0.07]"
+            className="tri-live-header col-span-2 flex min-w-0 items-center"
             style={{ height: 'var(--tri-topbar-h)' }}
           >
             <ViewTabs view={view} onChange={setView} />
             <StatusOrb label={stateLabel} onClick={stepState} facts={orbFacts} />
             <ListenControl />
-            <div className="flex-1" />
+            <div className="min-w-0 flex-1" />
             <ImportBentoMenu
               onImportImage={handleImportImage}
               onImportSlides={handleImportSlides}
@@ -5211,7 +5160,7 @@ function LiveBody({ state }: { state?: string }) {
             {/* The service log, rail-wide — the same slot it has on the
                 dashboard. The transcript it once made room for is a ticker
                 at the foot of the window now. */}
-            <div className="flex shrink-0 items-stretch" style={{ width: 'var(--tri-rail-w)' }}>
+            <div className="tri-header-log-slot flex min-w-0 items-stretch">
               <ServiceLogBar entries={log.entries} onAction={goManual} />
             </div>
           </div>

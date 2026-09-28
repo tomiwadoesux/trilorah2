@@ -86,6 +86,24 @@ describe('SpokenReferenceResolver', () => {
     expect(full!.chapter).toBe(3)
   })
 
+  it('joins an explicit chapter continuation after a book-only partial', () => {
+    const { detections, feed } = collect()
+    feed('turn to the book of john', false)
+    feed('chapter three', true)
+    feed('verse sixteen', true)
+    expect(detections.at(-1)).toMatchObject({ book: 'John', chapter: 3, verse: 16 })
+  })
+
+  it('does not attach a new bare numeric utterance to a completed reference', () => {
+    const { detections, feed, tick } = collect()
+    feed('romans eight one')
+    tick(1500)
+    feed('six five')
+    expect(detections).toHaveLength(1)
+    feed('galatians six five')
+    expect(detections.at(-1)).toMatchObject({ book: 'Galatians', chapter: 6, verse: 5 })
+  })
+
   it('does NOT read the "1" of "1 John" as a chapter (book-name stripping)', () => {
     const { detections, feed } = collect()
     feed('first john three sixteen')
@@ -279,5 +297,53 @@ describe('SpokenReferenceResolver — a growing utterance emits once, complete',
     c.tick(60_000)
     c.feed('anyway lets pray', true)
     expect(c.detections.map(ref)).toEqual([])
+  })
+
+  it('does not emit a bare verse from an unfinished hypothesis', () => {
+    const c = collect()
+    c.feed('verse twenty', false)
+    c.feed('verse twenty four', false)
+    expect(c.detections).toEqual([])
+    c.feed('verse twenty four', true)
+    expect(c.detections.map((d) => d.verse)).toEqual([24])
+  })
+
+  it('drops a reference removed from the final transcript', () => {
+    const c = collect()
+    c.feed('romans chapter four verse twenty', false)
+    c.feed('remain in faith and love', true)
+    expect(c.detections).toEqual([])
+  })
+
+  it('does not release an expired hypothesis on an empty final', () => {
+    const c = collect()
+    c.feed('romans four twenty', false)
+    c.tick(10_000)
+    c.feed('', true)
+    expect(c.detections).toEqual([])
+  })
+
+  it('releases a fresh hypothesis despite older expired book context', () => {
+    const c = collect()
+    c.feed('romans eight one')
+    c.tick(10_000)
+    c.feed('galatians six five', false)
+    c.feed('', true)
+    expect(c.detections.map(ref)).toEqual(['Romans 8:1', 'Galatians 6:5'])
+  })
+
+  it('does not inherit a book removed from a revised partial', () => {
+    const c = collect()
+    c.feed('john', false)
+    c.feed('there were three sixteen year olds', true)
+    expect(c.detections).toEqual([])
+  })
+
+  it('marks a newly named book separately from remembered context', () => {
+    const c = collect()
+    c.feed('john 3:16')
+    c.tick(60_000)
+    c.feed('chapter four verse two')
+    expect(c.detections.map((d) => d.explicitBook)).toEqual([true, false])
   })
 })

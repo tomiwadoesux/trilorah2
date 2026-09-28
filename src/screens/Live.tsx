@@ -98,7 +98,8 @@ function PreviewPanel() {
   const intentState = useAppStore((s) => s.intentState);
 
   const push = () => {
-    window.api?.pushToLive();
+    if (!preview) return;
+    window.api?.pushToLive(formatRef(preview.detection), preview.detection.version);
     if (preview) {
       setLive(preview);
       setPreview(null);
