@@ -3,30 +3,15 @@ import { cx } from '../../../ui';
 import './songs.css';
 
 /*
- * The dock — what a tab can DO, in one capsule at the foot of its panel.
- *
- * It replaces the dashed "add …" card that used to lead every grid. That
- * card explained itself well and cost a whole cell to do it, in a grid whose
- * job is to show as many songs as it can; and it only covered "add", so
- * import, quick slides and the stock/local switch had each grown a home of
- * their own somewhere else on the tab. The dock is the one place: two or
- * three icon buttons, a hairline between them, floating over the content at
- * --tri-gap from the panel's floor.
- *
- * The material is the system's own surface (.tri-surface, ash, nearly solid) under
- * a blur, so it is a dark capsule because the app's controls are dark, not
- * because somebody else's toolbar was. Buttons are --tri-control-h squares
- * at the control corner; the capsule's corner is theirs plus its padding —
- * R_outer = R_inner + gap, the rule for anything nested in anything.
- *
- * The scroller underneath must leave room: pad it by DOCK_CLEARANCE so the
- * last row of cards can be scrolled clear of the capsule.
+ * Full-width library actions with equal sections and centered icon/text pairs.
+ * Modest corners and a quiet border keep the toolbar distinct from cards.
  */
 
 export interface DockAction {
   id: string;
-  /** Shown as the tooltip and read by assistive tech. */
+  /** Details shown in the tooltip and accessible description. */
   label: string;
+  text: string;
   icon: ReactNode;
   onClick?: () => void;
   /** Lit — the search field is open, the local shelf is showing. */
@@ -37,32 +22,20 @@ export interface DockAction {
 
 const PAD = 4;
 
-/** Bottom padding a scroll area under a dock needs: capsule + its two gaps. */
-export const DOCK_CLEARANCE = `calc(var(--tri-control-h) + ${PAD * 2}px + var(--tri-gap) * 3)`;
-
 export function TabDock({ actions, label }: { actions: DockAction[]; label: string }) {
   return (
-    /* The wrapper spans the panel and ignores the pointer, so only the
-       capsule itself is ever in the way of the cards under it. */
-    <div
-      className="pointer-events-none absolute inset-x-0 z-20 flex justify-center"
-      style={{ bottom: 'var(--tri-gap)' }}
-    >
+    <div className="flex w-full min-w-0 shrink-0 justify-center">
       <div
         role="toolbar"
         aria-label={label}
-        className="tab-dock tri-surface tri-surface--ash pointer-events-auto flex items-center"
+        className="tab-dock tri-surface tri-surface--ash pointer-events-auto flex w-full min-w-0 items-center"
         style={{
-          /* Nearly solid: enough to read over a bright thumbnail, with just
-             enough left for the blur to say "this floats". */
           ['--tri-alpha' as string]: 0.92,
           padding: PAD,
           gap: PAD,
-          borderRadius: `calc(var(--tri-radius-control) + ${PAD}px)`,
-          backdropFilter: 'blur(14px) saturate(1.2)',
-          WebkitBackdropFilter: 'blur(14px) saturate(1.2)',
+          borderRadius: 10,
           boxShadow:
-            'inset 0 0 0 var(--tri-border) rgb(229 243 242 / 0.2), 0 12px 32px rgb(0 0 0 / 0.6)',
+            'inset 0 0 0 var(--tri-border) rgb(229 243 242 / 0.12), 0 2px 6px rgb(0 0 0 / 0.16)',
         }}
       >
         {actions.map((a, i) => (
@@ -73,21 +46,25 @@ export function TabDock({ actions, label }: { actions: DockAction[]; label: stri
             <button
               type="button"
               title={a.label}
-              aria-label={a.label}
+              aria-label={a.text}
+              aria-description={a.label}
               aria-pressed={a.active === undefined ? undefined : a.active}
               aria-disabled={a.disabled || undefined}
               onClick={a.disabled ? undefined : a.onClick}
               className={cx(
-                'tri-rounded-control grid place-items-center transition-colors duration-150',
+                'grid min-w-0 flex-1 place-items-center rounded-md px-3 text-[length:var(--tri-control-size)] font-medium lowercase transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--tri-ink)]',
                 a.disabled
-                  ? 'cursor-not-allowed text-[rgb(229_243_242_/_0.28)]'
+                  ? 'cursor-not-allowed text-[rgb(229_243_242_/_0.38)]'
                   : a.active
                     ? 'bg-[rgb(255_255_255_/_0.12)] text-[var(--tri-ink)]'
-                    : 'text-[rgb(229_243_242_/_0.7)] hover:bg-[rgb(255_255_255_/_0.08)] hover:text-[var(--tri-ink)]',
+                    : 'text-[rgb(229_243_242_/_0.75)] hover:bg-[rgb(255_255_255_/_0.08)] hover:text-[var(--tri-ink)]',
               )}
-              style={{ height: 'var(--tri-control-h)', width: 'calc(var(--tri-control-h) + 8px)' }}
+              style={{ minHeight: 'max(32px, var(--tri-control-h))' }}
             >
-              {a.icon}
+              <span className="inline-flex items-center justify-center gap-2">
+                <span aria-hidden="true" className="flex shrink-0 items-center">{a.icon}</span>
+                <span>{a.text}</span>
+              </span>
             </button>
           </Fragment>
         ))}

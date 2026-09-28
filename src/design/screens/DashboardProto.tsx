@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cx } from '../../ui';
+import { cx, SettingsIcon, CloseIcon, SparkleIcon, ChevronDownIcon } from '../../ui';
 import { AppShell } from './AppShell';
 import { Panel } from './parts';
 
@@ -146,14 +146,14 @@ function Header({ view, gearOpen }: { view: 'operator' | 'dashboard'; gearOpen?:
         ● start listening
       </span>
       <div className="flex-1" />
-      <span className="text-[13.5px] lowercase text-white/60">import ⌄</span>
+      <span className="inline-flex items-center gap-1 text-[13.5px] lowercase text-white/60">import <ChevronDownIcon size={12} /></span>
       <span className="font-mono text-[13.5px] text-white/75">3:19 pm</span>
       <span className="flex items-center gap-2 text-[13.5px] lowercase text-white/85">
         <span className="size-1.5 rounded-full bg-emerald-400/85" /> system ready
       </span>
       {/* What the app's title bar used to carry, now the tail of this row. */}
       <span className="ml-3 h-4 w-px bg-white/10" />
-      <span className="text-[12.5px] lowercase text-white/55">mic · macbook ⌄</span>
+      <span className="inline-flex items-center gap-1 text-[12.5px] lowercase text-white/55">mic · macbook <ChevronDownIcon size={12} /></span>
       <span className="text-[12.5px] text-white/45">?</span>
       <span
         className={cx(
@@ -161,7 +161,7 @@ function Header({ view, gearOpen }: { view: 'operator' | 'dashboard'; gearOpen?:
           gearOpen ? 'bg-white/15 text-white' : 'text-white/60',
         )}
       >
-        ⚙
+        <SettingsIcon size={16} />
       </span>
       <span className="pr-1 text-[10px] font-bold tracking-[0.3em] text-white/40">TRILORAH</span>
     </div>
@@ -284,7 +284,7 @@ function OpenCard() {
     <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/55 p-10">
       <Panel
         title="sermon notes"
-        right={<span className="text-[12px] text-white/50">✕</span>}
+        right={<CloseIcon size={12} className="text-white/50" />}
         className="h-full w-full max-w-[1100px] !bg-[rgb(18_22_22)]"
         style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.65), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.1)' }}
       >
@@ -370,7 +370,7 @@ function Operator() {
             <span className="rounded border border-white/15 px-1">+</span>
             <span className="rounded border border-white/15 px-1">⟲</span>
             <span className="rounded border border-dashed border-[rgb(228_216_122_/_0.5)] px-1 text-[rgb(228_216_122_/_0.9)]">📷</span>
-            <span className="rounded border border-dashed border-[rgb(228_216_122_/_0.5)] px-1 text-[rgb(228_216_122_/_0.9)]">✦</span>
+            <span className="rounded border border-dashed border-[rgb(228_216_122_/_0.5)] px-1 text-[rgb(228_216_122_/_0.9)]"><SparkleIcon size={14} /></span>
           </span>
         }
         className="row-span-2"

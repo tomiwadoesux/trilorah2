@@ -18,6 +18,8 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { bookIdMap } from '../data/books'
 import type { PreacherStats, ReviewItem } from '../../shared/types'
 
 export interface CorrectionSample {
@@ -28,6 +30,8 @@ export interface CorrectionSample {
 }
 
 export interface ServiceRecord {
+  id?: string
+  verificationVersion?: number
   date: string
   detections: number
   confirmed: number
@@ -48,6 +52,9 @@ export interface LedgerData {
   matureSince?: string
   /** Operator switch — only honoured while the trust gate says eligible. */
   autoModeEnabled: boolean
+  reviews?: ReviewItem[]
+  activeService?: ServiceRecord
+  verificationVersion?: number
 }
 
 /** What the ledger reports; the two extra fields belong in shared PreacherStats. */
@@ -113,7 +120,6 @@ export class CorrectionLedger {
   private cache = new Map<string, LedgerData>()
   private currentService = new Map<string, ServiceRecord>()
   private reviewItems: ReviewItem[] = []
-  private nextReviewId = 1
   private now: () => number
   private t: LedgerThresholds
   private cb: LedgerCallbacks
@@ -161,6 +167,16 @@ export class CorrectionLedger {
     }
     // Files written before the switch existed
     if (typeof data.autoModeEnabled !== 'boolean') data.autoModeEnabled = false
+    data.reviews ??= []
+    // Old totals included silent auto-confirmations. Preserve the history,
+    // but only explicitly verified v2 services can unlock automatic display.
+    if (data.verificationVersion !== 2 && data.services.some((s) => s.verificationVersion !== 2)) {
+      data.mature = false
+      data.autoModeEnabled = false
+      delete data.matureSince
+    }
+    data.verificationVersion = 2
+    if (data.activeService) this.currentService.set(preacherId, data.activeService)
     if (name && !data.name) data.name = name
     this.cache.set(preacherId, data)
     return data
@@ -170,7 +186,9 @@ export class CorrectionLedger {
     const data = this.cache.get(preacherId)
     if (!data) return
     fs.mkdirSync(this.dir, { recursive: true })
-    fs.writeFileSync(this.filePath(preacherId), JSON.stringify(data, null, 2))
+    const file = this.filePath(preacherId)
+    fs.writeFileSync(`${file}.tmp`, JSON.stringify(data, null, 2))
+    fs.renameSync(`${file}.tmp`, file)
   }
 
   /* ---------------- alias learning & lookup ---------------- */
@@ -184,8 +202,9 @@ export class CorrectionLedger {
   ): void {
     const data = this.load(preacherId)
     data.samples.push({ heard, correctedTo, source, ts: this.now() })
+    if (data.samples.length > 500) data.samples.splice(0, data.samples.length - 500)
     const key = phoneticKey(heard)
-    if (key.length >= 2) {
+    if (key.length >= 2 && Object.hasOwn(bookIdMap, correctedTo)) {
       data.aliases[key] = correctedTo
     }
     const svc = this.serviceRecord(preacherId)
@@ -209,8 +228,9 @@ export class CorrectionLedger {
     const key = phoneticKey(heard)
     if (key.length < 2) return null
     const exact = data.aliases[key]
-    if (exact) return exact
+    if (exact && Object.hasOwn(bookIdMap, exact)) return exact
     for (const [stored, canonical] of Object.entries(data.aliases)) {
+      if (!Object.hasOwn(bookIdMap, canonical)) continue
       const shorter = Math.min(stored.length, key.length)
       if (shorter >= 3 && (stored.startsWith(key) || key.startsWith(stored))) {
         return canonical
@@ -221,22 +241,34 @@ export class CorrectionLedger {
 
   /* ---------------- trust & auto mode ---------------- */
 
+  /** Human-confirmed whole-utterance fixes preserve every number. No fuzzy
+   * phonetic key: a correction to verse eight must never capture verse eighteen. */
+  correctedUtterance(preacherId: string, heard: string): string | null {
+    const normalise = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+    const key = normalise(heard)
+    if (key.split(' ').length < 3) return null
+    const sample = [...this.load(preacherId).samples].reverse().find((s) => s.source === 'operator' && normalise(s.heard) === key)
+    return sample?.correctedTo ?? null
+  }
+
   recordDetection(preacherId: string, confirmed: boolean): void {
     const svc = this.serviceRecord(preacherId)
     svc.detections += 1
     if (confirmed) svc.confirmed += 1
+    this.save(preacherId)
   }
 
   /** Close out the running service; feeds the thermostat. */
   endService(preacherId: string): void {
     const data = this.load(preacherId)
     const svc = this.currentService.get(preacherId)
-    if (svc && svc.detections > 0) {
+    if (svc) {
       svc.endedAt = this.now()
       data.services.push(svc)
       this.currentService.delete(preacherId)
+      delete data.activeService
     }
-    const recent = data.services.slice(-this.t.matureStreak)
+    const recent = data.services.filter((s) => s.verificationVersion === 2 && s.detections > 0).slice(-this.t.matureStreak)
     if (
       !data.mature &&
       recent.length === this.t.matureStreak &&
@@ -275,7 +307,7 @@ export class CorrectionLedger {
   stats(preacherId: string): LedgerStats {
     const data = this.load(preacherId)
     const current = this.currentService.get(preacherId)
-    const all = [...data.services, ...(current ? [current] : [])]
+    const all = [...data.services, ...(current ? [current] : [])].filter((s) => s.verificationVersion === 2 && s.detections > 0)
     const matureAt = data.mature && data.matureSince ? Date.parse(data.matureSince) : null
     const servicesSinceMature =
       matureAt === null
@@ -319,13 +351,25 @@ export class CorrectionLedger {
   /* ---------------- end-of-service review ---------------- */
 
   addReviewItem(item: Omit<ReviewItem, 'id'>): ReviewItem {
-    const full: ReviewItem = { ...item, id: String(this.nextReviewId++) }
-    this.reviewItems.push(full)
+    const data = item.preacherId ? this.load(item.preacherId) : null
+    const target = data ? data.reviews! : this.reviewItems
+    const service = item.preacherId ? this.serviceRecord(item.preacherId) : null
+    // Repeated previews in the same service make one example, not a pile.
+    const duplicate = target.find((r) => !r.resolution && r.serviceId === service?.id &&
+      r.kind === item.kind && r.heard === item.heard && JSON.stringify(r.proposed) === JSON.stringify(item.proposed))
+    if (duplicate) return duplicate
+    const full: ReviewItem = { ...item, heard: item.heard.slice(0, 1200), serviceId: service?.id, id: randomUUID() }
+    target.push(full)
+    // Bounded disk/memory use. Discarded examples never become successes.
+    if (target.length > 200) target.splice(0, target.length - 200)
+    if (item.preacherId) this.save(item.preacherId)
     return full
   }
 
-  getReviewItems(): ReviewItem[] {
-    return this.reviewItems.filter((r) => !r.resolution)
+  getReviewItems(preacherId?: string): ReviewItem[] {
+    const ids = preacherId ? [preacherId] : [...new Set([...this.listPreacherIds(), ...this.cache.keys()])]
+    return [...(preacherId ? [] : this.reviewItems), ...ids.flatMap((id) => this.load(id).reviews ?? [])]
+      .filter((r) => !r.resolution).sort((a, b) => b.ts - a.ts)
   }
 
   resolveReviewItem(
@@ -333,41 +377,91 @@ export class CorrectionLedger {
     id: string,
     resolution: NonNullable<ReviewItem['resolution']>,
     amendedTo?: ReviewItem['amendedTo']
-  ): void {
-    const item = this.reviewItems.find((r) => r.id === id)
-    if (!item) return
+  ): boolean {
+    const item = this.getReviewItems().find((r) => r.id === id)
+    if (!item || (item.preacherId && preacherId && item.preacherId !== preacherId)) return false
+    if (resolution === 'amended' && !amendedTo) return false
+    if (resolution === 'confirmed' && !item.proposed) return false
+    const pid = item.preacherId || preacherId
     item.resolution = resolution
     if (amendedTo) item.amendedTo = amendedTo
-    if (!preacherId) return
-    if (resolution === 'confirmed') {
-      this.recordDetection(preacherId, true)
-    } else if (resolution === 'rejected') {
-      this.recordDetection(preacherId, false)
-    } else if (resolution === 'amended' && amendedTo) {
-      this.recordDetection(preacherId, false)
-      this.recordCorrection(
-        preacherId,
-        item.heard,
-        `${amendedTo.book} ${amendedTo.chapter}:${amendedTo.verse ?? 1}`,
-        'operator'
-      )
+    if (!pid) return true
+    const data = this.load(pid)
+    const service = data.services.find((s) => s.id && s.id === item.serviceId) ?? this.serviceRecord(pid)
+    if (resolution !== 'skipped') {
+      // A missed reference is a recall failure, not a detected-verse sample.
+      if (item.kind !== 'miss') {
+        service.detections++
+        if (resolution === 'confirmed') service.confirmed++
+      }
+      if (resolution === 'rejected' || resolution === 'amended') service.corrections++
+      if (resolution === 'amended' && amendedTo) {
+        data.samples.push({ heard: item.heard, correctedTo: `${amendedTo.book} ${amendedTo.chapter}:${amendedTo.verse ?? 1}`, source: 'operator', ts: this.now() })
+        if (data.samples.length > 500) data.samples.splice(0, data.samples.length - 500)
+      }
     }
+    // Recompute on late reviews too; no new service is created for an old item.
+    const recent = [...data.services, ...(data.activeService ? [data.activeService] : [])]
+      .filter((s) => s.verificationVersion === 2 && s.detections > 0).slice(-this.t.matureStreak)
+    const mature = recent.length === this.t.matureStreak && recent.every((s) => s.corrections < this.t.matureMaxCorrections)
+    if (mature && !data.mature) data.matureSince = new Date(this.now()).toISOString()
+    data.mature = mature
+    if (!mature) delete data.matureSince
+    if (data.autoModeEnabled && !this.stats(pid).autoModeEligible) {
+      data.autoModeEnabled = false
+      this.cb.onAutoModeDisabled?.(pid)
+    }
+    this.save(pid)
+    return true
   }
 
   clearReview(): void {
+    // Compatibility for older callers: unresolved persisted reviews survive.
     this.reviewItems = []
   }
 
+  markOperatorChange(preacherId: string, id: string): void {
+    const item = this.getReviewItems(preacherId).find((r) => r.id === id)
+    if (!item) return
+    item.reason = 'operator-change'
+    this.save(preacherId)
+  }
+
+  history(preacherId: string) {
+    let total = 0, confirmed = 0
+    return this.load(preacherId).services.filter((s) => s.verificationVersion === 2 && s.detections > 0).map((s) => {
+      total += s.detections
+      confirmed += s.confirmed
+      return { label: s.date, trust: wilsonLowerBound(confirmed, total), precision: confirmed / total }
+    })
+  }
+
+  legacySamples(preacherId: string): number {
+    return this.load(preacherId).services.filter((s) => s.verificationVersion !== 2).reduce((n, s) => n + s.detections, 0)
+  }
+
+  hasOpenService(preacherId: string): boolean { return !!this.load(preacherId).activeService }
+
+  remove(preacherId: string): void {
+    this.cache.delete(preacherId)
+    this.currentService.delete(preacherId)
+    fs.rmSync(this.filePath(preacherId), { force: true })
+  }
+
   private serviceRecord(preacherId: string): ServiceRecord {
+    const data = this.load(preacherId)
     let svc = this.currentService.get(preacherId)
     if (!svc) {
       svc = {
+        id: randomUUID(),
+        verificationVersion: 2,
         date: new Date(this.now()).toISOString().slice(0, 10),
         detections: 0,
         confirmed: 0,
         corrections: 0
       }
       this.currentService.set(preacherId, svc)
+      data.activeService = svc
     }
     return svc
   }

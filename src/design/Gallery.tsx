@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from 'react';
 import { REGISTRY, ALL_ENTRIES, findEntry } from './registry';
+import { CloseIcon, ExpandIcon } from '../ui';
 import {
   SCREENS,
   SCREEN_TOTAL,
@@ -628,13 +629,14 @@ export function Gallery() {
                       ? 'Close — back to the sandbox (Esc)'
                       : 'Hand the whole display to the app at 1:1 — the only way to read a 2560-wide screen at a usable scale'
                   }
-                  className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest transition-colors ${
                     isFullscreen
                       ? 'text-[#eac7c6] hover:bg-[rgb(234_199_198_/_0.14)]'
                       : 'text-neutral-400 hover:text-ink'
                   }`}
                 >
-                  {isFullscreen ? '✕ close' : '⤢ fullscreen'}
+                  {isFullscreen ? <CloseIcon size={12} /> : <ExpandIcon size={12} />}
+                  {isFullscreen ? 'close' : 'fullscreen'}
                 </button>
               </>
             )}

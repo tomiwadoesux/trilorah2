@@ -1,3 +1,5 @@
+import { usesDeviceAudio } from '../../shared/audioInput'
+
 /**
  * Local Whisper ASR — the free-tier ears. No API key, nothing leaves the
  * machine. EXPERIMENTAL: chunked (not word-streamed) transcription.
@@ -21,6 +23,7 @@ import { getSetting } from '../data/settings'
 import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
 import { emitMicRequest, emitMicStop } from '../emitters'
 import { cleanWhisperStdout, explainWhisperFailure, whisperArgs } from './whisperOutput'
+import { downloadedWhisperBinary, ensureOfflineRuntime } from './offlineRuntime'
 
 let usingWindowMic = false
 
@@ -49,6 +52,8 @@ let micProcess: ChildProcess | null = null
 let stopped = true
 let pending = Buffer.alloc(0)
 let transcribing = false
+let generation = 0
+let transcriptionProcess: ChildProcess | null = null
 
 export function whisperModelDir(): string {
   return path.join(app.getPath('userData'), 'models')
@@ -177,24 +182,25 @@ export function startWhisperLocal(
   deviceLabel?: string,
   onStatus?: (message: string) => void
 ): void {
+  const run = ++generation
+  stopped = false
   // Must come before ANYTHING touches the whisper-node package. Its shell.js
   // runs at import: if the compiled whisper.cpp binary is missing it tries
   // `make`, and when that fails it calls process.exit(1) — the whole app
   // vanishes, with no message, on the first press of Start Listening. That is
   // every Windows install (no `make`, no binary), so say so instead of dying.
   if (!whisperBinaryPath()) {
-    onError?.(
-      new Error(
-        'Offline speech is not available on this computer yet. Add a Deepgram key in Settings → Audio & speech, then press Start Listening again.'
-      )
-    )
+    void ensureOfflineRuntime((s) => { if (!stopped && run === generation) onStatus?.(s) }).then(() => {
+      if (!stopped && run === generation) startWhisperLocal(onText, onError, deviceLabel, onStatus)
+    }).catch((e) => { if (!stopped && run === generation) onError?.(e) })
     return
   }
   const modelPath = findWhisperModel()
   if (!modelPath) {
     // First run: fetch the model, then start for real. The status callback
     // keeps the operator informed instead of failing silently.
-    void ensureWhisperModel(onStatus ?? (() => undefined)).then((downloaded) => {
+    void ensureWhisperModel((s) => { if (!stopped && run === generation) onStatus?.(s) }).then((downloaded) => {
+      if (stopped || run !== generation) return
       if (downloaded) {
         startWhisperLocal(onText, onError, deviceLabel, onStatus)
       } else {
@@ -216,14 +222,16 @@ export function startWhisperLocal(
     pending = Buffer.concat([pending, chunk])
     const target = SAMPLE_RATE * 2 * CHUNK_SECONDS
     if (pending.length >= target && !transcribing) {
-      const slice = pending
+      // Bound backlog on slower computers; the UI must not trail minutes behind.
+      const slice = pending.subarray(-target * 2)
       pending = Buffer.alloc(0)
-      void transcribeChunk(slice, modelPath, onText, onError)
+      void transcribeChunk(slice, modelPath, onText, onError, run)
     }
+    if (pending.length > target * 2) pending = pending.subarray(-target * 2)
   }
 
   // No SoX → capture the mic in the app window (getUserMedia → IPC).
-  if (!soxAvailable()) {
+  if (usesDeviceAudio(deviceLabel) || !soxAvailable()) {
     console.log('🎙️ SoX not found — capturing microphone via the app window')
     usingWindowMic = true
     setAudioSink(accumulate)
@@ -264,6 +272,8 @@ export function startWhisperLocal(
  *  Packaged: unpacked beside app.asar (see asarUnpack in electron-builder.yml).
  *  Development: the project's own node_modules. */
 export function whisperBinaryPath(): string | null {
+  const downloaded = downloadedWhisperBinary()
+  if (downloaded) return downloaded
   const exe = process.platform === 'win32' ? 'main.exe' : 'main'
   const rel = path.join('node_modules', 'whisper-node', 'lib', 'whisper.cpp', exe)
   const roots = [
@@ -282,7 +292,8 @@ async function transcribeChunk(
   pcm: Buffer,
   modelPath: string,
   onText: (text: string, isFinal: boolean) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  run = generation
 ): Promise<void> {
   transcribing = true
   const wavPath = path.join(app.getPath('temp'), `trilorah-chunk-${Date.now()}.wav`)
@@ -298,7 +309,7 @@ async function transcribeChunk(
     const binary = whisperBinaryPath()
     if (!binary) throw new Error('the offline speech engine is missing from this install')
     const stdout = await new Promise<string>((resolve, reject) => {
-      execFile(
+      transcriptionProcess = execFile(
         binary,
         whisperArgs({
           modelPath,
@@ -318,15 +329,15 @@ async function transcribeChunk(
       )
     })
     const text = cleanWhisperStdout(stdout)
-    if (text) {
+    if (text && !stopped && run === generation) {
       console.log(`📝 Whisper: ${text}`)
       onText(text.toLowerCase(), true)
     }
   } catch (e: any) {
     console.error('❌ Whisper transcription failed:', e?.message ?? e)
-    onError?.(e instanceof Error ? e : new Error(String(e)))
+    if (!stopped && run === generation) onError?.(e instanceof Error ? e : new Error(String(e)))
   } finally {
-    transcribing = false
+    if (run === generation) { transcribing = false; transcriptionProcess = null }
     try {
       fs.unlinkSync(wavPath)
     } catch {
@@ -337,6 +348,10 @@ async function transcribeChunk(
 
 export function stopWhisperLocal(): void {
   stopped = true
+  ++generation
+  transcriptionProcess?.kill()
+  transcriptionProcess = null
+  transcribing = false
   if (micProcess) {
     micProcess.kill()
     micProcess = null

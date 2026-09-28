@@ -64,7 +64,8 @@ export const defaults = {
   defaultBackgroundUrl: '',
   backgroundFit: 'cover' as 'cover' | 'contain' | 'fill',
   backgroundPosition: 'center' as 'center' | 'top' | 'bottom',
-  qrCompanionCaption: "Follow along on your phone — scan to see today's verses and notes.",
+  qrCompanionCaption: 'Follow along on your phone',
+  qrBackgroundPath: '',
   churchName: '',
   churchLogoUrl: '',
   accentId: 'green',
@@ -134,7 +135,7 @@ export const defaults = {
   outputRoles: {} as Partial<Record<string, 'projector' | 'stream' | 'stage' | 'timer'>>,
   /** Operator's display choice per output, by Electron display id. Unset →
    *  externals are handed out in order (output/displays.ts). */
-  outputDisplays: {} as Partial<Record<string, number>>,
+  outputDisplays: {} as Partial<Record<string, number | 'none'>>,
   // Stream output: lower-third band for OBS/vMix capture, or the full
   // projector look on a transparent canvas.
   streamLayout: 'lower-third' as 'lower-third' | 'full',

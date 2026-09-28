@@ -50,45 +50,171 @@
   opacity: 0.48;
 }
 
-.tri-header-views { gap: var(--tri-gap); }
-.tri-live-header .tri-header-view { font-weight: 600; }
-.tri-live-header .tri-header-view[aria-pressed='true'] {
-  box-shadow: inset 0 -2px 0 var(--header-accent);
-}
-.tri-live-header .tri-header-view[data-view='operator'] {
-  --header-bg: #283429;
-  --header-hover: #344235;
-  --header-active: #3a4937;
-  --header-edge: #43523e;
-  --header-accent: #bbcba6;
-  --header-ink: #d6e0cf;
-}
-.tri-live-header .tri-header-view[data-view='dashboard'] {
-  --header-bg: #25313d;
-  --header-hover: #303f4e;
-  --header-active: #364b5f;
-  --header-edge: #3b4b5b;
-  --header-accent: #afc7df;
-  --header-ink: #cedae6;
-}
-.tri-live-header .tri-header-view[data-view='profile'] {
-  --header-bg: #312b3a;
-  --header-hover: #3d3549;
-  --header-active: #483d54;
-  --header-edge: #4a3f56;
-  --header-accent: #cebbdf;
-  --header-ink: #ded3e7;
-}
-.tri-live-header .tri-header-view[data-view='settings'] {
-  --header-bg: #363025;
-  --header-hover: #443b2e;
-  --header-active: #514432;
-  --header-edge: #514735;
-  --header-accent: #d8c59e;
-  --header-ink: #e0d6c4;
+.tri-header-views {
+  --tri-view-w: calc(var(--tri-control-h) * 1.25);
+  position: relative;
+  isolation: isolate;
+  height: var(--tri-control-h);
+  justify-content: space-between;
+  gap: 0;
 }
 
-.tri-live-header .tri-header-orb { margin-left: var(--tri-gap); }
+/* Sliding motion adapted from LeonLinBuild's nav:
+   https://codepen.io/LeonLinBuild/pen/emdgRJj */
+.tri-header-view-pill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  width: var(--tri-view-pill-w, var(--tri-view-w));
+  border-radius: 8px;
+  corner-shape: round;
+  background: #333333;
+  pointer-events: none;
+  transform: translateX(var(--tri-view-pill-x, 0px));
+}
+.tri-header-views[data-pill-sliding='true'] .tri-header-view-pill {
+  transition: transform 500ms cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.tri-live-header .tri-header-views .tri-header-view {
+  --header-bg: transparent;
+  --header-hover: transparent;
+  --header-active: transparent;
+  --header-edge: transparent;
+  --header-accent: #777777;
+  --header-ink: #aaaaaa;
+  position: relative;
+  z-index: 1;
+  width: auto;
+  min-width: var(--tri-view-w);
+  flex-shrink: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  corner-shape: round;
+  transition: color 300ms ease;
+}
+/* One bubble travels between icons; the selected pill only follows clicks. */
+.tri-header-view-hint {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  bottom: calc(50% + var(--tri-control-h) * 0.28125 + 2px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(var(--tri-view-hint-x, 0px));
+  transition: opacity var(--tri-view-hint-fade) ease, visibility 0s linear var(--tri-view-hint-fade);
+}
+.tri-header-view-hint[data-moving='true'] {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity var(--tri-view-hint-fade) ease,
+    visibility 0s linear var(--tri-view-hint-fade);
+}
+.tri-header-view-hint[data-open='true'] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.tri-header-view-hint-bubble {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: var(--tri-view-hint-w, 0px);
+  padding: 2px 6px;
+  border: 1px solid #383838;
+  border-radius: 5px;
+  corner-shape: round;
+  background: #202020;
+  color: #f5f5f5;
+  font-size: var(--tri-control-size);
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  transform: translateX(-50%);
+}
+.tri-header-view-hint[data-moving='true'] .tri-header-view-hint-bubble {
+  transition: width 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tri-header-view-hint-name,
+.tri-header-view-hint-old {
+  grid-area: 1 / 1;
+  justify-self: center;
+  width: max-content;
+}
+.tri-header-view-hint[data-moving='true'] .tri-header-view-hint-name {
+  animation: tri-view-hint-in 120ms ease both;
+}
+.tri-header-view-hint-old {
+  animation: tri-view-hint-out 120ms ease both;
+}
+@keyframes tri-view-hint-in {
+  from { opacity: 0; transform: translateX(var(--tri-view-hint-shift)); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes tri-view-hint-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(calc(-1 * var(--tri-view-hint-shift))); }
+}
+.tri-live-header .tri-header-views .tri-header-view[aria-pressed='true'] {
+  background: transparent;
+  border-color: transparent;
+  color: #f5f5f5;
+}
+.tri-live-header .tri-header-views .tri-header-view:is(:hover, :focus-visible, [data-hint-target='true']):not(:disabled) {
+  background: #282828;
+  border-color: transparent;
+  color: #f5f5f5;
+}
+.tri-live-header .tri-header-views .tri-header-view[aria-pressed='true']:is(:hover, :focus-visible) {
+  background: #333333;
+}
+.tri-header-view-symbol {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tri-view-w);
+  height: 100%;
+}
+.tri-header-view-label {
+  display: block;
+  min-width: 0;
+  flex-shrink: 1;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+  transition:
+    width 240ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 160ms ease,
+    transform 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.tri-header-view-label > span {
+  display: block;
+  width: max-content;
+  padding-right: var(--tri-control-pad-x);
+  white-space: nowrap;
+}
+/* The name opens inside the pill only after selecting the tab. */
+.tri-header-view[aria-pressed='true'] .tri-header-view-label {
+  width: var(--tri-view-label-w, 16ch);
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.tri-header-view-icon {
+  width: calc(var(--tri-control-h) * 0.6875);
+  height: calc(var(--tri-control-h) * 0.6875);
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.tri-header-view:active .tri-header-view-icon {
+  transform: scale(0.92);
+}
+
+.tri-live-header .tri-header-orb { margin-left: 0; }
 .tri-live-header .tri-header-orb .tri-header-control {
   --header-bg: #202627;
   --header-hover: #2b3333;
@@ -140,5 +266,14 @@
 .tri-header-log[data-attention='true'] .tri-header-status-dot { background: #d4c185; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tri-live-header .tri-header-control { transition: none; }
+  .tri-live-header .tri-header-control,
+  .tri-live-header .tri-header-views .tri-header-view,
+  .tri-live-header .tri-header-views .tri-header-view-pill,
+  .tri-live-header .tri-header-views .tri-header-view-hint,
+  .tri-live-header .tri-header-views .tri-header-view-hint-bubble,
+  .tri-header-view-label,
+  .tri-header-view-icon { transition: none; }
+  .tri-header-view-hint-name,
+  .tri-header-view-hint-old { animation: none !important; }
+  .tri-header-view-hint-old { display: none; }
 }

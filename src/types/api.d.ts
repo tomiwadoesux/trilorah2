@@ -213,13 +213,16 @@ interface VerseRef {
   verse: number | null;
 }
 
-type ReviewResolution = 'confirmed' | 'rejected' | 'amended';
+type ReviewResolution = 'confirmed' | 'rejected' | 'amended' | 'skipped';
 
 /** One uncertain moment queued for the end-of-service operator review. */
 interface ReviewItem {
   id: string;
   ts: number;
-  kind: 'detection' | 'correction' | 'quote' | 'segment';
+  kind: 'detection' | 'correction' | 'quote' | 'segment' | 'miss';
+  preacherId?: string;
+  serviceId?: string;
+  reason?: 'detected' | 'operator-change' | 'missed';
   heard: string;
   proposed: VerseRef | null;
   resolution?: ReviewResolution;
@@ -254,6 +257,8 @@ interface VoiceCommandEvent {
   kind: VoiceCommandKind;
   /** The transcript fragment that triggered the command. */
   utterance: string;
+  /** The accepted instruction inside that fragment. */
+  phrase?: string;
   /** e.g. corrected verse number, or a version code like "KJV". */
   value?: string | number;
   ts: number;
@@ -492,6 +497,22 @@ interface SongsApi {
 /* ------------------------------------------------------------------ */
 
 interface WindowApi {
+  qrBackground(action:'status'|'choose'|'clear'):Promise<{success:boolean;name?:string|null;canceled?:boolean;error?:string}>;
+  mobileStatus(): Promise<{running:boolean; urls:string[]; error:string|null; pending:{id:string;name:string;expiresAt:number}[]; devices:PairedDeviceInfo[]}>;
+  mobileEnable(enabled:boolean): Promise<boolean>;
+  mobileCode(generate?:boolean):Promise<{code:string;expiresAt:number}|null>;
+  mobileRevoke(id:string):Promise<boolean>;
+  mobileThumbnail(imagePath:string):Promise<string|null>;
+  mobileApprove(id:string,allow:boolean): Promise<boolean>;
+  mobileQr(url:string): Promise<string>;
+  mobileVerse(reference:string,version:string,live:boolean): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string}>;
+  onMobileRequest(callback:(request:{id:string;command:string;args:Record<string,unknown>;deadline:number})=>void): Unsubscribe;
+  mobileReply(reply:{id:string;result?:unknown;error?:string}):void;
+  remoteGenerateCode():Promise<string|null>;
+  remoteCurrentCode():Promise<{code:string;expiresAt:number}|null>;
+  remoteListDevices():Promise<PairedDeviceInfo[]>;
+  remoteRevoke(id:string):Promise<{success:boolean}>;
+  remoteRevokeAll():Promise<{success:boolean}>;
   /* Scripture ------------------------------------------------------ */
   getChapter(bookId: number, chapter: number, version?: string): Promise<ChapterResult>;
   getAvailableVersions(): Promise<string[]>;
@@ -550,7 +571,7 @@ interface WindowApi {
   setServiceSchedule(schedule: (ScheduleEntry | string)[]): void;
   setCurrentSongLyrics(lyrics: string): void;
   setSermonPlan(jsonOrPath: string): Promise<{ success: boolean; title?: string; verseCount?: number; error?: string }>;
-  endService(opts?: { preacherName?: string; sermonTitle?: string }): Promise<{
+  endService(opts?: { preacherId?: string; preacherName?: string; sermonTitle?: string }): Promise<{
     success: boolean;
     versesDetected?: number;
     profileUpdated?: boolean;
@@ -558,6 +579,14 @@ interface WindowApi {
   }>;
 
   /* Preacher profiles --------------------------------------------------- */
+  getPreacherLearning?(id: string): Promise<import('../../shared/preacherLearning').PreacherLearningDetail>;
+  savePreacherLearning?(id: string, patch: Partial<import('../../shared/preacherLearning').PreacherTeaching>): Promise<import('../../shared/preacherLearning').PreacherTeaching>;
+  addMissedReference?(id: string, heard: string): Promise<ReviewItem>;
+  useOfflineSpeech?(): Promise<{ success: boolean }>;
+  startPreacherSoundCheck?(id: string, promptIndex: number, deviceLabel?: string): Promise<import('../../shared/preacherLearning').SoundCheckState>;
+  getPreacherSoundCheck?(): Promise<import('../../shared/preacherLearning').SoundCheckState | null>;
+  stopPreacherSoundCheck?(sessionId: string): Promise<import('../../shared/preacherLearning').SoundCheckState | null>;
+  reportMicCaptureError?(message: string): void;
   setActivePreacher(preacherId: string): Promise<{ success: boolean; name?: string; error?: string }>;
   listPreacherProfiles(): Promise<PreacherProfileSummary[]>;
   createPreacherProfile(id: string, name: string): Promise<{ success: boolean; id?: string; error?: string }>;
@@ -628,6 +657,7 @@ interface WindowApi {
   saveVoiceCommandConfig?(userConfig: any): Promise<{ success: boolean }>;
   // Window-mic capture (SoX-free audio path)
   requestMicPermission?(): Promise<{ granted: boolean; error?: string }>;
+  getAudioCaptureCapabilities?(): Promise<{ deviceAudio: boolean }>;
   sendAudioChunk?(chunk: ArrayBuffer): void;
   sendAudioLevel?(level: number): void;
   onMicRequest?(callback: (req: { sampleRate: number; deviceLabel?: string }) => void): Unsubscribe;
@@ -776,6 +806,7 @@ type AlertTarget = 'all' | 'projector' | 'stream' | 'stage' | 'timer';
 interface OutputsStatus {
   displays: Array<{ id: number; name: string; w: number; h: number; primary: boolean }>;
   outputs: Array<{
+    disabled?: boolean;
     id: string;
     role: OutputRole;
     open: boolean;

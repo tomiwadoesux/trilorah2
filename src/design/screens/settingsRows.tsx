@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { cx, Button, Select, Slider, SegmentedControl } from '../../ui';
+import { cx, Button, Select, Slider, SegmentedControl, CheckIcon } from '../../ui';
 import { Dot } from './parts';
 
 /*
@@ -419,10 +419,11 @@ export function SettingRow({
         {control}
         {saved !== undefined && (
           <span
-            className="whitespace-nowrap text-[length:var(--tri-size-eyebrow)] lowercase"
+            className="inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--tri-size-eyebrow)] lowercase"
             style={{ color: saved ? '#8fd3c0' : '#eac7c6' }}
           >
-            {saved ? '✓ saved' : 'not saved'}
+            {saved && <CheckIcon size={10} />}
+            {saved ? 'saved' : 'not saved'}
           </span>
         )}
       </div>

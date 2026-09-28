@@ -1,4 +1,4 @@
-import { BOOKS } from '../../../lib/books';
+import { transcriptReferences } from '../../../lib/transcriptReferences';
 import type { Spoken } from './types';
 
 /*
@@ -50,7 +50,9 @@ export function wordsOf(spoken: Spoken, limit = 120): Word[] {
       });
     });
   };
-  for (const l of spoken.lines) push(l.id, l.text, false);
+  // A strip needs only its tail even when the expanded transcript retains
+  // several hours of speech. Each nonempty line contributes at least one word.
+  for (const l of spoken.lines.slice(-limit)) push(l.id, l.text, false);
   if (spoken.partial) push(nextLineId(spoken), spoken.partial, true);
   return out.length > limit ? out.slice(out.length - limit) : out;
 }
@@ -63,17 +65,6 @@ export function wordsOf(spoken: Spoken, limit = 120): Word[] {
  * Deliberately simple: this marks what to highlight in a glance strip, it
  * does not resolve anything. The resolver does that.
  */
-const BOOK_ALT = [...BOOKS]
-  .sort((a, b) => b.length - a.length)
-  .map((b) => b.replace(/\s+/g, '\\s+'))
-  .join('|');
-const REF = new RegExp(
-  `\\b(?:${BOOK_ALT})\\s+(?:chapter\\s+)?\\d+(?:(?::|,?\\s+verses?\\s+)\\d+(?:[-–]\\d+)?)?`,
-  'gi',
-);
-
 export function referenceRanges(text: string): [number, number][] {
-  const out: [number, number][] = [];
-  for (const m of text.matchAll(REF)) out.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
-  return out;
+  return transcriptReferences(text).map(({ start, end }) => [start, end]);
 }

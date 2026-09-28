@@ -1,0 +1,68 @@
+
+> ai-preacher-assistant@0.4.1 build
+> tsc -b && vite build
+
+vite v7.3.0 building client environment for production...
+transforming...
+Found 1 warning while optimizing generated CSS:
+
+│   }
+│   .text-\[var\(\.\.\.\)\] {
+│     color: var(...);
+┆                ^-- Unexpected token Delim('.')
+┆
+│   }
+│   .text-accent {
+
+✓ 1012 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/src/lib/books.ts is dynamically imported by C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/src/design/screens/engine.tsx but also statically imported by C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/src/design/entries/trilorah.tsx, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/src/design/screens/Live.tsx, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/src/lib/transcriptReferences.ts, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/src/screens/Bible.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/output.html                                             1.13 kB │ gzip:   0.56 kB
+dist/index.html                                              1.20 kB │ gzip:   0.58 kB
+dist/design.html                                             1.63 kB │ gzip:   0.77 kB
+dist/assets/orbWorker-DB3a0tkw.js                           17.03 kB
+dist/assets/output-C8N16vdS.css                              8.39 kB │ gzip:   2.13 kB
+dist/assets/sandbox-DVIV3eZ0.css                           157.85 kB │ gzip:  26.89 kB
+dist/assets/TouchStartPredictor-BwfbVsZA-DxGRRujV.js         0.71 kB │ gzip:   0.40 kB
+dist/assets/ViewportPredictor-DcLaSz6--Cs9UoXqW.js           0.77 kB │ gzip:   0.38 kB
+dist/assets/ElementObservingModule-oSMdF509-DYzMjO-K.js      1.09 kB │ gzip:   0.47 kB
+dist/assets/verse-DWRVjsdN.js                                1.10 kB │ gzip:   0.51 kB
+dist/assets/ScrollPredictor-BgEEpjMT-BtwiP-ax.js             1.81 kB │ gzip:   0.76 kB
+dist/assets/TouchDeviceHandler-BOjTn6rF-pVASx9YO.js          2.43 kB │ gzip:   0.82 kB
+dist/assets/TabPredictor-BLaHx9Pa-tce0Ak_V.js                7.42 kB │ gzip:   2.94 kB
+dist/assets/output-CCel326B.js                              12.80 kB │ gzip:   4.15 kB
+dist/assets/DesktopHandler-CuMJcOud-B8k9l2K-.js             12.87 kB │ gzip:   4.16 kB
+dist/assets/main-g2AcZGCr.js                                75.33 kB │ gzip:  22.77 kB
+dist/assets/textTransitions-c5JYlYy2.js                    196.48 kB │ gzip:  62.14 kB
+dist/assets/design-uA1pQQrs.js                             196.93 kB │ gzip:  62.43 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/assets/sandbox-Bl8w-sXK.js                            719.25 kB │ gzip: 229.63 kB
+dist/assets/app-Sv81-cH6.js                              1,129.41 kB │ gzip: 331.13 kB
+✓ built in 3.00s
+vite v7.3.0 building client environment for production...
+transforming...
+✓ 94 modules transformed.
+[plugin vite:reporter] 
+(!) C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/data/settings.ts is dynamically imported by C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/llm/notesProvider.ts but also statically imported by C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/asr/deepgram.ts, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/asr/whisperLocal.ts, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/llm/llmFallback.ts, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/main.ts, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/notes/sermonNotesGenerator.ts, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/media/ocrProcessor.ts is dynamically imported by C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/main.ts but also statically imported by C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/main.ts, C:/Users/Admin/Documents/Codex/2026-09-28/bash-git-clone-https-github-com/trilorah2/electron/media/ocrSchedule.ts, dynamic import will not move module into another chunk.
+
+rendering chunks...
+computing gzip size...
+dist-electron/main.js  322.71 kB │ gzip: 108.48 kB
+✓ built in 337ms
+vite v7.3.0 building client environment for production...
+transforming...
+✓ 1 modules transformed.
+rendering chunks...
+computing gzip size...
+dist-electron/preload.js  15.65 kB │ gzip: 3.48 kB
+✓ built in 16ms

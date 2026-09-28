@@ -21,6 +21,8 @@
  */
 
 import { bookIdMap } from '../data/books'
+import { EN_NUMBER_WORDS, parseNumberWithTable, parseSpokenNumber } from '../../shared/spokenNumbers'
+export { parseSpokenNumber } from '../../shared/spokenNumbers'
 import { chineseNumberValue, type LanguagePack } from './lang'
 
 export interface ResolvedReference {
@@ -46,97 +48,11 @@ export type BareBookGate = () => boolean
 /* English number tables (base layer for every language)               */
 /* ------------------------------------------------------------------ */
 
-const EN_NUMBER_WORDS: Record<string, number> = {
-  zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
-  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13,
-  fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18,
-  nineteen: 19, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60,
-  seventy: 70, eighty: 80, ninety: 90, hundred: 100
-}
+
 
 const ORDINALS: Record<string, number> = {
   first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7,
   eighth: 8, ninth: 9, tenth: 10, eleventh: 11, twelfth: 12
-}
-
-/** Table-driven spoken-number parser.
- *  Handles digits ("23"), atomic words ("dieciséis"), tens+unit
- *  ("twenty three", "treinta y cuatro"), and hundreds
- *  ("one hundred and nineteen", "cento e dezenove"). */
-function parseNumberWithTable(
-  words: string[],
-  i: number,
-  table: Record<string, number>,
-  connectors: Set<string>
-): { value: number; consumed: number } | null {
-  const w = words[i]
-  if (w === undefined) return null
-
-  if (/^\d{1,3}$/.test(w)) {
-    return { value: parseInt(w, 10), consumed: 1 }
-  }
-
-  let total = 0
-  let consumed = 0
-  let j = i
-
-  // hundreds: "[unit] hundred" | "a hundred" | bare hundred-word
-  const v0 = table[words[j]]
-  if (v0 !== undefined && v0 > 0 && v0 < 10 && table[words[j + 1]] === 100) {
-    total = v0 * 100
-    consumed = 2
-    j += 2
-  } else if (words[j] === 'a' && table[words[j + 1]] === 100) {
-    total = 100
-    consumed = 2
-    j += 2
-  } else if (table[words[j]] === 100) {
-    total = 100
-    consumed = 1
-    j += 1
-  }
-
-  if (consumed > 0 && connectors.has(words[j])) {
-    consumed += 1
-    j += 1
-  }
-
-  const v = table[words[j]]
-  if (v !== undefined && v >= 20 && v < 100 && v % 10 === 0) {
-    // tens, optionally followed by (connector +) unit: "treinta y cuatro"
-    total += v
-    consumed += 1
-    j += 1
-    let k = j
-    let extra = 0
-    if (connectors.has(words[k]) && table[words[k + 1]] !== undefined) {
-      k += 1
-      extra = 1
-    }
-    const u = table[words[k]]
-    if (u !== undefined && u > 0 && u < 10) {
-      total += u
-      consumed += 1 + extra
-    }
-    return { value: total, consumed }
-  }
-
-  if (v !== undefined && v < 100) {
-    total += v
-    consumed += 1
-    return { value: total, consumed }
-  }
-
-  if (consumed > 0) return { value: total, consumed }
-  return null
-}
-
-/** English-table parser — kept as the stable exported surface. */
-export function parseSpokenNumber(
-  words: string[],
-  i: number
-): { value: number; consumed: number } | null {
-  return parseNumberWithTable(words, i, EN_NUMBER_WORDS, new Set(['and']))
 }
 
 /** Language-aware parser factory (English base + pack words/connectors). */
@@ -438,11 +354,13 @@ export class SpokenReferenceResolver {
    *
    *  A refinement cannot be recognised after the fact: the dedup below keys on
    *  the whole reference, so 4:20 and 4:21 are simply two different references.
-   *  The only thing that reliably marks an utterance as finished is the
-   *  recogniser's own isFinal, so a partial parks its result here and the final
-   *  releases it. Whisper sends finals only and is unaffected either way. */
+   *  Hold an open number until isFinal or until non-reference words show
+   *  that reading has moved past it. That boundary lets a complete reference
+   *  reach preview while the preacher continues the sentence. */
   private heldEmit: (() => void) | null = null
   private heldAt = 0
+  /** A closed reference already delivered during this same ASR utterance. */
+  private earlyEmitKey = ''
 
   /** Whether the chunk being walked right now was the recogniser's final. */
   private utteranceFinal = true
@@ -486,10 +404,11 @@ export class SpokenReferenceResolver {
     this.pendingAdjacent = false
     // An abandoned utterance must not surface later behind the next one.
     this.heldEmit = null
+    this.earlyEmitKey = ''
   }
 
   /** Feed one ASR chunk. Partial chunks refresh state; finals detect fully. */
-  process(text: string, isFinal: boolean): void {
+  process(text: string, isFinal: boolean): boolean {
     // Each partial replaces the recognizer's previous hypothesis.
     if (this.partialContext) {
       const words = mergeCompounds(normalizeWords(text), this.compounds)
@@ -524,24 +443,29 @@ export class SpokenReferenceResolver {
         if (this.now() - this.heldAt <= PENDING_TTL_MS) held()
       }
       if (isFinal) {
+        this.earlyEmitKey = ''
         this.partialContext = null
         // Bare numbers may finish a chapter-only reference, not reopen one
         // that already has a verse in a different utterance.
         if (this.committedVerse) this.pendingAdjacent = false
       }
     }
+    return this.committedVerse
   }
 
   discardPartial(): void {
     if (this.partialContext) Object.assign(this, this.partialContext)
     this.partialContext = null
     this.heldEmit = null
+    this.earlyEmitKey = ''
   }
 
   private walkChunk(text: string, isFinal: boolean): void {
     const now = this.now()
     if (this.pendingBook && now - this.pendingAt > PENDING_TTL_MS) {
+      const delivered = this.earlyEmitKey
       this.reset()
+      this.earlyEmitKey = delivered
     }
 
     // Chinese path first (no word boundaries); the word path still runs
@@ -667,7 +591,7 @@ export class SpokenReferenceResolver {
         if (after) {
           const { chapter, verse, rangeEnd, consumed, explicit } = after
           i += 1 + consumed
-          this.emit(book, chapter, verse, rangeEnd, explicit ? 0.95 : 0.88, now)
+          this.emit(book, chapter, verse, rangeEnd, explicit ? 0.95 : 0.88, now, this.hasReferenceBoundary(tokens, i))
           continue
         }
         // Bare book mention — emit only if the gate allows (session then
@@ -701,8 +625,8 @@ export class SpokenReferenceResolver {
               const range =
                 this.readRange(tokens, j + 1 + v.consumed) ??
                 this.readAndPair(tokens, j + 1 + v.consumed, v.value)
-              this.emit(this.pendingBook, num.value, v.value, range?.end ?? null, 0.95, now)
               i = j + 1 + v.consumed + (range?.consumed ?? 0)
+              this.emit(this.pendingBook, num.value, v.value, range?.end ?? null, 0.95, now, this.hasReferenceBoundary(tokens, i))
               continue
             }
           }
@@ -738,7 +662,7 @@ export class SpokenReferenceResolver {
             this.readAndPair(tokens, i + 1 + num.consumed, num.value)
           const rangeEnd = range?.end ?? null
           if (this.pendingBook && this.pendingChapter) {
-            this.emit(this.pendingBook, this.pendingChapter, num.value, rangeEnd, 0.95, now)
+            this.emit(this.pendingBook, this.pendingChapter, num.value, rangeEnd, 0.95, now, this.hasReferenceBoundary(tokens, i + 1 + num.consumed + (range?.consumed ?? 0)))
           } else {
             // Bare "verse N" — session attaches it to current context.
             this.emit('', null, num.value, rangeEnd, 0.86, now)
@@ -760,8 +684,8 @@ export class SpokenReferenceResolver {
             // Two consecutive numbers = chapter + verse ("three sixteen")
             const second = this.parseNum(tokens.map((x) => x.word), i + num.consumed)
             if (second) {
-              this.emit(this.pendingBook, num.value, second.value, null, 0.88, now)
               i += num.consumed + second.consumed
+              this.emit(this.pendingBook, num.value, second.value, null, 0.88, now, this.hasReferenceBoundary(tokens, i))
               continue
             }
             this.pendingChapter = num.value
@@ -772,7 +696,7 @@ export class SpokenReferenceResolver {
             i += num.consumed
             continue
           } else {
-            this.emit(this.pendingBook, this.pendingChapter, num.value, null, 0.86, now)
+            this.emit(this.pendingBook, this.pendingChapter, num.value, null, 0.86, now, this.hasReferenceBoundary(tokens, i + num.consumed))
             i += num.consumed
             continue
           }
@@ -876,24 +800,34 @@ export class SpokenReferenceResolver {
     return null
   }
 
+  /** Reading has moved beyond the reference, so an interim number cannot
+   * still grow from twenty to twenty one or acquire a range endpoint. */
+  private hasReferenceBoundary(tokens: { word: string; bookBoundary: BookMatch | null }[], at: number): boolean {
+    const token = tokens[at]
+    if (!token) return false
+    if (token.bookBoundary) return true
+    if (this.connectors.has(token.word) || this.rangeWords.has(token.word) ||
+      this.verseWords.has(token.word) || this.chapterWords.has(token.word) ||
+      ['uh', 'um', 'ah'].includes(token.word)) return false
+    return !this.parseNum(tokens.map((item) => item.word), at)
+  }
+
   private emit(
     book: string,
     chapter: number | null,
     verse: number | null,
     rangeEnd: number | null,
     confidence: number,
-    now: number
+    now: number,
+    closed = false
   ): void {
     const key = `${book}|${chapter}|${verse}|${rangeEnd ?? ''}`
-    if (key === this.lastEmitKey && now - this.lastEmitAt < DEDUP_WINDOW_MS) {
-      return
-    }
 
     // Mid-utterance: park the newest reading and let a later partial overwrite
     // it. Each partial re-parses the whole sentence, so the last one standing
     // when isFinal arrives is the complete reading — 4:21, never the 4:20 that
     // the truncated "romans four twenty" parsed to a moment earlier.
-    if (!this.utteranceFinal) {
+    if (!this.utteranceFinal && !(closed && book && chapter !== null && verse !== null && (this.explicitBook || confidence >= 0.95))) {
       const explicitBook = this.explicitBook
       this.heldAt = now
       this.heldEmit = () => this.commit(book, chapter, verse, rangeEnd, confidence, this.now(), explicitBook)
@@ -902,6 +836,7 @@ export class SpokenReferenceResolver {
 
     this.heldEmit = null
     this.commit(book, chapter, verse, rangeEnd, confidence, now, this.explicitBook)
+    if (!this.utteranceFinal) this.earlyEmitKey = key
   }
 
   /** The emit proper, once the utterance that produced it has settled. */
@@ -915,11 +850,7 @@ export class SpokenReferenceResolver {
     explicitBook: boolean
   ): void {
     const key = `${book}|${chapter}|${verse}|${rangeEnd ?? ''}`
-    if (key === this.lastEmitKey && now - this.lastEmitAt < DEDUP_WINDOW_MS) {
-      return
-    }
-    this.lastEmitKey = key
-    this.lastEmitAt = now
+    const duplicate = key === this.earlyEmitKey || (key === this.lastEmitKey && now - this.lastEmitAt < DEDUP_WINDOW_MS)
     this.committedVerse = verse !== null
     if (chapter !== null) {
       this.pendingBook = book
@@ -931,6 +862,9 @@ export class SpokenReferenceResolver {
       this.lastBook = book
       this.lastBookAt = now
     }
+    if (duplicate) return
+    this.lastEmitKey = key
+    this.lastEmitAt = now
     this.onDetection({
       type: 'verse',
       book,
@@ -980,9 +914,8 @@ export function connectML(onVerse: (data: any) => void): void {
   console.log('🧠 In-process reference resolver ready (Python ML replaced)')
 }
 
-export function sendTranscript(text: string, isFinal = false): void {
-  if (!resolver) return
-  resolver.process(text, isFinal)
+export function sendTranscript(text: string, isFinal = false): boolean {
+  return resolver?.process(text, isFinal) ?? false
 }
 
 export function discardPartialReference(): void {

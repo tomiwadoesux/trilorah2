@@ -20,6 +20,7 @@
  */
 
 import type { VoiceCommandEvent } from '../../shared/types'
+import { longestCommandPhrase } from '../../shared/voiceCommandText'
 import { normalizeWords } from './referenceResolver'
 import { parseSpokenNumber } from './referenceResolver'
 import { DEFAULT_COMMANDS, type CommandPhraseConfig } from './commandConfig'
@@ -161,13 +162,13 @@ export class VoiceCommandEngine {
       // "<trigger> [verse] N" — token-parsed, language-aware numbers.
       const trig = this.findTrigger(words, c.iSaidTriggers)
       if (trig !== null) {
-        let i = trig
+        let i = trig.end
         // "i said chapter five"
         if (chapterWordSet.has(words[i])) {
           const n = this.parseNum(words, i + 1)
           if (n && n.value !== displayed!.chapter) {
             if (this.dedup('correct-ch:' + n.value, now)) return false
-            this.fire({ kind: 'correction-chapter', utterance: text, value: n.value, ts: now })
+            this.fire({ kind: 'correction-chapter', utterance: text, phrase: words.slice(trig.start, i + 1 + n.consumed).join(' '), value: n.value, ts: now })
             this.cb.onChapterCorrection(n.value)
             return true
           }
@@ -177,7 +178,7 @@ export class VoiceCommandEngine {
         if (n && n.value !== displayed!.verse) {
           if (this.dedup('correct:' + n.value, now)) return false
           console.log(`🗣️ Correction: "${text.trim()}" → verse ${n.value}`)
-          this.fire({ kind: 'correction-verse', utterance: text, value: n.value, ts: now })
+          this.fire({ kind: 'correction-verse', utterance: text, phrase: words.slice(trig.start, i + n.consumed).join(' '), value: n.value, ts: now })
           this.cb.onVerseCorrection(n.value)
           return true
         }
@@ -204,7 +205,7 @@ export class VoiceCommandEngine {
             ) {
               if (this.dedup('correct:' + second.value, now)) return false
               console.log(`🗣️ Correction: not ${first.value}, ${second.value}`)
-              this.fire({ kind: 'correction-verse', utterance: text, value: second.value, ts: now })
+              this.fire({ kind: 'correction-verse', utterance: text, phrase: words.slice(notIdx, j + second.consumed).join(' '), value: second.value, ts: now })
               this.cb.onVerseCorrection(second.value)
               return true
             }
@@ -244,8 +245,8 @@ export class VoiceCommandEngine {
     return false
   }
 
-  /** Index just AFTER the first matching trigger phrase, or null. */
-  private findTrigger(words: string[], triggers: string[]): number | null {
+  /** Token span of the first matching correction trigger. */
+  private findTrigger(words: string[], triggers: string[]): { start: number; end: number } | null {
     for (const trigger of triggers) {
       const tw = normalizeWords(trigger)
       if (tw.length === 0) continue
@@ -253,7 +254,7 @@ export class VoiceCommandEngine {
         for (let k = 0; k < tw.length; k++) {
           if (words[i + k] !== tw[k]) continue outer
         }
-        return i + tw.length
+        return { start: i, end: i + tw.length }
       }
     }
     return null
@@ -267,6 +268,15 @@ export class VoiceCommandEngine {
   }
 
   private fire(event: VoiceCommandEvent): void {
+    if (!event.phrase) {
+      const c = this.config
+      const phrases = event.kind === 'version-switch'
+        ? c.versionPhrases.find((version) => version.code === String(event.value).split(' ')[0])?.phrases
+        : ({ 'prayer-start': c.prayerStart, 'prayer-end': c.prayerEnd,
+            'display-dismiss': c.dismiss, 'display-hold': c.hold,
+            'navigate-next': c.navNext, 'navigate-previous': c.navPrevious } as Partial<Record<VoiceCommandEvent['kind'], string[]>>)[event.kind]
+      if (phrases) event.phrase = longestCommandPhrase(event.utterance, phrases, this.substringMode)
+    }
     this.cb.onCommand(event)
   }
 }

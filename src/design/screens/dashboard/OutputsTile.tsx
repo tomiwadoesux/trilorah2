@@ -4,7 +4,7 @@ import { Expandable } from './expand';
 import { SettingRow, type Row } from '../settingsRows';
 import { OUTPUTS_STYLES, SHIPPED_OUTPUTS, outputsStyle } from './outputs/styles';
 import { ROLE_NAME, ROLE_AUDIENCE, ROLE_SHOWS, SAMPLE, STATE_WORD, type Role, type Screen } from './outputs/types';
-import { AUTOMATIC, displayChoice, displayOptions, saveDisplay, saveRole, screensFrom, useOutputsStatus } from './outputs/fromEngine';
+import { AUTOMATIC, NO_SCREEN, displayChoice, displayOptions, saveDisplay, saveRole, screensFrom, useOutputsStatus } from './outputs/fromEngine';
 
 /*
  * The outputs card — which screens are plugged in and what each one does.
@@ -29,7 +29,7 @@ const PICK_KEY = 'tri.outputs.design';
 const ROLES: Role[] = ['projector', 'stream', 'stage', 'timer'];
 
 /* The sample's displays, for the design page's picker. */
-const SAMPLE_DISPLAYS = ['Epson EB-2247U', 'BlackMagic HDMI', 'Dell P2419H', 'this laptop'];
+const SAMPLE_DISPLAYS = [NO_SCREEN, 'Epson EB-2247U', 'BlackMagic HDMI', 'Dell P2419H', 'this laptop'];
 
 function onDesignPage() {
   return typeof location !== 'undefined' && /design\.html$/.test(location.pathname);
@@ -77,7 +77,7 @@ function rowsFor(
         label: `${ROLE_NAME[s.role]} — for ${ROLE_AUDIENCE[s.role]}`,
         blurb: ROLE_SHOWS[s.role],
         state: s.windowed ? 'warn' : s.state === 'live' ? 'ok' : 'idle',
-        text: s.windowed
+        text: s.disabled ? 'off — no output window' : s.windowed
           ? 'no display of its own — a window on this laptop'
           : [s.display, s.size && `${s.size.w}×${s.size.h}`, STATE_WORD[s.state]].filter(Boolean).join(' · '),
       },
@@ -129,13 +129,13 @@ export function OutputsTile({ className }: { className?: string }) {
 
   const onDisplay = (id: string, choice: string) => {
     if (!engine) {
-      setSample((prev) => prev.map((x) => (x.id === id ? { ...x, display: choice, windowed: choice === 'this laptop' } : x)));
+      setSample((prev) => prev.map((x) => (x.id === id ? { ...x, display: choice, disabled: choice === NO_SCREEN, state: 'off', windowed: choice === 'this laptop' } : x)));
       return;
     }
     if (!status || choice === displayChoice(status, id) || sending.current.get(id) === choice) return;
     sending.current.set(id, choice);
     const d = status.displays.find((x) => x.name === choice);
-    void saveDisplay(id, d ? d.id : null).catch(() => undefined);
+    void saveDisplay(id, choice === NO_SCREEN ? 'none' : d ? d.id : null).catch(() => undefined);
   };
 
   const picker: Picker =
@@ -143,7 +143,7 @@ export function OutputsTile({ className }: { className?: string }) {
       ? {
           options: displayOptions(status),
           choice: (s) => displayChoice(status, s.id),
-          blurb: `Which screen it opens on. ${AUTOMATIC} hands the external screens out in order.`,
+          blurb: `Choose no screen to close and disable this output. ${AUTOMATIC} assigns external screens in order.`,
         }
       : {
           options: SAMPLE_DISPLAYS,

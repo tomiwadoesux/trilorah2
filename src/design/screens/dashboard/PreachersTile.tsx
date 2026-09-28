@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { PersonIcon } from '@radix-ui/react-icons';
-import { Button, PlusIcon, SearchField, SegmentedControl, cx, surface } from '../../../ui';
+import { Button, PlusIcon, ProfileIcon, ChevronRightIcon, SearchField, SegmentedControl, cx, surface } from '../../../ui';
 import { Panel, Pill } from '../parts';
 import { FIELD } from '../settingsRows';
 import { FlightPopup } from '../songs/FlightPopup';
@@ -102,17 +101,17 @@ export function Avatar({ p, size = 28, ring = false }: { p: Preacher; size?: num
 }
 
 /** Trust against the auto-mode line, with the line drawn on the track. */
-export function TrustBar({ value, className }: { value: number; className?: string }) {
+export function TrustBar({ value, className, gate = GATES.trust }: { value: number; className?: string; gate?: number }) {
   return (
     <span className={cx('relative block h-[4px] rounded-full bg-white/[0.07]', className)}>
       <span
         className="absolute inset-y-0 left-0 rounded-full"
-        style={{ width: pct(Math.min(1, value)), background: value >= GATES.trust ? MINT : 'rgb(229 243 242 / 0.5)' }}
+        style={{ width: pct(Math.min(1, value)), background: value >= gate ? MINT : 'rgb(229 243 242 / 0.5)' }}
       />
       <span
         aria-hidden
         className="absolute -top-[2px] h-[8px] w-px"
-        style={{ left: pct(GATES.trust), background: 'rgb(228 216 122 / 0.75)' }}
+        style={{ left: pct(gate), background: 'rgb(228 216 122 / 0.75)' }}
       />
     </span>
   );
@@ -195,7 +194,7 @@ function Face({
   return (
     <Panel
       title="preachers"
-      icon={<PersonIcon width={13} height={13} />}
+      icon={<ProfileIcon size={13} />}
       blurb="who is preaching today, and how well the app knows them."
       onOpen={onOpen}
       className="min-h-0 flex-1"
@@ -477,9 +476,12 @@ export function PreacherList({
   );
 }
 
-function AddRow({ initialName, onAdded, onCancel }: { initialName: string; onAdded: (p: Preacher) => void; onCancel: () => void }) {
+export function AddRow({ initialName, onAdded, onCancel }: { initialName: string; onAdded: (p: Preacher) => void; onCancel: () => void }) {
   const [name, setName] = useState(initialName);
   const [role, setRole] = useState<PreacherRole>('pastor');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const pending = useRef(false);
   /* The row may already be open when the search comes up empty; the name
      that was searched for is still the likeliest one. Only a real name is
      carried — a search that starts matching again must not wipe what was
@@ -491,9 +493,14 @@ function AddRow({ initialName, onAdded, onCancel }: { initialName: string; onAdd
   const dupe = clean ? findByName(clean) : undefined;
 
   const submit = () => {
-    if (!clean || dupe) return;
-    const p = addPreacher(clean, role);
-    if (p) onAdded(p);
+    if (!clean || dupe || pending.current) return;
+    pending.current = true;
+    setSaving(true);
+    setError('');
+    void addPreacher(clean, role)
+      .then((p) => { if (p) onAdded(p); })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not save the preacher. Please try again.'))
+      .finally(() => { pending.current = false; setSaving(false); });
   };
 
   return (
@@ -528,8 +535,9 @@ function AddRow({ initialName, onAdded, onCancel }: { initialName: string; onAdd
             { id: 'guest', label: 'guest' },
           ]}
         />
-        <Button label="add" onClick={submit} disabled={!clean || !!dupe} />
+        <Button label={saving ? 'saving…' : 'add'} onClick={submit} disabled={saving || !clean || !!dupe} />
       </div>
+      {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
       <p className="text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: dupe ? GOLD : MUTED }}>
         {dupe
           ? `${dupe.name} is already on the list`
@@ -605,7 +613,7 @@ function PreacherRow({
         </span>
 
         <span aria-hidden className="shrink-0 text-[14px]" style={{ color: MUTED }}>
-          ›
+          <ChevronRightIcon size={14} />
         </span>
       </div>
     </li>
@@ -637,7 +645,7 @@ export function ProfileHeader({ p, active }: { p: Preacher; active: boolean }) {
 
 const STEPS: { id: TrainingStage; label: string; note: string }[] = [
   { id: 'new', label: 'new', note: 'no services yet' },
-  { id: 'training', label: 'training', note: 'learning their voice' },
+  { id: 'training', label: 'learning', note: 'reviewing recognition' },
   { id: 'mature', label: 'mature', note: 'rarely corrected' },
   /* Eligible, not on: auto mode is its own switch, off by default, and a
      detection still stages to preview until someone turns it on. */
@@ -674,10 +682,11 @@ function Stepper({ stage }: { stage: TrainingStage }) {
 }
 
 function Gates({ p }: { p: Preacher }) {
+  const gates = p.gates ?? GATES;
   const rows = [
-    { label: 'trust floor', now: p.trustLowerBound, need: GATES.trust, fmt: pct },
-    { label: 'verified detections', now: p.samples, need: GATES.samples, fmt: (v: number) => String(v) },
-    { label: 'services together', now: p.services, need: GATES.services, fmt: (v: number) => String(v) },
+    { label: 'trust floor', now: p.trustLowerBound, need: gates.trust, fmt: pct },
+    { label: 'verified detections', now: p.samples, need: gates.samples, fmt: (v: number) => String(v) },
+    { label: 'reviewed services', now: p.services, need: gates.services, fmt: (v: number) => String(v) },
   ];
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -710,7 +719,7 @@ function Gates({ p }: { p: Preacher }) {
  * it fills whatever width the block has; the strokes keep their weight
  * (non-scaling-stroke) and the one dot is HTML so it stays round.
  */
-function TrustChart({ history }: { history: ServicePoint[] }) {
+function TrustChart({ history, gate = GATES.trust }: { history: ServicePoint[]; gate?: number }) {
   if (history.length < 2) {
     return (
       <p className="py-6 text-[length:var(--tri-size-xs)] lowercase leading-relaxed" style={{ color: MUTED }}>
@@ -735,12 +744,12 @@ function TrustChart({ history }: { history: ServicePoint[] }) {
           <span className="h-[2px] w-[10px] rounded bg-[rgb(229_243_242_/_0.4)]" /> accuracy
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-[2px] w-[10px] rounded" style={{ background: GOLD }} /> auto at {pct(GATES.trust)}
+          <span className="h-[2px] w-[10px] rounded" style={{ background: GOLD }} /> auto at {pct(gate)}
         </span>
       </p>
       <div className="relative mr-1 h-[124px]">
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
-          <line x1={0} x2={100} y1={y(GATES.trust)} y2={y(GATES.trust)} stroke={GOLD} strokeOpacity={0.55} strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
+          <line x1={0} x2={100} y1={y(gate)} y2={y(gate)} stroke={GOLD} strokeOpacity={0.55} strokeWidth={1} strokeDasharray="3 4" vectorEffect="non-scaling-stroke" />
           <path d={`${line('trust')} L 100 40 L 0 40 Z`} fill="rgb(143 211 192 / 0.1)" />
           <path d={line('precision')} fill="none" stroke="rgb(229 243 242 / 0.35)" strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
           <path d={line('trust')} fill="none" stroke={MINT} strokeWidth={1.75} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
@@ -768,6 +777,7 @@ export function ProfileBody({
   p,
   onRemove,
   children,
+  beforeReport,
 }: {
   p: Preacher;
   onRemove: () => void;
@@ -775,13 +785,15 @@ export function ProfileBody({
      tile's flown box passes nothing; the full-window profile passes the
      teaching panels (./Teaching). */
   children?: ReactNode;
+  beforeReport?: ReactNode;
 }) {
   const [confirm, setConfirm] = useState(false);
   const none = p.services === 0;
+  const gates = p.gates ?? GATES;
   const stats: [string, string][] = [
     ['services', none ? '—' : String(p.services)],
-    ['verses caught', none ? '—' : String(p.samples)],
-    ['accuracy', none ? '—' : pct(p.precision)],
+    ['verified detections', none ? '—' : String(p.samples)],
+    ['reviewed precision', none ? '—' : pct(p.precision)],
     ['trust floor', none ? '—' : pct(p.trustLowerBound)],
     ['fixed last time', none ? '—' : String(p.correctionsLastService)],
     ['avg sermon', p.avgSermonMin ? `${p.avgSermonMin} min` : '—'],
@@ -796,6 +808,7 @@ export function ProfileBody({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-4">
       <div className="flex flex-col gap-3">
+        {beforeReport}
         <div className="grid grid-cols-6 gap-2">
           {stats.map(([label, value]) => (
             <div
@@ -812,12 +825,12 @@ export function ProfileBody({
         </div>
 
         <Block
-          title="training progress"
+          title="recognition readiness"
           right={
             <span className="text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: MUTED }}>
               {stageOf(p) === 'auto'
                 ? 'every gate met'
-                : `${[p.trustLowerBound >= GATES.trust, p.samples >= GATES.samples, p.services >= GATES.services].filter(Boolean).length} of 3 gates met`}
+                : `${[p.trustLowerBound >= gates.trust, p.samples >= gates.samples, p.services >= gates.services].filter(Boolean).length} of 3 gates met`}
             </span>
           }
         >
@@ -827,7 +840,7 @@ export function ProfileBody({
 
         <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-3">
           <Block title="trust over services">
-            <TrustChart history={p.history} />
+            <TrustChart history={p.history} gate={gates.trust} />
           </Block>
           <Block title="habits">
             <dl className="flex flex-col gap-2">
@@ -865,7 +878,7 @@ export function ProfileBody({
                     <span className="font-semibold lowercase text-[var(--tri-ink)]">{r.date}</span>
                     <span className="flex gap-3" style={{ color: MUTED }}>
                       <span>{r.verses}v</span>
-                      <span style={{ color: accuracyInk(r.accuracy) }}>{pct(r.accuracy)}</span>
+                      <span style={{ color: r.accuracy === null ? MUTED : accuracyInk(r.accuracy) }}>{r.accuracy === null ? 'unscored' : pct(r.accuracy)}</span>
                       <span>{r.minutes} min</span>
                     </span>
                   </li>
@@ -905,7 +918,7 @@ export function ProfileBody({
               </ul>
             ) : (
               <p className="text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
-                {none ? 'nothing yet' : 'nothing to review — the app got every one right'}
+                {p.learning ? `${p.learning.reviews.length} examples waiting in recognition review` : 'review data not loaded'}
               </p>
             )}
           </Block>
@@ -915,7 +928,7 @@ export function ProfileBody({
 
         <footer className="flex items-center justify-between gap-3 pt-1">
           <p className="text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: 'rgb(229 243 242 / 0.3)' }}>
-            sample numbers — the engine’s own replace these once profiles are wired
+            {p.learning ? 'local profile · readiness uses verified detections only' : 'engine detail not connected'}
           </p>
           {confirm ? (
             <span className="flex shrink-0 items-center gap-3 text-[length:var(--tri-size-xs)] lowercase">

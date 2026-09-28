@@ -35,6 +35,7 @@ export {
 export { SearchField, type SearchFieldProps } from './primitives/SearchField';
 export { SlideThumb, type SlideThumbProps } from './primitives/SlideThumb';
 export { AddCard, type AddCardProps } from './primitives/AddCard';
+export { IconCredits } from './primitives/IconCredits';
 export {
   SegmentedControl,
   type SegmentOption,
@@ -42,7 +43,7 @@ export {
 } from './primitives/SegmentedControl';
 export { ArrangeList, type ArrangeOption, type ArrangeListProps } from './primitives/ArrangeList';
 
-export { SettingsIcon, TrashIcon, ResetIcon, ChevronDownIcon, SearchIcon, PencilIcon, PlusIcon, ScanIcon, SparkleIcon, MediaIcon, NoteIcon, GripIcon, CheckIcon, HistoryIcon, BookIcon, MusicIcon, MicIcon, PlayIcon, PauseIcon, ImportIcon, PresentationIcon, QrIcon, GlobeIcon, LaptopIcon, CloseIcon, SplitIcon, MergeIcon, CopyIcon, ArrowIcon, ClockIcon, PrayerIcon, GiftIcon, CupIcon, PaletteIcon } from './icons';
+export { SettingsIcon, OperatorIcon, DashboardIcon, ProfileIcon, TrashIcon, ResetIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, PencilIcon, PlusIcon, ScanIcon, SparkleIcon, MediaIcon, NoteIcon, GripIcon, CheckIcon, HistoryIcon, BookIcon, MusicIcon, MicIcon, PlayIcon, PauseIcon, ImportIcon, PresentationIcon, QrIcon, GlobeIcon, LaptopIcon, CloseIcon, SplitIcon, MergeIcon, CopyIcon, ArrowIcon, ClockIcon, PrayerIcon, GiftIcon, CupIcon, PaletteIcon, ExpandIcon, MinimizeIcon, BankIcon, LinkIcon, type IconProps } from './icons';
 
 export { cx, type ClassValue } from './lib/cx';
 export {

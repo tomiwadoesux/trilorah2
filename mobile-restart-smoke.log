@@ -1,0 +1,49 @@
+
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+✅ Database found: C:\Users\Admin\Documents\Codex\2026-09-28\bash-git-clone-https-github-com\trilorah2\bible.db
+✅ Database connected - 217584 verses
+🧠 Connecting to ML resolver...
+🧠 In-process reference resolver ready (Python ML replaced)
+[AliasLogger] Initialized at: C:\Users\Admin\AppData\Local\Temp\trilorah-mobile-smoke-NZrFiJ\logs\alias_misses.log
+🌍 Resolver language: English
+🌍 Engine language: English · 18 version phrases · auto-mode gate 90%
+🗣️ Voice commands + intent engine + correction ledger ready
+✅ QuoteMatcher loaded: 31100 verses, 13313 unique words indexed
+✅ TransitionDetector loaded 7 segment types
+🌐 WebSocket API Server started on ws://localhost:8081
+🚀 AI Preacher Assistant ready
+💡 Click 'Start' to begin voice recognition
+🎤 No Deepgram key — using free local Whisper transcription
+❌ WebSocket Server error Error: listen EADDRINUSE: address already in use :::8081
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at new WebSocketServer (C:\Users\Admin\Documents\Codex\2026-09-28\bash-git-clone-https-github-com\trilorah2\node_modules\ws\lib\websocket-server.js:106:20)
+    at Nh (C:\Users\Admin\Documents\Codex\2026-09-28\bash-git-clone-https-github-com\trilorah2\dist-electron\main.js:100:24025)
+    at C:\Users\Admin\Documents\Codex\2026-09-28\bash-git-clone-https-github-com\trilorah2\dist-electron\main.js:110:23783 {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 8081
+}
+(electron) 'console-message' arguments are deprecated and will be removed. Please use Event<WebContentsConsoleMessageEventParams> object instead.
+🖥️ Output "undefined" → windowed on primary
+📱 Remote paired: My phone
+☁️  Supabase client initialized
+📥 Session received: {"book":"John","chapter":3,"verse":16,"version":"KJV"}
+⚡ Fast path: John 3:16
+📖 Preview: John 3:16
+👁️ Preview: John 3:16
+📝 Tracking verse text: "for god so loved the..." (25 words)
+🔴 Pushing to LIVE (remote): John 3:16
+📤 Live: John 3:16
+🎵 Live: Amazing Grace — Verse 1
+🖥️ Screen → black
+🖥️ Screen → live
+🎵 Live: Amazing Grace — Verse 2
+📣 Alert: Mobile smoke test
+📣 Alert cleared
+🖼️ Showing media on output: slide.svg
+📱 Companion QR on outputs → https://example.com/live/test-church
+MOBILE_SMOKE_PASS {"screenshot":"C:\\Users\\Admin\\AppData\\Local\\Temp\\trilorah-mobile-smoke-NZrFiJ\\mobile-remote.png","checks":["pair approval","scripture preview/live","control with desktop Settings open","song projection","next section","screen black/restore","theme","message","timers","revoke"],"errors":[]}

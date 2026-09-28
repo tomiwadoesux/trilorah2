@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Copy, Check, Download, QrCode as QrCodeIcon } from "lucide-react";
+import { Copy, Check, Download, QrCode as QrCodeIcon } from "@/components/icons";
 
 /**
  * Renders this account's public companion link as a QR code.

@@ -5,7 +5,13 @@
  * hearing, which may change its mind word by word until it is committed
  * as the next line (with the next id).
  */
-export type Spoken = { lines: { id: number; text: string }[]; partial: string };
+import type { VoiceCommandEvent } from '../../../../shared/types';
+
+export type Spoken = {
+  lines: { id: number; text: string; commands?: VoiceCommandEvent[] }[];
+  partial: string;
+  partialCommands?: VoiceCommandEvent[];
+};
 
 export interface TranscriptStripProps {
   spoken: Spoken;

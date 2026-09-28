@@ -5,6 +5,7 @@ import LinkCodeManager from "./LinkCodeManager";
 import SignOutButton from "./SignOutButton";
 import FinishSetup from "./FinishSetup";
 import QrCard from "./QrCard";
+import { IconCredits } from '@/components/IconCredits';
 
 export const revalidate = 0;
 
@@ -162,6 +163,7 @@ export default async function DashboardPage() {
           </p>
         )}
       </section>
+      <IconCredits />
     </main>
   );
 }

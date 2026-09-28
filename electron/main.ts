@@ -1,6 +1,6 @@
 // `session` is already the ScriptureSession instance in this file, so Electron's
 // comes in aliased rather than renaming an engine object used throughout.
-import { app, BrowserWindow, dialog, ipcMain, protocol, screen as electronScreen, session as electronSession, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, protocol, screen as electronScreen, session as electronSession, shell, systemPreferences } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
@@ -22,6 +22,7 @@ import {
   emitAudioLevel
 } from './emitters'
 import { feedAudioChunk } from './asr/audioBus'
+import { longestCommandPhrase } from '../shared/voiceCommandText'
 // In-process TS resolver — drop-in replacement for the lost Python ml/ service
 import {
   connectML,
@@ -52,7 +53,71 @@ import { CommandLog } from './preachers/commandLog'
 import { VocabularyStore, applyVocabulary, deepgramKeywords } from './preachers/vocabulary'
 import { exportFixturesFromLedger } from './preachers/evalExport'
 import { setDeepgramKeywords } from './asr/deepgram'
+import { startWhisperLocal, stopWhisperLocal } from './asr/whisperLocal'
+import { TeachingStore, applyBookAliases } from './preachers/teaching'
+import { SoundCheck } from './preachers/soundCheck'
+import type { PreacherTeaching } from '../shared/preacherLearning'
 import { PairingStore } from './integrations/pairing'
+import { MobileServer } from './integrations/mobileServer'
+import { MobileBridge } from './integrations/mobileBridge'
+
+let mobileServer: MobileServer | null = null
+let mobilePairing: PairingStore | null = null
+let publicSharingPaused = false
+let cloudLifecycle: Promise<unknown> = Promise.resolve()
+function serializeService<T>(operation: () => Promise<T>): Promise<T> {
+  const next = cloudLifecycle.then(operation, operation)
+  cloudLifecycle = next.catch(() => undefined)
+  return next
+}
+const mobileBridge = new MobileBridge(request => {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error('Open the desktop control surface first.')
+  mainWindow.webContents.send('mobile-request', request)
+})
+ipcMain.on('mobile-reply', (event, reply) => {
+  if (event.sender === mainWindow?.webContents) mobileBridge.reply(reply.id, reply.result, reply.error)
+})
+ipcMain.handle('mobile-status', () => mobileServer?.status() ?? {running:false,urls:[],pending:[],devices:[],error:null})
+ipcMain.handle('mobile-enable', async (_event, enabled: boolean) => {
+  if (!mobilePairing) mobilePairing = new PairingStore(path.join(app.getPath('userData'),'mobile'))
+  if (!enabled) { mobileServer?.stop(); return true }
+  if (!mobileServer) {
+    const root = app.getAppPath()
+    const file = path.join(root, app.isPackaged ? 'dist' : 'public', 'mobile-remote.html')
+    mobileServer = new MobileServer(mobilePairing, () => fs.readFileSync(file,'utf8'), (command,args) => mobileBridge.request(command,args))
+  }
+  await mobileServer.start()
+  return true
+})
+ipcMain.handle('mobile-approve', (_event, id: string, allow: boolean) => mobileServer?.approve(id,allow) ?? false)
+ipcMain.handle('mobile-code', (_event, generate: boolean) => {
+  if (generate) mobilePairing?.generateCode()
+  return mobilePairing?.currentCode() ?? null
+})
+ipcMain.handle('mobile-revoke', (_event, id: string) => mobilePairing?.revoke(id) ?? false)
+ipcMain.handle('mobile-thumbnail', (_event, imagePath: string) => {
+  if (typeof imagePath !== 'string') return null
+  if (imagePath.startsWith('data:image/') && imagePath.length < 4_000_000) return imagePath
+  try {
+    let file = imagePath
+    if (/^(file|local-media):/.test(file)) file = decodeURIComponent(new URL(file).pathname)
+    if (process.platform === 'win32' && /^\/[a-z]:/i.test(file)) file = file.slice(1)
+    if (!/\.(png|jpe?g|gif|webp|svg)$/i.test(file) || fs.statSync(file).size > 3_000_000) return null
+    return `data:${getMimeType(file)};base64,${fs.readFileSync(file).toString('base64')}`
+  } catch { return null }
+})
+ipcMain.handle('mobile-qr', async (_event, url: string) => {
+  if (!mobileServer?.status().urls.includes(url)) throw new Error('Invalid remote address')
+  const qr = await import('qrcode')
+  return qr.toDataURL(url, {width:240,margin:2})
+})
+ipcMain.handle('mobile-verse', (_event, reference: string, version: string, live: boolean) => {
+  if (!db || typeof reference !== 'string' || reference.length > 160 || typeof version !== 'string') throw new Error('Invalid reference')
+  const verse = readVersePreview(db, reference, version)
+  if (!verse) throw new Error('That verse or translation is unavailable.')
+  if (live) { if (!stageVerseReference(reference,version)) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
+  return verse
+})
 import { PollEngine, VOTE_WEIGHT_IN_VENUE, VOTE_WEIGHT_REMOTE } from './companion/polls'
 import { ViewerStats, nullGeo } from './companion/viewerStats'
 import { parseCompanionMessage, shareLink, parseShareMode } from './companion/events'
@@ -430,6 +495,45 @@ function activePreacherId(): string {
   return getSetting('activePreacherId') || ''
 }
 
+let teachingStore: TeachingStore | null = null
+function teachings() {
+  return teachingStore ??= new TeachingStore(path.join(app.getPath('userData'), 'preacher-teaching'))
+}
+function teachingFor(id: string): PreacherTeaching {
+  if (!id) return { soundsLike: [], vocabulary: [], ignoreTails: [], voiceCommands: true }
+  const store = teachings()
+  if (!store.has(id)) store.patch(id, {
+    vocabulary: vocabulary?.get(id).terms ?? [],
+    ignoreTails: loadPreacherCommandConfig(app.getPath('userData'), id).ignoreTails ?? [],
+  })
+  return store.get(id)
+}
+function teachTranscript(id: string, text: string): string {
+  const t = teachingFor(id)
+  if (getSetting('rememberPreacherStyle')) text = ledger?.correctedUtterance(id, text) ?? text
+  return applyBookAliases(getSetting('vocabularyEnabled') ? applyVocabulary(text, t.vocabulary) : text, t.soundsLike)
+}
+function preacherCommandsEnabled() {
+  return getSetting('voiceCommandsEnabled') && teachingFor(activePreacherId()).voiceCommands
+}
+const soundCheck = new SoundCheck({ start: startWhisperLocal, stop: stopWhisperLocal }, (pid, text) => {
+  return stripIgnoreTails(teachTranscript(pid, text), teachingFor(pid).ignoreTails)
+})
+let soundCheckOwner: number | null = null
+let lastRawHeardText = ''
+let manualReferenceInput = false
+let recentReview: { id: string; preacherId: string; ref: string; ts: number } | null = null
+
+function queueRecognitionReview(data: { book: string; chapter: number | null; verse: number | null }, heard = lastRawHeardText) {
+  const pid = activePreacherId()
+  if (manualReferenceInput || !heard.trim() || !pid || !ledger || !data.chapter || !data.verse || !verseExists(data.book, data.chapter, data.verse)) return
+  const ref = `${data.book} ${data.chapter}:${data.verse}`
+  const item = ledger.addReviewItem({ preacherId: pid, ts: Date.now(), kind: 'detection', reason: 'detected', heard,
+    proposed: { book: data.book, chapter: data.chapter, verse: data.verse } })
+  lastReviewItemId = item.id
+  recentReview = { id: item.id, preacherId: pid, ref, ts: Date.now() }
+}
+
 /** The active merged phrase config (defaults + language pack + user file). */
 let activeCommandConfig: CommandPhraseConfig = DEFAULT_COMMANDS
 
@@ -451,7 +555,7 @@ function applyLanguageAndConfig(): void {
   config = mergeCommandConfigs(config, loadUserCommandConfig(app.getPath('userData')))
   // 4th layer: the active preacher's own phrases ("How they say it").
   const pid = activePreacherId()
-  if (pid) config = mergeCommandConfigs(config, loadPreacherCommandConfig(app.getPath('userData'), pid))
+  if (pid) config = mergeCommandConfigs(config, { ...loadPreacherCommandConfig(app.getPath('userData'), pid), ignoreTails: teachingFor(pid).ignoreTails })
   activeCommandConfig = config
 
   // 3. Engines pick up the config.
@@ -463,7 +567,7 @@ function applyLanguageAndConfig(): void {
   })
   // Per-preacher vocabulary → Deepgram keyword boost (applies on next connect).
   if (getSetting('vocabularyEnabled') && vocabulary) {
-    setDeepgramKeywords(pid ? deepgramKeywords(vocabulary.get(pid).terms) : [])
+    setDeepgramKeywords(pid ? deepgramKeywords(teachingFor(pid).vocabulary) : [])
   }
   intentEngine.setConfig(config, substring)
   session.configureCommands(config)
@@ -525,15 +629,11 @@ const voiceCallbacks: VoiceCommandCallbacks = {
       : String(verse)
     if (pid && ledger) {
       if (lastReviewItemId && lastDisplayedRef) {
-        ledger.resolveReviewItem(pid, lastReviewItemId, 'amended', {
-          book: lastDisplayedRef.book,
-          chapter: lastDisplayedRef.chapter,
-          verse
-        })
+        ledger.markOperatorChange(pid, lastReviewItemId)
         lastReviewItemId = null
       } else {
-        ledger.recordDetection(pid, false)
-        ledger.recordCorrection(pid, heard, corrected, 'voice')
+        ledger.addReviewItem({ preacherId: pid, ts: Date.now(), kind: 'correction', reason: 'operator-change',
+          heard: `${heard} → ${corrected}`, proposed: lastDisplayedRef ? { book: lastDisplayedRef.book, chapter: lastDisplayedRef.chapter, verse: lastDisplayedRef.verse } : null })
       }
     }
     session.applyVerseCorrection(verse)
@@ -541,13 +641,9 @@ const voiceCallbacks: VoiceCommandCallbacks = {
   onChapterCorrection: (chapter) => {
     const pid = activePreacherId()
     if (pid && ledger && lastDisplayedRef) {
-      ledger.recordDetection(pid, false)
-      ledger.recordCorrection(
-        pid,
-        `${lastDisplayedRef.book} ${lastDisplayedRef.chapter}`,
-        `${lastDisplayedRef.book} ${chapter}`,
-        'voice'
-      )
+      ledger.addReviewItem({ preacherId: pid, ts: Date.now(), kind: 'correction', reason: 'operator-change',
+        heard: `${lastDisplayedRef.book} ${lastDisplayedRef.chapter} → chapter ${chapter}`,
+        proposed: { book: lastDisplayedRef.book, chapter: lastDisplayedRef.chapter, verse: lastDisplayedRef.verse } })
     }
     session.applyChapterCorrection(chapter)
   },
@@ -619,21 +715,7 @@ function pushPreviewToLive(via: VersePushSource): void {
   }
   if (autoMode.hasPendingClash()) autoMode.dismissClash()
   broadcastState()
-  // Every live verse becomes a review item; unresolved ones auto-confirm at
-  // end-of-service (silence = the operator saw it and left it up).
-  if (ledger) {
-    const item = ledger.addReviewItem({
-      ts: Date.now(),
-      kind: 'detection',
-      heard: recentTranscriptBuffer.slice(-12).join(' '),
-      proposed: {
-        book: currentPreviewData.book,
-        chapter: currentPreviewData.chapter,
-        verse: currentPreviewData.verse
-      }
-    })
-    lastReviewItemId = item.id
-  }
+  // Manual display changes do not count as successful recognition.
 }
 
 /** Stage the current reference in a different translation (voice or UI). */
@@ -763,6 +845,10 @@ function stageVerseReference(reference: string, version = getSetting('displayVer
   try {
     const preview = readVersePreview(db, reference, version)
     if (!preview) return false
+    if (recentReview && recentReview.preacherId === activePreacherId() && Date.now() - recentReview.ts < 30_000 &&
+        recentReview.ref !== `${preview.book} ${preview.chapter}:${preview.verse}`) {
+      ledger?.markOperatorChange(recentReview.preacherId, recentReview.id)
+    }
     session.onReferenceDetected({
       book: preview.book, chapter: preview.chapter, verse: preview.verse,
       rangeEnd: preview.endVerse, version
@@ -775,6 +861,7 @@ function stageVerseReference(reference: string, version = getSetting('displayVer
 }
 
 function startASR(deviceLabel?: string) {
+  if (soundCheck.active) { emitASRStatus('Finish the sound check before starting a service.'); return }
   if (isListening) return
   activeASR = resolveASRProvider(getSetting('asrProvider'))
   console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
@@ -790,12 +877,13 @@ function startASR(deviceLabel?: string) {
     // onText callback
     (rawText, isFinal, display, wordTimings) => {
       // Per-preacher vocabulary fixes proper nouns before anything reads the text.
+      lastRawHeardText = rawText
       let text = rawText
       const vocabPid = activePreacherId()
-      if (getSetting('vocabularyEnabled') && vocabulary && vocabPid) {
-        text = applyVocabulary(rawText, vocabulary.get(vocabPid).terms)
+      if (vocabPid) {
+        text = teachTranscript(vocabPid, rawText)
       }
-      if (isFinal) lastHeardText = text
+      lastHeardText = text
       console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${text}`)
       emitTranscript(text)
       emitTranscriptLine(display ?? text, isFinal)
@@ -812,9 +900,18 @@ function startASR(deviceLabel?: string) {
       }
       // Intent engine sees everything — it tracks what the preacher is DOING.
       intentEngine.process(text)
+      // The partial already advanced this utterance. Consume its final
+      // before the other navigation engine can advance it a second time.
+      if (isFinal && navFiredOnPartial) {
+        navFiredOnPartial = false
+        if (session.isUnambiguousNav(text)) {
+          discardPartialReference()
+          return
+        }
+      }
       // Natural voice commands consume their chunk entirely (a version
       // switch must not also get parsed for verse references).
-      if (isFinal && voiceCommands && getSetting('voiceCommandsEnabled')) {
+      if (isFinal && voiceCommands && preacherCommandsEnabled()) {
         if (voiceCommands.process(text)) {
           discardPartialReference()
           return
@@ -849,7 +946,7 @@ function startASR(deviceLabel?: string) {
         // "next verse" moves the screen as it is spoken. One shot per
         // utterance: the partials that follow are the same sentence still
         // growing, and its final is swallowed in handleASRText.
-        if (!navFiredOnPartial && session.isUnambiguousNav(text) && session.onCommand(text)) {
+        if (!navFiredOnPartial && session.isUnambiguousNav(text) && handleSessionCommand(text)) {
           navFiredOnPartial = true
           return
         }
@@ -880,13 +977,14 @@ function stopASR() {
   ;(activeASR ?? resolveASRProvider(getSetting('asrProvider'))).stop()
   activeASR = null
   isListening = false
+  navFiredOnPartial = false
   emitASRStatus('Stopped')
 }
 
 function handleMLVerseDetection(data: any) {
   console.log('🔍 Raw ML data:', JSON.stringify(data))
   // --- agentic layer (added post-recovery) ---
-  if (voiceCommands?.isInPrayer()) {
+  if (preacherCommandsEnabled() && voiceCommands?.isInPrayer()) {
     console.log('🙏 Prayer mode — detection suppressed')
     return
   }
@@ -917,6 +1015,7 @@ function handleMLVerseDetection(data: any) {
     return
   }
   const refString = `${data.book} ${data.chapter}:${data.verse ?? ''}`
+  queueRecognitionReview(data)
   if (data.confidence < 0.85) {
     console.log('⏭️ Low confidence:', refString, data.confidence)
     return
@@ -969,21 +1068,38 @@ let lastNamedPassage: { name: string; at: number } | null = null
 /** A nav command already acted on from a partial; its final must not act again. */
 let navFiredOnPartial = false
 
+/** The session handles fast and standalone navigation as well as verse
+ * jumps. Report only commands it acted on, using the same configured phrase. */
+function handleSessionCommand(text: string): boolean {
+  if (!preacherCommandsEnabled()) return false
+  const before = session.currentVerse
+  const consumed = session.onCommand(text)
+  if (consumed && session.currentVerse !== before && session.currentVerse !== null) {
+    const next = session.isNextCommand(text)
+    const previous = session.isPreviousCommand(text)
+    const phrases = next ? activeCommandConfig.navNext : previous ? activeCommandConfig.navPrevious : []
+    voiceCallbacks.onCommand({
+      kind: next ? 'navigate-next' : previous ? 'navigate-previous' : 'correction-verse',
+      utterance: text,
+      phrase: longestCommandPhrase(text, phrases) ?? text,
+      ...(!next && !previous ? { value: session.currentVerse } : {}),
+      ts: Date.now()
+    })
+  }
+  return consumed
+}
+
 function handleASRText(text: string) {
   if (activeCommandConfig.ignoreTails?.length) {
     text = stripIgnoreTails(text, activeCommandConfig.ignoreTails)
   }
-  if (navFiredOnPartial) {
-    navFiredOnPartial = false
-    if (session.isUnambiguousNav(text)) return
-  }
-  if (session.onCommand(text)) {
+  if (handleSessionCommand(text)) {
     discardPartialReference()
     return
   }
   const before = previewRevision
-  sendTranscript(text, true)
-  if (previewRevision !== before) {
+  const completeReference = sendTranscript(text, true)
+  if (previewRevision !== before || completeReference) {
     // A complete spoken reference wins over older words in the quote buffer.
     getQuoteMatcher().clearBuffer()
     return
@@ -1003,7 +1119,7 @@ function handleASRText(text: string) {
     })
     return
   }
-  if (voiceCommands?.isInPrayer()) return // 🙏 no quote detection during prayer
+  if (preacherCommandsEnabled() && voiceCommands?.isInPrayer()) return
   const quoteMatcher = getQuoteMatcher()
   const quoteResults = quoteMatcher.tryDetectQuotes()
   if (quoteResults.length > 0) {
@@ -1014,6 +1130,7 @@ function handleASRText(text: string) {
       `📜 Quote match: ${best.ref} (+${quoteResults.length - 1} candidates)`
     )
     lastQuoteCandidates = candidatesFromQuotes(quoteResults.slice(0, 4))
+    queueRecognitionReview({ book: bestBook, chapter: best.chapter, verse: best.verse }, recentTranscriptBuffer.join(' '))
     if (getSetting('falsePositiveFilterEnabled') && transitionDetector) {
       const segment = transitionDetector.getCurrentSegment()
       if (falsePositiveFilter.shouldBlock(
@@ -1075,7 +1192,7 @@ function placementFor(id: string) {
     id,
     electronScreen.getAllDisplays(),
     electronScreen.getPrimaryDisplay().id,
-    getSetting('outputDisplays') as Partial<Record<string, number>>
+    getSetting('outputDisplays') as Partial<Record<string, number | 'none'>>
   )
 }
 
@@ -1096,6 +1213,10 @@ function moveOutputToItsDisplay(id: string): boolean {
   const win = outputWindows[id]
   if (!win || win.isDestroyed()) return false
   const placement = placementFor(id)
+  if (placement.disabled) {
+    win.close()
+    return true
+  }
   const bounds = placement.display?.bounds
   const wasFullscreen = win.isFullScreen()
   if (wasFullscreen) win.setFullScreen(false)
@@ -1113,6 +1234,7 @@ function moveOutputToItsDisplay(id: string): boolean {
 }
 
 function createOutputWindow(id: string, title: string) {
+  if (placementFor(id).disabled) return
   if (outputWindows[id]) {
     // Already open: honour whatever screen it is meant to be on now, rather
     // than only raising it. Pressing the projector button again is how an
@@ -1290,7 +1412,8 @@ ipcMain.handle('bible-keyword-search', (_event, { query, version, limit }: { que
 ipcMain.on('process-text', (_event, text) => {
   if (!text) return
   console.log('📥 Manual input:', text)
-  sendTranscript(text, true)
+  manualReferenceInput = true
+  try { sendTranscript(text, true) } finally { manualReferenceInput = false }
   emitTranscript(text)
   /*
    * Manual input is speech the operator typed instead of said, so it
@@ -1323,12 +1446,16 @@ ipcMain.on('process-text', (_event, text) => {
  * publicly silent — and says so in the log rather than blocking the start.
  */
 async function ensureCloudService(): Promise<void> {
+  if (publicSharingPaused) return
   if (!isCloudConfigured()) return
   if (getActiveServiceId()) return
   try {
     /* No sermon title: there is no setting holding one, and the page reads
        fine without it. The operator can name the service in the Cloud tab. */
-    const res = await startService({ preacherId: activePreacherId() || null })
+    const res = await serializeService(async () => {
+      if (publicSharingPaused || getActiveServiceId()) return {success:true,serviceId:getActiveServiceId()}
+      return startService({ preacherId: activePreacherId() || null })
+    })
     if (res.success && res.serviceId) {
       console.log(`☁️  Service opened for the companion page: ${res.serviceId}`)
     } else if (!res.success) {
@@ -1340,6 +1467,7 @@ async function ensureCloudService(): Promise<void> {
 }
 
 ipcMain.on('start-listening', (_event, deviceLabel) => {
+  if (soundCheck.active) return
   console.log('▶️ Start listening requested', deviceLabel ? `(device: ${deviceLabel})` : '')
   startASR(deviceLabel)
   void ensureCloudService()
@@ -1424,6 +1552,8 @@ ipcMain.handle('vocabulary-get', (_event, preacherId?: string) =>
   vocabulary?.get(preacherId || activePreacherId()) ?? { terms: [] }
 )
 ipcMain.handle('vocabulary-set', (_event, { preacherId, terms }) => {
+  const pid = preacherId || activePreacherId()
+  if (pid) { teachingFor(pid); teachings().patch(pid, { vocabulary: terms }) }
   vocabulary?.set(preacherId || activePreacherId(), terms)
   if (ledger) applyLanguageAndConfig()
   return { success: true }
@@ -1588,10 +1718,70 @@ ipcMain.handle('get-review-items', () => {
 ipcMain.handle(
   'resolve-review-item',
   (_event, { id, resolution, amendedTo }) => {
-    ledger?.resolveReviewItem(activePreacherId() || null, id, resolution, amendedTo)
+    if (!['confirmed', 'rejected', 'amended', 'skipped'].includes(resolution)) throw new Error('Choose a review answer.')
+    if (resolution === 'amended' && (!amendedTo || !verseExists(amendedTo.book, amendedTo.chapter, amendedTo.verse ?? 1))) throw new Error('Choose an existing Bible reference.')
+    if (!ledger?.resolveReviewItem(null, id, resolution, amendedTo)) throw new Error('This example was already reviewed or is no longer available.')
     return { success: true }
   }
 )
+
+function requirePreacher(id: string) {
+  if (typeof id !== 'string' || !id || !loadProfile(id)) throw new Error('Choose a saved preacher profile.')
+  if (!ledger) throw new Error('The speech engine is not available in this window.')
+}
+ipcMain.handle('preacher-learning-get', (_event, id: string) => {
+  requirePreacher(id)
+  const profile = loadProfile(id)!
+  const history = profile.sermonHistory
+  const books = new Map<string, number>()
+  for (const item of profile.favoriteVerses) {
+    const book = item.ref.replace(/\s+\d.*$/, '')
+    books.set(book, (books.get(book) ?? 0) + item.frequency)
+  }
+  return {
+    ...teachingFor(id), stats: ledger!.stats(id),
+    gates: { trust: getSetting('autoModeMinTrust'), samples: getSetting('autoModeMinSamples'), services: getSetting('autoModeMinServices') },
+    reviews: ledger!.getReviewItems(id), history: ledger!.history(id), legacySamples: ledger!.legacySamples(id), serviceOpen: ledger!.hasOpenService(id),
+    habits: { avgSermonMin: history.length ? Math.round(history.reduce((n, s) => n + s.durationMinutes, 0) / history.length) : null,
+      mostQuoted: profile.favoriteVerses[0]?.ref ?? null, topBooks: [...books].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b]) => b), lastPreached: history.at(-1)?.date ?? null },
+    recent: history.slice(-5).reverse().map((s) => ({ date: s.date, verses: s.versesUsed.length, minutes: s.durationMinutes, accuracy: null })),
+  }
+})
+ipcMain.handle('preacher-learning-save', (_event, { preacherId, patch }) => {
+  requirePreacher(preacherId)
+  teachingFor(preacherId)
+  const result = teachings().patch(preacherId, patch)
+  if (preacherId === activePreacherId()) applyLanguageAndConfig()
+  return result
+})
+ipcMain.handle('preacher-review-missed', (_event, { preacherId, heard }) => {
+  requirePreacher(preacherId)
+  const text = typeof heard === 'string' ? heard.trim() : ''
+  if (!text || text.length > 1200) throw new Error('Enter what was said, up to 1,200 characters.')
+  return ledger!.addReviewItem({ preacherId, kind: 'miss', reason: 'missed', ts: Date.now(), heard: text, proposed: null })
+})
+ipcMain.handle('preacher-use-offline', () => {
+  if (isListening || soundCheck.active) throw new Error('Stop listening before changing the speech engine.')
+  setSetting('asrProvider', 'whisper-local')
+  return { success: true }
+})
+ipcMain.handle('preacher-sound-check-start', (event, { preacherId, promptIndex, deviceLabel }) => {
+  requirePreacher(preacherId)
+  if (isListening) throw new Error('Stop service listening before starting a sound check.')
+  if (soundCheck.active) throw new Error('A sound check is already running.')
+  if (!Number.isInteger(promptIndex)) throw new Error('Choose a sound-check reference.')
+  soundCheckOwner = event.sender.id
+  const result = soundCheck.start(preacherId, promptIndex, typeof deviceLabel === 'string' ? deviceLabel : undefined)
+  const owner = event.sender.id
+  event.sender.once('destroyed', () => { if (soundCheckOwner === owner) { soundCheck.stop(); soundCheckOwner = null } })
+  return result
+})
+ipcMain.handle('preacher-sound-check-state', (event) => event.sender.id === soundCheckOwner ? soundCheck.snapshot() : null)
+ipcMain.handle('preacher-sound-check-stop', (event, sessionId: string) => event.sender.id === soundCheckOwner && soundCheck.snapshot()?.sessionId === sessionId ? soundCheck.stop() : null)
+ipcMain.on('mic-capture-error', (_event, message) => {
+  if (soundCheck.active) soundCheck.fail(typeof message === 'string' ? message : 'Microphone capture failed.')
+  else { stopASR(); emitASRStatus(`Error: ${message}`) }
+})
 
 ipcMain.handle('get-verse-queue', () => verseQueue)
 
@@ -1635,6 +1825,8 @@ ipcMain.on('audio-chunk', (_event, chunk: ArrayBuffer) => {
 ipcMain.on('audio-level', (_event, level: number) => {
   emitAudioLevel(level)
 })
+
+ipcMain.handle('get-audio-capture-capabilities', () => ({ deviceAudio: process.platform === 'win32' }))
 
 ipcMain.handle('request-mic-permission', async () => {
   if (process.platform !== 'darwin') return { granted: true }
@@ -1732,6 +1924,21 @@ ipcMain.handle('get-qr-svg', async (_event, size?: number) => {
   }
 })
 
+ipcMain.handle('qr-background', async (_event, action: string) => {
+  if (action === 'clear') { setSetting('qrBackgroundPath',''); return {success:true,name:null} }
+  if (action === 'choose') {
+    const result=await dialog.showOpenDialog({title:'Choose congregation QR background',properties:['openFile'],filters:[{name:'Images',extensions:['png','jpg','jpeg','webp']}]})
+    if (result.canceled || !result.filePaths[0]) return {success:false,canceled:true}
+    const source=result.filePaths[0]
+    if (fs.statSync(source).size>12*1024*1024) return {success:false,error:'Choose an image smaller than 12 MB.'}
+    const target=path.join(app.getPath('userData'),'congregation-qr-background'+path.extname(source).toLowerCase())
+    if(path.resolve(source)!==path.resolve(target)) fs.copyFileSync(source,target)
+    setSetting('qrBackgroundPath',target)
+  }
+  const file=String(getSetting('qrBackgroundPath') || '')
+  return {success:true,name:file ? path.basename(file) : null}
+})
+
 ipcMain.handle('show-qr', async () => {
   try {
     const base = String(getSetting('publicWebUrl') ?? '').replace(/\/+$/, '')
@@ -1745,16 +1952,25 @@ ipcMain.handle('show-qr', async () => {
     // sit inside that as a second, visible border.
     const qrSvg = await qrToString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' })
     const file = path.join(app.getPath('temp'), 'trilorah-companion-qr.svg')
+    const backgroundPath=String(getSetting('qrBackgroundPath') || '')
+    let backgroundDataUrl: string | undefined
+    if (backgroundPath && fs.existsSync(backgroundPath) && fs.statSync(backgroundPath).size<=12*1024*1024) {
+      backgroundDataUrl=`data:${getMimeType(backgroundPath)};base64,${fs.readFileSync(backgroundPath).toString('base64')}`
+    }
     fs.writeFileSync(
       file,
       buildQrCard({
         qrSvg,
+        backgroundDataUrl,
         caption: String(getSetting('qrCompanionCaption') ?? '').trim() || 'Follow along on your phone',
         url,
         churchName: String(getSetting('churchName') ?? '')
       })
     )
     console.log(`📱 Companion QR on outputs → ${url}`)
+    currentLiveContent = null
+    verseDelivery.clearLive()
+    screen.onContentPushed()
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) win.webContents.send('on-show-media', file, 'photo')
     })
@@ -1930,7 +2146,7 @@ ipcMain.handle('get-outputs-status', () =>
     displays: electronScreen.getAllDisplays(),
     primaryId: electronScreen.getPrimaryDisplay().id,
     roleOverrides: getSetting('outputRoles') as Record<string, unknown>,
-    displayOverrides: getSetting('outputDisplays') as Partial<Record<string, number>>,
+    displayOverrides: getSetting('outputDisplays') as Partial<Record<string, number | 'none'>>,
     openIds: openOutputIds(),
     screenState: screen.get(),
     platform: process.platform
@@ -2318,6 +2534,10 @@ ipcMain.handle('set-active-preacher', (_event, preacherId) => {
       (fv: any) => fv.ref
     )
   }
+  const previous = activePreacherId()
+  if (previous && previous !== preacherId) ledger?.endService(previous)
+  recentReview = null
+  lastReviewItemId = null
   setSetting('activePreacherId', preacherId)
   if (ledger) applyLanguageAndConfig()
   console.log(`👤 Active preacher set: ${profile.name} (${profile.id})`)
@@ -2338,6 +2558,10 @@ ipcMain.handle(
 )
 
 ipcMain.handle('delete-preacher-profile', (_event, id) => {
+  if (soundCheck.snapshot()?.preacherId === id) soundCheck.stop()
+  ledger?.remove(id)
+  teachings().remove(id)
+  if (activePreacherId() === id) { setSetting('activePreacherId', ''); applyLanguageAndConfig() }
   return { success: deleteProfile(id) }
 })
 
@@ -2345,25 +2569,22 @@ ipcMain.handle(
   'end-service',
   (_event, opts) => {
     const preacherId = getSetting('activePreacherId')
+    if (opts?.preacherId && opts.preacherId !== preacherId) return { success: false, error: 'The active preacher changed. Select their profile before finishing the service.' }
     if (!serviceAgent || !preacherId) {
       return { success: false, error: 'No active service or preacher' }
     }
+    if (!isListening && !ledger?.hasOpenService(preacherId)) return { success: true, profileUpdated: false }
     try {
+      stopASR()
       const profile = extractAndUpdateProfile(
         serviceAgent.context,
         preacherId,
         opts?.preacherName || preacherId,
         opts?.sermonTitle
       )
-      // Trust meter bookkeeping: unresolved review items auto-confirm
-      // (the operator watched all service; silence = consent), then the
-      // service record closes and feeds the training thermostat.
+      // Unreviewed examples remain unverified, saved against this service.
       if (ledger) {
-        for (const item of ledger.getReviewItems()) {
-          ledger.resolveReviewItem(preacherId, item.id, 'confirmed')
-        }
         ledger.endService(preacherId)
-        ledger.clearReview()
         const pollResults = polls.results()
         const viewerRecap = viewerStats.recap()
         if (pollResults.length || viewerRecap.totalUnique) {
@@ -2377,9 +2598,13 @@ ipcMain.handle(
         )
       }
       console.log(`🏁 Service ended — profile updated for ${profile.name}`)
+      const versesDetected = serviceAgent.context.detectedVerses.length
+      serviceAgent.reset()
+      recentReview = null
+      lastReviewItemId = null
       return {
         success: true,
-        versesDetected: serviceAgent.context.detectedVerses.length,
+        versesDetected,
         profileUpdated: true
       }
     } catch (e: any) {
@@ -2452,11 +2677,13 @@ ipcMain.handle('cloud-sign-out', async () => {
 })
 
 ipcMain.handle('cloud-start-service', async (_event, opts) => {
-  return await startService(opts ?? {})
+  publicSharingPaused = false
+  return serializeService(async () => getActiveServiceId() ? {success:true,serviceId:getActiveServiceId()} : startService(opts ?? {}))
 })
 
 ipcMain.handle('cloud-end-service', async () => {
-  return await endService()
+  publicSharingPaused = true
+  return serializeService(() => endService())
 })
 
 ipcMain.handle('cloud-mark-verse-pushed', (_event, verseId) => {
@@ -2851,10 +3078,21 @@ app.whenReady().then(() => {
   // enumeration needs no permission) while capture never started. The macOS
   // TCC prompt in 'request-mic-permission' is a different gate entirely and
   // granting it cannot substitute for this one.
-  electronSession.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    callback(permission === 'media')
+  electronSession.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
+    callback(permission === 'media' || (permission === 'display-capture' && wc === mainWindow?.webContents))
   })
   electronSession.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media')
+  // Windows loopback captures the computer's sound. Only the operator window
+  // may request it; screen video is required by Chromium but is never consumed.
+  electronSession.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    if (process.platform !== 'win32' || request.frame !== mainWindow?.webContents.mainFrame || !request.audioRequested) {
+      callback({})
+      return
+    }
+    void desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+      .then((sources) => callback(sources[0] ? { video: sources[0], audio: 'loopback' } : {}))
+      .catch(() => callback({}))
+  })
 
   // Serves files under userData to every window. Registered before the
   // design-mode branch so the sandbox can show a downloaded background too.
@@ -3135,6 +3373,7 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', () => {
+  mobileServer?.stop()
   alerts.dispose()
   timers.dispose()
   if (process.env.DESIGN_MODE === '1') return

@@ -1,4 +1,8 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { ExpandIcon } from '../../ui';
+import { createPatches } from './dottedSurface';
+import { useEmptyHover } from './useEmptyHover';
+import './dottedSurface.css';
 import './emptyArt.css';
 
 /*
@@ -34,6 +38,21 @@ import './emptyArt.css';
 
 const INK = 'rgb(229 243 242)';
 
+/** Shared empty-state texture and card-wide hover motion. */
+export function EmptyMotion({ children, className = '', play = 'hover' }: {
+  children: ReactNode;
+  className?: string;
+  play?: 'always' | 'hover';
+}) {
+  const root = useEmptyHover(play === 'hover');
+  const [patches] = useState(() => createPatches(false, true));
+  return (
+    <div ref={root} style={patches} className={`tri-empty-surface ${play === 'hover' ? 'tri-play-hover ' : ''}${className}`}>
+      {children}
+    </div>
+  );
+}
+
 /**
  * The frame every empty state shares: a drawing, the sentence under it, and
  * an optional second line naming the way out.
@@ -48,7 +67,7 @@ export function EmptyMark({
   hint,
   w = 190,
   h = 112,
-  play = 'always',
+  play = 'hover',
   below,
   plain = false,
 }: {
@@ -65,11 +84,9 @@ export function EmptyMark({
   w?: number | string;
   h?: number | string;
   /*
-   * When the drawing's animation runs. 'hover' pauses it until the pointer
-   * is on the card and FREEZES it in place on leave — animation-play-state
-   * keeps the frame, so re-entering continues from where it stopped rather
-   * than restarting. The pause itself cannot ease, so leaving also dims the
-   * drawing over half a second, which is what reads as the ease-out.
+   * Hover starts the drawing across the whole card; leaving gently brakes
+   * its native animation timeline, then pauses it at the current frame.
+   * 'always' is reserved for ongoing activity such as live listening.
    */
   play?: 'always' | 'hover';
   /** A row under the hint — the run rail parks its big + and clock here. */
@@ -83,10 +100,9 @@ export function EmptyMark({
   plain?: boolean;
 }) {
   return (
-    <div
-      className={`flex h-full flex-col items-center justify-center px-6 text-center${
-        play === 'hover' ? ' tri-play-hover' : ''
-      }`}
+    <EmptyMotion
+      play={play}
+      className="flex h-full flex-col items-center justify-center px-6 text-center"
     >
       <div
         aria-hidden="true"
@@ -122,7 +138,7 @@ export function EmptyMark({
         </p>
       )}
       {below}
-    </div>
+    </EmptyMotion>
   );
 }
 
@@ -866,8 +882,8 @@ export function OutlineArt() {
  *            frame values at the same relative spacing, expressed as
  *            percentages of a cycle with a rest, so each segment keeps
  *            its own ease-in-out exactly as the two-animation chains had.
- *   PLAY     hover-gated via animation-play-state (freeze in place,
- *            resume mid-gesture), except the run rail, which always runs.
+ *   PLAY     native animation timelines accelerate on card hover and
+ *            gently brake on leave, resuming from the resting frame.
  *
  * Each demo was authored on a 320 stage with everything centred, so each
  * port renders that stage and scales it into the box it is given.
@@ -999,7 +1015,7 @@ export function QrRollArt() {
  * placeholder rules — every tissue is a page of the outline this panel
  * is waiting for.
  */
-export function TissueNotesArt() {
+export function TissueNotesArt({ size = 170 }: { size?: number } = {}) {
   const lines = (
     <>
       <i className="tri-tissue__rule" style={{ top: '22%', width: '58%' }} />
@@ -1008,7 +1024,7 @@ export function TissueNotesArt() {
     </>
   );
   return (
-    <Yui box={170}>
+    <Yui box={size}>
       <div className="tri-tissue">
         <div className="tri-tissue__paper2">{lines}</div>
         <div className="tri-tissue__paper1">{lines}</div>
@@ -1096,22 +1112,13 @@ export function EqBars({ size = 14 }: { size?: number }) {
 }
 
 /*
- * The bento's open cue — 拡大 the expand arrow (2026-05-02/tips-1).
- *
- * Her expand arrow whole — the 6px shaft with a head at each end, her
- * arrow-up keyframes stretching it to 140% and letting it settle — at
- * cue size in the tile's corner. Scales in when the pointer lands on
- * the tile, breathes while it stays, scales out when it leaves.
+ * The bento's open cue uses the same Solar Bold glyph as other expand
+ * controls. Scales in on hover, breathes, then scales out on leave.
  */
 export function ExpandCue() {
   return (
     <span aria-hidden className="tri-cue pointer-events-none absolute right-2.5 top-2">
-      <span className="tri-cue__stage">
-        <span className="tri-cue__arrow">
-          <span className="tri-cue__sharp tri-cue__sharp--top" />
-          <span className="tri-cue__sharp tri-cue__sharp--bottom" />
-        </span>
-      </span>
+      <ExpandIcon size={14} className="tri-cue__icon" />
     </span>
   );
 }

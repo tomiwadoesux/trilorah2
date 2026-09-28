@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BACKDROP_BY_CONTENT, Button, ImportIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, cx } from '../../ui';
 import { FlightPopup } from './songs/FlightPopup';
-import { DOCK_CLEARANCE, TabDock } from './songs/TabDock';
+import { TabDock } from './songs/TabDock';
 import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
 import { useDrag } from './drag';
 import { deckPage, type DeckPageSpec } from './deckPage';
@@ -360,6 +360,7 @@ export function SlidesBrowser() {
     });
 
   const searchRow = useRef<HTMLDivElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const importSlides = () => {
     setImportNote('importing…');
     void window.api
@@ -414,12 +415,14 @@ export function SlidesBrowser() {
       <LibraryBrowser
         framed
         search={
-          <div ref={searchRow} className="flex w-full items-center gap-3">
+          searchOpen || importNote ? <div ref={searchRow} className="flex min-w-0 flex-1 items-center gap-3">
+            {searchOpen ? (
             <SearchField
               value={query}
               onChange={setQuery}
               placeholder="type a deck name or anything written on a slide..."
             />
+            ) : null}
             {/* What the import said, where the "import slides" card used to
                 say it. Only while there is something to say. */}
             {importNote ? (
@@ -427,7 +430,7 @@ export function SlidesBrowser() {
                 {importNote}
               </span>
             ) : null}
-          </div>
+          </div> : null
         }
         dock={
           <TabDock
@@ -436,12 +439,19 @@ export function SlidesBrowser() {
               {
                 id: 'search',
                 label: 'search slides',
+                text: 'search slides',
                 icon: <SearchIcon size={14} />,
-                onClick: () => searchRow.current?.querySelector('input')?.focus(),
+                active: searchOpen,
+                onClick: () => {
+                  setSearchOpen(!searchOpen);
+                  if (searchOpen) setQuery('');
+                  else requestAnimationFrame(() => searchRow.current?.querySelector('input')?.focus());
+                },
               },
               {
                 id: 'import',
                 label: window.api?.importPresentation ? 'import slides — pptx, ppt or odp' : 'importing slides needs the desktop app',
+                text: 'import slides',
                 icon: <ImportIcon size={14} />,
                 disabled: !window.api?.importPresentation,
                 onClick: importSlides,
@@ -449,6 +459,7 @@ export function SlidesBrowser() {
               {
                 id: 'quick',
                 label: 'quick slide — a title, a line under it, and where they sit',
+                text: 'quick slide',
                 icon: <SparkleIcon size={14} />,
                 onClick: () => setQuickModalOpen(true),
               },
@@ -467,8 +478,7 @@ export function SlidesBrowser() {
             <div ref={sel.listRef}>
               <div
                 className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4"
-                /* Room for the dock — see TabDock. */
-                style={{ paddingBottom: DOCK_CLEARANCE }}
+                style={{ paddingBottom: 'var(--tri-gap)' }}
               >
               {matches.map((deck, i) => {
                 const at = pageOf(deck);

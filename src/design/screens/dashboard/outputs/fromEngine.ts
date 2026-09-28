@@ -53,9 +53,10 @@ export function screensFrom(status: OutputsStatus): Screen[] {
     return {
       id: o.id,
       role: o.role,
-      display: d ? d.name : 'no screen — on this laptop',
+      display: o.disabled ? 'no screen — off' : d ? d.name : 'no screen — on this laptop',
+      disabled: o.disabled,
       size: d ? { w: d.w, h: d.h } : null,
-      windowed: !d,
+      windowed: !d && !o.disabled,
       state: o.open ? status.screenState : 'off',
     };
   });
@@ -63,13 +64,15 @@ export function screensFrom(status: OutputsStatus): Screen[] {
 
 /** The display picker's first entry: no pinned display, externals in order. */
 export const AUTOMATIC = 'automatic';
+export const NO_SCREEN = 'no screen — off';
 
 export function displayOptions(status: OutputsStatus): string[] {
-  return [AUTOMATIC, ...status.displays.map((d) => d.name)];
+  return [NO_SCREEN, AUTOMATIC, ...status.displays.map((d) => d.name)];
 }
 
 /** What an output's display picker reads: its pinned display, or automatic. */
 export function displayChoice(status: OutputsStatus, outputId: string): string {
+  if (status.outputs.find((o) => o.id === outputId)?.disabled) return NO_SCREEN;
   const pinned = status.outputs.find((o) => o.id === outputId)?.chosenDisplayId;
   return status.displays.find((d) => d.id === pinned)?.name ?? AUTOMATIC;
 }
@@ -101,7 +104,7 @@ export async function saveRole(outputId: string, role: Role): Promise<void> {
 }
 
 /** Pin an output to a display by id, or unpin it with null. */
-export async function saveDisplay(outputId: string, displayId: number | null): Promise<void> {
+export async function saveDisplay(outputId: string, displayId: number | 'none' | null): Promise<void> {
   const api = window.api;
   if (!api) return;
   const next = await held('outputDisplays');

@@ -109,7 +109,7 @@ export function TriButton() {
           ['radius', '6px (--tri-radius-control)'],
           ['border', '1px rgba(229,243,242,0.12)'],
           ['type', "Roboto 12px / 28px, 0.24px tracking, lowercase, shadow 0 1px 3.2px rgb(0 0 0 / .48)"],
-          ['icons', 'exported from your file — settings 17px, trash 16px, recoloured to currentColor'],
+          ['icons', 'Solar Bold by 480 Design — filled, currentColor, sized by the control'],
         ]}
       />
     </Sheet>

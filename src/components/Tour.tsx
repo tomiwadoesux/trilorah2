@@ -3,6 +3,7 @@ import { useAppStore } from '../stores/appStore';
 import type { TabId } from '../stores/appStore';
 import { Button, TextButton } from './ui';
 import { startPractice } from '../lib/practice';
+import { CloseIcon } from '../ui';
 
 /**
  * Guided onboarding — dims the app and spotlights one control at a time,
@@ -267,7 +268,7 @@ export function Tour() {
           aria-label="close tour"
           className="absolute right-3 top-3 text-neutral-400 transition-colors hover:text-ink"
         >
-          ✕
+          <CloseIcon size={14} />
         </button>
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ProfileHeader, ProfileBody, Avatar, TrustBar, StagePill, pressKeys } from './PreachersTile';
-import { usePreachers, removePreacher, type Preacher } from './preachers';
+import { AddRow, ProfileHeader, ProfileBody, Avatar, TrustBar, StagePill, pressKeys } from './PreachersTile';
+import { usePreachers, removePreacher, saveTeaching, type Preacher } from './preachers';
 import { Panel, Pill } from '../parts';
 import { TeachingPanels } from './Teaching';
-import { SearchField, cx } from '../../../ui';
+import { LearningActions } from './LearningActions';
+import type { PreacherTeaching } from '../../../../shared/preacherLearning';
+import { Button, SearchField, cx } from '../../../ui';
 
 /*
  * S-02 · profile — the third posture of the Live screen.
@@ -77,7 +79,7 @@ function CompactRow({
           </p>
           <p className="mt-1 flex items-center gap-1.5">
             {active && <Pill tone="live">today</Pill>}
-            <TrustBar value={p.trustLowerBound} className="min-w-0 flex-1" />
+            <TrustBar value={p.trustLowerBound} gate={p.gates?.trust} className="min-w-0 flex-1" />
             <span className="shrink-0 text-[length:var(--tri-size-eyebrow)] tabular-nums" style={{ color: MUTED }}>
               {p.services ? pctOf(p.trustLowerBound) : '—'}
             </span>
@@ -97,6 +99,7 @@ export function ProfileView() {
   const { preachers, activeId } = usePreachers();
   const [picked, setPicked] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [adding, setAdding] = useState(false);
   /*
    * Edits to what a preacher has been taught, held here until the engine
    * takes them. The IPC all exists — getVocabulary/setVocabulary,
@@ -104,7 +107,8 @@ export function ProfileView() {
    * so wiring this is replacing `patch` with those calls, keyed by id, and
    * nothing above it moves.
    */
-  const [taught, setTaught] = useState<Record<string, Partial<Preacher>>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
 
   /* Today's preacher unless one was picked. Falling back to the first keeps
@@ -112,10 +116,14 @@ export function ProfileView() {
      which is every church before its first service. */
   const base: Preacher | null =
     preachers.find((p) => p.id === (picked ?? activeId)) ?? preachers[0] ?? null;
-  const shown: Preacher | null = base ? { ...base, ...taught[base.id] } : null;
+  const shown = base;
 
-  const patch = (id: string, next: Partial<Preacher>) =>
-    setTaught((prev) => ({ ...prev, [id]: { ...prev[id], ...next } }));
+  const patch = async (id: string, next: Partial<PreacherTeaching>) => {
+    setSaving(true); setSaveMessage('Saving…');
+    try { await saveTeaching(id, next); setSaveMessage('Saved on this computer.'); }
+    catch (error) { setSaveMessage(error instanceof Error ? error.message : 'Could not save. Please retry.'); }
+    finally { setSaving(false); }
+  };
 
   const q = query.trim().toLowerCase();
   const shownList = useMemo(
@@ -141,6 +149,7 @@ export function ProfileView() {
       >
         <Panel title="preachers" className="min-h-0 flex-1" bodyClass="pt-0">
           <div className="flex h-full min-h-0 flex-col gap-2">
+            <Button label={adding ? 'cancel' : 'add preacher'} onClick={() => setAdding(!adding)} />
             <SearchField value={query} onChange={setQuery} placeholder="search" className="shrink-0" />
             <ul className="min-h-0 flex-1 overflow-y-auto">
               {shownList.map((p) => (
@@ -163,7 +172,15 @@ export function ProfileView() {
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {shown ? (
+        {adding ? (
+          <Panel title="add preacher" className="min-h-0 flex-1">
+            <AddRow initialName={shownList.length ? '' : query} onCancel={() => setAdding(false)} onAdded={(p) => {
+              setPicked(p.id);
+              setQuery('');
+              setAdding(false);
+            }} />
+          </Panel>
+        ) : shown ? (
           <Panel className="min-h-0 flex-1" bodyClass="px-0 pb-0 pt-0">
             <div className="flex h-full min-h-0 flex-col">
               <div className="shrink-0 px-6 pt-5">
@@ -171,6 +188,7 @@ export function ProfileView() {
               </div>
               <ProfileBody
                 p={shown}
+                beforeReport={<LearningActions key={shown.id} p={shown} />}
                 onRemove={() => {
                   removePreacher(shown.id);
                   setPicked(null);
@@ -179,7 +197,13 @@ export function ProfileView() {
                 {/* The teaching panels sit inside the profile's own scroll,
                     under the report — you read how it is doing, and the
                     thing you can do about it is the next thing down. */}
-                <TeachingPanels p={shown} onChange={(next) => patch(shown.id, next)} />
+                <details className="rounded-xl border border-white/10 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold">Advanced teaching · book names, vocabulary and voice commands</summary>
+                  <fieldset disabled={saving || !shown.learning} className="mt-4 disabled:opacity-50">
+                    <TeachingPanels key={shown.id} p={shown} onChange={(next) => void patch(shown.id, next)} />
+                  </fieldset>
+                  {saveMessage && <p role="status" className="mt-3 text-sm text-white/75">{saveMessage}</p>}
+                </details>
               </ProfileBody>
             </div>
           </Panel>
@@ -187,7 +211,7 @@ export function ProfileView() {
           <Panel className="min-h-0 flex-1">
             <div className="grid h-full place-items-center">
               <p className="text-[length:var(--tri-size-xs)] lowercase" style={{ color: 'rgb(229 243 242 / 0.45)' }}>
-                no preachers yet — add one from the dashboard
+                no preachers yet — choose add preacher to create a profile
               </p>
             </div>
           </Panel>

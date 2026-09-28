@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMobileRemote } from './useMobileRemote';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
 import { useOrbPhrase, useOrbShape, type OrbFacts } from '../orb/orbIdle';
@@ -9,6 +10,7 @@ import {
   Button,
   cx,
   ChevronDownIcon,
+  CloseIcon,
   type ActionMenuGroup,
   DisplayFontPicker,
   ScriptureReferenceInput,
@@ -47,6 +49,10 @@ import {
   BookIcon,
   PaletteIcon,
   QrIcon,
+  OperatorIcon,
+  DashboardIcon,
+  ProfileIcon,
+  SettingsIcon,
 } from '../../ui';
 import { BOOKS, CHAPTER_COUNTS } from '../../lib/books';
 import { parseVerse } from '../../lib/scriptureText';
@@ -61,7 +67,7 @@ import { DominoArt, EmptyMark, EqBars, GridArt, ListeningArt } from './emptyArt'
 import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
 import { AddSongDialog } from './songs/AddSongDialog';
 import { SongEditor, type EditorSession } from './songs/SongEditor';
-import { DOCK_CLEARANCE, TabDock, type DockAction } from './songs/TabDock';
+import { TabDock, type DockAction } from './songs/TabDock';
 import { useSongDrafts } from './songs/useSongDrafts';
 import { NEW_PREFIX, cardsToSections, isNewId, type SongBase, type SongDraft } from '../../../shared/songDraft';
 import './songs/songs.css';
@@ -86,6 +92,8 @@ import { DragKeyframes, DragProvider, useDrag } from './drag';
 import { Panel } from './parts';
 import { useForesight } from './foresight';
 import './liveHeader.css';
+import './dottedSurface.css';
+import { dottedSurfaceStyles } from './dottedSurface';
 
 /*
  * S-02 — LIVE, the control surface.
@@ -185,8 +193,12 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
   };
   return (
     <Panel
-      className="shrink-0"
-      style={{ borderRadius: 'calc(var(--tri-radius-control) + var(--tri-card-gap))' }}
+      className="tri-library-tabs tri-dotted-surface relative shrink-0"
+      style={{
+        ...dottedSurfaceStyles.library,
+        borderRadius: 'calc(var(--tri-radius-control) + var(--tri-card-gap))',
+      }}
+      bodyClass="relative z-10"
       bodyStyle={{ padding: 'var(--tri-card-gap)' }}
     >
       <div
@@ -198,7 +210,7 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
         <span
           aria-hidden="true"
           className={cx(
-            'tri-rounded-control pointer-events-none absolute inset-x-0 top-0 h-[var(--tri-field-h)] bg-[rgb(255_255_255_/_0.07)]',
+            'tri-rounded-control pointer-events-none absolute inset-x-0 top-0 z-10 h-[var(--tri-field-h)]',
             'transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none',
             jump && 'transition-none',
           )}
@@ -240,10 +252,10 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
               }}
               className={cx(
                 'tri-rounded-control relative flex h-[var(--tri-field-h)] shrink-0 items-center gap-2 pl-3 pr-4 text-left text-[length:var(--tri-control-size)] lowercase',
-                'transition-[color,transform] duration-150 ease-out active:scale-[var(--tri-press-scale)]',
+                'transition-[color,background-color,transform] duration-150 ease-out active:scale-[var(--tri-press-scale)]',
                 on
-                  ? 'font-semibold text-[var(--tri-ink)]'
-                  : 'text-[rgb(229_243_242_/_0.58)] hover:bg-[rgb(255_255_255_/_0.025)] hover:text-[rgb(229_243_242_/_0.85)]',
+                  ? 'bg-[#242726] font-semibold text-[var(--tri-ink)]'
+                  : 'bg-[#111111] text-[rgb(229_243_242_/_0.58)] hover:bg-[#1a1d1b] hover:text-[rgb(229_243_242_/_0.85)]',
               )}
               style={EDGE}
             >
@@ -419,6 +431,12 @@ function useTextTransition() {
  */
 const VIEWS = ['operator', 'dashboard', 'profile', 'settings'] as const;
 type ViewMode = (typeof VIEWS)[number];
+const VIEW_ICONS = {
+  operator: OperatorIcon,
+  dashboard: DashboardIcon,
+  profile: ProfileIcon,
+  settings: SettingsIcon,
+} as const;
 
 /* SEGMENT_TYPES, the "+" menu and the rail's drawing live in ./run/ — see
    run/segmentTypes.tsx, run/RunHeaderActions.tsx and run/RunRail.tsx. */
@@ -1087,6 +1105,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           {
             id: 'search',
             label: 'search the free photo and video library',
+            text: 'search library',
             icon: <SearchIcon size={14} />,
             active: shelf === 'search',
             onClick: () => {
@@ -1097,6 +1116,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           {
             id: 'add',
             label: window.api?.pickBackgroundImage ? 'add an image from this computer' : 'adding images needs the desktop app',
+            text: 'add media',
             icon: <PlusIcon size={14} />,
             disabled: !window.api?.pickBackgroundImage,
             onClick: addLocal,
@@ -1104,7 +1124,8 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           {
             id: 'source',
             label: local ? 'showing this laptop — switch to stock' : 'showing stock — switch to this laptop',
-            icon: local ? <LaptopIcon size={14} /> : <GlobeIcon size={14} />,
+            text: local ? 'show stock' : 'this laptop',
+            icon: local ? <GlobeIcon size={14} /> : <LaptopIcon size={14} />,
             onClick: () => setShelf(local ? 'stock' : 'local'),
           },
         ]
@@ -1112,6 +1133,7 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
           {
             id: 'search',
             label: 'search this church’s media',
+            text: 'search media',
             icon: <SearchIcon size={14} />,
             active: mediaQuery !== null,
             onClick: () => {
@@ -1121,10 +1143,11 @@ function MediaBrowser({ selected, onSelect }: { selected: string; onSelect: (id:
               } else setMediaQuery(null);
             },
           },
-          { id: 'add', label: 'adding your own clips is not built yet', icon: <PlusIcon size={14} />, disabled: true },
+          { id: 'add', label: 'adding your own clips is not built yet', text: 'add media', icon: <PlusIcon size={14} />, disabled: true },
           {
             id: 'source',
             label: 'stock is for backgrounds — switch to themes to use it',
+            text: 'this laptop',
             icon: <LaptopIcon size={14} />,
             disabled: true,
           },
@@ -1271,8 +1294,7 @@ function MediaGrid({ children }: { children: ReactNode }) {
   return (
     <div
       className="grid min-h-0 auto-rows-min grid-cols-5 gap-x-3 gap-y-4 overflow-y-auto px-1"
-      /* Room for the dock — see TabDock. */
-      style={{ paddingBottom: DOCK_CLEARANCE }}
+      style={{ paddingBottom: 'var(--tri-gap)' }}
     >
       {children}
     </div>
@@ -2075,6 +2097,7 @@ function SongGrid({
   const drag = useDrag();
   const projector = useProjector();
   const searchRow = useRef<HTMLDivElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   /*
    * Which verse each card is showing, once the operator has paged it off
@@ -2118,24 +2141,30 @@ function SongGrid({
     <LibraryBrowser
       framed
       search={
-        <div ref={searchRow} className="w-full">
+        searchOpen ? <div ref={searchRow} className="min-w-0 flex-1">
           <SearchField
             value={query}
             onChange={onQuery}
             placeholder="type a song name or lyrics..."
           />
-        </div>
+        </div> : null
       }
       dock={
         <TabDock
           label="songs"
           actions={[
-            { id: 'add', label: 'add a song', icon: <PlusIcon size={14} />, onClick: onAdd },
+            { id: 'add', label: 'add a song', text: 'add song', icon: <PlusIcon size={14} />, onClick: onAdd },
             {
               id: 'search',
               label: 'search songs',
+              text: 'search songs',
               icon: <SearchIcon size={14} />,
-              onClick: () => searchRow.current?.querySelector('input')?.focus(),
+              active: searchOpen,
+              onClick: () => {
+                setSearchOpen(!searchOpen);
+                if (searchOpen) onQuery('');
+                else requestAnimationFrame(() => searchRow.current?.querySelector('input')?.focus());
+              },
             },
           ]}
         />
@@ -2159,8 +2188,7 @@ function SongGrid({
           */
           <div
             className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4"
-            /* Room for the dock: the last row scrolls clear of it. */
-            style={{ paddingBottom: DOCK_CLEARANCE }}
+            style={{ paddingBottom: 'var(--tri-gap)' }}
           >
             {matches.map((song, i) => {
               const verse = verseOf(song, i);
@@ -2967,7 +2995,7 @@ function DetectedScripture({
             transition: `width 200ms var(--tri-ease-out), ${SURFACE_TRANSITION}`,
           }}
         >
-          <PlusIcon size={12} className="rotate-45" />
+          <CloseIcon size={12} />
         </button>
         {heard.missing ? (
           <span className="flex min-w-0 flex-1 items-center text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.45)]">
@@ -3064,7 +3092,7 @@ function ProposalStack() {
        booth has to tell them apart at a glance: a flat line means no signal,
        the drifting field means the engine is up and nothing has come yet. */
     return engine.asr === 'listening' ? (
-      <EmptyMark art={<ListeningArt />} line="listening, nothing caught yet" />
+      <EmptyMark art={<ListeningArt />} play="always" line="listening, nothing caught yet" />
     ) : (
       /* The chain waits to be set off; it only runs under the pointer. */
       <EmptyMark w={170} h={170} plain art={<DominoArt />} play="hover" line="not listening yet" hint="catches land here" />
@@ -3677,35 +3705,215 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
  * the worst mis-click in the app.
  */
 
-/** Each view keeps its own muted surface; selection strengthens its edge. */
+/** One pill follows the selected view without remounting the header. */
 function ViewTabs({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) => void }) {
+  const root = useRef<HTMLDivElement>(null);
+  const hintBubble = useRef<HTMLSpanElement>(null);
+  const pointerView = useRef<ViewMode | null>(null);
+  const focusView = useRef<ViewMode | null>(null);
+  const hintCloseTimer = useRef<number | undefined>(undefined);
+  const hintOpen = useRef(false);
+  const hintClosedAt = useRef(-Infinity);
+  const previousView = useRef(view);
+  const [pill, setPill] = useState({ x: 0, width: 0 });
+  const [labelWidth, setLabelWidth] = useState(0);
+  const [sliding, setSliding] = useState(false);
+
+  const [hint, setHint] = useState<{
+    view: ViewMode | null;
+    previous: ViewMode | null;
+    x: number;
+    width: number;
+    direction: number;
+    open: boolean;
+    moving: boolean;
+  }>({ view: null, previous: null, x: 0, width: 0, direction: 0, open: false, moving: false });
+  const hintFadeMs = 120;
+
+  const hideHint = useCallback(() => {
+    window.clearTimeout(hintCloseTimer.current);
+    hintCloseTimer.current = undefined;
+    if (!hintOpen.current) return;
+    hintOpen.current = false;
+    hintClosedAt.current = performance.now();
+    setHint((current) => ({ ...current, open: false }));
+  }, []);
+
+  const showHint = useCallback((target: ViewMode | null) => {
+    if (!target || target === view) {
+      /* Preserve the same bubble across a brief exit or the selected tab. */
+      if (hintOpen.current && hintCloseTimer.current === undefined) {
+        hintCloseTimer.current = window.setTimeout(hideHint, 80);
+      }
+      return;
+    }
+    window.clearTimeout(hintCloseTimer.current);
+    hintCloseTimer.current = undefined;
+    const el = root.current;
+    const bubble = hintBubble.current;
+    const button = el?.querySelector<HTMLButtonElement>(`button[data-view="${target}"]`);
+    const symbol = button?.querySelector<HTMLElement>('.tri-header-view-symbol');
+    const label = button?.querySelector<HTMLElement>('.tri-header-view-label > span');
+    if (!el || !bubble || !symbol || !label) return;
+    const groupBox = el.getBoundingClientRect();
+    const symbolBox = symbol.getBoundingClientRect();
+    const scale = groupBox.height / el.offsetHeight;
+    if (!scale) return;
+    const bubbleStyle = getComputedStyle(bubble);
+    const labelStyle = getComputedStyle(label);
+    const x = (symbolBox.left + symbolBox.width / 2 - groupBox.left) / scale;
+    const width = Math.ceil(
+      label.getBoundingClientRect().width / scale - parseFloat(labelStyle.paddingRight)
+      + parseFloat(bubbleStyle.paddingLeft) + parseFloat(bubbleStyle.paddingRight)
+      + parseFloat(bubbleStyle.borderLeftWidth) + parseFloat(bubbleStyle.borderRightWidth),
+    );
+    /* A first entry fades in at its icon; reversals retarget the running motion. */
+    const moving = hintOpen.current || performance.now() - hintClosedAt.current < hintFadeMs;
+    hintOpen.current = true;
+    setHint((current) => {
+      if (current.open && current.view === target && current.x === x && current.width === width) return current;
+      const changing = moving && current.view !== target;
+      return {
+        view: target,
+        previous: changing ? current.view : moving ? current.previous : null,
+        x,
+        width,
+        direction: changing && current.view
+          ? Math.sign(VIEWS.indexOf(target) - VIEWS.indexOf(current.view))
+          : moving ? current.direction : 0,
+        open: true,
+        moving,
+      };
+    });
+  }, [view, hideHint]);
+
+  useEffect(() => () => {
+    window.clearTimeout(hintCloseTimer.current);
+    hintCloseTimer.current = undefined;
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const measure = () => {
+      const selected = el.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+      if (!selected) return;
+      /* Only selection expands a tab; size it to its own label. */
+      const label = selected.querySelector<HTMLElement>('.tri-header-view-label > span');
+      setLabelWidth(label?.offsetWidth ?? 0);
+      const x = selected.offsetLeft;
+      const width = selected.offsetWidth;
+      setPill((current) => current.x === x && current.width === width ? current : { x, width });
+      showHint(pointerView.current ?? focusView.current);
+    };
+    const changed = previousView.current !== view;
+    previousView.current = view;
+    setSliding(changed);
+    measure();
+
+    /* Follow the selected tab through its label animation and density changes. */
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    el.querySelectorAll('button[data-view]').forEach((button) => observer.observe(button));
+    el.querySelectorAll('.tri-header-view-label > span').forEach((label) => observer.observe(label));
+    const finishSlide = changed ? window.setTimeout(() => setSliding(false), 500) : undefined;
+    return () => {
+      observer.disconnect();
+      if (finishSlide !== undefined) window.clearTimeout(finishSlide);
+    };
+  }, [view, showHint]);
+
   return (
-    /* It used to be pinned to exactly the rail's width so everything after
-       it began at the same x on every view. Four controls do not fit that: at
-       three they were comfortable thirds, at four "operator" and
-       "dashboard" were clipped off their own left edge. The alignment was
-       worth less than being able to read the nav, so the strip now sizes
-       to its words with the rail as a MINIMUM — three-control views are
-       unchanged, and the fourth is allowed to push past. */
     <div
-      className="tri-header-views flex shrink-0 items-stretch"
-      style={{ minWidth: 'var(--tri-rail-w)' }}
+      ref={root}
+      role="group"
+      aria-label="Workspace view"
+      className="tri-header-views flex min-w-0 flex-1 items-stretch"
+      data-pill-sliding={sliding || undefined}
+      onPointerMove={(event) => {
+        if (event.pointerType === 'touch') return;
+        /* In a flexible gap, the next tab owns the hover. Only real pointer
+           movement changes the target, so click animations cannot steal it. */
+        const button = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button[data-view]'))
+          .find((candidate) => candidate.getBoundingClientRect().right >= event.clientX);
+        const target = (button?.dataset.view as ViewMode | undefined) ?? null;
+        if (target === pointerView.current) return;
+        pointerView.current = target;
+        showHint(target ?? focusView.current);
+      }}
+      onPointerLeave={() => {
+        pointerView.current = null;
+        showHint(focusView.current);
+      }}
+      onFocusCapture={(event) => {
+        const button = (event.target as Element).closest<HTMLButtonElement>('button[data-view]');
+        focusView.current = button?.matches(':focus-visible') ? button.dataset.view as ViewMode : null;
+        showHint(pointerView.current ?? focusView.current);
+      }}
+      onBlurCapture={() => {
+        focusView.current = null;
+        showHint(pointerView.current);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return;
+        pointerView.current = null;
+        focusView.current = null;
+        hideHint();
+      }}
+      style={{
+        '--tri-view-pill-x': `${pill.x}px`,
+        '--tri-view-pill-w': pill.width ? `${pill.width}px` : undefined,
+        '--tri-view-label-w': labelWidth ? `${labelWidth}px` : undefined,
+        '--tri-view-hint-fade': `${hintFadeMs}ms`,
+      } as CSSProperties}
     >
+      <span className="tri-header-view-pill" aria-hidden="true" />
       {VIEWS.map((m) => {
         const active = m === view;
+        const Icon = VIEW_ICONS[m];
         return (
           <button
             key={m}
             type="button"
-            onClick={() => onChange(m)}
+            onClick={() => {
+              pointerView.current = null;
+              focusView.current = null;
+              hideHint();
+              onChange(m);
+            }}
+            aria-label={m}
             aria-pressed={active}
             data-view={m}
-            className="tri-header-control tri-header-view flex shrink-0 cursor-pointer items-center justify-center lowercase select-none"
+            data-hint-target={hint.open && hint.view === m || undefined}
+            className="tri-header-control tri-header-view flex cursor-pointer items-center justify-center select-none"
           >
-            {m}
+            <span className="tri-header-view-symbol">
+              <Icon size={18} className="tri-header-view-icon" />
+            </span>
+            <span className="tri-header-view-label" aria-hidden="true">
+              <span>{m}</span>
+            </span>
           </button>
         );
       })}
+      <span
+        className="tri-header-view-hint"
+        aria-hidden="true"
+        data-open={hint.open || undefined}
+        data-moving={hint.moving || undefined}
+        style={{
+          '--tri-view-hint-x': `${hint.x}px`,
+          '--tri-view-hint-w': `${hint.width}px`,
+          '--tri-view-hint-shift': `${hint.direction * 6}px`,
+        } as CSSProperties}
+      >
+        <span ref={hintBubble} className="tri-header-view-hint-bubble">
+          {hint.previous && (
+            <span key={`out-${hint.view}`} className="tri-header-view-hint-old">{hint.previous}</span>
+          )}
+          <span key={`in-${hint.view}`} className="tri-header-view-hint-name">{hint.view}</span>
+        </span>
+      </span>
     </div>
   );
 }
@@ -4284,7 +4492,7 @@ function StageBox({
 }) {
   return (
     <Panel
-      className="basis-1/2"
+      className="basis-1/2 !bg-[#111111]"
       /* Panel already ships a gold ring as tone='live'. Using it rather
          than drawing a second highlight is what keeps "this is live" one
          visual idea across the whole app. */
@@ -4609,7 +4817,7 @@ function Stage({
               <Button
                 label=""
                 tone="ash"
-                icon={<PlusIcon size={12} className="rotate-45" />}
+                icon={<CloseIcon size={12} />}
                 title="unstage — take it out of preview"
                 onClick={() => projector.stage(null)}
               />
@@ -4775,6 +4983,7 @@ function RunDragBridge({ state }: { state?: string }) {
 /* Inside the providers, so the screen itself can read the run — the rail and
    the browser are both in here and both need it. */
 function LiveBody({ state }: { state?: string }) {
+  useMobileRemote();
   const [tab, setTab] = useState(0);
   const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(DEFAULT_THEME);
   const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
@@ -5053,43 +5262,47 @@ function LiveBody({ state }: { state?: string }) {
         edge. If the browser turns out to be starved at 1280, that is the
         trade to revisit — not the rail.
       */}
-      {view === 'dashboard' || view === 'profile' || view === 'settings' ? (
-        <div className="flex h-full w-full min-w-0 flex-col gap-[var(--tri-gap)] p-2.5">
-          {/* Top header row */}
-          <div
-            className="tri-live-header flex min-w-0 shrink-0 items-center"
-            style={{ height: 'var(--tri-topbar-h)' }}
-          >
-            <ViewTabs view={view} onChange={setView} />
-            <StatusOrb label={stateLabel} onClick={stepState} facts={orbFacts} />
-            <ListenControl />
-
-            {/* Middle stretch spacer */}
-            <div className="min-w-0 flex-1" />
-
-            {/* Import Bento Pill Menu beside timer */}
-            <ImportBentoMenu
-              onImportImage={handleImportImage}
-              onImportSlides={handleImportSlides}
-              onImportSongs={handleImportSongs}
-            />
-
-            {/* Device Digital Clock Bento */}
-            <DigitalClockBento />
-
-            {/* Right: separate logs bento card matching the width of the empty space below */}
-            <div
-              className="tri-header-log-slot flex min-w-0 items-stretch"
-            >
-              <ServiceLogBar entries={log.entries} onAction={goManual} />
-            </div>
+      <div
+        className={cx(
+          'grid h-full w-full min-w-0 gap-[var(--tri-gap)] p-2.5',
+          (view === 'operator' || view === 'dashboard') && 'tri-surface tri-surface--wide tri-surface--solid',
+        )}
+        style={{
+          gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
+          gridTemplateRows: 'var(--tri-topbar-h) minmax(0, auto) minmax(30%, 1fr) auto',
+        }}
+      >
+        {/* Shared across views so the selection pill can slide continuously. */}
+        <div
+          className="tri-live-header tri-live-navigation flex min-w-0 items-center"
+          style={{ height: 'var(--tri-topbar-h)' }}
+        >
+          <ViewTabs view={view} onChange={setView} />
+        </div>
+        <div
+          className="tri-live-header tri-live-controls flex min-w-0 items-center"
+          style={{ height: 'var(--tri-topbar-h)' }}
+        >
+          <StatusOrb label={stateLabel} onClick={stepState} facts={orbFacts} />
+          <ListenControl />
+          <div className="min-w-0 flex-1" />
+          <ImportBentoMenu
+            onImportImage={handleImportImage}
+            onImportSlides={handleImportSlides}
+            onImportSongs={handleImportSongs}
+          />
+          <DigitalClockBento />
+          <div className="tri-header-log-slot flex min-w-0 items-stretch">
+            <ServiceLogBar entries={log.entries} onAction={goManual} />
           </div>
+        </div>
 
-          {/* The bento is the whole dashboard — the log is a card in it.
+        {view === 'dashboard' || view === 'profile' || view === 'settings' ? (
+          /* The bento is the whole dashboard — the log is a card in it.
               Profile borrows this same frame: it is read rather than
               worked, like the dashboard, so it wants the header and the
-              full width, not the operator's rail-and-stage grid. */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-[var(--tri-gap)]">
+              full width, not the operator's rail-and-stage grid. */
+          <div className="col-span-2 row-span-3 flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
             {view === 'settings' ? (
               /* The same surface the sandbox draws, given the posture's
                  full width. It brings its own nine-page rail, so it wants
@@ -5103,7 +5316,6 @@ function LiveBody({ state }: { state?: string }) {
               <DashboardBento log={log.entries} onLogAction={goManual} onViewProfile={() => setView('profile')} />
             )}
           </div>
-        </div>
       ) : (
         /*
          * Two rows, and the first one is sized by the STAGE.
@@ -5130,41 +5342,8 @@ function LiveBody({ state }: { state?: string }) {
           /* Its panels settle in when the dashboard is turned away from —
              but not at launch, where the surface is simply there. */
           skipFirst
-          className="grid h-full gap-[var(--tri-gap)] p-2.5"
-          style={{
-            gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
-            /* Header, stage, browser, ticker. The header spans both
-               columns: the tabs sit over the rail, top-left. The ticker is
-               the right-hand column's alone — beside it the rail carries
-               the ON AIR sign, cut to the ticker's own height. Both views
-               share one header.
-               The rail gives up the header's height for it — a call
-               reversed on purpose, 46px against a column. */
-            gridTemplateRows: 'var(--tri-topbar-h) minmax(0, auto) minmax(30%, 1fr) auto',
-          }}
+          className="col-span-2 row-span-3 grid min-h-0 min-w-0 grid-cols-subgrid grid-rows-subgrid"
         >
-          <div
-            className="tri-live-header col-span-2 flex min-w-0 items-center"
-            style={{ height: 'var(--tri-topbar-h)' }}
-          >
-            <ViewTabs view={view} onChange={setView} />
-            <StatusOrb label={stateLabel} onClick={stepState} facts={orbFacts} />
-            <ListenControl />
-            <div className="min-w-0 flex-1" />
-            <ImportBentoMenu
-              onImportImage={handleImportImage}
-              onImportSlides={handleImportSlides}
-              onImportSongs={handleImportSongs}
-            />
-            <DigitalClockBento />
-            {/* The service log, rail-wide — the same slot it has on the
-                dashboard. The transcript it once made room for is a ticker
-                at the foot of the window now. */}
-            <div className="tri-header-log-slot flex min-w-0 items-stretch">
-              <ServiceLogBar entries={log.entries} onAction={goManual} />
-            </div>
-          </div>
-
           <div
             data-drop-segment=""
             className="row-span-3 grid min-h-0 grid-rows-subgrid"
@@ -5175,7 +5354,7 @@ function LiveBody({ state }: { state?: string }) {
             <div className="relative min-h-0">
             <Panel
               title={`run of service (${run.segments.length})`}
-              className="absolute inset-0"
+              className="absolute inset-0 !bg-[#111111]"
               /* Only once the run has something in it. While it is empty
                  the empty state carries the same two actions at a size you
                  cannot miss, and a second, smaller pair in the header was
@@ -5191,7 +5370,7 @@ function LiveBody({ state }: { state?: string }) {
 
             {/* Catches, down to the ticker's row. */}
             <Panel
-              className="min-h-0"
+              className="min-h-0 !bg-[#111111]"
               bodyClass="pt-3"
               bodyStyle={{ paddingBottom: 'var(--tri-card-gap)' }}
             >
@@ -5241,7 +5420,7 @@ function LiveBody({ state }: { state?: string }) {
             <div className="flex min-h-0 min-w-0 gap-[var(--tri-gap)]">
             <LibraryTabs tab={tab} onChange={setTab} />
             <Panel
-              className="min-h-0 min-w-0 flex-1"
+              className="min-h-0 min-w-0 flex-1 !bg-[#111111]"
               /* Themes sits on the panel like every other tab — see
                  ThemesEditor. Its inset is the stage's, --tri-gap all round,
                  because it seats a projector the same way the stage does. */
@@ -5300,6 +5479,7 @@ function LiveBody({ state }: { state?: string }) {
           </div>
         </ViewEnter>
       )}
+      </div>
 
       {/* Hidden file pickers for web fallback */}
       <input

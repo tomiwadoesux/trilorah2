@@ -20,6 +20,7 @@ export type Role = 'projector' | 'stream' | 'stage' | 'timer';
 export type ScreenState = 'live' | 'clear' | 'black' | 'logo' | 'off';
 
 export interface Screen {
+  disabled?: boolean;
   /** Output id — 'main' | 'alternate' | 'third' | 'timer'. */
   id: string;
   role: Role;

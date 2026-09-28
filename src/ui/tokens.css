@@ -241,7 +241,7 @@
    * switch between them. The dashboard now holds the same column open and
    * draws nothing in it. See Live.tsx.
    */
-  --tri-rail-w: 18%;
+  --tri-rail-w: 20%;
   /* A field on a toolbar, where the control is one of several things sharing
      a row rather than the subject of the panel. Same type, less slab. */
   --tri-field-h-sm: 32px;

@@ -73,10 +73,13 @@ export interface SermonNotes {
 export interface ReviewItem {
   id: string
   ts: number
-  kind: 'detection' | 'correction' | 'quote' | 'segment'
+  kind: 'detection' | 'correction' | 'quote' | 'segment' | 'miss'
+  preacherId?: string
+  serviceId?: string
+  reason?: 'detected' | 'operator-change' | 'missed'
   heard: string
   proposed: { book: string; chapter: number; verse: number | null } | null
-  resolution?: 'confirmed' | 'rejected' | 'amended'
+  resolution?: 'confirmed' | 'rejected' | 'amended' | 'skipped'
   amendedTo?: { book: string; chapter: number; verse: number | null }
 }
 
@@ -115,6 +118,8 @@ export interface VoiceCommandEvent {
   kind: VoiceCommandKind
   /** The transcript fragment that triggered the command. */
   utterance: string
+  /** The accepted instruction inside that fragment, for inline transcript marks. */
+  phrase?: string
   /** e.g. corrected verse number, or version code like "KJV". */
   value?: string | number
   ts: number

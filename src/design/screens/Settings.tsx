@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { cx, surface, Button, SearchField, SettingsIcon, MicIcon, BookIcon, SparkleIcon, MediaIcon, PencilIcon, CheckIcon, ResetIcon, TrashIcon } from '../../ui';
+import { cx, surface, Button, SearchField, SettingsIcon, MicIcon, BookIcon, SparkleIcon, MediaIcon, PencilIcon, CheckIcon, ResetIcon, TrashIcon, ChevronRightIcon, IconCredits } from '../../ui';
 import { AppShell, type ShellModel } from './AppShell';
 import { Pill } from './parts';
 import { useArtboard } from './artboard';
@@ -328,7 +328,7 @@ function PageBody({ page }: { page: Page }) {
             onClick={() => setShowAdvanced((s) => !s)}
             className="flex items-center gap-2 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.45)] transition-colors hover:text-[rgb(229_243_242_/_0.7)]"
           >
-            <span className={cx('inline-block transition-transform', showAdvanced ? 'rotate-90' : '')}>›</span>
+            <ChevronRightIcon size={12} className={cx('transition-transform', showAdvanced && 'rotate-90')} />
             advanced
             <span className="font-normal normal-case tracking-normal text-[rgb(229_243_242_/_0.3)]">
               {advanced.length} {advanced.length === 1 ? 'setting' : 'settings'}
@@ -414,6 +414,7 @@ export function SettingsSurface({ pageId }: { pageId: string }) {
           <Pill tone="ok">saved</Pill>
           <span>changes apply as you make them</span>
         </div>
+        <IconCredits className="px-2 pb-1" />
       </nav>
 
       <div className="min-w-0 flex-1 overflow-y-auto">

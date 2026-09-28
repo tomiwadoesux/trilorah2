@@ -17,7 +17,7 @@ import { tierForWidth } from '../ui/density';
  */
 export function LiveHost() {
   const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<ArtboardSize | null>(null);
+  const [size, setSize] = useState<ArtboardSize | null>({ id: 'window', label: 'window', w: 1440, h: 900, tier: tierForWidth(1440), note: 'the app window', full: true });
 
   useEffect(() => {
     const el = ref.current;

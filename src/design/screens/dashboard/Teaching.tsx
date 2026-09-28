@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react';
 import { cx, surface, PlusIcon } from '../../../ui';
 import { FIELD, Toggle } from '../settingsRows';
 import type { Preacher, SoundsLike } from './preachers';
+import type { PreacherTeaching } from '../../../../shared/preacherLearning';
 
 /*
  * What the operator can TEACH a preacher's profile.
@@ -187,8 +188,7 @@ export function TeachingPanels({
   onChange,
 }: {
   p: Preacher;
-  /** Local until the engine takes it — see ProfileView. */
-  onChange: (patch: Partial<Preacher>) => void;
+  onChange: (patch: Partial<PreacherTeaching>) => void;
 }) {
   const [heard, setHeard] = useState('');
   const [means, setMeans] = useState('');
@@ -227,7 +227,7 @@ export function TeachingPanels({
       />
       <Panel
         title="sounds like"
-        blurb="what the recogniser hears, and what it really means. fixed as the words arrive, before a reference is worked out."
+        blurb="a misheard book name and its correct Bible book. applied when followed by a chapter or number, so ordinary speech is left alone."
         right={
           <span className="text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
             {p.soundsLike.length} · <span style={{ color: MINT }}>{learned} learned</span>
@@ -279,7 +279,7 @@ export function TeachingPanels({
           </ul>
         ) : (
           <p className="py-1 text-[length:var(--tri-size-xs)] lowercase" style={{ color: MUTED }}>
-            nothing yet — the app adds one every time a correction is made
+            no book-name corrections yet — add a verified example here
           </p>
         )}
       </Panel>
@@ -287,7 +287,7 @@ export function TeachingPanels({
       <div className="grid grid-cols-2 gap-3">
         <Panel
           title="their words"
-          blurb="names and church words to listen out for. given to the recogniser as hints before it listens, so they come out right the first time."
+          blurb="names and church words used for local transcript matching. online speech can also use them as vocabulary hints."
         >
           <AddLine
             placeholder="a name, a place, a word"

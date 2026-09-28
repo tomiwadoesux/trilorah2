@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
-import { Copy, Link as LinkIcon, Plus, ChevronDown } from "lucide-react";
+import { Copy, Link as LinkIcon, Plus, ChevronDown } from "@/components/icons";
 
 /**
  * Multi-campus link code manager.

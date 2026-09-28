@@ -100,8 +100,11 @@ export class PairingStore {
     if (typeof token !== 'string' || token.length === 0) return null
     const device = this.devices.find((d) => safeEqual(d.token, token))
     if (!device) return null
-    device.lastSeenAt = this.now()
-    this.save()
+    // Polling remotes must not rewrite the pairing file every second.
+    if (this.now() - device.lastSeenAt > 60_000) {
+      device.lastSeenAt = this.now()
+      this.save()
+    }
     return toInfo(device)
   }
 

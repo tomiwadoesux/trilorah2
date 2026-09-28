@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Headphones } from "lucide-react";
+import { ChevronDown, Headphones } from "@/components/icons";
 import { parseStreamUrl } from "@/lib/streamEmbed";
 
 /**

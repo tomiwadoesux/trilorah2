@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { NoteIcon, MediaIcon } from '../../ui';
+import { NoteIcon, MediaIcon, CloseIcon, PauseIcon, PlayIcon } from '../../ui';
 import type { QueueSource } from './run';
 
 /*
@@ -730,16 +730,7 @@ function Chip({
               title={held.left === null ? 'resume the countdown' : 'pause the countdown'}
               className="flex size-[22px] items-center justify-center rounded-full bg-[rgb(255_255_255_/_0.14)] text-[var(--tri-ink)] transition-colors hover:bg-[rgb(255_255_255_/_0.24)]"
             >
-              {held.left === null ? (
-                <svg width="10" height="10" viewBox="0 0 9 9" aria-hidden>
-                  <path d="M1.5 0.6 8 4.5 1.5 8.4Z" fill="currentColor" />
-                </svg>
-              ) : (
-                <svg width="10" height="10" viewBox="0 0 9 9" aria-hidden>
-                  <rect x="1" y="0.8" width="2.4" height="7.4" rx="0.8" fill="currentColor" />
-                  <rect x="5.6" y="0.8" width="2.4" height="7.4" rx="0.8" fill="currentColor" />
-                </svg>
-              )}
+              {held.left === null ? <PlayIcon size={10} /> : <PauseIcon size={10} />}
             </button>
             <span className="text-[13px] font-semibold tabular-nums text-[rgb(229_243_242_/_0.85)]">
               {held.left === null ? 'paused' : `${held.left}s`}
@@ -796,14 +787,7 @@ function Chip({
             boxShadow: '0 2px 7px rgb(0 0 0 / 0.6)',
           }}
         >
-          <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden>
-            <path
-              d="M1.2 1.2 6.8 6.8M6.8 1.2 1.2 6.8"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
-          </svg>
+          <CloseIcon size={8} />
         </button>
       )}
     </div>

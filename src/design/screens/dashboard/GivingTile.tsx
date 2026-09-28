@@ -1,5 +1,5 @@
 import { Panel } from '../parts';
-import { GiftIcon } from '../../../ui';
+import { GiftIcon, BankIcon, LinkIcon } from '../../../ui';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
 
@@ -51,7 +51,7 @@ function payAddress(key: string, value: string): string {
  * Each service draws its own glyph rather than borrowing a logo file: a
  * wordmark at this size is unreadable, and a downloaded asset is a licence
  * question on a church's screen. These are the shapes people recognise —
- * Zelle's Z, Venmo's V, Cash App's $, PayPal's P, a bank's columns, a link
+ * Zelle's Z, Venmo's V, Cash App's $, PayPal's P, plus Solar's bank and link
  * — set in the service's own colour when it is configured and in plain ink
  * when it is not, so the card reads at a glance as "these three are on".
  */
@@ -88,17 +88,11 @@ function MethodMark({ id, color }: { id: string; color: string }) {
       );
     case 'givingBankInfo':
       return (
-        <svg {...common} aria-hidden>
-          <path d="M3.5 9.5 12 4.5l8.5 5" stroke={color} strokeWidth="1.8" strokeLinejoin="round" />
-          <path d="M6 10.5v7M10 10.5v7M14 10.5v7M18 10.5v7M3.5 19.5h17" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+        <span style={{ color }}><BankIcon size={17} /></span>
       );
     default:
       return (
-        <svg {...common} aria-hidden>
-          <path d="M10 13.8a3.4 3.4 0 0 0 5 .4l2.6-2.6a3.4 3.4 0 0 0-4.8-4.8l-1.3 1.3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M14 10.2a3.4 3.4 0 0 0-5-.4l-2.6 2.6a3.4 3.4 0 0 0 4.8 4.8l1.3-1.3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+        <span style={{ color }}><LinkIcon size={17} /></span>
       );
   }
 }

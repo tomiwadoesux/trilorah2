@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { VoiceCommandEngine, type VoiceCommandCallbacks, type DisplayedRef } from './voiceCommands'
 import type { VoiceCommandEvent } from '../../shared/types'
+import { DEFAULT_COMMANDS } from './commandConfig'
+import { findCommandPhrase } from '../../shared/voiceCommandText'
 
 let now = 1_000_000
 let displayed: DisplayedRef | null
@@ -195,5 +197,51 @@ describe('VoiceCommandEngine — suppression', () => {
     expect(events).toEqual([])
     expect(engine.process('next verse')).toBe(true)
     expect(navigated).toEqual(['next'])
+  })
+})
+
+describe('VoiceCommandEngine — accepted phrase for transcript pills', () => {
+  it('emits only the translation instruction, keeping the surrounding speech', () => {
+    const engine = makeEngine()
+    const text = 'Let us read this in the King James Version, please.'
+    engine.process(text)
+    expect(events[0]).toMatchObject({ kind: 'version-switch', phrase: 'King James Version', value: 'KJV' })
+    const range = findCommandPhrase(text, events[0].phrase!)!
+    expect(text.slice(0, range.start)).toBe('Let us read this in the ')
+    expect(text.slice(range.end)).toBe(', please.')
+  })
+
+  it('marks the complete correction, including the spoken number', () => {
+    const engine = makeEngine()
+    const text = 'No, I said verse thirty-four, please read that.'
+    engine.process(text)
+    const range = findCommandPhrase(text, events[0].phrase!)!
+    expect(text.slice(range.start, range.end)).toBe('I said verse thirty-four')
+    now += 4000
+    engine.process('Now I said chapter seven, let us read.')
+    expect(events[1]).toMatchObject({ kind: 'correction-chapter', phrase: 'i said chapter seven', value: 7 })
+  })
+
+  it('uses the active preacher phrase instead of a second UI command parser', () => {
+    const cb: VoiceCommandCallbacks = {
+      getDisplayedRef: () => displayed, getAvailableVersions: () => versions,
+      onVersionSwitch: () => {}, onVerseCorrection: () => {}, onChapterCorrection: () => {},
+      onDismiss: () => {}, onHold: () => {}, onNavigate: () => {}, onPrayerChange: () => {},
+      onCommand: (event) => events.push(event)
+    }
+    const engine = new VoiceCommandEngine(cb, { now: () => now,
+      config: { ...DEFAULT_COMMANDS, navNext: [...DEFAULT_COMMANDS.navNext, 'carry us forward'] } })
+    engine.process('Please carry us forward, church.')
+    expect(events[0]).toMatchObject({ kind: 'navigate-next', phrase: 'carry us forward' })
+  })
+
+  it('identifies the prayer and hold phrases without swallowing surrounding words', () => {
+    const engine = makeEngine()
+    engine.process('Now let us pray together.')
+    expect(events[0]).toMatchObject({ kind: 'prayer-start', phrase: 'let us pray' })
+    engine.process('In Jesus name, amen.')
+    expect(events[1]).toMatchObject({ kind: 'prayer-end', phrase: 'amen' })
+    engine.process('Please leave that up for a moment.')
+    expect(events[2]).toMatchObject({ kind: 'display-hold', phrase: 'leave that up' })
   })
 })

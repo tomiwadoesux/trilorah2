@@ -46,6 +46,16 @@ describe('qrInner / qrViewBox — reusing the library’s drawing', () => {
 })
 
 describe('buildQrCard — what goes on the wall', () => {
+  it('names all three follow-along features', () => {
+    expect(card()).toContain('Live transcripts, scriptures and notes')
+  })
+  it('embeds an image with a mandatory moderate overlay and keeps the QR plate white', () => {
+    const svg=card({backgroundDataUrl:'data:image/png;base64,aGVsbG8='})
+    expect(svg).toContain('<image href="data:image/png;base64,aGVsbG8="')
+    expect(svg).toContain('fill-opacity="0.48"')
+    expect(svg).toContain('rx="24" fill="#ffffff"')
+    expect(card({backgroundDataUrl:'https://example.com/photo.jpg'})).not.toContain('<image')
+  })
   it('is one well-formed svg at the projector’s size', () => {
     const svg = card()
     expect(svg.startsWith('<svg')).toBe(true)
@@ -62,7 +72,8 @@ describe('buildQrCard — what goes on the wall', () => {
     expect(card({ churchName: 'Victory Royal Church' })).toContain('Victory Royal Church')
     const anonymous = card({ churchName: '   ' })
     expect(anonymous).toContain('Follow along')
-    expect((anonymous.match(/<text/g) ?? []).length).toBe(2)
+    expect(anonymous).toContain('>trilorah</text>')
+    expect(anonymous).not.toContain('Victory Royal Church')
   })
   it('keeps the code square, and on a white plate with a quiet zone', () => {
     const svg = card()
@@ -82,9 +93,9 @@ describe('buildQrCard — what goes on the wall', () => {
     expect(x + w).toBeLessThan(2560)
     expect(y + h).toBeLessThan(1080)
   })
-  it('puts the church above the caption, and the address below the code', () => {
+  it('puts the church above the caption, and the address below the instruction', () => {
     const svg = card({ churchName: 'Victory Royal Church' })
-    const y = (needle: string) => Number(/y="([\d.]+)"/.exec(svg.slice(svg.indexOf(needle) - 260, svg.indexOf(needle)))![1])
+    const y = (needle: string) => Number([...svg.matchAll(/<text\b[^>]*y="([\d.]+)"[^>]*>([^<]*)<\/text>/g)].find(m => m[2].includes(needle))![1])
     expect(y('Victory Royal Church')).toBeLessThan(y('Follow along'))
     expect(y('trilorah.com')).toBeGreaterThan(y('Follow along'))
   })

@@ -7,20 +7,27 @@
  * throwaway stream to unlock the labels, and enumerate again.
  */
 
+import { DEVICE_AUDIO, DEVICE_AND_MIC } from '../../shared/audioInput';
+
 export interface AudioInput {
   id: string;
   label: string;
 }
 
 export async function listAudioInputs(): Promise<AudioInput[]> {
+  const capabilities = await window.api?.getAudioCaptureCapabilities?.().catch(() => undefined);
+  const deviceInputs = capabilities?.deviceAudio ? [
+    { id: 'device-audio', label: DEVICE_AUDIO },
+    { id: 'device-and-mic', label: DEVICE_AND_MIC },
+  ] : [];
   const md = navigator.mediaDevices;
-  if (!md?.enumerateDevices) return [];
+  if (!md?.enumerateDevices) return deviceInputs;
   let inputs: MediaDeviceInfo[] = [];
   try {
     inputs = (await md.enumerateDevices()).filter((d) => d.kind === 'audioinput');
   } catch (err) {
     console.error('mic: enumerateDevices failed', err);
-    return [];
+    return deviceInputs;
   }
   const labelsLocked = inputs.length === 0 || inputs.every((d) => !d.label);
   if (labelsLocked) {
@@ -38,9 +45,9 @@ export async function listAudioInputs(): Promise<AudioInput[]> {
       console.error('mic: could not open a stream to unlock device labels', err);
     }
   }
-  return inputs
+  return [...deviceInputs, ...inputs
     .filter((d) => d.label && d.deviceId !== 'communications')
-    .map((d) => ({ id: d.deviceId, label: d.label }));
+    .map((d) => ({ id: d.deviceId, label: d.label }))];
 }
 
 /** Subscribe to plug/unplug events; returns the unsubscribe. */

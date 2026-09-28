@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, Settings2, Minus, Plus, RotateCcw } from "lucide-react";
+import { ArrowDown, Settings2, Minus, Plus, RotateCcw } from "@/components/icons";
 import {
   activeWordIndex,
   playheadSeconds,
@@ -322,7 +322,7 @@ function TranscriptBody({
     const el = scrollRef.current;
     if (!el) return;
     const clamped = Math.max(0, Math.min(top, el.scrollHeight - el.clientHeight));
-    el.scrollTo({ top: clamped, behavior: "smooth" });
+    el.scrollTo({ top: clamped, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? "auto" : "smooth" });
   }, []);
 
   /**
@@ -475,7 +475,7 @@ function TranscriptLine({
             }
             /* Duration is the honest part of this: opacity and colour move over
                ~450ms so nothing ever appears or vanishes on a single frame. */
-            className={`transition-[color,opacity] duration-[450ms] ease-out ${
+            className={`${
               state === "said"
                 ? "text-white opacity-100"
                 : state === "saying"

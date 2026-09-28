@@ -1,17 +1,19 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import {
   Radio,
   BookOpen,
   StickyNote,
   HandCoins,
-} from "lucide-react";
+} from "@/components/icons";
 import TranscriptStream from "./components/TranscriptStream";
 import VersesTab from "./components/VersesTab";
 import NotesTab from "./components/NotesTab";
 import GiveTab from "./components/GiveTab";
 import SegmentBadge from "./components/SegmentBadge";
+import "./companion.css";
+import ReadingOptions, { type ReadingAppearance } from './components/ReadingOptions';
 
 type Tab = "now" | "verses" | "notes" | "give";
 
@@ -43,6 +45,7 @@ export default function CompanionClient({
   initialService: Service | null;
 }) {
   const [tab, setTab] = useState<Tab>("now");
+  const [appearance,setAppearance]=useState<ReadingAppearance>({image:'',size:21});
   const [service, setService] = useState<Service | null>(initialService);
   const [transcript, setTranscript] = useState<any[]>([]);
   const [verses, setVerses] = useState<any[]>([]);
@@ -250,9 +253,11 @@ export default function CompanionClient({
 
   if (!service) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <main className="companion-shell companion-waiting min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <span className="companion-mark" aria-hidden="true">t</span>
         <h1 className="text-xl font-semibold mb-1">{account.name}</h1>
-        <p className="text-gray-500 text-sm">No live service yet today.</p>
+        <p className="companion-eyebrow">Your church, wherever you are</p>
+        <p className="text-gray-500 text-sm">The live transcript and scriptures will appear here when the service starts.</p>
       </main>
     );
   }
@@ -261,9 +266,11 @@ export default function CompanionClient({
     // h-screen, not min-h-screen: the transcript inside is the thing that
     // scrolls, so the page itself must be exactly one viewport or the tab bar
     // ends up below the fold on a phone with a browser chrome bar.
-    <main className="h-screen pb-20 flex flex-col overflow-hidden">
+    <main className={`companion-shell flex flex-col overflow-hidden ${appearance.image ? 'companion-photo' : ''}`} style={{'--reading-size':`${appearance.size}px`,...(appearance.image?{backgroundImage:`linear-gradient(rgba(9,11,12,.48),rgba(9,11,12,.48)),url("${appearance.image}")`}:{})} as CSSProperties}>
       {/* Header */}
-      <header className="px-4 pt-5 pb-3 border-b border-white/5 sticky top-0 bg-[#0a0a0a]/95 backdrop-blur z-10">
+      <header className="companion-header">
+        <div className="companion-brand"><span className="companion-mark" aria-hidden="true">t</span><span>trilorah</span><span className="companion-brand-note">Follow Along</span></div>
+        <div className="companion-church">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold">{account.name}</h1>
@@ -274,19 +281,23 @@ export default function CompanionClient({
           <div className="flex items-center gap-2">
             {isLive && (
               <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-brand">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand live-dot" />
+                <span className="w-1.5 h-1.5 rounded-full bg-brand" />
                 Live
               </span>
             )}
+            {!isLive && <span className="companion-eyebrow">Service ended</span>}
             <SegmentBadge type={currentSegment} />
           </div>
         </div>
+        </div>
+        <ReadingOptions churchId={account.id} onChange={setAppearance}/>
       </header>
 
       {/* Content */}
       {/* A flex column so the transcript can take whatever height the optional
           stream player leaves it, instead of a fixed calc that overflows. */}
-      <section className="flex-1 min-h-0 overflow-hidden flex flex-col">
+      <section className="companion-content flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="companion-section-heading"><h2>{tab === "now" ? "Live transcript" : tab === "verses" ? "Scriptures" : tab === "notes" ? "Service notes" : "Give"}</h2><p>{tab === "now" ? (isLive ? "Follow along, word by word." : "Read back through the service.") : tab === "verses" ? "Keep every passage close." : tab === "notes" ? "Take the message with you." : "Support your church."}</p></div>
         {tab === "now" && (
           <TranscriptStream
             chunks={transcript}
@@ -311,8 +322,8 @@ export default function CompanionClient({
       </section>
 
       {/* Bottom tabs */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur border-t border-white/10 grid grid-cols-4 z-20">
-        <TabButton active={tab === "now"} onClick={() => setTab("now")} icon={Radio} label="Now" />
+      <nav className="companion-nav grid grid-cols-4 z-20" aria-label="Service sections">
+        <TabButton active={tab === "now"} onClick={() => setTab("now")} icon={Radio} label="Transcript" />
         <TabButton active={tab === "verses"} onClick={() => setTab("verses")} icon={BookOpen} label="Verses" />
         <TabButton active={tab === "notes"} onClick={() => setTab("notes")} icon={StickyNote} label="Notes" />
         <TabButton active={tab === "give"} onClick={() => setTab("give")} icon={HandCoins} label="Give" />
@@ -335,7 +346,8 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
+      aria-current={active ? "page" : undefined}
+      className={`companion-tab flex flex-col items-center justify-center py-2.5 gap-0.5 ${
         active ? "text-brand" : "text-gray-500 hover:text-gray-300"
       }`}
     >

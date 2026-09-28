@@ -29,6 +29,11 @@ describe('placeOutput — the projector gets the external screen', () => {
 })
 
 describe('placeOutput — an operator choice', () => {
+  it('keeps no screen disabled with or without external displays', () => {
+    for (const displays of [[laptop], [laptop, projector]]) {
+      expect(placeOutput('main', displays, 1, { main: 'none' })).toEqual({ display: null, fullscreen: false, disabled: true })
+    }
+  })
   it('wins while that display is connected', () => {
     expect(placeOutput('main', [laptop, projector, stage], 1, { main: 3 }).display).toBe(stage)
   })

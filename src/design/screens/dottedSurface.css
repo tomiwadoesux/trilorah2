@@ -1,0 +1,54 @@
+/* Shared dark glass with a faint dotted texture behind the content. */
+.tri-dotted-surface {
+  isolation: isolate;
+  background: linear-gradient(165deg, rgb(12 22 18 / 0.78), rgb(9 16 13 / 0.66));
+}
+
+.tri-dotted-surface::before,
+.tri-empty-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: radial-gradient(circle, rgb(200 231 215 / var(--tri-dot-alpha, 0.3)) 0.7px, transparent 0.95px);
+  background-size: 7px 7px;
+  mask-image: var(--tri-dot-patches);
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  animation: tri-dot-drift var(--tri-dot-duration, 48s) ease-in-out var(--tri-dot-delay, 0s) infinite;
+}
+
+.tri-empty-surface {
+  position: relative;
+  isolation: isolate;
+  --tri-dot-alpha: 0.13;
+}
+
+/* Empty-state texture is static and much fainter than the glass cards. */
+.tri-empty-surface::before {
+  animation: none;
+}
+
+/* Move only the soft mask: the dot grid and card content stay still. */
+@keyframes tri-dot-drift {
+  0%, 100% {
+    mask-position: -2px 1px;
+    opacity: 0.94;
+  }
+  33% {
+    mask-position: 3px -1px;
+    opacity: 1;
+  }
+  66% {
+    mask-position: 1px 2px;
+    opacity: 0.97;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-dotted-surface::before {
+    animation: none;
+  }
+}

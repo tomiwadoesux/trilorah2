@@ -104,9 +104,7 @@ export interface LibraryBrowserProps {
    */
   framed?: boolean;
   /**
-   * The tab's dock (songs/TabDock) — floated over the foot of the panes, at
-   * --tri-gap from their bottom edge. The panes' scrollers pad themselves by
-   * DOCK_CLEARANCE so nothing ends up underneath it.
+   * The tab's full-width action capsule, above optional search.
    */
   dock?: ReactNode;
   /** One or more LibraryPane. */
@@ -125,7 +123,13 @@ export function LibraryBrowser({ search, framed = false, dock, children }: Libra
         where the text column ends, so the row reads as part of the table
         rather than as something floating above it.
       */}
-      <div className="-mx-3 flex shrink-0 items-start gap-[var(--tri-gap)] px-4">{search}</div>
+      <div className={cx(
+        '-mx-3 flex shrink-0 gap-[var(--tri-gap)] px-4',
+        dock ? 'flex-col items-stretch' : 'items-center justify-center',
+      )}>
+        {dock}
+        {search}
+      </div>
       <div
         className={cx(
           'relative -mx-3 flex min-h-0 flex-1 overflow-hidden',
@@ -134,7 +138,6 @@ export function LibraryBrowser({ search, framed = false, dock, children }: Libra
         style={framed ? { boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.055)' } : undefined}
       >
         {children}
-        {dock}
       </div>
     </div>
   );

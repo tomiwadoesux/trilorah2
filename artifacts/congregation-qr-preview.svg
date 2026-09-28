@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="qr-title qr-description">
+  <title id="qr-title">Victory Royal Church — follow the service</title>
+  <desc id="qr-description">Scan the QR code for live transcripts, scriptures and notes. https://trilorah.com/live/vrc</desc>
+  <defs><linearGradient id="teal" x1="0" y1="1" x2="1" y2="0"><stop offset="10.054%" stop-color="#07271c"/><stop offset="36.448%" stop-color="#1d322f"/><stop offset="63.057%" stop-color="#1a3630"/><stop offset="89.946%" stop-color="#1a3336"/></linearGradient></defs>
+  <rect width="1920" height="1080" fill="#090b0c"/>
+  
+  <rect x="48.5" y="48.5" width="1823" height="983" rx="40" fill="url(#teal)" fill-opacity="0.65" stroke="#8fd3c0" stroke-opacity="0.16"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="135" y="216" font-size="45" fill="#e5f3f2">Victory Royal Church</text>
+    <text x="135" y="291.6" font-size="19.439999999999998" letter-spacing="3" fill="#8fd3c0">FOLLOW THE SERVICE</text>
+    <text x="135" y="410" font-size="68" font-weight="600" fill="#e5f3f2" textLength="735" lengthAdjust="spacingAndGlyphs">Follow along on your phone</text>
+    <text x="135" y="691.2" font-size="27" fill="#e5f3f2">Live transcripts, scriptures and notes</text>
+    <text x="135" y="749.5200000000001" font-size="25.92" fill="#a7bfba">Open your camera. Scan to follow along.</text>
+    <path d="M135 853.2h734.8" stroke="#8fd3c0" stroke-opacity="0.2"/>
+    <text x="135" y="912.6" font-size="30" fill="#8fd3c0">trilorah.com/live/vrc</text>
+  </g>
+  <rect x="967" y="112" width="856" height="856" rx="24" fill="#ffffff"/>
+  <svg x="1060" y="205" width="670" height="670" viewBox="0 0 29 29" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h29v29H0z"/><path stroke="#000000" d="M0 0.5h7m1 0h2m1 0h2m2 0h6m1 0h7M0 1.5h1m5 0h1m1 0h3m3 0h2m1 0h1m2 0h1m1 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m2 0h1m1 0h5m2 0h3m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m3 0h2m1 0h1m2 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m5 0h2m3 0h3m2 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m7 0h1m2 0h4m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h3m2 0h2m2 0h1m1 0h1M0 8.5h1m1 0h2m1 0h3m4 0h3m1 0h3m3 0h1m2 0h1m1 0h2M0 9.5h2m2 0h1m2 0h1m1 0h1m5 0h2m1 0h2m1 0h4m3 0h1M0 10.5h2m1 0h5m2 0h2m2 0h2m1 0h2m2 0h3m2 0h2M0 11.5h2m1 0h2m2 0h2m2 0h1m1 0h3m2 0h4m1 0h2m3 0h1M1 12.5h1m1 0h1m1 0h2m2 0h1m6 0h4m5 0h2M5 13.5h1m1 0h1m1 0h2m2 0h1m5 0h1m1 0h2m3 0h3M0 14.5h1m1 0h1m3 0h1m1 0h1m2 0h1m2 0h1m2 0h4m1 0h2m2 0h3M0 15.5h2m2 0h1m3 0h1m2 0h3m1 0h1m3 0h4m4 0h1M1 16.5h1m1 0h1m2 0h1m2 0h1m8 0h4m1 0h3m1 0h1M5 17.5h1m2 0h2m2 0h2m4 0h1m1 0h1m2 0h1m1 0h3M0 18.5h1m1 0h1m3 0h3m1 0h3m4 0h1m2 0h2m4 0h1M2 19.5h1m1 0h1m3 0h1m6 0h3m1 0h3m1 0h1m2 0h1M1 20.5h3m2 0h2m3 0h1m1 0h1m1 0h1m1 0h10M8 21.5h1m1 0h6m4 0h1m3 0h5M0 22.5h7m1 0h3m1 0h2m2 0h1m2 0h2m1 0h1m1 0h2m1 0h1M0 23.5h1m5 0h1m1 0h1m1 0h1m1 0h1m3 0h1m3 0h1m3 0h2m1 0h2M0 24.5h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h2m1 0h1m2 0h5m1 0h1m1 0h1M0 25.5h1m1 0h3m1 0h1m1 0h1m2 0h1m1 0h2m1 0h2m3 0h1m2 0h2m1 0h1M0 26.5h1m1 0h3m1 0h1m1 0h3m1 0h6m2 0h1m2 0h1m2 0h1m1 0h1M0 27.5h1m5 0h1m2 0h2m1 0h2m2 0h1m3 0h3m1 0h2m1 0h1M0 28.5h7m1 0h2m2 0h1m2 0h1m1 0h1m2 0h1m4 0h1m1 0h1"/></svg>
+  <text x="1395" y="1016.6" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="22.68" fill="#a7bfba">SCAN WITH YOUR PHONE</text>
+</svg>

@@ -31,6 +31,12 @@ describe('pixelsOf', () => {
 })
 
 describe('describeOutputs', () => {
+  it('keeps an output explicitly off even when a projector is connected', () => {
+    const result = describeOutputs({ ...base, displays: [laptop, projector], openIds: ['main'], displayOverrides: { main: 'none' } });
+    expect(result.outputs[0]).toMatchObject({ disabled: true, open: false, displayId: null, fullscreen: false });
+    const enabled = describeOutputs({ ...base, displays: [laptop, projector], displayOverrides: {} });
+    expect(enabled.outputs[0]).toMatchObject({ disabled: false, displayId: 2, fullscreen: true });
+  })
   it('lists the real displays, not a specimen', () => {
     const { displays } = describeOutputs({ ...base, displays: [laptop, projector] })
     expect(displays).toEqual([

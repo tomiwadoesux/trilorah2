@@ -1,0 +1,19 @@
+/* Only fill the delay. Once the entrance ends, the panel's normal opacity
+   and transform take over without a JavaScript completion callback. */
+.tri-view-enter-panel {
+  animation: tri-view-enter var(--tri-view-enter-duration)
+    var(--tri-view-enter-ease) var(--tri-view-enter-delay) backwards;
+}
+
+@keyframes tri-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.992);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-view-enter-panel {
+    animation: none;
+  }
+}

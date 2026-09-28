@@ -4,7 +4,7 @@ import {
   surface,
   slideBackdrop,
   BACKDROP_BY_CONTENT,
-  PlusIcon,
+  CloseIcon,
   MicIcon,
   Button,
 } from '../../ui';
@@ -158,7 +158,7 @@ function ExpandedCard({ heard, stacked = false }: { heard: Heard; stacked?: bool
           )}
           style={{ borderRadius: 8, width: 28 }}
         >
-          <PlusIcon size={12} className="rotate-45" />
+          <CloseIcon size={12} />
         </button>
         <button
           type="button"
@@ -247,7 +247,7 @@ function CollapsedRow({ heard, onPromote }: { heard: Heard; onPromote?: () => vo
         )}
         style={{ boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.14)' }}
       >
-        <PlusIcon size={8} className="rotate-45 text-[rgb(229_243_242_/_0.6)]" />
+        <CloseIcon size={8} className="text-[rgb(229_243_242_/_0.6)]" />
       </span>
     </button>
   );

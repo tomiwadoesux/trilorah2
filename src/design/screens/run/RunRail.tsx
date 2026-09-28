@@ -6,6 +6,7 @@ import {
   Button,
   HistoryIcon,
   ChevronDownIcon,
+  CloseIcon,
   ClockIcon,
   CopyIcon,
   MediaIcon,
@@ -58,7 +59,7 @@ function RemoveItem({ onClick }: { onClick: () => void }) {
       aria-label="remove"
       className="shrink-0 opacity-0 transition-opacity group-hover:opacity-60 group-focus-within:opacity-60 hover:opacity-100 focus-visible:opacity-100"
     >
-      <PlusIcon size={10} className="rotate-45" />
+      <CloseIcon size={10} />
     </button>
   );
 }

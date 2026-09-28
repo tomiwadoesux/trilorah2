@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
+import type { PreacherLearningDetail, PreacherTeaching } from '../../../../shared/preacherLearning';
 
 /*
  * The preachers the dashboard knows — from the engine, with a sample
@@ -47,7 +48,7 @@ export interface ServiceRow {
   date: string;
   verses: number;
   /** 0..1 */
-  accuracy: number;
+  accuracy: number | null;
   minutes: number;
 }
 
@@ -85,6 +86,10 @@ export interface Miss {
 }
 
 export interface Preacher {
+  learning?: PreacherLearningDetail;
+  gates?: { trust: number; samples: number; services: number };
+  engineMature?: boolean;
+  engineEligible?: boolean;
   id: string;
   name: string;
   role: PreacherRole;
@@ -132,6 +137,11 @@ export interface Preacher {
 export const GATES = { trust: 0.9, samples: 100, services: 5 } as const;
 
 export function stageOf(p: Preacher): TrainingStage {
+  if (p.engineEligible !== undefined) {
+    if (p.engineEligible) return 'auto';
+    if (p.engineMature) return 'mature';
+    return p.samples > 0 ? 'training' : 'new';
+  }
   if (p.services === 0) return 'new';
   if (p.trustLowerBound >= GATES.trust && p.samples >= GATES.samples && p.services >= GATES.services) return 'auto';
   if (p.services >= 4 && p.correctionsLastService <= 1) return 'mature';
@@ -350,7 +360,9 @@ function fromEngine(
   return {
     ...base,
     id: profile.id,
-    name: stats?.name ?? profile.name,
+    name: stats?.name || profile.name,
+    engineMature: stats?.mature ?? false,
+    engineEligible: stats?.autoModeEligible ?? false,
     samples: stats?.samples ?? 0,
     services: stats?.services ?? 0,
     precision: stats?.precision ?? 0,
@@ -384,9 +396,10 @@ export async function loadPreachers(): Promise<void> {
   const a = api();
   if (!a?.listPreacherProfiles) return;
   try {
-    const [profiles, stats] = await Promise.all([
+    const [profiles, stats, settings] = await Promise.all([
       a.listPreacherProfiles(),
       a.getPreacherStats?.().catch(() => undefined) ?? Promise.resolve(undefined),
+      a.getSettings?.(),
     ]);
     const statById = new Map((stats ?? []).map((x) => [x.id, x]));
     const prevById = new Map(state.preachers.map((p) => [p.id, p]));
@@ -402,11 +415,37 @@ export async function loadPreachers(): Promise<void> {
 
     /* An active id that no longer names anyone would leave the dashboard
        saying nobody is preaching while the engine thinks otherwise. */
-    const activeId = merged.some((m) => m.id === state.activeId) ? state.activeId : null;
+    const wantedActive = settings?.activePreacherId ?? state.activeId;
+    const activeId = merged.some((m) => m.id === wantedActive) ? wantedActive : null;
+    await Promise.all(merged.map(async (p) => {
+      if (!a.getPreacherLearning) return;
+      try { Object.assign(p, learningFields(await a.getPreacherLearning(p.id))); } catch { /* Detail panel reports unavailable data. */ }
+    }));
     commit({ preachers: merged, activeId });
   } catch {
     /* Leaving the last good list up beats blanking the board mid-service. */
   }
+}
+
+function learningFields(d: PreacherLearningDetail): Partial<Preacher> {
+  const { name: _name, ...stats } = d.stats;
+  return { ...stats, ...d.habits, recent: d.recent,
+    learning: d, gates: d.gates, engineMature: d.stats.mature, engineEligible: d.stats.autoModeEligible,
+    soundsLike: d.soundsLike, vocabulary: d.vocabulary, ignoreTails: d.ignoreTails, voiceCommands: d.voiceCommands, history: d.history };
+}
+
+export async function refreshPreacher(id: string): Promise<void> {
+  const a = api();
+  if (!a?.getPreacherLearning) throw new Error('Open the desktop app to use preacher learning.');
+  const d = await a.getPreacherLearning(id);
+  commit({ ...state, preachers: state.preachers.map((p) => p.id === id ? { ...p, ...learningFields(d), name: d.stats.name || p.name } : p) });
+}
+
+export async function saveTeaching(id: string, patch: Partial<PreacherTeaching>): Promise<void> {
+  const a = api();
+  if (!a?.savePreacherLearning) throw new Error('Open the desktop app to save teaching.');
+  await a.savePreacherLearning(id, patch);
+  await refreshPreacher(id);
 }
 
 /** Load once per session, on the first surface that asks. */
@@ -452,22 +491,20 @@ export function findByName(name: string): Preacher | undefined {
  */
 
 /** Adds a preacher at the top of the list, with no history. */
-export function addPreacher(name: string, role: PreacherRole): Preacher | null {
+export async function addPreacher(name: string, role: PreacherRole): Promise<Preacher | null> {
   const clean = cleanName(name);
   if (!clean || findByName(clean)) return null;
   const base = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'preacher';
   let id = base;
   for (let n = 2; state.preachers.some((p) => p.id === id); n++) id = `${base}-${n}`;
-  const p = blank(id, clean, role);
-  commit({ ...state, preachers: [p, ...state.preachers] });
-
   const a = api();
   if (a?.createPreacherProfile) {
-    void a
-      .createPreacherProfile(id, clean)
-      .then(() => loadPreachers())
-      .catch(() => undefined);
+    const result = await a.createPreacherProfile(id, clean);
+    if (!result.success) throw new Error(result.error || 'Could not save this preacher. Please try again.');
+    id = result.id ?? id;
   }
+  const p = blank(id, clean, role);
+  commit({ ...state, preachers: [p, ...state.preachers.filter((x) => x.id !== id)] });
   return p;
 }
 

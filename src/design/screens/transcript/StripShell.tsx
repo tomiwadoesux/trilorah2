@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { cx } from '../../../ui';
+import '../dottedSurface.css';
+import { dottedSurfaceStyles } from '../dottedSurface';
 
 /*
  * The pill every transcript design sits in: the same frame, height, hover,
@@ -39,12 +41,12 @@ export function StripShell({
       type="button"
       onClick={onOpen}
       className={cx(
-        '@container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',
-        'border border-white/10 bg-white/[0.04] backdrop-blur-md',
-        'transition-colors hover:border-white/20 hover:bg-white/[0.08]',
+        'tri-dotted-surface @container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',
+        'border border-white/10 backdrop-blur-md',
+        'transition-colors hover:border-white/20',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tri-accent-yellow)]',
       )}
-      style={{ height, paddingBlock: '6px', paddingInline: padInline, ...style }}
+      style={{ ...dottedSurfaceStyles.transcript, height, paddingBlock: '6px', paddingInline: padInline, ...style }}
       title="live preacher transcript — click to open the dashboard, where the full transcript is"
       aria-label="Live preacher transcript. Opens the dashboard, where the full transcript is."
     >

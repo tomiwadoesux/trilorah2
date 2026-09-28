@@ -22,6 +22,18 @@ required once a preacher reaches auto-mode trust.
 - `recovery/` — frozen compiled artifacts the source tree was reconstructed
   from after the original source was lost (see git history).
 
+## Icons
+
+Solar **Bold** is the universal UI icon family. Use the shared exports from
+`src/ui` for navigation, buttons, menus, and status controls; add new icons to
+`src/ui/icons.tsx` using individual `@solar-icons/react/bold/...` imports.
+Icons inherit `currentColor`, with size controlled by their surrounding control.
+The companion web app uses the same family through `web/src/components/icons.tsx`.
+Keep brand marks and content illustrations as their own assets.
+
+Solar artwork is by 480 Design under CC BY 4.0. Settings includes visible
+attribution; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for licenses.
+
 ## Setup
 
 ```bash

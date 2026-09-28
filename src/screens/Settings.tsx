@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { SectionLabel, EngineNote, hasEngine } from '../components/ui';
+import { IconCredits, CheckIcon, CloseIcon } from '../ui';
 
 /*
  * Telling the operator their change landed.
@@ -111,11 +112,12 @@ function SavedBadge({ settingKey }: { settingKey: string }) {
   if (status?.key !== settingKey) return null;
   return (
     <span
-      className={`text-[10px] uppercase tracking-widest ${
+      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-widest ${
         status.state === 'saved' ? 'text-emerald-300' : 'text-red-300'
       }`}
     >
-      {status.state === 'saved' ? '✓ saved' : '✕ failed'}
+      {status.state === 'saved' ? <CheckIcon size={10} /> : <CloseIcon size={10} />}
+      {status.state === 'saved' ? 'saved' : 'failed'}
     </span>
   );
 }
@@ -452,8 +454,9 @@ function SettingsBody() {
           be told it does not exist, not left to wonder. */}
       <p className="text-xs text-neutral-400">
         no apply button — every field saves the moment you leave it (or press enter), and says{' '}
-        <span className="text-emerald-300">✓ saved</span> when it has
+        <span className="inline-flex items-center gap-1 text-emerald-300"><CheckIcon size={12} />saved</span> when it has
       </p>
+      <IconCredits />
     </div>
   );
 }

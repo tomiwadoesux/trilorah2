@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Transition } from 'motion/react';
-import { cx, PlusIcon } from '../../../ui';
+import { cx, CloseIcon } from '../../../ui';
 import { ExpandCue } from '../emptyArt';
 
 /*
@@ -89,6 +89,8 @@ export interface ExpandableProps {
   blurb?: string;
   /** What fills the open box. Scrolls if taller than the box. */
   children: ReactNode;
+  /** For a view that owns its scrolling and needs a bounded flex body. */
+  bodyClassName?: string;
   /** The open size the content would like. */
   size?: { w: number; h: number };
   /**
@@ -113,7 +115,7 @@ interface Flight {
   to: Box;
 }
 
-export function Expandable({ tile, className, title, blurb, children, size = { w: 720, h: 640 }, glyph = true, ring = true }: ExpandableProps) {
+export function Expandable({ tile, className, title, blurb, children, bodyClassName, size = { w: 720, h: 640 }, glyph = true, ring = true }: ExpandableProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   /* On screen at all — true from lift-off until the way home has FINISHED,
@@ -306,10 +308,10 @@ export function Expandable({ tile, className, title, blurb, children, size = { w
                       title="close (esc)"
                       className="grid size-[26px] shrink-0 place-items-center rounded-[7px] text-[rgb(229_243_242_/_0.5)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink)]"
                     >
-                      <PlusIcon size={12} className="rotate-45" />
+                      <CloseIcon size={12} />
                     </button>
                   </header>
-                  <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">{children}</div>
+                  <div className={bodyClassName ?? 'min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2'}>{children}</div>
                 </motion.div>
               </motion.section>
             </motion.div>

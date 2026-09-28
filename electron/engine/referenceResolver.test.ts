@@ -251,6 +251,46 @@ describe('SpokenReferenceResolver — a growing utterance emits once, complete',
     expect(c.detections.map(ref)).toEqual(['Romans 4:21'])
   })
 
+  it('delivers a closed reference before the utterance finishes', () => {
+    const c = collect()
+    c.feed('john three sixteen', false)
+    expect(c.detections).toEqual([])
+    c.feed('john three sixteen for god so loved the world', false)
+    expect(c.detections.map(ref)).toEqual(['John 3:16'])
+    c.tick(6000)
+    c.feed('john three sixteen for god so loved the world', true)
+    expect(c.detections.map(ref)).toEqual(['John 3:16'])
+    c.feed('verse seventeen')
+    expect(c.detections.map(ref)).toEqual(['John 3:16', 'John 3:17'])
+  })
+
+  it('keeps a growing range held until reading moves past its endpoint', () => {
+    const c = collect()
+    c.feed('romans four twenty', false)
+    c.feed('romans four twenty one', false)
+    c.feed('romans four twenty one to', false)
+    c.feed('romans four twenty one to twenty two', false)
+    expect(c.detections).toEqual([])
+    c.feed('romans four twenty one to twenty two says', false)
+    expect(c.detections.map(ref)).toEqual(['Romans 4:21-22'])
+  })
+
+  it('does not treat a name or chapter alone as a complete early reference', () => {
+    const c = collect()
+    c.feed('john was a boy', false)
+    c.feed('john chapter three says', false)
+    expect(c.detections).toEqual([])
+  })
+
+  it('recognizes a completed duplicate without replacing it with a quote guess', () => {
+    const detections: ResolvedReference[] = []
+    const resolver = new SpokenReferenceResolver((data) => detections.push(data))
+    expect(resolver.process('john three sixteen for god so loved', false)).toBe(true)
+    expect(resolver.process('john three sixteen for god so loved', true)).toBe(true)
+    expect(detections).toHaveLength(1)
+    expect(resolver.process('and the preacher continued teaching', true)).toBe(false)
+  })
+
   it('holds every tens boundary, not just twenty', () => {
     for (const [spoken, expected] of [
       ['thirty one', 'Romans 4:31'],

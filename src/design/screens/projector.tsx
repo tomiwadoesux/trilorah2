@@ -95,18 +95,18 @@ export interface LiveItem {
  * records the review item, and the engine's echo comes back in as a
  * `send(...)` — bridging that again would push every verse twice.
  */
-function toWall(item: LiveItem): void {
+async function toWall(item: LiveItem): Promise<void> {
   const api = typeof window === 'undefined' ? undefined : window.api;
   if (!api) return;
   if (item.source === 'song' && item.lines) {
-    void api.pushLiveContent?.({
+    await api.pushLiveContent?.({
       kind: 'song',
       title: item.title ?? item.label,
       label: item.section ?? '',
       lines: item.lines,
     });
   } else if (item.source === 'presentation' && item.lines) {
-    void api.pushLiveContent?.({
+    await api.pushLiveContent?.({
       kind: 'slide',
       title: item.title ?? item.label,
       label: item.section ?? '',
@@ -114,7 +114,7 @@ function toWall(item: LiveItem): void {
       path: item.path,
     });
   } else if ((item.source === 'media' || item.source === 'presentation') && item.path) {
-    void api.showMedia?.(item.path, item.mediaKind);
+    await api.showMedia?.(item.path, item.mediaKind);
   }
 }
 
@@ -124,6 +124,7 @@ function clearWall(): void {
 }
 
 interface ProjectorValue {
+  reflect: (item: LiveItem | null) => void;
   /** On the projector right now. */
   live: LiveItem | null;
   /** Staged, seen only by the operator. */
@@ -136,9 +137,9 @@ interface ProjectorValue {
   /** Put something in the preview box. Never reaches the congregation. */
   stage: (item: LiveItem | null) => void;
   /** Put something on the projector, staged or not. */
-  send: (item: LiveItem) => void;
+  send: (item: LiveItem) => Promise<void>;
   /** The local half of a push: what was staged becomes what is live. */
-  promote: () => void;
+  promote: () => Promise<void>;
   clear: () => void;
   setSlide: (n: number) => void;
   /** Step within the live reading, clamped. Returns whether it moved. */
@@ -160,9 +161,10 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const [screen, setScreen] = useState<ScreenState>('live');
 
   const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
+  const reflect = useCallback((item: LiveItem | null) => { setLive(item); setSlideIndex(0); }, []);
 
-  const send = useCallback((item: LiveItem) => {
-    toWall(item);
+  const send = useCallback(async (item: LiveItem) => {
+    await toWall(item);
     setLive(item);
     /* A new reading starts at its first slide. Carrying the old index over
        lands the congregation on slide 3 of a reading that has two. */
@@ -173,18 +175,9 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     setScreen((s) => (s === 'clear' ? 'live' : s));
   }, []);
 
-  const promote = useCallback(() => {
-    setPreview((staged) => {
-      if (staged) {
-        toWall(staged);
-        setLive(staged);
-        setSlideIndex(0);
-        setScreen((s) => (s === 'clear' ? 'live' : s));
-      }
-      /* Both screens retain the verse that was pushed to live. */
-      return staged;
-    });
-  }, []);
+  const promote = useCallback(async () => {
+    if (preview) await send(preview);
+  }, [preview, send]);
 
   const clear = useCallback(() => {
     clearWall();
@@ -226,6 +219,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      reflect,
       live,
       preview,
       slide,

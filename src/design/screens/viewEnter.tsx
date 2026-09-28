@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type ComponentPropsWithoutRef, type RefObject } from 'react';
-import { animate, stagger } from 'motion/react';
-import { EASE_BEZIER, reducedMotion } from './dashboard/expand';
+import { EASE, reducedMotion } from './dashboard/expand';
+import './viewEnter.css';
 
 /*
  * How a view arrives: its panels settle in, in reading order.
@@ -11,18 +11,18 @@ import { EASE_BEZIER, reducedMotion } from './dashboard/expand';
  * in both views on purpose (see LiveBody), so it must NOT move; only the
  * panels under it do.
  *
- * Imperative, not <motion.div> wrappers: the operator view is a subgrid and
- * the bento is a tower of flex weights, and a wrapper element in either one
- * is a layout change. This touches the panels that are already there and
- * takes its inline styles away again when it is done, so a finished
- * entrance leaves no transform behind to become a containing block for
- * something fixed inside a panel.
+ * Animate the existing panels: wrappers would change the operator subgrid
+ * and the dashboard's flex layout. CSS owns the transient opacity and
+ * transform, then releases them automatically. No panel is left hidden
+ * waiting for an animation promise, and no finished transform becomes a
+ * containing block for something fixed inside a panel.
  *
  * Budget: the last panel has landed by 320ms. Step and duration are derived
  * from the count so ten tiles and four panels both fit it — the step is
  * capped at 40ms so a short list does not turn into a slow drum roll.
  */
 const PANEL = 'section.tri-rounded-surface';
+const ENTER_CLASS = 'tri-view-enter-panel';
 const TOTAL_S = 0.32;
 const MAX_STEP_S = 0.04;
 const MOVE_S = 0.176;
@@ -54,36 +54,22 @@ export function useViewEnter<T extends HTMLElement>(opts: { skipFirst?: boolean 
     if (panels.length === 0) return;
 
     const step = Math.min(MAX_STEP_S, (TOTAL_S - MOVE_S) / Math.max(1, panels.length - 1));
-    const FROM = 'translateY(6px) scale(0.992)';
-    /* Hidden HERE, synchronously, before the browser has painted the new
-       view: Motion applies its first keyframe on its own next tick, and a
-       layout effect that only scheduled the animation left one frame in
-       which all ten tiles stood at full opacity before dropping to zero. */
-    for (const p of panels) {
-      p.style.opacity = '0';
-      p.style.transform = FROM;
-    }
-    const controls = animate(
-      panels,
-      { opacity: [0, 1], transform: [FROM, 'translateY(0px) scale(1)'] },
-      { duration: MOVE_S, ease: EASE_BEZIER, delay: stagger(step) },
-    );
-    let done = false;
-    const tidy = () => {
-      done = true;
-      for (const p of panels) {
-        p.style.removeProperty('opacity');
-        p.style.removeProperty('transform');
-      }
-    };
-    /* A beat after `finished`: Motion writes the final keyframe to the last
-       element as it resolves, and tidying in the same tick lost that race —
-       the last panel kept a transform, which is a containing block. */
-    const later = () => setTimeout(() => !done && tidy(), 34);
-    void controls.finished.then(later, later);
+    /* Set before paint, including the backwards fill during the stagger.
+       The resting styles stay visible even if a transition is interrupted
+       or a completion event never runs. */
+    panels.forEach((panel, i) => {
+      panel.style.setProperty('--tri-view-enter-delay', `${i * step}s`);
+      panel.style.setProperty('--tri-view-enter-duration', `${MOVE_S}s`);
+      panel.style.setProperty('--tri-view-enter-ease', EASE);
+      panel.classList.add(ENTER_CLASS);
+    });
     return () => {
-      controls.stop();
-      tidy();
+      for (const panel of panels) {
+        panel.classList.remove(ENTER_CLASS);
+        panel.style.removeProperty('--tri-view-enter-delay');
+        panel.style.removeProperty('--tri-view-enter-duration');
+        panel.style.removeProperty('--tri-view-enter-ease');
+      }
     };
     // Runs once per mount: each view mounts fresh when it is switched to.
     // eslint-disable-next-line react-hooks/exhaustive-deps

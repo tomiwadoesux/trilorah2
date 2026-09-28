@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Panel } from '../parts';
-import { NoteIcon, Button, cx } from '../../../ui';
-import { EmptyMark, TissueNotesArt } from '../emptyArt';
+import { NoteIcon, Button, ChevronRightIcon, cx } from '../../../ui';
+import { EmptyMark, EmptyMotion, TissueNotesArt } from '../emptyArt';
 import { Expandable } from './expand';
 import { useLiveStore } from '../../../stores/liveStore';
 
@@ -321,6 +321,8 @@ function NotesFace({ onOpen }: { onOpen: () => void }) {
   const notes = generatedNotes ?? (notesSnapshot ? snapshotToNotes(notesSnapshot) : null);
   const points = notes?.points?.length ?? 0;
 
+  if (!notes) return <NotesEmpty onOpen={onOpen} />;
+
   return (
     <Panel
       title="sermon notes"
@@ -332,10 +334,10 @@ function NotesFace({ onOpen }: { onOpen: () => void }) {
       right={
         notes ? (
           <span
-            className="text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums"
+            className="inline-flex items-center gap-1 text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums"
             style={{ color: MUTED }}
           >
-            {points} {points === 1 ? 'point' : 'points'} ›
+            {points} {points === 1 ? 'point' : 'points'} <ChevronRightIcon size={10} />
           </span>
         ) : undefined
       }
@@ -402,6 +404,34 @@ function NotesFace({ onOpen }: { onOpen: () => void }) {
           />
         </span>
       </div>
+    </Panel>
+  );
+}
+
+/** Centered copy above the card's own, generously sized animated artwork. */
+function NotesEmpty({ onOpen }: { onOpen: () => void }) {
+  const frame = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(320);
+  useEffect(() => {
+    if (!frame.current) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize(Math.max(0, Math.min(width * .96, height * 1.45, 440)));
+    });
+    observer.observe(frame.current);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <Panel className="min-h-0 w-full flex-1" bodyStyle={{ padding: 0 }}>
+      <EmptyMotion play="hover" className="flex h-full min-h-0 flex-col items-center overflow-hidden text-center">
+        <button onClick={onOpen} className="z-10 flex shrink-0 flex-col items-center gap-3 px-5 pt-6 pb-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8fd3c0]">
+          <span className="flex items-center gap-2 text-[15px] font-semibold text-[var(--tri-ink)]"><NoteIcon size={17} />Sermon notes</span>
+          <span className="max-w-[52ch] text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>Points, scriptures and quotes appear as the sermon is preached.</span>
+        </button>
+        <div ref={frame} aria-hidden="true" className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden" style={{ color: 'rgb(229 243 242)', maskImage: 'linear-gradient(to bottom, transparent 0%, #000 8%, #000 100%)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, #000 8%, #000 100%)' }}>
+          <div className="shrink-0" style={{ width: size, height: size, transform: 'translateY(12%)' }}><TissueNotesArt size={size} /></div>
+        </div>
+      </EmptyMotion>
     </Panel>
   );
 }

@@ -5,6 +5,21 @@ import type { LiveContent } from '../shared/liveContent'
 import type { ImportedSong } from './songs/import'
 
 contextBridge.exposeInMainWorld('api', {
+  qrBackground: (action: 'status'|'choose'|'clear') => ipcRenderer.invoke('qr-background',action),
+  mobileStatus: () => ipcRenderer.invoke('mobile-status'),
+  mobileCode: (generate = false) => ipcRenderer.invoke('mobile-code', generate),
+  mobileRevoke: (id: string) => ipcRenderer.invoke('mobile-revoke', id),
+  mobileThumbnail: (imagePath: string) => ipcRenderer.invoke('mobile-thumbnail', imagePath),
+  mobileEnable: (enabled: boolean) => ipcRenderer.invoke('mobile-enable', enabled),
+  mobileApprove: (id: string, allow: boolean) => ipcRenderer.invoke('mobile-approve', id, allow),
+  mobileQr: (url: string) => ipcRenderer.invoke('mobile-qr', url),
+  mobileVerse: (reference: string, version: string, live: boolean) => ipcRenderer.invoke('mobile-verse', reference, version, live),
+  onMobileRequest: (callback: (request: any) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, request: any) => callback(request)
+    ipcRenderer.on('mobile-request', handler)
+    return () => ipcRenderer.removeListener('mobile-request', handler)
+  },
+  mobileReply: (reply: any) => ipcRenderer.send('mobile-reply', reply),
   // Fetch a chapter by book ID and chapter number (optionally with version)
   getChapter: (bookId: number, chapter: number, version?: string) =>
     ipcRenderer.invoke('get-chapter', { bookId, chapter, version }),
@@ -201,13 +216,21 @@ contextBridge.exposeInMainWorld('api', {
   /* -------- agentic layer (added post-recovery) -------- */
 
   // Per-preacher trust meter / auto-mode stats
+  getPreacherLearning: (preacherId: string) => ipcRenderer.invoke('preacher-learning-get', preacherId),
+  savePreacherLearning: (preacherId: string, patch: unknown) => ipcRenderer.invoke('preacher-learning-save', { preacherId, patch }),
+  addMissedReference: (preacherId: string, heard: string) => ipcRenderer.invoke('preacher-review-missed', { preacherId, heard }),
+  useOfflineSpeech: () => ipcRenderer.invoke('preacher-use-offline'),
+  startPreacherSoundCheck: (preacherId: string, promptIndex: number, deviceLabel?: string) => ipcRenderer.invoke('preacher-sound-check-start', { preacherId, promptIndex, deviceLabel }),
+  getPreacherSoundCheck: () => ipcRenderer.invoke('preacher-sound-check-state'),
+  stopPreacherSoundCheck: (sessionId: string) => ipcRenderer.invoke('preacher-sound-check-stop', sessionId),
+  reportMicCaptureError: (message: string) => ipcRenderer.send('mic-capture-error', message),
   getPreacherStats: (preacherId?: string) =>
     ipcRenderer.invoke('get-preacher-stats', preacherId),
   // End-of-service review ritual
   getReviewItems: () => ipcRenderer.invoke('get-review-items'),
   resolveReviewItem: (
     id: string,
-    resolution: 'confirmed' | 'rejected' | 'amended',
+    resolution: 'confirmed' | 'rejected' | 'amended' | 'skipped',
     amendedTo?: { book: string; chapter: number; verse: number | null }
   ) => ipcRenderer.invoke('resolve-review-item', { id, resolution, amendedTo }),
   // Mentioned-but-not-displayed queue
@@ -259,6 +282,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Window-mic capture (used when SoX isn't installed)
   requestMicPermission: () => ipcRenderer.invoke('request-mic-permission'),
+  getAudioCaptureCapabilities: () => ipcRenderer.invoke('get-audio-capture-capabilities'),
   sendAudioChunk: (chunk: ArrayBuffer) => ipcRenderer.send('audio-chunk', chunk),
   sendAudioLevel: (level: number) => ipcRenderer.send('audio-level', level),
   onMicRequest: (callback: (req: { sampleRate: number; deviceLabel?: string }) => void) => {

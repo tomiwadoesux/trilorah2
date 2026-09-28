@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MobileRemotePanel } from './components/MobileRemotePanel';
 import { useAppStore, TABS } from './stores/appStore';
 import { useLiveStore } from './stores/liveStore';
 import { fetchVerseText, formatRef, pct } from './lib/verse';
@@ -91,6 +92,7 @@ function useEngineWiring() {
       api.onMicRequest?.((req) => {
         void startMicCapture(req.sampleRate, req.deviceLabel).catch((e) => {
           console.error('mic capture failed:', e);
+          api.reportMicCaptureError?.(e instanceof Error ? e.message : 'Microphone capture failed');
           app().setAsrStatus('error', e instanceof Error ? e.message : 'microphone capture failed');
         });
       }),
@@ -186,8 +188,8 @@ function MicPicker() {
   const busy = asrStatus === 'listening' || asrStatus === 'connecting';
 
   return (
-    <label className="flex items-center gap-x-1.5" title={busy ? 'stop listening to change the microphone' : 'microphone'}>
-      <span>mic</span>
+    <label className="flex items-center gap-x-1.5" title={busy ? 'stop listening to change the audio input' : 'microphone or computer audio'}>
+      <span>audio</span>
       <select
         value={saved}
         disabled={busy}
@@ -263,6 +265,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-x-5">
             <StatusCluster />
+            <MobileRemotePanel />
             <button
               type="button"
               onClick={() => setTourStep(0)}
@@ -280,12 +283,13 @@ export default function App() {
         )}
       </header>
 
-      {tab === 'live' ? (
-        // The control surface owns the whole viewport below the header.
+      <div style={{ display: tab === 'live' ? 'flex' : 'none', flex: 1, minHeight: 0 }}>
+        {/* The control surface owns the whole viewport below the header. */}
         <main className="min-h-0 flex-1">
           <LiveHost />
         </main>
-      ) : (
+      </div>
+      {tab !== 'live' && (
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-5xl px-6 pb-24 pt-10">
             {tab === 'bible' && <Bible />}

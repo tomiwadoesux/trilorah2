@@ -10,6 +10,8 @@ import {
 } from 'react';
 import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
 import type { LiveItem, ScreenState } from './projector';
+import type { Spoken } from './transcript/types';
+import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
 
 /*
  * The one door between this surface and the real engine.
@@ -86,7 +88,7 @@ export interface EngineValue {
    * The transcript as sentences: what has been SAID (finished lines, newest
    * last) and what is BEING said (the partial, replaced as it grows).
    */
-  spoken: { lines: { id: number; text: string }[]; partial: string };
+  spoken: Spoken;
   /** What the real projector says it is doing. */
   screen: ScreenState;
 
@@ -184,7 +186,6 @@ export function fitRules(verses: { text: string }[], together?: boolean) {
 /** How many transcript lines to keep. Enough to read back, not a log file. */
 const TRANSCRIPT_CAP = 200;
 /** Finished sentences kept for the read-along. It shows six; this is slack. */
-const SPOKEN_CAP = 12;
 /** How many unanswered proposals the rail will hold. */
 const PROPOSAL_CAP = 4;
 
@@ -206,11 +207,10 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const [asrMessage, setAsrMessage] = useState('');
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState<string[]>([]);
-  const [spoken, setSpoken] = useState<{ lines: { id: number; text: string }[]; partial: string }>({
+  const [spoken, setSpoken] = useState<Spoken>({
     lines: [],
     partial: '',
   });
-  const spokenId = useRef(0);
   const [screen, setScreenState] = useState<ScreenState>('live');
   const [proposals, setProposals] = useState<Proposal[]>([]);
 
@@ -279,13 +279,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       api.onTranscriptLine?.((line) => {
         const text = String(line?.text || '').trim();
         if (!text) return;
-        setSpoken((s) =>
-          line.isFinal
-            ? { lines: [...s.lines.slice(-(SPOKEN_CAP - 1)), { id: spokenId.current++, text }], partial: '' }
-            : { ...s, partial: text },
-        );
+        setSpoken((s) => recordTranscriptLine(s, { text, isFinal: line.isFinal }));
       }),
     );
+
+    off.push(api.onVoiceCommand?.((event) => setSpoken((s) => confirmTranscriptCommand(s, event))));
 
     off.push(api.onScreenState?.((s: string) => setScreenState(s as ScreenState)));
 

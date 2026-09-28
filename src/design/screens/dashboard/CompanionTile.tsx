@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cx, surface, Button, SegmentedControl } from '../../../ui';
 import { Panel } from '../parts';
-import { QrRollArt } from '../emptyArt';
+import { EmptyMotion, QrRollArt } from '../emptyArt';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
 
@@ -69,6 +69,15 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
   const [link, setLink] = useState<string | null>(null);
   const [qrSvg, setQrSvg] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [backgroundName,setBackgroundName]=useState<string|null>(null);
+  useEffect(()=>{void window.api?.qrBackground?.('status').then(r=>setBackgroundName(r.name || null)).catch(()=>undefined);},[]);
+  const changeBackground=async(action:'choose'|'clear')=>{
+    try {
+      const result=await window.api?.qrBackground(action);
+      if(result?.success){setBackgroundName(result.name || null);setNote(null);if(live) await showOnLive();}
+      else if(result?.error)setNote(result.error);
+    }catch(error){setNote(String(error));}
+  };
 
   useEffect(() => {
     const api = typeof window === 'undefined' ? undefined : window.api;
@@ -187,9 +196,9 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
                    failed-image read this tile's comment warns about,
                    reached from the other side. The square is real and
                    drawn; the modules are absent. */
-                <span className="tri-play-hover flex h-full w-full items-center justify-center p-2">
+                <EmptyMotion className="flex h-full w-full items-center justify-center p-2">
                   <QrRollArt />
-                </span>
+                </EmptyMotion>
               )}
             </button>
 
@@ -242,6 +251,12 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
       )}
     >
       <RowList rows={ROWS} />
+      <div className="mx-5 my-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tri-ink)]">
+        <p className="font-semibold">Congregation QR background</p>
+        <p className="mt-1 text-xs opacity-70">{backgroundName || 'Dark teal gradient'} · Images always have a 48% dark overlay so they stay visible behind the words.</p>
+        <div className="mt-3 flex gap-2"><Button label="choose image" onClick={()=>void changeBackground('choose')} /><Button label="use gradient" onClick={()=>void changeBackground('clear')} /></div>
+        {note && <p role="alert" className="mt-2 text-xs">{note}</p>}
+      </div>
     </Expandable>
   );
 }

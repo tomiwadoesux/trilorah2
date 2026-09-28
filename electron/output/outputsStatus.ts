@@ -39,6 +39,7 @@ export interface DisplayStatus {
 }
 
 export interface OutputStatus {
+  disabled?: boolean
   id: string
   role: OutputRole
   /** Its window is open right now. */
@@ -99,7 +100,7 @@ export function describeOutputs(input: {
   /** settings.outputRoles */
   roleOverrides?: Partial<Record<string, unknown>> | null
   /** settings.outputDisplays */
-  displayOverrides?: Partial<Record<string, number>> | null
+  displayOverrides?: Partial<Record<string, number | 'none'>> | null
   /** Output ids whose window is open. */
   openIds: readonly string[]
   screenState: ScreenState
@@ -122,7 +123,8 @@ export function describeOutputs(input: {
       return {
         id,
         role: roleFor(id, roleOverrides),
-        open: openIds.includes(id),
+        open: !placement.disabled && openIds.includes(id),
+        disabled: placement.disabled === true,
         displayId: placement.display?.id ?? null,
         fullscreen: placement.fullscreen,
         chosenDisplayId: typeof chosen === 'number' && connected.has(chosen) ? chosen : null

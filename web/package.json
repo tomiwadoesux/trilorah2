@@ -10,9 +10,9 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@solar-icons/react": "2.3.2",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.0",
-    "lucide-react": "^0.460.0",
     "next": "^15.0.3",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

@@ -114,8 +114,84 @@ describe('CorrectionLedger', () => {
     const stats = ledger.stats('p1')
     expect(stats.samples).toBe(2)
     expect(stats.precision).toBe(0.5)
-    // the amended pair became an alias sample
-    expect(ledger.resolveAlias('p1', 'romans eight one')).toBe('Romans 8:11')
+    // Learn the exact reviewed utterance, never a fuzzy number substitution.
+    expect(ledger.correctedUtterance('p1', 'romans eight one')).toBe('Romans 8:11')
+    expect(ledger.correctedUtterance('p1', 'romans eight eighteen')).toBeNull()
+    expect(ledger.resolveAlias('p1', 'romans eight one')).toBeNull()
+  })
+})
+
+describe('verified review lifecycle', () => {
+  const candidate = (ledger: CorrectionLedger, preacherId = 'p1') => ledger.addReviewItem({
+    preacherId, ts: now, kind: 'detection', heard: 'first john four eight',
+    proposed: { book: 'John', chapter: 4, verse: 8 },
+  })
+
+  it('keeps unanswered examples across service end and restart without giving trust', () => {
+    const ledger = makeLedger()
+    const item = candidate(ledger)
+    ledger.endService('p1')
+    ledger.clearReview()
+    const fresh = makeLedger()
+    expect(fresh.getReviewItems('p1').map((r) => r.id)).toEqual([item.id])
+    expect(fresh.stats('p1')).toMatchObject({ samples: 0, services: 0, autoModeEligible: false })
+  })
+
+  it('attributes a late answer to its original service and preacher, once', () => {
+    const ledger = makeLedger()
+    const a = candidate(ledger)
+    ledger.endService('p1')
+    now += 86_400_000
+    const b = candidate(ledger)
+    candidate(ledger, 'p2')
+    expect(ledger.resolveReviewItem('p2', a.id, 'confirmed')).toBe(false)
+    expect(ledger.resolveReviewItem(null, a.id, 'confirmed')).toBe(true)
+    expect(ledger.resolveReviewItem(null, a.id, 'confirmed')).toBe(false)
+    expect(ledger.stats('p1')).toMatchObject({ samples: 1, services: 1 })
+    expect(ledger.stats('p2').samples).toBe(0)
+    ledger.resolveReviewItem(null, b.id, 'rejected')
+    expect(ledger.stats('p1')).toMatchObject({ samples: 2, services: 2, precision: 0.5 })
+    expect(makeLedger().stats('p1').samples).toBe(2)
+  })
+
+  it('a changed passage is only a candidate, and skipping contributes no score', () => {
+    const ledger = makeLedger()
+    const a = candidate(ledger)
+    ledger.markOperatorChange('p1', a.id)
+    expect(ledger.getReviewItems('p1')[0].reason).toBe('operator-change')
+    expect(ledger.stats('p1').samples).toBe(0)
+    ledger.resolveReviewItem(null, a.id, 'skipped')
+    expect(ledger.stats('p1').samples).toBe(0)
+    expect(ledger.getReviewItems('p1')).toHaveLength(0)
+  })
+
+  it('keeps a missed-reference correction without miscounting it as a detected verse', () => {
+    const ledger = makeLedger()
+    const item = ledger.addReviewItem({ preacherId: 'p1', ts: now, kind: 'miss', heard: 'rome and eight one', proposed: null })
+    expect(ledger.resolveReviewItem(null, item.id, 'confirmed')).toBe(false)
+    ledger.resolveReviewItem(null, item.id, 'amended', { book: 'Romans', chapter: 8, verse: 1 })
+    expect(ledger.stats('p1').samples).toBe(0)
+    expect(ledger.correctedUtterance('p1', 'rome and eight one')).toBe('Romans 8:1')
+    expect(ledger.correctedUtterance('p2', 'rome and eight one')).toBeNull()
+  })
+
+  it('preserves legacy totals but excludes silent confirmations from eligibility', () => {
+    fs.writeFileSync(path.join(dir, 'old.json'), JSON.stringify({ preacherId: 'old', name: 'Old', samples: [], aliases: {}, mature: true, autoModeEnabled: true,
+      services: Array.from({ length: 5 }, () => ({ date: '2025-01-01', detections: 100, confirmed: 100, corrections: 0 })) }))
+    const ledger = makeLedger()
+    expect(ledger.stats('old')).toMatchObject({ samples: 0, autoModeEligible: false, autoModeEnabled: false, mature: false })
+    expect(ledger.legacySamples('old')).toBe(500)
+    expect(ledger.load('old').services).toHaveLength(5)
+  })
+
+  it('deduplicates repeats, bounds review storage and deletes the whole ledger', () => {
+    const ledger = makeLedger()
+    expect(candidate(ledger).id).toBe(candidate(ledger).id)
+    for (let i = 0; i < 210; i++) ledger.addReviewItem({ preacherId: 'p1', kind: 'miss', heard: `missed passage ${i}`, proposed: null, ts: now++ })
+    expect(ledger.getReviewItems('p1')).toHaveLength(200)
+    expect(ledger.stats('p1').samples).toBe(0)
+    ledger.remove('p1')
+    expect(makeLedger().getReviewItems('p1')).toHaveLength(0)
   })
 })
 

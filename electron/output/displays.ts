@@ -24,6 +24,7 @@ export interface DisplayLike {
 }
 
 export interface Placement {
+  disabled?: boolean
   /** Display the window should open on, or null for "windowed on the primary". */
   display: DisplayLike | null
   fullscreen: boolean
@@ -38,9 +39,10 @@ export function placeOutput(
   primaryId: number,
   /** Optional operator choice per output, by display id. Wins when the
    *  display is still connected; ignored when it is not. */
-  overrides: Partial<Record<string, number>> = {}
+  overrides: Partial<Record<string, number | 'none'>> = {}
 ): Placement {
   const chosen = overrides[outputId]
+  if (chosen === 'none') return { display: null, fullscreen: false, disabled: true }
   if (chosen !== undefined) {
     const d = displays.find((x) => x.id === chosen)
     if (d) return { display: d, fullscreen: d.id !== primaryId }

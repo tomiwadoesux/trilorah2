@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { cx, surface, Button, CheckIcon, PlusIcon } from '../../../ui';
+import { cx, surface, Button, CheckIcon, PlusIcon, CloseIcon } from '../../../ui';
 import { Panel, Pill } from '../parts';
 import { Expandable } from './expand';
 import { FIELD, Toggle } from '../settingsRows';
@@ -60,7 +60,7 @@ function Chip({ children, onRemove }: { children: string; onRemove?: () => void 
       "{children}"
       {onRemove && (
         <button type="button" onClick={onRemove} title="remove" className="grid size-[14px] place-items-center rounded-full text-[rgb(229_243_242_/_0.35)] opacity-0 transition-opacity hover:text-[var(--tri-ink)] group-hover/chip:opacity-100">
-          <PlusIcon size={8} className="rotate-45" />
+          <CloseIcon size={8} />
         </button>
       )}
     </span>
@@ -82,7 +82,7 @@ function SuggestionRow({ s, onAccept, onDismiss }: { s: Suggestion; onAccept: ()
         <CheckIcon size={11} />
       </button>
       <button type="button" onClick={onDismiss} title="not a command" className={cx(surface({ tone: 'ash', interactive: true }), 'grid size-[22px] place-items-center text-[rgb(229_243_242_/_0.45)] opacity-0 transition-opacity group-hover/sug:opacity-100 focus-visible:opacity-100')} style={{ borderRadius: 7 }}>
-        <PlusIcon size={10} className="rotate-45" />
+        <CloseIcon size={10} />
       </button>
     </div>
   );

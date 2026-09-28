@@ -1,0 +1,110 @@
+.preaching-card { container-type: size; }
+.preaching-card__content { display:flex; flex-direction:column; height:100%; min-height:0; }
+.preaching-card__header {
+  display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+  flex-shrink:0; width:100%; padding:18px 20px 20px; text-align:left;
+  background:none; border:0; cursor:pointer;
+}
+.preaching-card__header > svg { margin-top:3px; color:rgb(229 243 242 / .35); transition:color 200ms; }
+.preaching-card__header:hover > svg { color:#8fd3c0; }
+.preaching-card__title { color:var(--tri-ink); font-size:calc(var(--tri-size-eyebrow) + 1.5px); line-height:18px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; }
+.preaching-card__subtitle { margin-top:6px; font-size:11px; line-height:16px; color:rgb(229 243 242 / .45); }
+.preaching-card__history { display:flex; flex-direction:column; flex:1; min-height:0; padding:0 16px 0 20px; }
+.preaching-card__history-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; cursor:text; }
+.preaching-card__sentences { display:flex; flex-direction:column; gap:16px; padding:2px 5px 4px 0; }
+.preaching-card__sentences p { overflow-wrap:anywhere; font-size:15px; line-height:24px; font-weight:400; color:var(--tri-ink-muted); }
+.preaching-card__empty { font-size:13px; line-height:22px; color:var(--tri-ink-muted); }
+.preaching-card__live { flex-shrink:0; margin:18px 20px 0; padding-top:16px; border-top:1px solid rgb(229 243 242 / .12); }
+.preaching-card__caption { position:relative; height:72px; overflow:hidden; font-size:17px; font-weight:500; line-height:24px; letter-spacing:-.015em; cursor:text; }
+.preaching-card__placeholder { color:rgb(229 243 242 / .35); font-weight:400; font-size:14px; }
+.preaching-card__footer {
+  display:flex; align-items:center; gap:7px; flex-shrink:0; align-self:flex-start;
+  padding:16px 20px 18px; color:var(--tri-ink-muted); font-size:11px; line-height:16px;
+  background:none; border:0; cursor:pointer;
+}
+.preaching-card__footer svg { color:#8fd3c0; }
+.preaching-card__footer:hover { color:var(--tri-ink); }
+.preaching-card__header:focus-visible, .preaching-card__footer:focus-visible,
+.preaching-card__history-scroll:focus-visible, .transcript-reader__scroll:focus-visible { outline:1px solid rgb(228 216 122 / .45); outline-offset:-2px; }
+
+/* A tentative book responds in colour. The icon and pill form once a
+   complete verse is verified; subsequent ASR packets keep that same shape. */
+.transcript-marked { --transcript-ref-color:var(--tri-accent-yellow); }
+.transcript-marked[data-dim] { --transcript-ref-color:rgb(228 216 122 / .8); }
+.transcript-word { color:inherit; transition:color 550ms ease, text-shadow 550ms ease; }
+.transcript-word[data-reference-state='possible'] { color:var(--tri-accent-yellow); animation:transcript-book-hint 1000ms ease-out both; }
+.transcript-word[data-reference-state='confirmed'] { color:var(--transcript-ref-color); animation:transcript-reference-settle 750ms ease-out; }
+.transcript-reference__icon { display:none; }
+.transcript-reference[data-pill], .transcript-command.tri-surface {
+  /* The sandbox's yellow surface uses its existing four stops and angle.
+     Only its fill alpha changes here; the words and icons stay legible. */
+  --tri-alpha:.08; --tri-a-mid:.08; --tri-a-edge:.08;
+  display:inline-flex; align-items:baseline; gap:6px; max-width:100%; padding:0 6px;
+  border-radius:5px; vertical-align:baseline; color:var(--transcript-ref-color);
+  background-color:transparent; box-shadow:inset 0 0 0 1px rgb(var(--tri-caution-2) / .12);
+  animation:transcript-pill-form 520ms ease-out;
+}
+.transcript-reference[data-pill] .transcript-reference__icon { display:inline-flex; align-self:center; flex-shrink:0; line-height:0; }
+.transcript-reference[data-pill] .transcript-reference__words { min-width:0; overflow-wrap:anywhere; }
+.transcript-reference[data-pill] .transcript-word { animation:none; }
+.transcript-command__icon { display:inline-flex; align-self:center; flex-shrink:0; line-height:0; }
+.transcript-command__label { min-width:0; overflow-wrap:anywhere; }
+@keyframes transcript-pill-form {
+  from { --tri-a-mid:0; --tri-a-edge:0; box-shadow:inset 0 0 0 1px transparent; }
+  35% { --tri-a-mid:.14; --tri-a-edge:.12; box-shadow:inset 0 0 0 1px rgb(var(--tri-caution-2) / .20); }
+  to { --tri-a-mid:.08; --tri-a-edge:.08; box-shadow:inset 0 0 0 1px rgb(var(--tri-caution-2) / .12); }
+}
+@keyframes transcript-book-hint {
+  0% { color:inherit; text-shadow:0 0 0 transparent; }
+  40% { color:#fff3ac; text-shadow:0 0 12px rgb(228 216 122 / .4); }
+  100% { color:var(--tri-accent-yellow); text-shadow:0 0 0 transparent; }
+}
+@keyframes transcript-reference-settle {
+  0% { text-shadow:0 0 10px rgb(228 216 122 / .32); }
+  100% { text-shadow:0 0 0 transparent; }
+}
+.preaching-card__history-scroll, .transcript-reader__scroll { scrollbar-width:thin; scrollbar-color:rgb(229 243 242 / .18) transparent; }
+
+.transcript-dialog-body { display:flex; flex:1; min-height:0; overflow:hidden; padding:18px 24px 0; }
+.transcript-reader { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; }
+.transcript-reader__toolbar { display:flex; align-items:center; gap:16px; flex-shrink:0; padding-bottom:20px; border-bottom:1px solid rgb(229 243 242 / .10); }
+.transcript-reader__search { display:block; flex:1; min-width:0; max-width:420px; }
+.transcript-reader__toolbar > button { margin-left:auto; }
+.transcript-reader__scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.transcript-reader__entries { max-width:720px; margin:0 auto; padding:12px 12px 24px 0; }
+.transcript-reader__entry { display:grid; grid-template-columns:38px minmax(0,1fr); gap:20px; padding:20px 0; border-bottom:1px solid rgb(229 243 242 / .055); }
+.transcript-reader__number { padding-top:5px; font-size:10px; line-height:20px; font-variant-numeric:tabular-nums; letter-spacing:.06em; color:rgb(229 243 242 / .30); text-align:right; user-select:none; }
+.transcript-reader__entry p { font-size:16px; line-height:28px; color:rgb(229 243 242 / .83); overflow-wrap:anywhere; max-width:64ch; user-select:text; }
+.transcript-reader__entry[data-partial] .transcript-reader__number { color:var(--tri-accent-yellow); }
+.transcript-reader__entry[data-partial] p { color:var(--tri-ink); }
+.transcript-reader__entry:last-child { border-bottom:0; }
+.transcript-reader__empty { padding:28px 0; font-size:14px; line-height:24px; color:var(--tri-ink-muted); }
+.transcript-reader__footer { display:flex; justify-content:space-between; gap:16px; flex-shrink:0; padding:16px 0 20px; border-top:1px solid rgb(229 243 242 / .10); font-size:11px; line-height:18px; color:rgb(229 243 242 / .45); }
+@container (max-width:350px) {
+ .preaching-card__header { padding:14px 16px 16px; gap:8px; }
+ .preaching-card__title { letter-spacing:.1em; font-size:11px; }
+ .preaching-card__history { padding:0 12px 0 16px; }
+ .preaching-card__live { margin-left:16px; margin-right:16px; }
+ .preaching-card__caption { font-size:15px; }
+ .preaching-card__footer { padding:12px 16px 14px; }
+}
+@container (max-height:300px) {
+ .preaching-card__header { padding-bottom:12px; }
+ .preaching-card__subtitle { display:none; }
+ .preaching-card__sentences { gap:12px; }
+ .preaching-card__sentences p { font-size:13px; line-height:20px; }
+ .preaching-card__live { margin-top:12px; padding-top:12px; }
+ .preaching-card__footer { padding-top:10px; padding-bottom:12px; }
+}
+@media (max-width:600px) {
+ .transcript-dialog-body { padding-left:18px; padding-right:18px; }
+ .transcript-reader__toolbar { gap:10px; }
+ .transcript-reader__entry { grid-template-columns:25px minmax(0,1fr); gap:12px; padding:16px 0; }
+ .transcript-reader__entry p { font-size:15px; line-height:26px; }
+ .transcript-reader__footer { font-size:10px; gap:10px; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .transcript-word { transition:none; }
+ .transcript-word[data-reference-state] { animation:none; }
+ .transcript-reference[data-pill], .transcript-command.tri-surface { animation:none; }
+}

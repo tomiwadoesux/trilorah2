@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { DOCK_CLEARANCE } from './songs/TabDock';
 import { cx, SearchField, SegmentedControl, type SegmentOption } from '../../ui';
 import { PRESET_GROUPS, presetsIn, type PresetGroup, type StockPreset } from '../../lib/stockPresets';
 import type { ThemeMedia } from './mediaLibrary';
@@ -173,7 +172,7 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
         })}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1" style={{ paddingBottom: DOCK_CLEARANCE }}>
+      <div className="min-h-0 flex-1 overflow-y-auto px-1" style={{ paddingBottom: 'var(--tri-gap)' }}>
         {noEngine ? (
           <Note>no engine — the stock library needs the app running</Note>
         ) : noKey ? (

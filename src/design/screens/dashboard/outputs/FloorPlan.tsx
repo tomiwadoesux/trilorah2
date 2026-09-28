@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { cx } from '../../../../ui';
+import { ChevronLeftIcon, ChevronRightIcon, cx } from '../../../../ui';
 import { Panel } from '../../parts';
 import { PresentationIcon } from '../../../../ui';
-import { MUTED, ROLE_NAME, ROLE_AUDIENCE, STATE_WORD, type OutputsFace, type Screen, type Role } from './types';
+import { MUTED, ROLE_NAME, ROLE_AUDIENCE, STATE_WORD, type OutputsFace, type Screen } from './types';
 
 /*
  * A · floor plan. The owner's pick, 2026-09-27; redrawn the same day
@@ -28,43 +28,30 @@ import { MUTED, ROLE_NAME, ROLE_AUDIENCE, STATE_WORD, type OutputsFace, type Scr
 const INK_LIVE = 'rgb(229 243 242 / 0.55)';
 const INK_OFF = 'rgb(229 243 242 / 0.14)';
 
-/* The shape on the screen, per job. Every measure is a percentage of the
-   screen, so the same drawing works at any size. */
-function Shape({ role, ink }: { role: Role; ink: string }) {
-  const s = { background: ink };
-  switch (role) {
-    case 'projector':
-      return <span className="absolute left-[24%] top-[40%] h-[13%] w-[52%] rounded-[2px]" style={s} />;
-    case 'stream':
-      return <span className="absolute bottom-[12%] left-[8%] h-[16%] w-[84%] rounded-[2px]" style={s} />;
-    case 'stage':
-      return (
-        <>
-          <span className="absolute right-[7%] top-[10%] h-[12%] w-[18%] rounded-[1px]" style={s} />
-          <span className="absolute left-[24%] top-[42%] h-[11%] w-[52%] rounded-[2px]" style={s} />
-          <span className="absolute bottom-[10%] left-[7%] h-[9%] w-[34%] rounded-[1px]" style={s} />
-        </>
-      );
-    case 'timer':
-      return <span className="absolute left-[30%] top-[36%] h-[28%] w-[40%] rounded-[2px]" style={s} />;
-  }
-}
-
+/** A recognizable display silhouette; the marks inside describe its assigned job. */
 function ScreenBox({ s, className }: { s: Screen; className?: string }) {
-  const live = s.state === 'live' && !s.windowed;
+  const live = s.state === 'live' && !s.windowed && !s.disabled;
+  const ink = live ? INK_LIVE : INK_OFF;
   return (
-    <div
-      className={cx(
-        'relative overflow-hidden rounded-[4px]',
-        s.windowed ? 'border border-dashed border-[rgb(229_243_242_/_0.18)]' : 'bg-black shadow-[inset_0_0_0_1px_rgb(229_243_242_/_0.14)]',
-        className,
-      )}
-    >
-      <Shape role={s.role} ink={live ? INK_LIVE : INK_OFF} />
+    <div className={cx('flex min-h-0 flex-col items-center justify-center gap-3 px-4 py-3', className)}>
+      <svg viewBox="0 0 360 250" aria-hidden="true" className="min-h-0 w-full max-w-[380px] flex-1" preserveAspectRatio="xMidYMid meet" fill="none">
+        <rect x="25" y="20" width="310" height="190" rx="12" fill="#171b1a" stroke="rgb(229 243 242 / .3)" strokeWidth="1.5" strokeDasharray={s.windowed ? '5 5' : undefined}/>
+        <rect x="35" y="30" width="290" height="164" rx="5" fill="#0b0e0d" stroke="rgb(229 243 242 / .09)"/>
+        <path d="M165 211v19h30v-19M143 235h74" stroke="rgb(229 243 242 / .35)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="180" cy="202" r="2" fill={live ? '#8fd3c0' : 'rgb(229 243 242 / .25)'}/>
+        <g stroke={ink} strokeWidth="5" strokeLinecap="round">
+          {s.role === 'projector' && <><path d="M110 98h140M125 113h110M145 128h70"/></>}
+          {s.role === 'stream' && <><rect x="55" y="153" width="250" height="22" rx="4" fill={ink} stroke="none"/><path d="m170 83 26 18-26 18Z" strokeWidth="2"/></>}
+          {s.role === 'stage' && <><path d="M245 52h55M85 100h190M105 117h150M57 175h90"/></>}
+          {s.role === 'timer' && <><rect x="117" y="90" width="43" height="42" rx="7"/><rect x="200" y="90" width="43" height="42" rx="7"/><path d="M180 102v1M180 121v1"/></>}
+        </g>
+      </svg>
+      <span className="shrink-0 text-center text-[11px] leading-snug" style={{ color: MUTED }}>
+        {s.disabled ? 'Output is off · click to set up' : s.windowed ? 'Using this laptop · click to assign a display' : 'Click to manage this screen'}
+      </span>
     </div>
   );
 }
-
 /* A step through the screens. Bottom right, over the picture, because that
    is the corner the eye is not reading and the hand already expects a next
    control to be. */
@@ -85,9 +72,7 @@ function Step({ back, onClick, disabled }: { back?: boolean; onClick: () => void
         'active:scale-[var(--tri-press-scale)] disabled:pointer-events-none disabled:opacity-25',
       )}
     >
-      <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d={back ? 'M10 3 L5 8 L10 13' : 'M6 3 L11 8 L6 13'} />
-      </svg>
+      {back ? <ChevronLeftIcon size={14} /> : <ChevronRightIcon size={14} />}
     </button>
   );
 }

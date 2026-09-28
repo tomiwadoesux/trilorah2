@@ -1,0 +1,60 @@
+/* Congregation view: same four-stop teal material as the desktop, scoped to
+   this route so account and operator screens keep their own presentation. */
+.companion-shell {
+  --companion-ink: #e5f3f2;
+  --companion-muted: #a5bbb5;
+  --companion-mint: #8fd3c0;
+  --companion-surface: linear-gradient(33deg, rgb(7 39 28 / .65) 10.054%, rgb(29 50 47 / .65) 36.448%, rgb(26 54 48 / .65) 63.057%, rgb(26 51 54 / .65) 89.946%);
+  height: 100vh;
+  height: 100dvh;
+  max-width: 760px;
+  margin: auto;
+  background: #090b0c;
+  color: var(--companion-ink);
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.companion-header { padding: max(20px, env(safe-area-inset-top)) 20px 0; flex-shrink: 0; }
+.companion-brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 600; letter-spacing: -.6px; margin-bottom: 22px; }
+.companion-mark { width: 30px; height: 30px; display: inline-grid; place-items: center; background: var(--companion-surface); border: 1px solid #8fd3c030; color: var(--companion-mint); border-radius: 10px; font-size: 19px; }
+.companion-brand-note { margin-left: auto; color: var(--companion-muted); font-size: 10px; font-weight: 400; letter-spacing: .1px; }
+.companion-church { background: var(--companion-surface); border: 1px solid #8fd3c024; border-radius: 24px; padding: 20px; box-shadow: inset 0 1px 0 #ffffff08; }
+.companion-church > div { gap: 14px; flex-wrap: wrap; }
+.companion-church h1 { font-size: 19px; line-height: 1.3; letter-spacing: -.5px; overflow-wrap: anywhere; }
+.companion-church p { font-size: 12px; line-height: 1.5; margin-top: 7px; }
+.companion-content { position: relative; }
+.companion-section-heading { padding: 26px 24px 10px; flex-shrink: 0; }
+.companion-section-heading h2 { font-size: 12px; font-weight: 600; letter-spacing: .3px; color: var(--companion-mint); }
+.companion-section-heading p { font-size: 11px; color: var(--companion-muted); margin-top: 5px; }
+.companion-shell .transcript-words { padding: 12px 24px 24px; scrollbar-width: thin; scrollbar-color: #2b413b transparent; }
+.companion-shell .transcript-words p { font-size: var(--reading-size,21px); line-height: 1.8; font-weight: 400; letter-spacing: -.2px; }
+.companion-photo { background-size: cover; background-position: center; }
+.companion-photo .transcript-words { text-shadow: 0 1px 3px #000c; }
+.reading-options { position: relative; margin-top: 10px; }
+.reading-options-trigger { min-height: 42px; padding: 8px 2px; font-size: 17px; color: var(--companion-mint); }
+.reading-options-trigger span { font-size: 11px; margin-left: 7px; color: var(--companion-muted); }
+#reading-options-panel { position: absolute; top: 100%; left: 0; right: 0; z-index: 25; padding: 18px; border: 1px solid #8fd3c035; border-radius: 20px; background: #141b1b; box-shadow: 0 15px 35px #0008; }
+.reading-options-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.reading-options-heading h2 { font-size: 14px; font-weight: 600; }
+.reading-options-heading button { width: 44px; height: 44px; font-size: 23px; }
+#reading-options-panel label { display: flex; justify-content: space-between; font-size: 12px; margin: 14px 0; }
+#reading-size { width: 100%; accent-color: #8fd3c0; }
+#reading-options-panel p { font-size: 12px; margin-top: 16px; }
+#reading-options-panel small { display: block; font-size: 11px; color: #a5bbb5; line-height: 1.7; margin-top: 6px; }
+.reading-options-actions { display: flex; gap: 8px; margin-top: 14px; }
+.reading-options-actions button { flex: 1; min-height: 44px; border: 1px solid #8fd3c030; border-radius: 13px; background: var(--companion-surface); font-size: 12px; padding: 8px; }
+.reading-options-actions button:disabled { opacity: .4; }
+.companion-shell .text-brand { color: var(--companion-mint); }
+.companion-shell .bg-brand { background-color: var(--companion-mint); }
+.companion-shell .text-gray-500, .companion-shell .text-gray-600 { color: var(--companion-muted); }
+.companion-shell .verse-glow { box-shadow: none; animation: none; background: var(--companion-surface); border-color: #8fd3c045; padding: 3px 10px; font-size: 12px; }
+.companion-nav { flex-shrink: 0; gap: 4px; padding: 10px 12px max(12px, env(safe-area-inset-bottom)); background: #0d1112; border-top: 1px solid #ffffff0b; }
+.companion-tab { min-width: 0; min-height: 56px; border: 1px solid transparent; border-radius: 17px; gap: 6px; background: transparent; color: var(--companion-muted); touch-action: manipulation; }
+.companion-tab[aria-current=page] { color: var(--companion-ink); background: var(--companion-surface); border-color: #8fd3c02b; }
+.companion-shell button:focus-visible { outline: 2px solid var(--companion-mint); outline-offset: 3px; }
+.companion-shell button:active { opacity: .75; }
+.companion-eyebrow { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--companion-mint); }
+.companion-waiting { gap: 16px; background: var(--companion-surface), #090b0c; }
+.companion-waiting > p:last-child { max-width: 310px; line-height: 1.8; }
+.companion-waiting .companion-mark { width: 54px; height: 54px; border-radius: 18px; font-size: 30px; margin-bottom: 14px; }
+@media(max-height:650px) { .companion-brand { margin-bottom: 10px; } .companion-church { padding: 14px; } .companion-section-heading { padding-top: 16px; } }
+@media(prefers-reduced-motion:reduce) { .companion-shell *, .companion-shell *::before, .companion-shell *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
