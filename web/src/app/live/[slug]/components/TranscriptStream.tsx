@@ -127,13 +127,23 @@ export default function TranscriptStream({
       // the service; the deliberate hold still applies so words do not land early.
       return Math.max(0, fromPlayer - DEFAULT_HOLD_MS / 1000);
     }
+    // Only assume stream latency when there is actually a stream to be behind.
+    //
+    // The congregant sitting in the building is the common case and they are
+    // behind the preacher by nothing at all, but this subtracted a full
+    // twenty seconds of YouTube latency from their playhead regardless. The
+    // words were on the page, yet the highlight and the auto-scroll were
+    // parked ~24s back down the transcript, so the live word never showed
+    // while the preacher was speaking. The deliberate hold still applies —
+    // that one is about Deepgram revising its tail, not about the stream.
+    const assumedStreamDelay = streamUrl ? DEFAULT_STREAM_DELAY_MS : 0;
     return playheadSeconds(
       Date.now(),
       startedAtMs,
-      DEFAULT_STREAM_DELAY_MS + nudgeMs,
+      assumedStreamDelay + nudgeMs,
       DEFAULT_HOLD_MS,
     );
-  }, [startedAtMs, nudgeMs]);
+  }, [startedAtMs, nudgeMs, streamUrl]);
 
   const playhead = usePlayhead(computePlayhead);
 

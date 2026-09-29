@@ -216,15 +216,29 @@ export function ScriptureReferenceInput({
     }
   }, [value, books]);
 
+  /*
+   * What ← took off, in the order it would be typed again.
+   *
+   * `undone` is a stack — newest last — because that is how ← pushes and →
+   * pops. Read left to right it is the tail of the reference that used to be
+   * there, which is what gets drawn behind the caret.
+   */
+  const deleted = useMemo(() => [...undone].reverse().join(''), [undone]);
+
   /** The greyed remainder — only ever the rest of a book name. */
   const ghost = useMemo(() => {
+    /* Deleted text owns the space behind the caret while it is showing.
+       Completing "psal" to "Psalms" here would claim the operator is about
+       to get a word they did not delete, and → would then do the other
+       thing than the one on screen. */
+    if (undone.length) return '';
     if (p.chapter !== null || !p.book.trim() || lockedBook) return '';
     const pick = bookIndex >= 0 ? bookIndex : matches[highlight] ?? matches[0];
     if (pick === undefined) return '';
     const name = books[pick].name;
     const typed = p.book.trimStart();
     return name.toLowerCase().startsWith(typed.toLowerCase()) ? name.slice(typed.length) : '';
-  }, [books, p, bookIndex, matches, highlight, lockedBook]);
+  }, [books, p, bookIndex, matches, highlight, lockedBook, undone.length]);
 
   /** The rule, applied to a whole candidate string. */
   const viable = (next: string): boolean => {
@@ -420,19 +434,50 @@ export function ScriptureReferenceInput({
       }
     }
 
-    /* ← takes the last character off and remembers it. */
+    /*
+     * ← takes the last character off and remembers it, so → can put it back.
+     *
+     * It also gives back the segment it just reached into. A locked segment is
+     * dimmed and finished; if ← removed a digit from the chapter but left the
+     * chapter locked, the operator would be staring at a half-erased number
+     * they are not allowed to retype. Editing backwards through the reference
+     * is the whole point of the key, so the locks follow the caret out.
+     */
     if (e.key === 'ArrowLeft' && plainArrow) {
       e.preventDefault();
       if (!text) {
         nudge();
         return;
       }
+      const next = text.slice(0, -1);
+      const n = parts(next);
+      /* Reopen whatever the shortened text no longer finishes. Each test is
+         "is this segment still complete?", not "which key was pressed", so a
+         single ← that erases a separator reopens exactly one stage. */
+      if (lockedVerse && !(n.verse && n.verse.trim() !== '')) setLockedVerse(false);
+      if (lockedChapter && !/[:.]|\d\s/.test(next.slice(n.book.length))) setLockedChapter(false);
+      if (lockedBook && (n.chapter === null || n.chapter === '')) setLockedBook(false);
       setUndone((u) => [...u, text.slice(-1)]);
-      commit(text.slice(0, -1), true);
+      commit(next, true);
       return;
     }
 
-    /* → puts back whatever ← took, one character at a time. */
+    /*
+     * → walks forward, and "forward" means whatever is actually in front of
+     * the caret:
+     *
+     *   1. Text ← took off, shown greyed behind the caret. It goes back one
+     *      character at a time, so what is on screen is what → will do next.
+     *   2. The rest of a book name, once there is nothing left to restore.
+     *   3. The next segment of the reference — book → chapter → verse, the
+     *      same staged walk Tab and Enter take.
+     *
+     * Priority matters and is not arbitrary: restoring beats advancing so
+     * that ← and → stay each other's inverse, which is the property that
+     * makes backing up to fix a chapter safe. Once the deleted tail is spent
+     * the key is free, and the operator gets the segment walk they would
+     * otherwise have to reach for Tab to get.
+     */
     if (e.key === 'ArrowRight' && plainArrow) {
       e.preventDefault();
       if (undone.length) {
@@ -442,7 +487,7 @@ export function ScriptureReferenceInput({
         return;
       }
       if (ghost) acceptGhost();
-      else nudge();
+      else if (!advance()) nudge();
       return;
     }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -476,7 +521,7 @@ export function ScriptureReferenceInput({
    * - Currently active segment renders with full opacity (100% white).
    */
   const renderSegments = () => {
-    if (!text && !ghost) return null;
+    if (!text && !ghost && !deleted) return null;
 
     const n = parts(text);
     const bookStr = n.book;
@@ -534,6 +579,18 @@ export function ScriptureReferenceInput({
             )}
           >
             {verseStr}
+          </span>
+        )}
+        {/*
+          What ← took off, still legible behind the caret.
+          Dimmer than the book-completion ghost: that one is a suggestion the
+          field is making, this one is the operator's own text being held for
+          them, and they should not read as the same thing. It is also what
+          tells them → will put a character back rather than advance.
+        */}
+        {deleted && (
+          <span className="text-[rgb(229_243_242_/_0.18)] transition-opacity duration-150">
+            {deleted}
           </span>
         )}
       </div>

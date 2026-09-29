@@ -65,6 +65,34 @@ function startFlushLoop(): void {
   }, FLUSH_INTERVAL_MS)
 }
 
+/**
+ * Push the queue now rather than at the next 15s tick.
+ *
+ * The flush loop alone is fine for notes and attendance, but it is the whole
+ * reason a congregant's phone lagged the room: a verse the operator put on the
+ * wall sat in the local queue for up to fifteen seconds before it existed in
+ * the cloud at all, so realtime had nothing to deliver and the page only caught
+ * up on the next reload. Transcript chunks had the same problem, arriving in
+ * fifteen-second bursts instead of as they were spoken.
+ *
+ * Coalesced on a short timer so a burst of chunks still travels as one round
+ * trip, and silent on failure — the periodic loop remains the retry path, and
+ * flush() itself is a no-op while a flush is already in flight.
+ */
+let nudgeTimer: NodeJS.Timeout | null = null
+const NUDGE_MS = 250
+
+function flushSoon(): void {
+  if (!isCloudConfigured()) return
+  if (nudgeTimer) return
+  nudgeTimer = setTimeout(() => {
+    nudgeTimer = null
+    void flush(applyOp).catch(() => {
+      /* the periodic loop retries */
+    })
+  }, NUDGE_MS)
+}
+
 export function initCloudSync(): void {
   if (!isCloudConfigured()) {
     console.log('☁️  CloudSync inactive — Supabase not configured')
@@ -139,6 +167,7 @@ export function pushSegment(type: string, confidence = 1): void {
       started_at: new Date().toISOString()
     }
   })
+  flushSoon()
 }
 
 export function pushTranscriptChunk(
@@ -165,6 +194,7 @@ export function pushTranscriptChunk(
       timestamp: new Date().toISOString()
     }
   })
+  flushSoon()
 }
 
 export function pushDetectedVerse(
@@ -188,6 +218,7 @@ export function pushDetectedVerse(
       pushed_at: pushedToLive ? new Date().toISOString() : null
     }
   })
+  flushSoon()
   return id
 }
 
@@ -202,6 +233,7 @@ export function markVersePushed(verseId: string): void {
       pushed_at: new Date().toISOString()
     }
   })
+  flushSoon()
 }
 
 export function upsertNotes(notes: any): void {

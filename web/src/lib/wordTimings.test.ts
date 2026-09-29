@@ -28,6 +28,16 @@ describe("playheadSeconds — the room's clock, minus the lags", () => {
     const b = playheadSeconds(start + 61_000, start, 20_000, 4_000);
     expect(b - a).toBeCloseTo(1);
   });
+  /**
+   * The congregant in the building has no stream to be behind, so the caller
+   * passes a zero delay and only the deliberate hold applies. This used to
+   * subtract a full twenty seconds of assumed YouTube latency from them as
+   * well, which parked the highlight ~24s back down the transcript and meant
+   * the live word never appeared while the preacher was speaking.
+   */
+  it("is only the hold behind the room when there is no stream", () => {
+    expect(playheadSeconds(start + 30_000, start, 0, 4_000)).toBeCloseTo(26);
+  });
 });
 
 describe("wordState", () => {

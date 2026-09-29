@@ -55,12 +55,14 @@ export default function CompanionClient({
   const fingerprint = useFingerprint();
 
   const isLive = service && !service.ended_at;
+  /** Identity of the service, stable across row updates to it. */
+  const serviceId = service?.id ?? null;
 
   // Record an audience_sessions row on mount + refresh last_seen every 60s.
   // IP geolocation resolves via ipapi.co client-side — the operator never
   // sees individual IPs, just city/country rolled up on the dashboard.
   useEffect(() => {
-    if (!service || !fingerprint) return;
+    if (!serviceId || !fingerprint) return;
     let cancelled = false;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
 
@@ -90,7 +92,7 @@ export default function CompanionClient({
         .from("audience_sessions")
         .upsert(
           {
-            service_id: service.id,
+            service_id: serviceId,
             account_id: account.id,
             audience_fingerprint: fingerprint,
             ip: ip || null,
@@ -110,7 +112,7 @@ export default function CompanionClient({
         supabase
           .from("audience_sessions")
           .update({ last_seen: new Date().toISOString() })
-          .eq("service_id", service.id)
+          .eq("service_id", serviceId)
           .eq("audience_fingerprint", fingerprint)
           .then(() => {});
       }
@@ -120,11 +122,11 @@ export default function CompanionClient({
       cancelled = true;
       if (heartbeat) clearInterval(heartbeat);
     };
-  }, [service, fingerprint, account.id, supabase]);
+  }, [serviceId, fingerprint, account.id, supabase]);
 
   // Initial backfill — last 30s of transcript + already-pushed verses + notes
   useEffect(() => {
-    if (!service) return;
+    if (!serviceId) return;
     let cancelled = false;
     (async () => {
       // Wide enough to cover the deliberate lag. The transcript shows the room
@@ -141,25 +143,25 @@ export default function CompanionClient({
         supabase
           .from("transcript_chunks")
           .select("*")
-          .eq("service_id", service.id)
+          .eq("service_id", serviceId)
           .gte("timestamp", since)
           .order("timestamp", { ascending: false })
           .limit(120),
         supabase
           .from("detected_verses")
           .select("*")
-          .eq("service_id", service.id)
+          .eq("service_id", serviceId)
           .eq("pushed_to_live", true)
           .order("pushed_at", { ascending: false }),
         supabase
           .from("sermon_notes")
           .select("*")
-          .eq("service_id", service.id)
+          .eq("service_id", serviceId)
           .maybeSingle(),
         supabase
           .from("segments")
           .select("type")
-          .eq("service_id", service.id)
+          .eq("service_id", serviceId)
           .order("started_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -175,20 +177,26 @@ export default function CompanionClient({
     return () => {
       cancelled = true;
     };
-  }, [service, supabase]);
+  }, [serviceId, supabase]);
 
-  // Realtime subscription
+  // Realtime subscription.
+  //
+  // Keyed on the service ID and liveness ONLY, never on the service object.
+  // The `services` UPDATE handler below calls setService with a fresh object,
+  // so depending on `service` meant every row change to the service tore the
+  // channel down and built a new one — losing whatever was published during
+  // the gap — and re-ran the backfill effect for good measure.
   useEffect(() => {
-    if (!service || !isLive) return;
+    if (!serviceId || !isLive) return;
     const channel = supabase
-      .channel(`service-${service.id}`)
+      .channel(`service-${serviceId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "transcript_chunks",
-          filter: `service_id=eq.${service.id}`,
+          filter: `service_id=eq.${serviceId}`,
         },
         (payload) => {
           setTranscript((prev) => {
@@ -203,24 +211,37 @@ export default function CompanionClient({
           event: "INSERT",
           schema: "public",
           table: "segments",
-          filter: `service_id=eq.${service.id}`,
+          filter: `service_id=eq.${serviceId}`,
         },
         (payload) => setCurrentSegment(payload.new.type),
       )
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          // INSERT as well as UPDATE. A verse the operator pushes straight to
+          // the wall is written once, already live (pushDetectedVerse with
+          // pushedToLive true) and never updated again — listening only for
+          // UPDATE meant those verses reached the phone solely via the backfill
+          // on the next reload, which is exactly the "I have to refresh to see
+          // it" symptom. Verses staged to preview first still arrive as the
+          // UPDATE that markVersePushed sends.
+          event: "*",
           schema: "public",
           table: "detected_verses",
-          filter: `service_id=eq.${service.id}`,
+          filter: `service_id=eq.${serviceId}`,
         },
         (payload) => {
-          if (!payload.new.pushed_to_live) return;
+          const row = payload.new as any;
+          if (!row || !row.pushed_to_live) return;
           setVerses((prev) => {
-            const exists = prev.find((v) => v.id === payload.new.id);
-            if (exists) return prev;
-            return [payload.new, ...prev];
+            // Replace rather than bail: the UPDATE that marks a staged verse
+            // live carries pushed_at, and the row may already be here from the
+            // INSERT that created it in the un-pushed state.
+            const i = prev.findIndex((v) => v.id === row.id);
+            if (i === -1) return [row, ...prev];
+            const next = [...prev];
+            next[i] = row;
+            return next;
           });
         },
       )
@@ -230,7 +251,7 @@ export default function CompanionClient({
           event: "*",
           schema: "public",
           table: "sermon_notes",
-          filter: `service_id=eq.${service.id}`,
+          filter: `service_id=eq.${serviceId}`,
         },
         (payload) => setNotes(payload.new),
       )
@@ -240,7 +261,7 @@ export default function CompanionClient({
           event: "UPDATE",
           schema: "public",
           table: "services",
-          filter: `id=eq.${service.id}`,
+          filter: `id=eq.${serviceId}`,
         },
         (payload) => setService(payload.new as Service),
       )
@@ -249,7 +270,7 @@ export default function CompanionClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [service, isLive, supabase]);
+  }, [serviceId, isLive, supabase]);
 
   if (!service) {
     return (

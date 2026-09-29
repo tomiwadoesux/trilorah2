@@ -55,6 +55,7 @@ import {
   SettingsIcon,
 } from '../../ui';
 import { BOOKS, CHAPTER_COUNTS } from '../../lib/books';
+import { STOCK_PRESETS } from '../../lib/stockPresets';
 import { parseVerse } from '../../lib/scriptureText';
 import { AppShell } from './AppShell';
 import { DashboardBento } from './dashboard';
@@ -84,7 +85,7 @@ import {
 } from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
-import { addMedia, mediaSrc, useMediaLibrary, videoLength, videoPoster, type MediaSource, type ThemeMedia } from './mediaLibrary';
+import { addMedia, mediaSrc, randomStill, useMediaLibrary, videoLength, videoPoster, type MediaSource, type ThemeMedia } from './mediaLibrary';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
@@ -292,6 +293,41 @@ interface ThemeSettings {
   layout: TextPositionOption;
   safeMargin: number;
 }
+
+/*
+ * What the preview opens on, before anyone has staged anything.
+ *
+ * Verses a congregation already knows, so an operator who glances at the
+ * preview on a cold start reads something that belongs there. One is picked
+ * per launch. It is staged, never pushed: the wall stays empty until a press.
+ *
+ * Every one of these reads clean in the KJV. That is most of why they are
+ * these and not others: the KJV here keeps supplied words and translators'
+ * notes in braces inside the verse, and Psalm 23:1 or Isaiah 40:31 would
+ * open the preview with them showing.
+ */
+const OPENING_VERSES: readonly { book: string; chapter: number; verse: number }[] = [
+  { book: 'Numbers', chapter: 6, verse: 24 },
+  { book: 'Psalms', chapter: 37, verse: 4 },
+  { book: 'Proverbs', chapter: 3, verse: 5 },
+  { book: 'Proverbs', chapter: 3, verse: 6 },
+  { book: 'Matthew', chapter: 5, verse: 16 },
+  { book: 'Matthew', chapter: 6, verse: 33 },
+  { book: 'John', chapter: 1, verse: 1 },
+  { book: 'John', chapter: 3, verse: 16 },
+  { book: 'John', chapter: 8, verse: 32 },
+  { book: 'John', chapter: 14, verse: 6 },
+  { book: 'Romans', chapter: 10, verse: 9 },
+  { book: '2 Corinthians', chapter: 5, verse: 7 },
+  { book: 'Galatians', chapter: 2, verse: 20 },
+  { book: 'Philippians', chapter: 4, verse: 6 },
+  { book: 'Philippians', chapter: 4, verse: 13 },
+  { book: 'Philippians', chapter: 4, verse: 19 },
+  { book: '2 Timothy', chapter: 1, verse: 7 },
+  { book: 'Hebrews', chapter: 13, verse: 8 },
+  { book: '1 Peter', chapter: 5, verse: 7 },
+  { book: '1 John', chapter: 4, verse: 19 },
+];
 
 const DEFAULT_THEME: ThemeSettings = {
   backgroundId: 'quiet-sea',
@@ -4985,11 +5021,115 @@ function RunDragBridge({ state }: { state?: string }) {
 function LiveBody({ state }: { state?: string }) {
   useMobileRemote();
   const [tab, setTab] = useState(0);
-  const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(DEFAULT_THEME);
+  /* The preview opens on a background off the shelf, so there is a picture
+     in it from the first frame; the one from the online library replaces it
+     a moment later (below). Only the preview: the wall's own background is a
+     setting, and it changes on promote like everything else. */
+  const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(() => ({
+    ...DEFAULT_THEME,
+    backgroundId: randomStill()?.id ?? DEFAULT_THEME.backgroundId,
+  }));
+  const openedOn = useRef(previewTheme.backgroundId);
   const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
 
   const engine = useEngine();
   const projector = useProjector();
+
+  /*
+   * A verse in the preview from the first frame.
+   *
+   * Once per launch, and only into an empty preview — the read is async, and
+   * by the time it lands the operator or the engine may have staged
+   * something, which always wins over a verse nobody chose.
+   */
+  const stagedNow = useRef(projector.preview);
+  stagedNow.current = projector.preview;
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current) return;
+    opened.current = true;
+    const api = window.api;
+    if (!api?.getChapter) return;
+    /* Drawn in a random order and taken in turn: the first that reads clean
+       opens the preview. In the KJV that is the first drawn; the check is
+       for the other versions, which keep their notes in places of their own.
+       A version where every one carries a note gets the first drawn, as it
+       is — the projector would set it that way too. */
+    const drawn = [...OPENING_VERSES].sort(() => Math.random() - 0.5);
+    void (async () => {
+      const chosen = await api.getSetting?.('displayVersion');
+      const version = typeof chosen === 'string' && chosen ? chosen : 'KJV';
+      let found: { pick: (typeof OPENING_VERSES)[number]; text: string } | null = null;
+      for (const pick of drawn) {
+        const bookIndex = BOOKS.indexOf(pick.book);
+        if (bookIndex < 0) continue;
+        const res = await api.getChapter(bookIndex, pick.chapter, version);
+        const text = res?.data?.find((v) => v.id === pick.verse)?.text;
+        if (!text) continue;
+        found ??= { pick, text };
+        if (!/[{[]/.test(text)) {
+          found = { pick, text };
+          break;
+        }
+      }
+      if (!found || stagedNow.current) return;
+      const { pick, text } = found;
+      const verses = [{ verse: pick.verse, text }];
+      const reference = `${pick.book} ${pick.chapter}:${pick.verse}`;
+      projector.stage({
+        source: 'scripture',
+        id: reference,
+        label: reference,
+        reference,
+        version,
+        text,
+        verses,
+        slides: buildVerseSlides({ book: pick.book, chapter: pick.chapter, version }, verses, fitRules(verses)),
+        origin: 'operator',
+      });
+    })().catch((err) => console.error('opening verse: could not stage', err));
+
+    /*
+     * And a background from the online library, under one of its own themes
+     * — forest, ocean, gold bokeh — drawn fresh each launch.
+     *
+     * It is fetched the way the online tab fetches one, so it lands on the
+     * shelf like any other pick and is still there with the network gone.
+     * Never applied: `apply` would make it the wall's background, and
+     * nothing about a launch is a press.
+     *
+     * No network, or no key for the library, and the picture off the shelf
+     * simply stays. It also stays if the operator has chosen a background in
+     * the meantime — theirs is a choice and this one is a default.
+     */
+    if (!api.searchStock || !api.downloadStock) return;
+    const { searchStock, downloadStock } = api;
+    void (async () => {
+      const preset = STOCK_PRESETS[Math.floor(Math.random() * STOCK_PRESETS.length)];
+      const res = await searchStock({ query: preset.query, kind: 'photo', page: 1 });
+      if (!res.success || !res.items.length) return;
+      /* A portrait photo behind a landscape slide is mostly cropped away. */
+      const wide = res.items.filter((i) => i.width >= i.height);
+      const pool = wide.length ? wide : res.items;
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      const saved = await downloadStock({ item });
+      if (!saved.success || !saved.url) return;
+      addMedia({
+        id: item.id,
+        label: preset.label,
+        detail: item.credit,
+        seed: 0,
+        style: 'smoke',
+        source: 'local',
+        url: saved.src ?? saved.url,
+        poster: item.thumb,
+        kind: 'photo',
+      });
+      setPreviewTheme((prev) =>
+        prev.backgroundId === openedOn.current ? { ...prev, backgroundId: item.id } : prev,
+      );
+    })().catch((err) => console.error('opening background: could not fetch one', err));
+  }, [projector]);
 
   /*
    * Which of the fourteen states the screen is in.

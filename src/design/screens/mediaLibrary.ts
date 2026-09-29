@@ -88,6 +88,26 @@ export function addMedia(media: ThemeMedia): void {
   emit();
 }
 
+/**
+ * Any still off the shelf — what the preview opens on while the one from
+ * the online library is on its way, and what it keeps when there is no
+ * network to fetch one over.
+ *
+ * A real picture while the church has one: the washes are what the shelf
+ * draws in place of a file, and on a shelf of three photos and eight washes
+ * a fair draw would open on a wash most mornings. They are the fallback for
+ * a library nobody has added to yet.
+ *
+ * Never a clip: a video is something you play, not a wallpaper, and the
+ * preview would open on a frozen frame of it.
+ */
+export function randomStill(): ThemeMedia | undefined {
+  const stills = items.filter((m) => m.kind !== 'video');
+  const photos = stills.filter((m) => m.url);
+  const pool = photos.length ? photos : stills;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export function useMediaLibrary(): ThemeMedia[] {
   return useSyncExternalStore(
     (l) => {
