@@ -6,7 +6,16 @@ import { SUPABASE_DEFAULTS } from './supabaseDefaults'
 // electron-store ships dual CJS/ESM builds — grab the constructor either way.
 const StoreCtor: any =
   typeof (StoreModule as any).default === 'function' ? (StoreModule as any).default : StoreModule
-const sessionStore = new StoreCtor({ name: 'trilorah-session' })
+// Constructed on first use, not at import. electron-store needs a project
+// name, which it takes from app.getName() — unavailable when this module is
+// loaded before `app` is ready, or when Electron boots as plain Node
+// (ELECTRON_RUN_AS_NODE), where it threw "Please specify the `projectName`
+// option." and killed the whole main process at startup.
+let sessionStore: any = null
+function getSessionStore(): any {
+  if (!sessionStore) sessionStore = new StoreCtor({ name: 'trilorah-session' })
+  return sessionStore
+}
 
 let client: SupabaseClient | null = null
 
@@ -49,9 +58,9 @@ export function getSupabase(): SupabaseClient | null {
       persistSession: true,
       autoRefreshToken: true,
       storage: {
-        getItem: (k) => sessionStore.get(k) ?? null,
-        setItem: (k, v) => sessionStore.set(k, v),
-        removeItem: (k) => sessionStore.delete(k)
+        getItem: (k) => getSessionStore().get(k) ?? null,
+        setItem: (k, v) => getSessionStore().set(k, v),
+        removeItem: (k) => getSessionStore().delete(k)
       }
     }
   })
