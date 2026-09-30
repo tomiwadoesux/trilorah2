@@ -1,0 +1,48 @@
+.gradient-lab { margin-top: 28px; padding-bottom: 28px; border-bottom: 1px solid #ffffff14; }
+.gradient-lab-heading { display:flex; justify-content:space-between; gap:12px; font-size:10px; letter-spacing:.15em; color:#b6bfbb; }
+.gradient-lab-heading span:last-child { letter-spacing:0; color:#ffffff55; }
+.gradient-lab h2 { margin:14px 0 6px; font-size:24px; font-weight:450; letter-spacing:-.035em; }
+.gradient-lab p { font-size:12px; color:#ffffff80; line-height:1.6; }
+.gradient-studies { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:20px 0 14px; }
+.gradient-studies button { overflow:hidden; border:1px solid #ffffff15; border-radius:10px; text-align:left; background:#0b0e0f; }
+.gradient-studies button[aria-pressed=true] { border-color:var(--lab-a); }
+.gradient-study-art { display:block; height:82px; position:relative; overflow:hidden; }
+.gradient-art { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.gradient-study-name { display:flex; gap:9px; align-items:center; padding:9px 10px; border-top:1px solid #ffffff0a; font-size:12px; }
+.gradient-study-name small { color:#ffffff40; font-size:9px; font-variant-numeric:tabular-nums; }
+.gradient-preview { position:relative; aspect-ratio:16/10; overflow:hidden; isolation:isolate; border-radius:14px; border:1px solid #ffffff20; background:#090d0e; }
+.gradient-preview > .gradient-art { inset:-5%; width:110%; height:110%; transform-origin:65% 40%; }
+.gradient-preview > .gradient-art { animation:study-drift 14s ease-in-out infinite alternate; }
+.gradient-preview[data-style=orbit] > .gradient-art { animation:study-turn 24s ease-in-out infinite alternate; }
+.gradient-preview[data-style=contour] > .gradient-art { animation:study-contour 18s ease-in-out infinite alternate; }
+.gradient-preview[data-style=veil] > .gradient-art { animation:study-veil 16s ease-in-out infinite alternate; }
+.gradient-preview-caption { position:absolute; bottom:14px; left:18px; color:#ffffff65; font-size:10px; letter-spacing:.08em; }
+.gradient-context { position:absolute; inset:12% 7% 17%; display:flex; flex-direction:column; gap:9px; }
+.gradient-context-top { display:flex; justify-content:space-between; align-items:center; padding:10px 13px; border:1px solid #ffffff16; background:#0a0e10ba; border-radius:9px; font-size:10px; }
+.gradient-context-top i { display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--lab-a); margin-left:6px; }
+.gradient-context-grid { display:grid; grid-template-columns:1fr 2.5fr; gap:9px; min-height:0; flex:1; }
+.gradient-context-grid > div { display:flex; flex-direction:column; position:relative; padding:13px; border:1px solid #ffffff12; background:#0a0e10bc; border-radius:9px; }
+.gradient-context-grid small { font-size:8px; letter-spacing:.14em; color:#ffffff65; margin-bottom:14px; }
+.gradient-context-grid > div:first-child span { font-size:10px; padding:9px 0; border-bottom:1px solid #ffffff0e; }
+.gradient-context-grid p { margin:auto; text-align:center; color:#e8eeeb; font-family:Georgia,serif; font-size:clamp(13px,2vw,21px); line-height:1.5; }
+.gradient-context-live { align-self:flex-end; font-size:9px; padding:5px 9px; border:1px solid #ffffff30; border-radius:5px; margin-top:auto; }
+.gradient-lab-tools { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:13px; }
+.gradient-lab-tools > button { padding:7px 11px; border-radius:7px; border:1px solid #ffffff20; font-size:11px; color:#c3ceca; }
+.gradient-lab-tools > button[aria-pressed=true] { background:#ffffff09; border-color:#ffffff40; }
+.gradient-colors { display:flex; gap:7px; margin-right:auto; padding:3px; }
+.gradient-colors button { width:20px; height:20px; border-radius:50%; background:var(--swatch); border:4px solid #101415; outline:1px solid transparent; }
+.gradient-colors button[aria-pressed=true] { outline-color:var(--swatch); }
+.gradient-lab button:focus-visible { outline:2px solid #e4d584; outline-offset:3px; }
+.gradient-lab-note { margin-top:12px; }
+@media (hover:hover) { .gradient-lab button:hover { border-color:#ffffff65; } }
+@keyframes study-drift { from { transform:translate(-1%,2%) rotate(-3deg); } to { transform:translate(2%,-2%) rotate(3deg); } }
+@keyframes study-turn { from { transform:rotate(-12deg) scale(.96); } to { transform:rotate(10deg) scale(1.04); } }
+@keyframes study-contour { from { transform:translate(-3%,0) scale(1); opacity:.65; } to { transform:translate(3%,0) scale(1.06); opacity:1; } }
+@keyframes study-veil { from { transform:skewX(-4deg) translateX(-2%); } to { transform:skewX(4deg) translateX(2%); } }
+@media (prefers-reduced-motion:reduce) { .gradient-preview[data-motion=true] > .gradient-art { animation:none; } }
+@media (max-width:540px) { .gradient-studies { gap:6px; } .gradient-study-name { gap:5px; font-size:10px; padding:8px; } .gradient-context { inset:10% 5% 17%; } .gradient-context-grid > div { padding:8px; } .gradient-context-grid > div:first-child span { padding:5px 0; } }
+
+.gradient-preview[data-motion=false] > .gradient-art { animation-play-state: paused; }
+.gradient-preview[data-motion=true] > .gradient-art { animation-play-state: running; }
+.gradient-reduced-note { display:none; }
+@media (prefers-reduced-motion:reduce) { .gradient-preview > .gradient-art { animation:none !important; } .gradient-reduced-note { display:block; } }

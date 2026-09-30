@@ -1,3 +1,4 @@
+import { restoreAurora } from './ui/aurora';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
@@ -11,6 +12,8 @@ import { Gallery } from './design/Gallery';
  * overrides — so specimens are styled exactly as the app styles them,
  * except for the foundations still under review.
  */
+
+restoreAurora();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

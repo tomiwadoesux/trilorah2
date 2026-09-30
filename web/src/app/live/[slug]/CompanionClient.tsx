@@ -45,7 +45,7 @@ export default function CompanionClient({
   initialService: Service | null;
 }) {
   const [tab, setTab] = useState<Tab>("now");
-  const [appearance,setAppearance]=useState<ReadingAppearance>({image:'',size:21});
+  const [appearance,setAppearance]=useState<ReadingAppearance>({image:'',size:21,aurora:'fern'});
   const [service, setService] = useState<Service | null>(initialService);
   const [transcript, setTranscript] = useState<any[]>([]);
   const [verses, setVerses] = useState<any[]>([]);
@@ -287,7 +287,7 @@ export default function CompanionClient({
     // h-screen, not min-h-screen: the transcript inside is the thing that
     // scrolls, so the page itself must be exactly one viewport or the tab bar
     // ends up below the fold on a phone with a browser chrome bar.
-    <main className={`companion-shell flex flex-col overflow-hidden ${appearance.image ? 'companion-photo' : ''}`} style={{'--reading-size':`${appearance.size}px`,...(appearance.image?{backgroundImage:`linear-gradient(rgba(9,11,12,.48),rgba(9,11,12,.48)),url("${appearance.image}")`}:{})} as CSSProperties}>
+    <main data-aurora={appearance.aurora} className={`companion-shell flex flex-col overflow-hidden ${appearance.image ? 'companion-photo' : ''}`} style={{'--reading-size':`${appearance.size}px`,...(appearance.image?{backgroundImage:`linear-gradient(rgba(9,11,12,.48),rgba(9,11,12,.48)),url("${appearance.image}")`}:{})} as CSSProperties}>
       {/* Header */}
       <header className="companion-header">
         <div className="companion-brand"><span className="companion-mark" aria-hidden="true">t</span><span>trilorah</span><span className="companion-brand-note">Follow Along</span></div>

@@ -63,3 +63,9 @@ describe('parts', () => {
     expect(parts('Genesis 3')).toEqual({ book: 'Genesis ', chapter: '3', verse: null, rangeEnd: null })
   })
 })
+
+it('preserves a reference and range after trailing whitespace', () => {
+  expect(parts('Titus 1:3 ')).toEqual(parts('Titus 1:3'));
+  expect(parts('Psalm 104:12   ')).toEqual(parts('Psalm 104:12'));
+  expect(parts('John 3:16-18 ')).toEqual(parts('John 3:16-18'));
+});

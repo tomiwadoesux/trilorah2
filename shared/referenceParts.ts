@@ -40,7 +40,7 @@ export function parts(raw: string): Parts {
   }
   while (i < s.length && /[a-z ]/i.test(s[i])) book += s[i++];
 
-  const rest = s.slice(i);
+  const rest = s.slice(i).trimEnd();
   if (!rest) return { book, chapter: null, verse: null, rangeEnd: null };
 
   /* The trailing group is the second half of a range — "5-9", and "5-" the

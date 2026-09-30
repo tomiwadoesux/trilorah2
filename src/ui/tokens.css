@@ -11,10 +11,10 @@
   /* ---------------------------------------------------------------- */
   /* Gradient stops — identical everywhere, only the hue set swaps     */
   /* ---------------------------------------------------------------- */
-  --tri-teal-1: 7 39 28; /* #07271C */
-  --tri-teal-2: 29 50 47; /* #1D322F */
-  --tri-teal-3: 26 54 48; /* #1A3630 */
-  --tri-teal-4: 26 51 54; /* #1A3336 */
+  --tri-teal-1: 7 21 26; /* #07271C */
+  --tri-teal-2: 24 70 55; /* #1D322F */
+  --tri-teal-3: 18 34 37; /* #1A3630 */
+  --tri-teal-4: 44 55 71; /* #1A3336 */
 
   /*
    * Further hue sets. Each is the teal ramp with its hue turned: the same
@@ -277,7 +277,7 @@
    * frame between a card's edge and its content. A gap between two boxes and
    * a frame within one box are different jobs and drift apart between tiers.
    */
-  --tri-gap: 7.2px;
+  --tri-gap: 6px;
   /*
    * Card corners are a PROPORTION of the card, not a pixel size.
    *
@@ -430,13 +430,10 @@
   --tri-2: var(--tri-teal-2);
   --tri-3: var(--tri-teal-3);
   --tri-4: var(--tri-teal-4);
-  background-image: linear-gradient(
-    var(--tri-angle),
-    rgb(var(--tri-1) / var(--tri-a-edge)) 10.054%,
-    rgb(var(--tri-2) / var(--tri-a-mid)) 36.448%,
-    rgb(var(--tri-3) / var(--tri-a-mid)) 63.057%,
-    rgb(var(--tri-4) / var(--tri-a-edge)) 89.946%
-  );
+  background-image:
+    radial-gradient(ellipse at 12% 115%, rgb(var(--tri-2) / var(--tri-a-mid)), transparent 62%),
+    radial-gradient(ellipse at 88% -25%, rgb(var(--tri-4) / var(--tri-a-mid)), transparent 64%),
+    radial-gradient(ellipse at 48% 48%, rgb(var(--tri-3) / var(--tri-a-edge)), rgb(var(--tri-1) / var(--tri-a-edge)) 82%);
   /*
    * Decelerating, and the edges outlast the middle — the light reads as
    * spreading outward rather than as two things switching on. Declared here
@@ -731,7 +728,7 @@
 /* comfortable is the :root block above — listed here only so the set of
    tiers reads as three things rather than two plus a default. */
 [data-density='comfortable'] {
-  --tri-gap: 7.2px;
+  --tri-gap: 6px;
   --tri-control-h: 32px;
   --tri-control-pad-x: 12px;
   --tri-size-eyebrow: 10px;
@@ -756,7 +753,7 @@
 }
 
 [data-density='touch'] {
-  --tri-gap: 9px;
+  --tri-gap: 7px;
   --tri-control-h: 38px;
   --tri-control-pad-x: 16px;
   --tri-size-eyebrow: 11px;
@@ -779,3 +776,27 @@
   --tri-radius-control: 21px;
   --tri-radius-surface: 35px;
 }
+
+:root[data-aurora="iris"] { --tri-teal-1: 19 16 38; --tri-teal-2: 61 44 94; --tri-teal-3: 32 35 64; --tri-teal-4: 66 40 77; }
+:root[data-aurora="tide"] { --tri-teal-1: 9 23 36; --tri-teal-2: 22 65 83; --tri-teal-3: 24 37 61; --tri-teal-4: 38 60 99; }
+:root[data-aurora="ember"] { --tri-teal-1: 32 18 23; --tri-teal-2: 87 44 34; --tri-teal-3: 57 31 48; --tri-teal-4: 84 56 40; }
+:root[data-aurora="rose"] { --tri-teal-1: 29 17 30; --tri-teal-2: 80 39 66; --tri-teal-3: 46 30 56; --tri-teal-4: 71 48 80; }
+
+:root[data-aurora="iris"] { --tri-go-1: 151 129 190; --tri-go-2: 191 177 225; --tri-go-3: 214 193 225; --tri-go-4: 163 157 207; }
+:root[data-aurora="tide"] { --tri-go-1: 101 164 192; --tri-go-2: 151 205 222; --tri-go-3: 180 213 235; --tri-go-4: 132 174 214; }
+:root[data-aurora="ember"] { --tri-go-1: 185 133 112; --tri-go-2: 226 184 153; --tri-go-3: 236 197 166; --tri-go-4: 201 148 149; }
+:root[data-aurora="rose"] { --tri-go-1: 187 123 157; --tri-go-2: 222 173 199; --tri-go-3: 234 191 210; --tri-go-4: 190 159 205; }
+
+/* Static light ribbons: no canvas, blur filter or continuous repaint. */
+.tri-workspace-aurora {
+  background:
+    radial-gradient(ellipse 72% 32% at 12% 105%, rgb(var(--tri-teal-2) / .9), transparent 75%),
+    radial-gradient(ellipse 50% 90% at 105% 20%, rgb(var(--tri-teal-4) / .75), transparent 75%),
+    radial-gradient(ellipse 80% 35% at 35% -15%, rgb(var(--tri-teal-2) / .72), transparent 80%),
+    rgb(var(--tri-teal-1));
+}
+.aurora-choice { display: flex; flex-direction: column; gap: 8px; padding: 5px 5px 9px; border: 1px solid rgb(255 255 255 / .12); border-radius: 14px; font-size: 12px; text-align: center; background: rgb(0 0 0 / .18); }
+.aurora-choice[aria-pressed="true"] { border-color: rgb(229 243 242 / .75); background: rgb(255 255 255 / .06); }
+.aurora-choice:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 3px; }
+.aurora-choice-art { display: flex; align-items: flex-end; justify-content: flex-end; height: 76px; padding: 8px; border-radius: 10px; }
+@media (hover: hover) { .aurora-choice:hover { border-color: rgb(229 243 242 / .5); } }

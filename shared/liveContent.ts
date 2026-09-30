@@ -19,6 +19,7 @@
  */
 
 export interface LiveSong {
+  id?: string
   kind: 'song'
   title: string
   /** The section — "Verse 2", "Chorus". Drawn small, under the words. */
@@ -29,6 +30,7 @@ export interface LiveSong {
 }
 
 export interface LiveSlide {
+  id?: string
   kind: 'slide'
   title: string
   subtitle?: string

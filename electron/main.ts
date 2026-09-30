@@ -3268,12 +3268,16 @@ app.whenReady().then(() => {
           console.log(`🧠 FastPath adjustment: ${adj.target}.${adj.action} = ${adj.value}`)
         },
         onDetection: (verse) => {
-          session.onReferenceDetected({
-            book: verse.book,
-            chapter: verse.chapter,
-            verse: verse.verse,
-            rangeEnd: null
-          })
+          // Contextual matches are suggestions. Validate against the installed
+          // Bible and keep them out of the live/automatic delivery path.
+          if (!isListening || !Number.isFinite(verse.confidence) || verse.confidence < 0.9 || verse.confidence > 1 || !db) return
+          const segment = transitionDetector?.getCurrentSegment().type
+          if (segment === 'prayer' || segment === 'worship' || segment === 'announcements') return
+          const preview = readVersePreview(db, verse.ref, getSetting('displayVersion') || 'KJV')
+          if (!preview || !shouldEmit(`implicit:${verse.ref}`)) return
+          currentPreviewData = verseDelivery.stage({ ...preview, confidence: verse.confidence })
+          previewRevision++
+          emitVerseDetected(currentPreviewData)
           serviceAgent!.context.addDetection(verse)
         },
         onNotesUpdate: (update) => {

@@ -1,3 +1,4 @@
+import { restoreAurora } from './ui/aurora';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -17,6 +18,8 @@ import { trackDensity } from './ui/density';
  */
 document.documentElement.dataset.theme = 'dark';
 trackDensity();
+
+restoreAurora();
 
 const rootEl = document.getElementById('root');
 if (rootEl) {

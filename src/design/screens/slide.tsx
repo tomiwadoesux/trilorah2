@@ -337,7 +337,7 @@ export function SlideCanvas({
       /* The fallback target: a press that no part claimed lands here, and
          the background is what the editor then shows. */
       onPointerDown={pick('background')}
-      className="relative h-full w-full overflow-hidden [corner-shape:var(--tri-corner)]"
+      className="group/canvas relative h-full w-full overflow-hidden [corner-shape:var(--tri-corner)]"
       style={{
         /* A size container so the entrance keyframes can be stated as a
            fraction of THIS screen, the way the wall states them as a
@@ -366,7 +366,7 @@ export function SlideCanvas({
              and must stay reachable through it. The margin is selected by
              its corners and its label, which are real targets; the dashed
              edge is what the selection is SHOWN on. */
-          className={`pointer-events-none absolute z-10 border border-dashed ${
+          className={`pointer-events-none absolute z-10 opacity-35 group-hover/canvas:opacity-100 group-focus-within/canvas:opacity-100 transition-opacity border border-dashed ${
             pickable && selected === 'margin' ? 'border-[var(--tri-accent-yellow)]' : 'border-white/40'
           }`}
           /*
@@ -480,7 +480,7 @@ export function SlideCanvas({
               }}
             >
               {slide.lines.map((line, i) => (
-                <p key={`${line.version}-${i}`} className={i > 0 ? 'mt-[0.45em] mb-0' : 'm-0'}>
+                <p key={`${line.version}-${i}`} className={i > 0 ? 'mt-[0.45em] mb-0 whitespace-pre-line' : 'm-0 whitespace-pre-line'}>
                   {line.text}
                 </p>
               ))}
@@ -553,7 +553,7 @@ export function SlideCanvas({
             onPointerMove={onCornerMove}
             onPointerUp={onCornerUp}
             onPointerCancel={onCornerUp}
-            className="absolute z-20 touch-none select-none"
+            className="absolute z-20 touch-none select-none rounded-lg border border-white/50 bg-black/50 opacity-40 group-hover/canvas:opacity-100"
             style={{
               width: CORNER_HIT,
               height: CORNER_HIT,

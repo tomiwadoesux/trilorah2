@@ -61,11 +61,11 @@ export default function VersesTab({
   }
 
   return (
-    <div className="px-5 py-6 space-y-3 pb-32 overflow-y-auto flex-1 min-h-0">
+    <div className="px-5 py-3 space-y-2 pb-8 overflow-y-auto flex-1 min-h-0">
       {verses.map((v) => (
         <div
           key={v.id}
-          className="rounded-xl bg-white/[0.03] border border-white/10 p-4 relative"
+          className="rounded-xl bg-white/[0.03] border border-white/10 px-4 py-3 relative"
         >
           <div className="flex items-baseline justify-between">
             <p className="text-base font-semibold text-white">{v.ref}</p>

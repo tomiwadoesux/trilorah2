@@ -35,22 +35,8 @@ import { ORB_BY_STATE, pickStatusLook, type OrbPick } from './statusLooks';
  *
  * ── The hover ──────────────────────────────────────────────────────────
  *
- * Hovering the orb used to name the state, and the state is still there —
- * the aria-label carries it, and the log line under the bar says what the
- * service is doing in words. What the tooltip shows now is a short machine
- * fragment: what the thing is doing this second, in two or three words, of
- * the kind a status line would print. "48 kHz", "buffer clear", "12 caught".
- *
- * They are drawn from the state, so they are never wrong — a red state says
- * red things — and the ones that carry a NUMBER are handed the real number
- * from the engine. A phrase that cannot be filled in is not shown. Nothing
- * here is chatty and nothing here is a person talking: no "I'm listening",
- * no "ready when you are". It is a tool reporting itself.
- *
- * The phrase is re-drawn on each hover, so leaving and coming back shows
- * another one. The pool per state is small enough that the operator learns
- * them and stops reading them, which is the right end state for a tooltip
- * that is not load-bearing.
+ * Hover and keyboard focus explain the current state in plain language.
+ * Keep the explanation stable so operators can learn what each state means.
  */
 
 /* ------------------------------------------------------------------ */
@@ -122,78 +108,24 @@ export function useOrbShape(state: string): OrbPick {
   return drift ?? pick;
 }
 
-/* ------------------------------------------------------------------ */
-/* The hover phrase                                                    */
-/* ------------------------------------------------------------------ */
-
-/*
- * What the engine can tell the tooltip about itself.
- *
- * Every field here is something the app ALREADY measures — the mic level it
- * reports, the lines it has committed, the clock since it started. Nothing
- * invented, nothing approximated: a tooltip that printed "48 kHz" when
- * nothing had read the sample rate would be decoration wearing the clothes
- * of an instrument, and the first time an operator trusted it over their
- * ears it would cost them a service.
- */
-export interface OrbFacts {
-  /** Last mic level the engine reported, 0..1. */
-  level?: number;
-  /** Utterances committed this service. */
-  lines?: number;
-  /** Words transcribed this service. */
-  words?: number;
-  /** Seconds since the engine started listening. */
-  uptime?: number;
-}
-
-type Phrase = string | ((f: OrbFacts) => string | null);
-
-/**
- * Two or three words per state. A function returns null when the engine has
- * not given it a number to print, and that phrase is skipped.
- *
- * `listening` gets the longest list because it is the state the orb is in
- * for most of a service, so it is the one that would go stale.
- */
-const PHRASES: Record<string, Phrase[]> = {
-  'idle': ['standing by', 'mic closed', 'nothing queued', 'cold', 'armed'],
-  'connecting': ['handshake', 'opening socket', 'negotiating', 'dialling out'],
-  'listening': [
-    'mic open',
-    'stream clean',
-    'buffer clear',
-    'on the words',
-    (f) => (f.words ? `${f.words} words` : null),
-    (f) => (f.lines ? `${f.lines} lines` : null),
-    (f) => (f.uptime && f.uptime >= 60 ? `${Math.floor(f.uptime / 60)} min in` : null),
-    (f) => (f.level ? `level ${Math.round(f.level * 100)}` : null),
-  ],
-  'in preview': ['held back', 'staged', 'awaiting press', 'one queued'],
-  'live': ['on the wall', 'pushed', 'holding', 'out'],
-  'auto live': ['unattended', 'auto push', 'driving itself', 'hands off'],
-  'correction': ['re-reading', 'second pass', 'revising', 'recut'],
-  'prayer mode': ['screen dark', 'held quiet', 'paused out', 'nothing out'],
-  'practice mode': ['rehearsal', 'off air', 'dry run', 'no output'],
-  'output frozen': ['frame held', 'output locked', 'clock stopped', 'frozen'],
-  'media / QR': ['serving media', 'code up', 'phones reading', 'asset out'],
-  'engine error': ['fault', 'dropped out', 'no stream', 'broken pipe'],
-  'no display': ['no sink', 'screen missing', 'nowhere to draw', 'unplugged'],
-  'no mic signal': ['silence', 'flat line', 'no input', 'level zero'],
+/** Plain-language explanations shared by hover and assistive technology. */
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  'idle': 'Listening is off. Choose Start listening to hear spoken verses.',
+  'connecting': 'Connecting so the app can hear and recognise spoken words.',
+  'listening': 'Listening to speech and looking for Bible verses.',
+  'in preview': 'Content is ready in Preview. Choose Go live to show it to the congregation.',
+  'live': 'The congregation is seeing the content in the Live panel.',
+  'auto live': 'Automatic mode is sending recognised verses to the congregation.',
+  'correction': 'Checking the words again to correct the suggested verse.',
+  'prayer mode': 'Verse changes are paused for prayer until you resume.',
+  'practice mode': 'You are practising. Changes here do not appear on the projector.',
+  'output frozen': 'The audience screen is being held. Restore it to show verses again.',
+  'media / QR': 'The audience screen is showing media or a QR code.',
+  'engine error': 'Speech recognition has stopped. Check the connection and listening settings; you can still select verses manually.',
+  'no display': 'The app is not connected to an audience display.',
+  'no mic signal': 'No sound is reaching the app. Check the selected microphone, its volume and connection.',
 };
 
-/**
- * A short fragment for `state`, re-rolled every time `nonce` changes — the
- * caller bumps it on each hover. Falls back to the state's own name if
- * nothing in its list can be filled in, so the tooltip is never empty.
- */
-export function useOrbPhrase(state: string, facts: OrbFacts, nonce: number): string {
-  return useMemo(() => {
-    const list = PHRASES[state] ?? PHRASES.idle;
-    const filled = list
-      .map((p) => (typeof p === 'function' ? p(facts) : p))
-      .filter((s): s is string => Boolean(s));
-    return filled[Math.floor(Math.random() * filled.length)] ?? state;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, nonce]);
+export function orbStatusDescription(state: string): string {
+  return STATUS_DESCRIPTIONS[state] ?? STATUS_DESCRIPTIONS.idle;
 }

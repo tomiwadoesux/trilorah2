@@ -355,6 +355,15 @@ export function ScriptureReferenceInput({
    * 3. Verse locks in on Enter / Tab (shows with reduced opacity).
    */
   const advance = (): boolean => {
+    // A paste or externally selected reference can be complete before its
+    // visual locks are. Never throw away its numbers to complete the book.
+    if (current && p.chapter) {
+      setLockedBook(true);
+      setLockedChapter(true);
+      if (p.verse !== null) setLockedVerse(true);
+      else commit(text.trimEnd() + ':');
+      return true;
+    }
     // Stage 1: Book not locked yet
     if (!lockedBook) {
       const pick = bookIndex >= 0 ? bookIndex : (matches[highlight] ?? matches[0]);
@@ -379,59 +388,37 @@ export function ScriptureReferenceInput({
       return false;
     }
 
-    // Stage 3: Book and Chapter are locked, Verse is being locked
-    if (!lockedVerse) {
-      if (p.verse && p.verse.trim() !== '') {
-        setLockedVerse(true);
-        if (current) onSubmit?.(current);
-        return true;
-      }
-      if (current) {
-        setLockedVerse(true);
-        onSubmit?.(current);
-        return true;
-      }
-    }
-
-    // A row is selected in the list below — it owns the keystroke.
-    if (onActivate?.()) return true;
-
+    // Tab/right settle the token only. Enter owns the live action.
     if (current) {
-      onSubmit?.(current);
+      setLockedVerse(true);
       return true;
     }
     return false;
   };
 
+  const erase = () => {
+    setLockedVerse(false);
+    if (p.rangeEnd !== null || p.verse) commit(text.trimEnd().slice(0, -1));
+    else if (p.chapter !== null) {
+      setLockedChapter(false);
+      commit(p.book.trimEnd() + ' ');
+    } else {
+      setLockedBook(false);
+      commit('');
+    }
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const plainArrow = !e.shiftKey && !e.metaKey && !e.altKey && !e.ctrlKey;
 
-    /* Backspace unlocks in reverse order: verse -> chapter -> book */
-    if (e.key === 'Backspace') {
-      // 1. If verse was locked in, unlock verse (reduce opacity -> 100% full brightness)
-      if (lockedVerse) {
-        e.preventDefault();
-        setLockedVerse(false);
-        return;
-      }
-
-      // 2. If chapter was locked and verse is empty, unlock chapter
-      if (lockedChapter && (p.verse === null || p.verse === '')) {
-        e.preventDefault();
-        setLockedChapter(false);
-        const trimmed = text.replace(/[\s.:]+$/, '');
-        commit(trimmed);
-        return;
-      }
-
-      // 3. If book was locked and chapter is empty, unlock book
-      if (lockedBook && (p.chapter === null || p.chapter === '')) {
-        e.preventDefault();
-        setLockedBook(false);
-        const trimmed = text.trimEnd();
-        commit(trimmed);
-        return;
-      }
+    if (e.key === 'Backspace' && plainArrow) {
+      e.preventDefault();
+      erase();
+      return;
+    }
+    if (e.key === ' ' && p.verse) {
+      e.preventDefault();
+      return;
     }
 
     /*
@@ -505,7 +492,8 @@ export function ScriptureReferenceInput({
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (!advance()) nudge();
+      if (current && p.chapter) onSubmit?.(current);
+      else if (!onActivate?.() && !advance()) nudge();
       return;
     }
 
@@ -525,25 +513,15 @@ export function ScriptureReferenceInput({
 
     const n = parts(text);
     const bookStr = n.book;
-    let chapterStr = '';
-    let verseStr = '';
-
-    if (n.chapter !== null) {
-      const rest = text.slice(bookStr.length);
-      const m = rest.match(/^(\d*)(?:\s*[:.]\s*|\s+)?(\d*)$/);
-      if (m) {
-        const hasSep = /[:.]|\s/.test(rest.slice(m[1].length));
-        chapterStr = m[1] + (hasSep ? (rest.includes(':') ? ':' : ' ') : '');
-        verseStr = m[2] || '';
-      }
-    }
+    const chapterStr = n.chapter === null ? '' : n.chapter + (n.verse !== null ? ':' : '');
+    const verseStr = (n.verse ?? '') + (n.rangeEnd !== null ? '-' + n.rangeEnd : '');
 
     return (
       <div className="pointer-events-none absolute inset-0 flex items-center text-[length:var(--tri-control-size)] leading-none tracking-normal whitespace-pre">
         {bookStr && (
           <span
             className={cx(
-              'transition-opacity duration-150',
+              'rounded bg-white/7 transition-opacity duration-150',
               lockedBook
                 ? 'opacity-50 text-[var(--tri-ink,#e5f3f2)]'
                 : 'opacity-100 text-white font-medium',
@@ -560,7 +538,7 @@ export function ScriptureReferenceInput({
         {chapterStr && (
           <span
             className={cx(
-              'transition-opacity duration-150',
+              'rounded bg-white/7 transition-opacity duration-150',
               lockedChapter
                 ? 'opacity-50 text-[var(--tri-ink,#e5f3f2)]'
                 : 'opacity-100 text-white font-medium',
@@ -627,7 +605,16 @@ export function ScriptureReferenceInput({
             placeholder={placeholder}
             spellCheck={false}
             autoComplete="off"
-            onChange={(e) => attempt(e.target.value)}
+            onBeforeInput={(e) => {
+              if ((e.nativeEvent as InputEvent).inputType === 'deleteContentBackward') {
+                e.preventDefault();
+                erase();
+              }
+            }}
+            onChange={(e) => {
+              if ((e.nativeEvent as InputEvent).inputType === 'deleteContentBackward') erase();
+              else attempt(e.target.value);
+            }}
             onKeyDown={onKeyDown}
             className={cx(
               /* Control size — the primary typing surface of the whole

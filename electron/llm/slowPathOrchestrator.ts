@@ -41,7 +41,10 @@ export class SlowPathOrchestrator {
    * Called for every transcript chunk (same stream as the fast path).
    */
   enqueue(chunk: SlowPathChunk) {
+    // Interim hypotheses replace themselves; they are not repeated evidence.
+    if (!chunk.isFinal || !chunk.text.trim()) return
     this.queue.push(chunk)
+    if (this.queue.length > 40) this.queue.shift()
   }
 
   /**

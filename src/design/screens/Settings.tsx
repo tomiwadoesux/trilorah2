@@ -1,3 +1,4 @@
+import { GradientLab } from './GradientLab';
 import { useEffect, useState, type ReactNode } from 'react';
 import { cx, surface, Button, SearchField, SettingsIcon, MicIcon, BookIcon, SparkleIcon, MediaIcon, PencilIcon, CheckIcon, ResetIcon, TrashIcon, ChevronRightIcon, IconCredits } from '../../ui';
 import { AppShell, type ShellModel } from './AppShell';
@@ -148,6 +149,7 @@ const PAGES: Page[] = [
     blurb: 'How the app looks to the operator, and the typeface scripture wears on the projector.',
     icon: <PencilIcon size={ICON} />,
     rows: [
+      { kind: 'segment', key: 'appAurora', label: 'App colour', blurb: 'A quiet aurora across the workspace.', value: 'fern', options: ['fern', 'iris', 'tide', 'ember', 'rose'] },
       { kind: 'segment', key: 'colorMode', label: 'Colour mode', blurb: 'The booth is dark. So is the default.', value: 'dark', options: ['dark', 'light'] },
       { kind: 'fonts', key: 'scriptureFontPreset', label: 'Scripture font', blurb: 'The face the congregation reads. Themes choose serif or sans serif; this is which serif and which sans they get.', value: 'cormorant', faces: SCRIPTURE_FACES },
       { kind: 'number', key: 'defaultFontWeight', label: 'Default weight', blurb: '', value: 600, advanced: true },
@@ -227,7 +229,11 @@ const PAGES: Page[] = [
  * the hard way (src/screens/Settings.tsx) and the lesson comes with it.
  */
 function PageBody({ page }: { page: Page }) {
-  const [values, setValues] = useState<Record<string, unknown>>(() => seedValues(page.rows));
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    const values = seedValues(page.rows);
+    try { values.appAurora = localStorage.getItem('trilorah.aurora') ?? 'fern'; } catch { /* default */ }
+    return values;
+  });
   const [showAdvanced, setShowAdvanced] = useState(false);
   /** Which key last settled, and how it went. */
   const [saved, setSaved] = useState<{ key: string; ok: boolean } | null>(null);
@@ -292,6 +298,12 @@ function PageBody({ page }: { page: Page }) {
     /* Local first: the operator's own input is never yanked back while a
        write is in flight. */
     setValues((v) => ({ ...v, [key]: next }));
+    if (key === 'appAurora') {
+      document.documentElement.dataset.aurora = String(next);
+      try { localStorage.setItem('trilorah.aurora', String(next)); } catch { /* session only */ }
+      setSaved({ key, ok: true });
+      return;
+    }
     const api = window.api;
     if (!api?.setSetting) return;
     void api
@@ -309,8 +321,26 @@ function PageBody({ page }: { page: Page }) {
       <h1 className="mt-2 text-[26px] font-semibold tracking-tight text-[var(--tri-ink)]">{page.title}</h1>
       <p className="mt-2 max-w-[560px] text-[length:var(--tri-size)] leading-relaxed text-[rgb(229_243_242_/_0.55)]">{page.blurb}</p>
 
+      {page.id === 'S-10g' && <GradientLab />}
       <div className="mt-8">
-        {normal.map((row) => (
+        {normal.map((row) => row.key === 'appAurora' ? (
+          <fieldset key={row.key} className="mb-6 border-b border-white/10 pb-6">
+            <legend className="mb-2 text-sm font-medium">App colour</legend>
+            <p className="mb-4 text-xs text-white/50">Choose the light and colour across your workspace.</p>
+            <div className="grid grid-cols-5 gap-2">
+              {AURORA_SWATCHES.map(({ id, colors }) => (
+                <button key={id} type="button" aria-pressed={values.appAurora === id}
+                  aria-label={`${id} aurora`} onClick={() => set('appAurora')(id)}
+                  className="aurora-choice">
+                  <span className="aurora-choice-art" style={{ background: colors[0], borderBottom: `2px solid ${colors[1]}` }}>
+                    {values.appAurora === id && <CheckIcon size={16} />}
+                  </span>
+                  <span className="capitalize">{id}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ) : (
           <SettingRow
             key={row.key}
             row={row}
@@ -359,6 +389,14 @@ function PageBody({ page }: { page: Page }) {
 /* ------------------------------------------------------------------ */
 /* The screen                                                          */
 /* ------------------------------------------------------------------ */
+
+const AURORA_SWATCHES = [
+  { id: 'fern', colors: ['#091d1b', '#397465', '#3d516d'] },
+  { id: 'iris', colors: ['#131026', '#69509d', '#855077'] },
+  { id: 'tide', colors: ['#091724', '#286b87', '#445f99'] },
+  { id: 'ember', colors: ['#201217', '#a3653f', '#854860'] },
+  { id: 'rose', colors: ['#1d111e', '#985177', '#68548b'] },
+];
 
 const NAV_W = 220;
 

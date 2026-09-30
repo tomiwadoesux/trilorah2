@@ -1,3 +1,4 @@
+import type { PersistedRun, RunSegment } from '../../shared/operatorRun';
 import StoreModule from 'electron-store'
 import type { ScheduleEntry } from '../../shared/types'
 import { SERVICE_DEFAULTS } from '../asr/serviceDefaults'
@@ -8,6 +9,7 @@ const Store: typeof StoreModule =
     : StoreModule
 
 export const defaults = {
+  operatorRunV1: null as PersistedRun | RunSegment[] | null,
   hfToken: '',
   deepgramApiKey: '',
   pixabayApiKey: '',

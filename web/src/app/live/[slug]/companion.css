@@ -4,12 +4,14 @@
   --companion-ink: #e5f3f2;
   --companion-muted: #a5bbb5;
   --companion-mint: #8fd3c0;
-  --companion-surface: linear-gradient(33deg, rgb(7 39 28 / .65) 10.054%, rgb(29 50 47 / .65) 36.448%, rgb(26 54 48 / .65) 63.057%, rgb(26 51 54 / .65) 89.946%);
+  --aurora-a: 24 70 55;
+  --aurora-b: 44 55 71;
+  --companion-surface: radial-gradient(ellipse at 8% 110%, rgb(var(--aurora-a) / .7), transparent 70%), radial-gradient(ellipse at 95% -10%, rgb(var(--aurora-b) / .7), #101819 85%);
   height: 100vh;
   height: 100dvh;
   max-width: 760px;
   margin: auto;
-  background: #090b0c;
+  background: radial-gradient(ellipse at 0 10%, rgb(var(--aurora-a) / .16), transparent 65%), #090b0c;
   color: var(--companion-ink);
   font-family: 'Segoe UI', Arial, sans-serif;
 }
@@ -58,3 +60,12 @@
 .companion-waiting .companion-mark { width: 54px; height: 54px; border-radius: 18px; font-size: 30px; margin-bottom: 14px; }
 @media(max-height:650px) { .companion-brand { margin-bottom: 10px; } .companion-church { padding: 14px; } .companion-section-heading { padding-top: 16px; } }
 @media(prefers-reduced-motion:reduce) { .companion-shell *, .companion-shell *::before, .companion-shell *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+.companion-shell[data-aurora=iris]{--aurora-a:61 44 94;--aurora-b:66 40 77;--companion-mint:#c2b0df}
+.companion-shell[data-aurora=tide]{--aurora-a:22 65 83;--aurora-b:38 60 99;--companion-mint:#97cdde}
+.companion-shell[data-aurora=ember]{--aurora-a:87 44 34;--aurora-b:84 56 40;--companion-mint:#e2b899}
+.companion-shell[data-aurora=rose]{--aurora-a:80 39 66;--aurora-b:71 48 80;--companion-mint:#deadc7}
+.reading-colours{display:flex;gap:6px;flex-wrap:wrap;margin-top:18px}
+.reading-colours legend{font-size:12px;margin-bottom:8px}
+.reading-colours button{min-height:44px;padding:8px 12px;border:1px solid #ffffff20;border-radius:12px;font-size:12px}
+.reading-colours button[aria-pressed=true]{border-color:var(--companion-mint);background:var(--companion-surface)}

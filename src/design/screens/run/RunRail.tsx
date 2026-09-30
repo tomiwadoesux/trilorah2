@@ -337,7 +337,7 @@ function SegmentCard({
       data-active={open || undefined}
       data-menu={menu.at ? 'true' : undefined}
       className={cx(
-        surface({ shape: 'panel', wide: true, interactive: true }),
+        surface({ shape: 'panel', tone: 'gold', wide: true, interactive: true }),
         over && 'tri-surface--gold',
         'run-seg relative shrink-0 overflow-hidden',
       )}
@@ -619,12 +619,11 @@ export function RunOfService({
     <>
       {run.segments.length === 0 ? (
         <EmptyMark
-          w={180}
-          h={180}
+          w={220}
+          h={220}
           plain
           art={<PopStackArt />}
-          line="nothing in the run yet"
-          hint="use + to build one, or the clock for the default order"
+          line="use + to build today’s run"
           below={<RunEmptyActions />}
         />
       ) : (

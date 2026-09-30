@@ -63,7 +63,7 @@ export function startDeepgram(
        stopped talking. A reference split across a pause is already joined
        by the resolver's own pending window, so the recogniser does not need
        to hold the sentence open to keep it together. */
-    endpointing: 700,
+    endpointing: 350,
     sample_rate: SAMPLE_RATE,
     encoding: 'linear16',
     channels: 1,

@@ -1,3 +1,5 @@
+import { lyricScore } from '../../lib/songMatch';
+import { useSongListeningStore } from '../../stores/songListeningStore';
 import { useEffect, useRef } from 'react';
 import { useEngine, fitRules } from './engine';
 import { useProjector, type LiveItem } from './projector';
@@ -7,6 +9,7 @@ import { buildVerseSlides } from '../../../shared/verseDisplay';
 import { deckPage, type DeckPageSpec } from './deckPage';
 import { BOOKS, CHAPTER_COUNTS, bookIdFromName } from '../../lib/books';
 import { parts } from '../../../shared/referenceParts';
+import { editSongCard, songCards } from '../../../shared/songCards';
 
 export function useMobileRemote() {
   const engine = useEngine();
@@ -24,7 +27,7 @@ export function useMobileRemote() {
       current.current.projector.reflect({source:'media',id:existing?.id || path,label:qr ? 'Congregation QR' : existing?.label || 'Desktop media',path,mediaKind:kind});
     });
     const offContent=api.onLiveContent?.(content=>{
-      current.current.projector.reflect({source:content.kind==='song' ? 'song' : 'presentation',id:'desktop-content',label:content.title,title:content.title,section:content.label,lines:content.lines});
+      current.current.projector.reflect({source:content.kind==='song' ? 'song' : 'presentation',id:content.id || 'desktop-content',label:content.title,title:content.title,section:content.label,lines:content.lines});
     });
     const offClear=api.onShowCleanBackground(()=>current.current.projector.reflect(null));
     return()=>{offMedia?.();offContent?.();offClear?.();};
@@ -53,8 +56,13 @@ export function useMobileRemote() {
       const version = text(a.version,20) || String(await api!.getSetting('displayVersion') || 'KJV');
       switch(command) {
         case 'state': {
+          const songSearchActive = useSongListeningStore.getState().active;
+          const heard = [...e.spoken.lines.slice(-3).map(line => line.text), e.spoken.partial].join(' ').split(/\s+/).slice(-10).join(' ');
+          const songs = songSearchActive ? await api!.songs?.list() ?? [] : [];
+          const songMatches = songs.flatMap(song => song.sections.map((section, index) => ({ id: song.id, title: song.title, index, label: section.label, lines: section.lines, score: lyricScore(heard, section.lines.join(' ')) })))
+            .filter(match => match.score > 0).sort((a,b) => b.score-a.score).filter((match,index,all) => all.findIndex(other => other.id===match.id)===index).slice(0,4);
           const cloud = await api!.cloudStatus();
-          return {preview:publicItem(p.preview),live:publicItem(p.live),screen:e.screen,asr:e.asr,asrMessage:e.asrMessage,
+          return {aurora:document.documentElement.dataset.aurora || 'fern',songSearchActive,songMatches,run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))})),preview:publicItem(p.preview),live:publicItem(p.live),screen:e.screen,asr:e.asr,asrMessage:e.asrMessage,
             proposals:e.proposals.map(x=>({id:x.id,reference:x.reference,version:x.version,text:x.text,missing:x.missing})),
             sharing:!!cloud.activeServiceId,cloudReady:cloud.configured && cloud.signedIn,
             timers:await api!.listTimers?.() || []};
@@ -72,7 +80,7 @@ export function useMobileRemote() {
           return {songs:(songs || []).map(s=>({id:s.id,title:s.title,sections:s.sections})),
             decks:presentations.map(d=>({id:d.id,title:d.title,count:d.slides?.length || 0})),theme,
             media:m.filter(x=>x.url).map(x=>({id:x.id,title:x.label,kind:x.kind})),versions,
-            run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))}))};
+            books:BOOKS,run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))}))};
         }
         case 'search': return api!.searchBibleText?.(text(a.query),{version,limit:40}) || [];
         case 'suggest': {
@@ -95,7 +103,7 @@ export function useMobileRemote() {
             return {label:ref,value:ref,detail:v.text,complete:true};
           });
         }
-        case 'verse': p.stage(await verse(text(a.reference),version)); return true;
+        case 'verse': { const item=await verse(text(a.reference),version); p.stage(item); if(a.live===true) await p.send(item); return true; }
         case 'proposal': {
           const proposal=e.proposals.find(x=>x.id===a.id);
           if (!proposal || proposal.missing) throw new Error('This detected scripture is no longer available.');
@@ -106,7 +114,18 @@ export function useMobileRemote() {
         case 'song': {
           const song=await api!.songs?.get(text(a.id)); const n=index(a.index); const section=song?.sections[n];
           if (!song || !section) throw new Error('Song section not found. Refresh the library.');
-          p.stage({source:'song',id:`${song.id}:${n}`,label:`${song.title} · ${section.label}`,title:song.title,section:section.label,lines:section.lines}); return true;
+          const card=songCards(song).find(c=>c.sectionIndex===n && c.offset===index(a.offset));
+          if (!card) throw new Error('Lyric card not found. Refresh the library.');
+          const item:LiveItem={source:'song',id:card.id,label:`${song.title} · ${card.label}`,title:song.title,section:card.label,lines:card.lines,origin:'operator'};
+          p.stage(item); if(a.live===true) await p.send(item); return true;
+        }
+        case 'song-edit': {
+          const song=await api!.songs?.get(text(a.id));
+          if (!song || !Array.isArray(a.lines) || !a.lines.length || a.lines.length>40 || a.lines.some(line=>typeof line!=='string' || line.length>1000)) throw new Error('Invalid lyric edit. Refresh the song and try again.');
+          const sections=editSongCard(song.sections,a.index as number,a.offset as number,a.count as number,a.lines as string[]);
+          const saved=await api!.songs!.update(song.id,{sections});
+          if (!saved) throw new Error('The lyrics could not be saved. Try again.');
+          return {id:saved.id,title:saved.title,sections:saved.sections};
         }
         case 'deck': {
           const deck=(await decks()).find(d=>d.id===a.id); const n=index(a.index);
@@ -141,12 +160,18 @@ export function useMobileRemote() {
             if (n<1) throw new Error('This is the first verse of the chapter.');
             const next=await verse(`${match[1]} ${match[2]}:${n}`,item.version || version,true); await p.send(next); p.stage(next);
           } else if (item.source==='song' || item.source==='presentation') {
-            const split=item.id.lastIndexOf(':'); const id=item.id.slice(0,split); const n=Number(item.id.slice(split+1))+delta;
-            if (split<0 || n<0) throw new Error('This is the first section or slide.');
             if (item.source==='song') {
-              const song=await api!.songs?.get(id); const section=song?.sections[n]; if (!song || !section) throw new Error('Last song section reached.');
-              const next:LiveItem={source:'song',id:`${id}:${n}`,label:`${song.title} · ${section.label}`,title:song.title,section:section.label,lines:section.lines}; await p.send(next); p.stage(next);
+              const songs=await api!.songs?.list() || [];
+              const song=songs.find(s=>item.id.startsWith(`${s.id}/`) || item.id.startsWith(`${s.id}:`));
+              if (!song) throw new Error('Open the song and select a lyric card first.');
+              const cards=songCards(song), at=cards.findIndex(c=>c.id===item.id);
+              const legacyIndex=Number(item.id.slice(song.id.length+1));
+              const current=at>=0 ? at : cards.findIndex(c=>c.sectionIndex===legacyIndex);
+              const card=cards[current+delta]; if(current<0 || !card) throw new Error(delta<0 ? 'First lyric card reached.' : 'Last lyric card reached.');
+              const next:LiveItem={source:'song',id:card.id,label:`${song.title} · ${card.label}`,title:song.title,section:card.label,lines:card.lines,origin:'operator'}; await p.send(next); p.stage(next);
             } else {
+              const split=item.id.lastIndexOf(':'); const id=item.id.slice(0,split); const n=Number(item.id.slice(split+1))+delta;
+              if (split<0 || n<0) throw new Error('This is the first slide.');
               const d=(await decks()).find(d=>d.id===id); if (!d?.slides?.[n]) throw new Error('Last slide reached.');
               const next:LiveItem={source:'presentation',id:`${id}:${n}`,label:`${d.title} · ${n+1}`,title:d.title,path:d.slides[n],mediaKind:'photo'}; await p.send(next); p.stage(next);
             }
@@ -157,6 +182,7 @@ export function useMobileRemote() {
           if (!['live','clear','black','logo'].includes(String(a.value))) throw new Error('Invalid screen mode');
           const s=a.value as 'live'|'clear'|'black'|'logo'; await api!.setScreenState?.(s); p.setScreen(s); return true;
         }
+        case 'song-search': useSongListeningStore.getState().setActive(a.enabled===true); if(a.enabled===true && e.asr!=='listening') e.listen(true); return true;
         case 'listen': e.listen(a.enabled===true); return true;
         case 'openOutput': e.openProjector(); return true;
         case 'playback': {
