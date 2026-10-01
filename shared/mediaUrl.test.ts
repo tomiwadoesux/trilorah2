@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { toDisplayUrl, fileToDisplayUrl } from './mediaUrl'
+import { cssImageUrl, toDisplayUrl, fileToDisplayUrl } from './mediaUrl'
+
+describe('CSS background paths', () => {
+  it('quotes a saved image path containing spaces and parentheses', () => {
+    const url = 'local-media://file/Users/a/Library/Application Support/backgrounds/Sunday (1).jpg'
+    expect(cssImageUrl(url)).toBe(`url("${url}")`)
+  })
+  it('escapes quotes in a filename', () => {
+    expect(cssImageUrl('local-media://file/a/"Sunday".jpg')).toBe('url("local-media://file/a/\\"Sunday\\".jpg")')
+  })
+})
 
 describe('toDisplayUrl — a stored file:// becomes drawable', () => {
   it('converts file://', () => {

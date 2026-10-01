@@ -22,7 +22,6 @@ import {
 import { formatMinutes } from '../../../../shared/runPlan';
 import { formatClock } from '../../../../shared/runOfServiceParse';
 import { useDrag } from '../drag';
-import { useEngine } from '../engine';
 import { useProjector } from '../projector';
 import { useRun, type QueueItem, type RunSegment } from '../run';
 import { ContextMenu, useContextMenu, type ContextMenuItem } from './ContextMenu';
@@ -112,7 +111,6 @@ function QueuedItemRow({
 }) {
   const run = useRun();
   const projector = useProjector();
-  const engine = useEngine();
   const menu = useContextMenu();
   const rowRef = useRef<HTMLLIElement>(null);
   const noteRef = useRef<HTMLInputElement>(null);
@@ -120,14 +118,10 @@ function QueuedItemRow({
   const canGoLive = isVerse || (item.source === 'song' && !!item.lines) || !!item.path;
   const live = canGoLive && projector.isLive(item.source === 'note' ? 'scripture' : item.source, item.label);
 
-  /* A verse is pushed through the engine, which looks the text up and logs
-     the review item — sending it to the projector context alone would light
-     the row and show the congregation nothing. A song or a picture carries
-     its own content and goes straight out. */
+  /* All Go live actions use the projector's confirmed delivery path. */
   const putUp = () => {
     if (isVerse) {
-      engine.pushReference(item.label);
-      projector.send({ source: 'scripture', id: item.label, label: item.label });
+      projector.send({ source: 'scripture', id: item.label, label: item.label, reference: item.label });
     } else if (item.source === 'song' && item.lines) {
       projector.send({
         source: 'song',

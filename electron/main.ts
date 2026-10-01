@@ -138,6 +138,8 @@ import { TimerStore } from './engine/timers'
 import { ScreenStateMachine, roleFor, ROLE_TITLES, isScreenState } from './output/outputState'
 import { Readable } from 'node:stream'
 import { placeOutput } from './output/displays'
+import { applyDisplaySelection } from './output/displaySelection'
+import { moveOutputWindow } from './output/moveWindow'
 import { describeOutputs } from './output/outputsStatus'
 import type { LiveContent } from '../shared/liveContent'
 import { buildQrCard } from '../shared/qrCard'
@@ -703,7 +705,8 @@ function pushPreviewToLive(via: VersePushSource): void {
   currentLiveContent = null
   screen.onContentPushed()
   emitVerseDetected(liveVerse)
-  displayTimingManager.onVerseDisplayed(currentPreviewData.text)
+  // Explicit Go live is held until the operator clears or replaces it.
+  displayTimingManager.onVerseDisplayed(currentPreviewData.text, false)
   intentEngine.disarmGraceWindow()
   // Congregation poll (if one is open) closes with this verse as the label.
   const openPoll = polls.current()
@@ -1217,16 +1220,7 @@ function moveOutputToItsDisplay(id: string): boolean {
     win.close()
     return true
   }
-  const bounds = placement.display?.bounds
-  const wasFullscreen = win.isFullScreen()
-  if (wasFullscreen) win.setFullScreen(false)
-  if (bounds) win.setBounds(bounds)
-  else win.setBounds({ ...win.getBounds(), width: 1280, height: 720 })
-  if (placement.fullscreen) {
-    // A beat for the unfullscreen to land, or the window fullscreens on the
-    // display it was leaving.
-    setTimeout(() => !win.isDestroyed() && win.setFullScreen(true), 120)
-  }
+  moveOutputWindow(win, placement, electronScreen.getPrimaryDisplay())
   console.log(
     `🖥️ Output "${id}" moved → ${placement.display ? `display ${placement.display.id}${placement.fullscreen ? ', fullscreen' : ''}` : 'windowed on primary'}`
   )
@@ -1861,6 +1855,8 @@ ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
 })
 
 ipcMain.handle('get-live-content', () => currentLiveContent)
+// One read prevents a new output mixing a previous verse with a newer song.
+ipcMain.handle('get-output-content', () => ({ verse: verseDelivery.live, content: currentLiveContent }))
 
 ipcMain.handle('show-media', (_event, imagePath: string, kind?: 'photo' | 'video') => {
   currentLiveContent = null
@@ -2459,6 +2455,7 @@ const THEME_KEYS = new Set([
   'defaultTextColor',
   'overlayOpacity',
   'defaultBackgroundUrl',
+  'backgroundBlur',
   'backgroundFit',
   'backgroundPosition',
   'colorMode',
@@ -2488,6 +2485,7 @@ const THEME_KEYS = new Set([
 ])
 
 ipcMain.handle('set-setting', (_event, { key, value }) => {
+  const previousDisplays = key === 'outputDisplays' ? getSetting('outputDisplays') : null
   setSetting(key, value)
   // Language / trust-gate changes reconfigure the live engines instantly.
   if (RECONFIGURE_KEYS.has(key) && ledger) {
@@ -2503,7 +2501,12 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
   // for the next launch is not what "choose screen" means to an operator
   // standing in front of a congregation.
   if (key === 'outputDisplays') {
-    for (const id of Object.keys(outputWindows)) moveOutputToItsDisplay(id)
+    applyDisplaySelection(previousDisplays as Partial<Record<string, number | 'none'>>, value, {
+      isOpen: (id) => !!outputWindows[id] && !outputWindows[id]!.isDestroyed(),
+      open: (id) => createOutputWindow(id, ROLE_TITLES[roleFor(id, getSetting('outputRoles') as Record<string, unknown>)]),
+      move: (id) => { moveOutputToItsDisplay(id) },
+      close: (id) => { outputWindows[id]?.close() },
+    })
   }
   if (key === 'outputDisplays' || key === 'outputRoles') notifyOutputsChanged()
   return true

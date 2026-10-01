@@ -700,6 +700,8 @@ interface WindowApi {
       takes any verse or picture down; a verse push or clear takes it down. */
   pushLiveContent?(content: LiveContent): Promise<{ success: boolean }>;
   getLiveContent?(): Promise<LiveContent | null>;
+  /** Current live content, for an output opened after the original push. */
+  getOutputContent?(): Promise<{ verse: VerseDetection | null; content: LiveContent | null }>;
   onLiveContent?(callback: (content: LiveContent) => void): Unsubscribe;
   onThemeChanged?(callback: () => void): Unsubscribe;
   onVoiceCommand?(callback: (event: VoiceCommandEvent) => void): Unsubscribe;

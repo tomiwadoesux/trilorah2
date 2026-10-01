@@ -324,6 +324,7 @@ contextBridge.exposeInMainWorld('api', {
   // Words on the projector that are not a verse (songs/slides). See shared/liveContent.ts.
   pushLiveContent: (content: LiveContent) => ipcRenderer.invoke('push-live-content', content),
   getLiveContent: () => ipcRenderer.invoke('get-live-content'),
+  getOutputContent: () => ipcRenderer.invoke('get-output-content'),
   onLiveContent: (callback: (content: LiveContent) => void) => {
     const subscription = (_event: IpcRendererEvent, c: LiveContent) => callback(c)
     ipcRenderer.on('on-live-content', subscription)

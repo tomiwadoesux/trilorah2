@@ -6,6 +6,7 @@ export class DisplayTimingManager {
   onDismiss: (() => void) | null
   autoDisplayTimeout: number
   isPaused: boolean
+  private autoDismissEnabled = true
 
   constructor() {
     this.displayedVerseWords = []
@@ -28,7 +29,9 @@ export class DisplayTimingManager {
   /**
    * Called when a new verse is displayed
    */
-  onVerseDisplayed(verseText: string) {
+  onVerseDisplayed(verseText: string, autoDismiss = true) {
+    this.clearTimers()
+    this.autoDismissEnabled = autoDismiss
     this.displayedVerseWords = verseText.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean)
     this.resetDismissTimer()
     this.isPaused = false
@@ -46,6 +49,7 @@ export class DisplayTimingManager {
    * Process incoming transcript text
    */
   onTranscript(text: string, _isFinal: boolean) {
+    if (!this.autoDismissEnabled) return
     this.lastTranscriptTime = Date.now()
     this.isPaused = false
     if (this.pauseTimer) clearTimeout(this.pauseTimer)
@@ -85,6 +89,7 @@ export class DisplayTimingManager {
   }
 
   resetDismissTimer() {
+    if (!this.autoDismissEnabled) return
     if (this.dismissTimer) clearTimeout(this.dismissTimer)
     this.dismissTimer = setTimeout(() => {
       if (this.onDismiss && this.displayedVerseWords.length > 0) {

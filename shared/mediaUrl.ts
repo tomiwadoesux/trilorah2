@@ -30,6 +30,11 @@ export function toDisplayUrl(url: string | null | undefined): string {
   return `local-media://file${posix}`
 }
 
+/** CSS needs a quoted URL for local paths such as "Application Support". */
+export function cssImageUrl(url: string): string {
+  return `url(${JSON.stringify(url)})`
+}
+
 /**
  * The same, for a value that may also be a bare filesystem path.
  *

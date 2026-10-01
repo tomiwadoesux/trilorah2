@@ -1,4 +1,5 @@
 import { stageSlide } from '../../lib/stageSlide';
+import { outputThemeSettings } from '../../lib/outputTheme';
 import { editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
@@ -2928,7 +2929,6 @@ function ProposalStack() {
           projector.stage(item);
           if (toLive) {
             if (live) {
-              engine.pushReference(c.ref, c.version);
               engine.dismissProposal(c.id);
             }
             projector.send(item);
@@ -4323,14 +4323,12 @@ function StageBox({
 function Stage({
   previewTheme,
   liveTheme,
-  onPromoteTheme,
   editingTheme,
   onThemeChange,
   say,
 }: {
   previewTheme: ThemeSettings;
   liveTheme: ThemeSettings;
-  onPromoteTheme?: () => void;
   editingTheme?: boolean;
   onThemeChange?: (theme: ThemeSettings) => void;
   /** The service log — where a refused act explains itself. */
@@ -4359,10 +4357,8 @@ function Stage({
     if ((preview.verses?.length ?? 0) > 1) {
       void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) > 1);
     }
-    if (preview.reference) engine.pushReference(preview.reference, preview.version);
     try {
       await projector.promote();
-      onPromoteTheme?.();
     } catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not send to the live screen.' }); }
   };
 
@@ -4782,6 +4778,15 @@ function LiveBody({ state }: { state?: string }) {
 
   const engine = useEngine();
   const projector = useProjector();
+  const themeLibrary = useMediaLibrary();
+  useEffect(() => projector.beforeSend(async () => {
+    const media = themeLibrary.find(item => item.id === previewTheme.backgroundId) ?? themeLibrary[0];
+    const settings = outputThemeSettings(previewTheme, media ? mediaSrc(media) : '');
+    if (window.api) {
+      await Promise.all(Object.entries(settings).map(([key, value]) => window.api!.setSetting(key, value)));
+    }
+    setLiveTheme(previewTheme);
+  }), [projector.beforeSend, previewTheme, themeLibrary]);
 
   /*
    * A verse in the preview from the first frame.
@@ -4949,7 +4954,7 @@ function LiveBody({ state }: { state?: string }) {
    * reading it and this surface has to agree, so it mirrors rather than
    * argues. This is the one place engine truth overwrites local state.
    */
-  const mirror = projector.send;
+  const mirror = projector.reflect;
   useEffect(() => engine.onEngineLive((item) => mirror(item)), [engine, mirror]);
 
   /* The engine took the verse down — the preacher has moved on and stopped
@@ -5263,30 +5268,7 @@ function LiveBody({ state }: { state?: string }) {
               onThemeChange={setPreviewTheme}
               previewTheme={previewTheme}
               liveTheme={liveTheme}
-              onPromoteTheme={() => {
-                setLiveTheme(previewTheme);
-                /* The two layout choices the projector reads from settings.
-                   Written only here, on promote, so moving the safe area in
-                   the preview never shifts words the room is reading. */
-                void window.api?.setSetting?.('verseLayout', previewTheme.layout);
-                void window.api?.setSetting?.('safeMargin', previewTheme.safeMargin);
-                /*
-                 * The reference's size and the space in front of it, in the
-                 * units the wall reads (src/output.css). The editor's sliders
-                 * are steps around zero; the wall scales a clamp() by a
-                 * ratio, so the step becomes a multiplier on the same curve
-                 * the reference already had.
-                 *
-                 * The gap is stored as ems of the BODY in the editor (that is
-                 * what it is dragged against there) and as ems of the
-                 * REFERENCE on the wall, so it is converted rather than
-                 * copied — 0.45em of body at the default sizes is the 2em of
-                 * reference that .output-ref used to hard-code as 4vh.
-                 */
-                const refScale = Math.max(0.28, 0.46 + previewTheme.verseSize * 0.035) / 0.46;
-                void window.api?.setSetting?.('refScale', refScale);
-                void window.api?.setSetting?.('refGap', (previewTheme.refGap / 0.45) * 2);
-              }}
+
             />
 
             </div>

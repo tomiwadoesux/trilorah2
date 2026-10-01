@@ -64,6 +64,7 @@ export const defaults = {
   publicWebUrl: 'https://trilorah.com',
   accountSlug: '',
   defaultBackgroundUrl: '',
+  backgroundBlur: 0,
   backgroundFit: 'cover' as 'cover' | 'contain' | 'fill',
   backgroundPosition: 'center' as 'center' | 'top' | 'bottom',
   qrCompanionCaption: 'Follow along on your phone',

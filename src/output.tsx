@@ -1,10 +1,11 @@
 import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
+import { outputRestore } from './lib/outputRestore';
 import { buildVerseSlides, type VerseSlide } from '../shared/verseDisplay';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
-import { fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
+import { cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
 import type { LiveContent } from '../shared/liveContent';
 import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
 import './output.css';
@@ -43,6 +44,7 @@ interface Theme {
   weight: number;
   color: string;
   backgroundUrl: string;
+  backgroundBlur: number;
   overlayOpacity: number;
   backgroundFit: string;
   backgroundPosition: string;
@@ -86,6 +88,7 @@ const DEFAULT_THEME: Theme = {
   weight: 600,
   color: '#ffffff',
   backgroundUrl: '',
+  backgroundBlur: 0,
   overlayOpacity: 0.3,
   backgroundFit: 'cover',
   backgroundPosition: 'center',
@@ -124,6 +127,7 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     weight: typeof s.defaultFontWeight === 'number' ? s.defaultFontWeight : DEFAULT_THEME.weight,
     color: typeof s.defaultTextColor === 'string' && s.defaultTextColor ? s.defaultTextColor : '#ffffff',
     backgroundUrl: toDisplayUrl(typeof s.defaultBackgroundUrl === 'string' ? s.defaultBackgroundUrl : ''),
+    backgroundBlur: typeof s.backgroundBlur === 'number' ? Math.max(0, Math.min(40, s.backgroundBlur)) : 0,
     overlayOpacity:
       typeof s.overlayOpacity === 'number' ? Math.min(1, Math.max(0, s.overlayOpacity)) : 0.3,
     backgroundFit: typeof s.backgroundFit === 'string' && s.backgroundFit ? s.backgroundFit : 'cover',
@@ -201,8 +205,10 @@ function OutputSurface() {
     const api = window.api;
     if (!api) return;
 
+    let themeRevision = 0;
     const loadTheme = () => {
-      void api.getSettings().then((s) => setTheme(themeFromSettings(s))).catch(() => undefined);
+      const revision = ++themeRevision;
+      void api.getSettings().then((s) => { if (revision === themeRevision) setTheme(themeFromSettings(s)); }).catch(() => undefined);
       /* The job is read with the theme, not once at open: outputRoles is on
          the engine's repaint list, and a job changed from the dashboard's
          outputs card has to reach a window that is already on the wall. */
@@ -217,8 +223,6 @@ function OutputSurface() {
       setTimers(t ?? []);
     };
     void api.listTimers?.().then((t) => takeTimers(t ?? [])).catch(() => undefined);
-    // Opened mid-service: pick up whatever song is already on the wall.
-    void api.getLiveContent?.().then((c) => c && setSong(c)).catch(() => undefined);
 
     const display = (detection: VerseDetection, isPreview: boolean) => {
       setMedia(null); // scripture supersedes a slide
@@ -268,15 +272,23 @@ function OutputSurface() {
       })();
     };
 
+    const restore = outputRestore(
+      () => api.getOutputContent ? api.getOutputContent() : Promise.resolve({ verse: null, content: null }),
+      ({ verse, content }) => {
+        if (verse) display(verse, false);
+        else if (content) setSong(content);
+      },
+    );
     const subs: ((() => void) | undefined)[] = [
       // Previews stay in the operator's app — the congregation only ever
       // sees a verse after an operator Push to Live fires
       // on-verse-detected. The stage monitor is the one exception: it shows
       // the pending verse as "up next" so the preacher knows it's coming.
-      api.onVerseDetected((d) => display(d, false)),
+      api.onVerseDetected((d) => { restore.invalidate(); display(d, false); }),
       api.onVersePreview((d) => setUpNext(d)),
-      api.onVerseAutoDismiss(() => setVisible(false)),
+      api.onVerseAutoDismiss(() => { restore.invalidate(); setVisible(false); }),
       api.onShowCleanBackground(() => {
+        restore.invalidate();
         setVisible(false);
         setMedia(null);
         setVideo(null);
@@ -306,12 +318,14 @@ function OutputSurface() {
         } else if (action.type === 'loop') v.loop = Boolean(action.value);
       }),
       api.onLiveContent?.((content) => {
+        restore.invalidate();
         setVisible(false);
         setMedia(null);
         setVideo(null);
         setSong(content);
       }),
       api.onShowMedia?.((imagePath, kind) => {
+        restore.invalidate();
         if (kind === 'video') {
           setVisible(false);
           setSong(null);
@@ -329,8 +343,12 @@ function OutputSurface() {
         }).catch(() => undefined);
       }),
     ];
+    // Subscribe first: a live push during startup must beat an older snapshot.
+    void restore.restore();
 
     return () => {
+      themeRevision++;
+      restore.dispose();
       for (const unsub of subs) unsub?.();
     };
   }, []);
@@ -547,9 +565,11 @@ function OutputSurface() {
         <div
           className="output-background"
           style={{
-            backgroundImage: `url(${theme.backgroundUrl})`,
+            backgroundImage: cssImageUrl(theme.backgroundUrl),
             backgroundSize: theme.backgroundFit === 'fill' ? '100% 100%' : theme.backgroundFit,
             backgroundPosition: theme.backgroundPosition,
+            filter: theme.backgroundBlur ? `blur(${theme.backgroundBlur}px)` : undefined,
+            transform: theme.backgroundBlur ? 'scale(1.04)' : undefined,
           }}
         >
           <div className="output-dim" style={{ opacity: isStage ? 0.75 : theme.overlayOpacity }} />

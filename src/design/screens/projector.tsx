@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VerseSlide } from '../../../shared/verseDisplay';
+import { publishLiveItem } from '../../lib/publishLiveItem';
 
 /*
  * What is on the projector, and what is about to be.
@@ -79,54 +80,16 @@ export interface LiveItem {
   mediaKind?: 'photo' | 'video';
 }
 
-/*
- * The other half of "one projector": the real one, in its own window.
- *
- * Holding a single `live` value in this context stopped the tabs disagreeing
- * with each other. It did nothing for the congregation — a song promoted here
- * moved from one box to another inside the app and the output window was
- * never told, because the only wire out of the app was the verse one. So
- * every act that changes `live` also goes out on the wire, from here and
- * nowhere else, which is the same reason the value lives here and nowhere
- * else.
- *
- * Verses are the exception, on purpose: a verse goes live through the engine
- * (`pushReference` / `pushEnginePreview`), which resolves the text and
- * records the review item, and the engine's echo comes back in as a
- * `send(...)` — bridging that again would push every verse twice.
- */
-async function toWall(item: LiveItem): Promise<void> {
-  const api = typeof window === 'undefined' ? undefined : window.api;
-  if (!api) return;
-  if (item.source === 'song' && item.lines) {
-    if (!api.pushLiveContent) throw new Error('Restart the app to enable song output.');
-    const result = await api.pushLiveContent({
-      id: item.id,
-      kind: 'song',
-      title: item.title ?? item.label,
-      label: item.section ?? '',
-      lines: item.lines,
-    });
-    if (!result.success) throw new Error('The song could not be sent to the live screen.');
-  } else if (item.source === 'presentation' && item.lines) {
-    await api.pushLiveContent?.({
-      kind: 'slide',
-      title: item.title ?? item.label,
-      label: item.section ?? '',
-      lines: item.lines,
-      path: item.path,
-    });
-  } else if ((item.source === 'media' || item.source === 'presentation') && item.path) {
-    await api.showMedia?.(item.path, item.mediaKind);
-  }
-}
-
+/* Sends use the engine's confirmed output path. Engine events use reflect,
+   so receiving a verse never publishes it a second time. */
 function clearWall(): void {
   const api = typeof window === 'undefined' ? undefined : window.api;
   void api?.clearMedia?.();
 }
 
 interface ProjectorValue {
+  /** Apply the staged theme before any desktop or mobile Go live action. */
+  beforeSend: (prepare: () => Promise<void>) => () => void;
   reflect: (item: LiveItem | null) => void;
   /** On the projector right now. */
   live: LiveItem | null;
@@ -158,6 +121,11 @@ interface ProjectorValue {
 const ProjectorContext = createContext<ProjectorValue | null>(null);
 
 export function ProjectorProvider({ children }: { children: ReactNode }) {
+  const prepareOutput = useRef<(() => Promise<void>) | null>(null);
+  const beforeSend = useCallback((prepare: () => Promise<void>) => {
+    prepareOutput.current = prepare;
+    return () => { if (prepareOutput.current === prepare) prepareOutput.current = null; };
+  }, []);
   const [live, setLive] = useState<LiveItem | null>(null);
   const [preview, setPreview] = useState<LiveItem | null>(null);
   const [slide, setSlideIndex] = useState(0);
@@ -167,8 +135,9 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const reflect = useCallback((item: LiveItem | null) => { setLive(item); setSlideIndex(0); }, []);
 
   const send = useCallback(async (item: LiveItem) => {
-    await toWall(item);
-    setLive(item);
+    await prepareOutput.current?.();
+    const delivered = await publishLiveItem(item);
+    setLive(delivered);
     /* A new reading starts at its first slide. Carrying the old index over
        lands the congregation on slide 3 of a reading that has two. */
     setSlideIndex(0);
@@ -222,6 +191,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      beforeSend,
       reflect,
       live,
       preview,
@@ -237,7 +207,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       isLive,
       isStaged,
     }),
-    [live, preview, slide, screen, stage, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
+    [beforeSend, live, preview, slide, screen, stage, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
   );
   return <ProjectorContext.Provider value={value}>{children}</ProjectorContext.Provider>;
 }

@@ -147,7 +147,6 @@ export function useMobileRemote() {
           const item=p.preview;
           if (!item) throw new Error('Select something for preview first.');
           if (a.id !== item.id) throw new Error('The desktop preview changed. Review it before pressing Go live again.');
-          if (item.reference) await api!.mobileVerse(item.reference,item.version || version,true);
           await p.promote(); return true;
         }
         case 'step': {
@@ -158,7 +157,7 @@ export function useMobileRemote() {
             if (!match) throw new Error('Select a verse first.');
             const n=Number(delta>0 ? match[4] || match[3] : match[3])+delta;
             if (n<1) throw new Error('This is the first verse of the chapter.');
-            const next=await verse(`${match[1]} ${match[2]}:${n}`,item.version || version,true); await p.send(next); p.stage(next);
+            const next=await verse(`${match[1]} ${match[2]}:${n}`,item.version || version); await p.send(next); p.stage(next);
           } else if (item.source==='song' || item.source==='presentation') {
             if (item.source==='song') {
               const songs=await api!.songs?.list() || [];

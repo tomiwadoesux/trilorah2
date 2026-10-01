@@ -108,7 +108,10 @@ export async function saveDisplay(outputId: string, displayId: number | 'none' |
   const api = window.api;
   if (!api) return;
   const next = await held('outputDisplays');
+  const previous = next[outputId];
   if (displayId === null) delete next[outputId];
   else next[outputId] = displayId;
   await api.setSetting('outputDisplays', next);
+  // Reselecting an unchanged display must also reopen a closed output.
+  if (displayId !== 'none' && previous === next[outputId]) api.openOutput?.(outputId);
 }
