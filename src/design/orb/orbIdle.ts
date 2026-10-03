@@ -110,20 +110,20 @@ export function useOrbShape(state: string): OrbPick {
 
 /** Plain-language explanations shared by hover and assistive technology. */
 const STATUS_DESCRIPTIONS: Record<string, string> = {
-  'idle': 'Listening is off. Choose Start listening to hear spoken verses.',
-  'connecting': 'Connecting so the app can hear and recognise spoken words.',
-  'listening': 'Listening to speech and looking for Bible verses.',
-  'in preview': 'Content is ready in Preview. Choose Go live to show it to the congregation.',
-  'live': 'The congregation is seeing the content in the Live panel.',
-  'auto live': 'Automatic mode is sending recognised verses to the congregation.',
-  'correction': 'Checking the words again to correct the suggested verse.',
-  'prayer mode': 'Verse changes are paused for prayer until you resume.',
-  'practice mode': 'You are practising. Changes here do not appear on the projector.',
-  'output frozen': 'The audience screen is being held. Restore it to show verses again.',
-  'media / QR': 'The audience screen is showing media or a QR code.',
-  'engine error': 'Speech recognition has stopped. Check the connection and listening settings; you can still select verses manually.',
-  'no display': 'The app is not connected to an audience display.',
-  'no mic signal': 'No sound is reaching the app. Check the selected microphone, its volume and connection.',
+  'idle': 'Mic is off. Select Start listening.',
+  'connecting': 'Connecting. Please wait.',
+  'listening': 'Listening for verses. No action needed.',
+  'in preview': 'Preview ready. Select Go live.',
+  'live': 'Content is live. Use Next or Previous to move.',
+  'auto live': 'Auto mode is live. Watch for verse changes.',
+  'correction': 'Checking the verse. Please wait.',
+  'prayer mode': 'Prayer pause is on. Resume when ready.',
+  'practice mode': 'Practice mode. The projector is unchanged.',
+  'output frozen': 'Output is held. Select Restore to continue.',
+  'media / QR': 'Media is live. Clear it when finished.',
+  'engine error': 'Listening stopped. Check your connection or select verses manually.',
+  'no display': 'No audience display. Connect a screen.',
+  'no mic signal': 'No mic sound. Check your microphone and volume.',
 };
 
 export function orbStatusDescription(state: string): string {

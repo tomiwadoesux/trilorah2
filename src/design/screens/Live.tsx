@@ -1,3 +1,4 @@
+import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
 import { outputThemeSettings } from '../../lib/outputTheme';
 import { editSongCard, songCards } from '../../../shared/songCards';
@@ -3374,7 +3375,7 @@ function ImportBentoMenu({
                 presentation slides
               </span>
               <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
-                pptx, ppt, odp or pdf decks
+                pptx, ppt or odp decks
               </span>
             </div>
           </button>
@@ -4186,18 +4187,22 @@ function SlidePager({
   at,
   total,
   onStep,
+  disabled = false,
 }: {
   at: number;
   total: number;
   onStep: (delta: -1 | 1) => void;
+  disabled?: boolean;
 }) {
   if (total <= 1) return null;
   const step = (delta: -1 | 1) => (
     <button
       type="button"
       onClick={() => onStep(delta)}
+      disabled={disabled || (delta < 0 ? at <= 0 : at >= total - 1)}
+      aria-label={delta < 0 ? "previous slide" : "next slide"}
       title={delta < 0 ? 'previous slide' : 'next slide'}
-      className="tri-rounded-control grid size-[22px] place-items-center text-[rgb(229_243_242_/_0.55)] transition-colors hover:text-[var(--tri-ink)]"
+      className="tri-rounded-control grid size-[22px] place-items-center text-[rgb(229_243_242_/_0.55)] transition-colors hover:text-[var(--tri-ink)] disabled:opacity-30"
       style={EDGE}
     >
       <ChevronDownIcon size={10} className={delta < 0 ? 'rotate-90' : '-rotate-90'} />
@@ -4364,29 +4369,40 @@ function Stage({
 
   const blacked = screen === 'black' || screen === 'logo';
 
-  /*
-   * One verse forward, one verse back — from whatever is staged.
-   *
-   * The preacher reads on past the verse that was called, and the operator's
-   * move is always the same: the next one. It belongs on the preview box
-   * because that is where the eyes are when it is needed. A range steps off
-   * its ends (4-5 → 6, or → 3), and the chapter's own rows are the bound, so
-   * the arrow that would walk off the end of a chapter is simply disabled by
-   * finding nothing there.
-   */
+  // Preview navigation is an explicit presentation action: both panels and
+  // the audience output follow. Selecting a new library item still only stages it.
   const stagedRef = preview?.source === 'scripture' ? parseStagedRef(preview.reference) : null;
-  const step = (dir: 1 | -1) => {
+  const navigating = useRef(false);
+  const [stepping, setStepping] = useState(false);
+  const deckCount = preview?.deckPaths?.length ?? 0;
+  const deckIndex = preview?.deckIndex ?? 0;
+  const step = async (dir: 1 | -1) => {
+    if (navigating.current) return;
+    if (preview?.deckPaths) {
+      const index = deckIndex + dir;
+      if (index < 0 || index >= deckCount) return;
+      const next = { ...preview, id: `${preview.deckId}:${index}`, path: preview.deckPaths[index], deckIndex: index, label: `${preview.title} — slide ${index + 1}` };
+      navigating.current = true;
+      setStepping(true);
+      try { await projector.send(next); projector.stage(next); }
+      catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not show slide. Try again.' }); }
+      finally { navigating.current = false; setStepping(false); }
+      return;
+    }
     if (!stagedRef || !preview) return;
     const bookIndex = BOOKS.indexOf(stagedRef.book);
     const target = dir === 1 ? stagedRef.end + 1 : stagedRef.start - 1;
     if (bookIndex < 0 || target < 1 || !window.api?.getChapter) return;
     const version = preview.version || 'KJV';
-    void window.api.getChapter(bookIndex, stagedRef.chapter, version).then((res) => {
+    navigating.current = true;
+    setStepping(true);
+    try {
+      const res = await window.api.getChapter(bookIndex, stagedRef.chapter, version);
       const row = res?.data?.find((v) => v.id === target);
       if (!row) return;
       const verses = [{ verse: target, text: row.text }];
       const reference = `${stagedRef.book} ${stagedRef.chapter}:${target}`;
-      projector.stage({
+      const next: LiveItem = {
         source: 'scripture',
         id: reference,
         label: reference,
@@ -4396,8 +4412,11 @@ function Stage({
         verses,
         slides: buildVerseSlides({ book: stagedRef.book, chapter: stagedRef.chapter, version }, verses, fitRules(verses)),
         origin: 'operator',
-      });
-    });
+      };
+      await projector.send(next);
+      projector.stage(next);
+    } catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not show verse. Try again.' }); }
+    finally { navigating.current = false; setStepping(false); }
   };
 
   /*
@@ -4452,7 +4471,7 @@ function Stage({
   }, [preview?.id]);
   const [stageScale, setStageScale] = useState(1);
   const resizeStart = useRef<{ y: number; scale: number } | null>(null);
-  const canStep = !!stagedRef;
+  const canStep = !editingTheme && (!!stagedRef || deckCount > 1);
   useEffect(() => {
     if (!overPreview || !canStep) return;
     const onKey = (e: KeyboardEvent) => {
@@ -4524,11 +4543,12 @@ function Stage({
       */}
       <StageBox
         label="preview"
-        onKeyDown={stagedRef ? onStepKey : undefined}
+        onKeyDown={canStep && !editingTheme ? onStepKey : undefined}
         onHover={setOverPreview}
         canvas={
           <>
             <SlideCanvas seated theme={previewTheme} slide={staged} empty="nothing staged" guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
+            {preview?.source === 'presentation' && preview.path && <img src={presentationImageSrc(preview.path)} alt={preview.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
             {/*
               The verse before and the verse after, with nothing drawn.
 
@@ -4540,20 +4560,21 @@ function Stage({
               over the box or it holds focus. The middle third stays inert
               so a stray click on the words does nothing.
             */}
-            {stagedRef && !editingTheme && (
+            {canStep && !editingTheme && (
               <>
                 <button
                   type="button"
-                  aria-label="previous verse"
-                  title={stagedRef.start > 1 ? 'previous verse  ←' : undefined}
-                  disabled={stagedRef.start <= 1}
+                  aria-label={deckCount ? "previous slide" : "previous verse"}
+                  title="previous — show on both screens ←"
+                  disabled={stepping || (deckCount ? deckIndex <= 0 : (stagedRef?.start ?? 1) <= 1)}
                   onClick={() => step(-1)}
                   className="verse-step absolute inset-y-0 left-0 w-1/2 cursor-w-resize disabled:cursor-default"
                 >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--previous"><span>‹</span>previous</span>}</button>
                 <button
                   type="button"
-                  aria-label="next verse"
-                  title="next verse  →"
+                  aria-label={deckCount ? "next slide" : "next verse"}
+                  disabled={stepping || (deckCount > 0 && deckIndex >= deckCount - 1)}
+                  title="next — show on both screens →"
                   onClick={() => step(1)}
                   className="verse-step absolute inset-y-0 right-0 w-1/2 cursor-e-resize"
                 >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--next"><span>›</span>next</span>}</button>
@@ -4563,6 +4584,7 @@ function Stage({
         }
         controls={
           <>
+            {deckCount > 0 && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
             {range && (
               <Button
                 label={together ? 'separate' : 'together'}
@@ -4594,21 +4616,10 @@ function Stage({
                 onClick={() => projector.stage(null)}
               />
             )}
-            {/* The one act on this screen that reaches the congregation.
-                Green by the owner's call, and the LIT green (tone 'go'), not
-                the system's dark teal surface: at 30% alpha beside three ash
-                buttons it was indistinguishable from them, and this is the
-                button that has to be found without looking for it. Not gold:
-                gold is what is ALREADY live (the ring opposite, a live row),
-                and a gold button on the box that is by definition not live
-                yet said the wrong thing about which side was on air.
-                Disabled rather than hidden with nothing staged — the same
-                green at reduced opacity, so the operator can see where the
-                push lives before they have something to push. */}
             <Button
               label="go live"
               tone="go"
-              disabled={!preview}
+              disabled={!preview || stepping}
               title={preview ? `put ${preview.label} on the projector` : 'stage something first'}
               onClick={goLive}
             />
@@ -4620,6 +4631,7 @@ function Stage({
         label="live"
         tone={live && !blacked ? 'live' : 'default'}
         canvas={
+          <>
           <SlideCanvas
             seated
             theme={liveTheme}
@@ -4627,6 +4639,8 @@ function Stage({
             screen={screen}
             empty="nothing on the projector"
           />
+          {live?.source === 'presentation' && live.path && screen === 'live' && <img src={presentationImageSrc(live.path)} alt={live.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
+          </>
         }
         controls={
           <>
@@ -5032,7 +5046,6 @@ function LiveBody({ state }: { state?: string }) {
 
   const [songAddRequest, setSongAddRequest] = useState(0);
   const hiddenImageInputRef = useRef<HTMLInputElement>(null);
-  const hiddenSlideInputRef = useRef<HTMLInputElement>(null);
 
   const handleImportImage = useCallback(() => {
     if (window.api?.pickBackgroundImage) {
@@ -5085,31 +5098,16 @@ function LiveBody({ state }: { state?: string }) {
   const handleImportSlides = useCallback(() => {
     if (window.api?.importPresentation) {
       say({ text: 'importing presentation slides…' });
-      void window.api
-        .importPresentation()
-        .then((res) => {
-          if (res?.success) {
-            setView('operator');
-            setTab(TABS.findIndex((t) => t.id === 'slides'));
-            say({ text: `imported ${res.data?.slides?.length ?? 0} slides` });
-          } else if (res?.error && res.error !== 'Cancelled') {
-            say({ text: `slide import: ${res.error}` });
-          }
-        })
-        .catch(() => say({ text: 'slide import failed' }));
+      void importAndSavePresentation().then(deck => {
+        if (!deck) return;
+        setView('operator');
+        setTab(TABS.findIndex(t => t.id === 'slides'));
+        say({ text: `Imported ${deck.slides.length} slides. Select the deck to preview.` });
+      }).catch(error => say({ text: error instanceof Error ? error.message : 'Slide import failed. Try another file.' }));
     } else {
-      hiddenSlideInputRef.current?.click();
+      say({ text: 'Open the desktop app to import PowerPoint slides.' });
     }
   }, [say]);
-
-  const handleSlideFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setView('operator');
-    setTab(TABS.findIndex((t) => t.id === 'slides'));
-    say({ text: `selected presentation deck: ${file.name}` });
-    e.target.value = '';
-  };
 
   /* The songs tab owns the add-song dialog (and the rule that nothing is
      added until the editor's Save). The header only asks for it. */
@@ -5345,13 +5343,7 @@ function LiveBody({ state }: { state?: string }) {
         onChange={handleImageFilePicked}
         className="hidden"
       />
-      <input
-        ref={hiddenSlideInputRef}
-        type="file"
-        accept=".pptx,.ppt,.odp,.pdf"
-        onChange={handleSlideFilePicked}
-        className="hidden"
-      />
+
 
     </>
   );

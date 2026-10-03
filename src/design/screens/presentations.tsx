@@ -1,3 +1,5 @@
+import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
+import { useProjector } from './projector';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BACKDROP_BY_CONTENT, Button, ImportIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, cx } from '../../ui';
 import { FlightPopup } from './songs/FlightPopup';
@@ -36,6 +38,7 @@ import { deckPage, type DeckPageSpec } from './deckPage';
 interface Deck {
   /** The file's own name. Not retitled on import: the operator recognises
       the deck by whatever it was called on the stick it arrived on. */
+  paths?: string[];
   title: string;
   pages: number;
   /**
@@ -318,6 +321,7 @@ type LoadedDeck = (typeof DECKS)[number];
 
 export function SlidesBrowser() {
   const drag = useDrag();
+  const projector = useProjector();
   const [query, setQuery] = useState('');
   const [importNote, setImportNote] = useState<string | null>(null);
   const [quickModalOpen, setQuickModalOpen] = useState(false);
@@ -330,7 +334,17 @@ export function SlidesBrowser() {
     }
   });
 
-  const allDecks = useMemo(() => [...customDecks, ...DECKS], [customDecks]);
+  const [importedDecks, setImportedDecks] = useState<LoadedDeck[]>([]);
+  useEffect(() => {
+    const reload = () => { void window.api?.loadPresentations().then(items => setImportedDecks(items.map(d => ({
+      id: d.id, title: d.title, paths: d.slides, pages: d.slides.length, rendered: d.slides.length,
+      seed: 0, excerpt: '', sample: [], spec: { title: d.title, sections: [] },
+    })))).catch(() => setImportNote('Could not load presentations. Try reopening Slides.')); };
+    reload();
+    window.addEventListener('presentations-updated', reload);
+    return () => window.removeEventListener('presentations-updated', reload);
+  }, []);
+  const allDecks = useMemo(() => [...importedDecks, ...customDecks, ...DECKS], [importedDecks, customDecks]);
 
   const handleCreateQuickDeck = (deck: Deck) => {
     const loaded: LoadedDeck = {
@@ -351,6 +365,10 @@ export function SlidesBrowser() {
      keyed by deck, exactly as the songs grid keeps its verses: filter the
      grid and come back, and the card is where it was left. */
   const [pageAt, setPageAt] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const item = projector.preview;
+    if (item?.deckId && item.deckIndex != null) setPageAt(current => ({ ...current, [item.deckId!]: item.deckIndex! }));
+  }, [projector.preview]);
   const pageOf = (deck: LoadedDeck) => Math.min(pageAt[deck.id] ?? 0, Math.max(0, deck.rendered - 1));
   const stepPage = (deck: LoadedDeck, delta: -1 | 1) =>
     setPageAt((m) => {
@@ -363,18 +381,9 @@ export function SlidesBrowser() {
   const [searchOpen, setSearchOpen] = useState(false);
   const importSlides = () => {
     setImportNote('importing…');
-    void window.api
-      ?.importPresentation()
-      .then((res) =>
-        setImportNote(
-          res?.success
-            ? `imported ${res.data?.slides?.length ?? 0} slides — open them in the MEDIA tab`
-            : res?.error === 'Cancelled'
-              ? null
-              : (res?.error ?? 'import failed'),
-        ),
-      )
-      .catch(() => setImportNote('import failed'));
+    void importAndSavePresentation().then(deck => {
+      setImportNote(deck ? `Imported ${deck.slides.length} slides. Select the deck to preview.` : null);
+    }).catch(error => setImportNote(error instanceof Error ? error.message : 'Import failed. Try another file.'));
   };
 
   const needle = query.trim().toLowerCase();
@@ -400,8 +409,12 @@ export function SlidesBrowser() {
   const sel = useLibrarySelection({
     items: matches,
     source: 'presentation',
-    idOf: (d) => d.id,
+    idOf: (d) => `${d.id}:${pageOf(d)}`,
     labelOf: (d) => `${d.title} — slide ${pageOf(d) + 1}`,
+    contentOf: d => {
+      const paths = d.paths ?? Array.from({ length: d.rendered }, (_, i) => deckPage(d.seed, i, d.spec));
+      return { path: paths[pageOf(d)], deckPaths: paths, deckIndex: pageOf(d), deckId: d.id, title: d.title, mediaKind: 'photo', origin: 'operator' };
+    },
     selectFirst: false,
   });
 
@@ -486,7 +499,7 @@ export function SlidesBrowser() {
                 const importing = deck.rendered < deck.pages;
                 const live = sel.isLive(i);
                 const selected = sel.preview === i;
-                const preview = ready ? deckPage(deck.seed, at, deck.spec) : undefined;
+                const preview = ready ? (deck.paths ? presentationImageSrc(deck.paths[at]) : deckPage(deck.seed, at, deck.spec)) : undefined;
                 return (
                   <div
                     key={deck.id}
@@ -530,8 +543,8 @@ export function SlidesBrowser() {
                       showCaption={false}
                       selected={selected}
                       live={live}
-                      onSelect={() => sel.setPreview(i)}
-                      onSend={() => sel.send(i)}
+                      onSelect={() => { if (ready) sel.setPreview(i); }}
+                      onSend={() => { if (ready) sel.send(i); }}
                     />
 
                     {/*

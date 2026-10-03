@@ -76,6 +76,9 @@ export interface LiveItem {
   section?: string;
   /** A picture's or a video's file (file://, local-media:// or a bare path). */
   path?: string;
+  deckPaths?: string[];
+  deckIndex?: number;
+  deckId?: string;
   /** Whether `path` is a still or a clip — the wall plays one and paints the other. */
   mediaKind?: 'photo' | 'video';
 }

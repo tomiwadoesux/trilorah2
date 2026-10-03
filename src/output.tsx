@@ -206,6 +206,9 @@ function OutputSurface() {
     if (!api) return;
 
     let themeRevision = 0;
+    // Image reads can finish after a newer verse or slide has arrived.
+    // Only the latest content event may replace what is on the output.
+    let contentRevision = 0;
     const loadTheme = () => {
       const revision = ++themeRevision;
       void api.getSettings().then((s) => { if (revision === themeRevision) setTheme(themeFromSettings(s)); }).catch(() => undefined);
@@ -225,6 +228,7 @@ function OutputSurface() {
     void api.listTimers?.().then((t) => takeTimers(t ?? [])).catch(() => undefined);
 
     const display = (detection: VerseDetection, isPreview: boolean) => {
+      contentRevision++;
       setMedia(null); // scripture supersedes a slide
       setVideo(null);
       setSong(null);
@@ -272,11 +276,45 @@ function OutputSurface() {
       })();
     };
 
+    const displayMedia = (imagePath: string, kind?: 'photo' | 'video') => {
+      const revision = ++contentRevision;
+      if (kind === 'video') {
+        setVisible(false);
+        setSong(null);
+        setMedia(null);
+        setVideo(fileToDisplayUrl(imagePath));
+        return;
+      }
+      setVideo(null);
+      const applyImage = (dataUrl: string | null) => {
+        if (revision !== contentRevision || !dataUrl) return;
+        setVisible(false);
+        setSong(null);
+        setMedia(dataUrl);
+      };
+      // Quick slides already contain their image. File reads apply only to
+      // imported slides and other media stored on disk.
+      if (imagePath.startsWith('data:image/')) applyImage(imagePath);
+      else void api.readImageDataUrl(imagePath).then(applyImage).catch(() => undefined);
+    };
+
+    const displayContent = (content: LiveContent) => {
+      if (content.kind === 'slide' && content.path) {
+        displayMedia(content.path, 'photo');
+        return;
+      }
+      contentRevision++;
+      setVisible(false);
+      setMedia(null);
+      setVideo(null);
+      setSong(content);
+    };
+
     const restore = outputRestore(
       () => api.getOutputContent ? api.getOutputContent() : Promise.resolve({ verse: null, content: null }),
       ({ verse, content }) => {
         if (verse) display(verse, false);
-        else if (content) setSong(content);
+        else if (content) displayContent(content);
       },
     );
     const subs: ((() => void) | undefined)[] = [
@@ -286,9 +324,10 @@ function OutputSurface() {
       // the pending verse as "up next" so the preacher knows it's coming.
       api.onVerseDetected((d) => { restore.invalidate(); display(d, false); }),
       api.onVersePreview((d) => setUpNext(d)),
-      api.onVerseAutoDismiss(() => { restore.invalidate(); setVisible(false); }),
+      api.onVerseAutoDismiss(() => { restore.invalidate(); contentRevision++; setVisible(false); }),
       api.onShowCleanBackground(() => {
         restore.invalidate();
+        contentRevision++;
         setVisible(false);
         setMedia(null);
         setVideo(null);
@@ -319,28 +358,11 @@ function OutputSurface() {
       }),
       api.onLiveContent?.((content) => {
         restore.invalidate();
-        setVisible(false);
-        setMedia(null);
-        setVideo(null);
-        setSong(content);
+        displayContent(content);
       }),
       api.onShowMedia?.((imagePath, kind) => {
         restore.invalidate();
-        if (kind === 'video') {
-          setVisible(false);
-          setSong(null);
-          setMedia(null);
-          setVideo(fileToDisplayUrl(imagePath));
-          return;
-        }
-        setVideo(null);
-        void api.readImageDataUrl(imagePath).then((dataUrl) => {
-          if (dataUrl) {
-            setVisible(false); // slide replaces scripture
-            setSong(null);
-            setMedia(dataUrl);
-          }
-        }).catch(() => undefined);
+        displayMedia(imagePath, kind);
       }),
     ];
     // Subscribe first: a live push during startup must beat an older snapshot.
@@ -348,6 +370,7 @@ function OutputSurface() {
 
     return () => {
       themeRevision++;
+      contentRevision++;
       restore.dispose();
       for (const unsub of subs) unsub?.();
     };

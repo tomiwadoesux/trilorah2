@@ -130,7 +130,7 @@ export function useMobileRemote() {
         case 'deck': {
           const deck=(await decks()).find(d=>d.id===a.id); const n=index(a.index);
           if (!deck || typeof deck.slides?.[n] !== 'string') throw new Error('Slide not found. Import a presentation on the desktop first.');
-          p.stage({source:'presentation',id:`${deck.id}:${n}`,label:`${deck.title} · ${n+1}`,title:deck.title,path:deck.slides[n],mediaKind:'photo'}); return true;
+          p.stage({source:'presentation',id:`${deck.id}:${n}`,label:`${deck.title} · ${n+1}`,title:deck.title,path:deck.slides[n],deckPaths:deck.slides,deckIndex:n,deckId:deck.id,mediaKind:'photo',origin:'operator'}); return true;
         }
         case 'media': {
           const item=m.find(x=>x.id===a.id && x.url); if (!item) throw new Error('Media not found.');
@@ -172,7 +172,7 @@ export function useMobileRemote() {
               const split=item.id.lastIndexOf(':'); const id=item.id.slice(0,split); const n=Number(item.id.slice(split+1))+delta;
               if (split<0 || n<0) throw new Error('This is the first slide.');
               const d=(await decks()).find(d=>d.id===id); if (!d?.slides?.[n]) throw new Error('Last slide reached.');
-              const next:LiveItem={source:'presentation',id:`${id}:${n}`,label:`${d.title} · ${n+1}`,title:d.title,path:d.slides[n],mediaKind:'photo'}; await p.send(next); p.stage(next);
+              const next:LiveItem={source:'presentation',id:`${id}:${n}`,label:`${d.title} · ${n+1}`,title:d.title,path:d.slides[n],deckPaths:d.slides,deckIndex:n,deckId:d.id,mediaKind:'photo',origin:'operator'}; await p.send(next); p.stage(next);
             }
           } else throw new Error('Use the media playback controls for this item.');
           return true;

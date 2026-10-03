@@ -26,3 +26,17 @@ describe('scripture Go live delivery', () => {
     expect(mobileVerse).toHaveBeenCalledWith('Titus 1:3', 'NIV', true)
   })
 })
+
+
+describe('presentation delivery', () => {
+  it('retains the current slide in output state so newly opened displays restore it', async () => {
+    const pushLiveContent = vi.fn().mockResolvedValue({ success: true });
+    const item = { source: 'presentation' as const, id: 'deck:1', label: 'Sunday — slide 2', title: 'Sunday', path: '/slides/slide 2.png', deckPaths: ['/slides/slide 1.png', '/slides/slide 2.png'], deckIndex: 1, deckId: 'deck' };
+    expect(await publishLiveItem(item, { pushLiveContent } as unknown as Window['api'])).toEqual(item);
+    expect(pushLiveContent).toHaveBeenCalledWith(expect.objectContaining({ id: 'deck:1', kind: 'slide', path: '/slides/slide 2.png' }));
+  });
+  it('does not mark failed presentation delivery as live', async () => {
+    const pushLiveContent = vi.fn().mockResolvedValue({ success: false });
+    await expect(publishLiveItem({ source: 'presentation', id: 'deck:0', label: 'Sunday', path: '/slide.png' }, { pushLiveContent } as unknown as Window['api'])).rejects.toThrow('could not be sent');
+  });
+});
