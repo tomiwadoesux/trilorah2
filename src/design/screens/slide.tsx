@@ -224,7 +224,7 @@ export function SlideCanvas({
   const library = useMediaLibrary();
   const media = library.find((item) => item.id === theme.backgroundId) ?? library[0];
   const atBottom = theme.layout !== 'top';
-  const justifyContent = atBottom ? 'flex-end' : 'flex-start';
+  const justifyContent = theme.layout === 'center' ? 'center' : atBottom ? 'flex-end' : 'flex-start';
   const alignItems =
     theme.layout === 'bottom-left' ? 'flex-start' : theme.layout === 'bottom-right' ? 'flex-end' : 'center';
   const textAlign =
@@ -431,7 +431,8 @@ export function SlideCanvas({
               fontFamily,
               fontSize: `${Math.max(17, 27 + theme.size * 2)}px`,
               fontWeight: 500,
-              lineHeight: 1.2,
+              lineHeight: 1.35,
+              textWrap: 'balance',
               textTransform,
               textShadow: `0 2px ${Math.round(5 + theme.shadow / 7)}px rgb(0 0 0 / ${Math.min(0.92, 0.25 + theme.shadow / 110)})`,
               alignItems: alignItems === 'flex-start' ? 'flex-start' : alignItems === 'flex-end' ? 'flex-end' : 'center',

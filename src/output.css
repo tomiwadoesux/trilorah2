@@ -73,7 +73,8 @@ body {
   font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
   font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--verse-scale, 1));
   font-weight: var(--verse-weight, 600);
-  line-height: 1.4;
+  line-height: 1.35;
+  text-wrap: balance;
   color: var(--verse-color, #ffffff);
   text-shadow:
     0 2px 14px rgba(0, 0, 0, 0.6),
@@ -90,7 +91,7 @@ body {
      independent now (the verse body scales with --verse-scale, this line
      with --ref-scale) and multiplying by both would put them back on one
      leash. */
-  margin-top: var(--ref-gap, 2em);
+  margin-top: var(--ref-gap, 0.9em);
   font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
   font-variant-caps: small-caps;
   letter-spacing: 0.08em;
@@ -104,7 +105,7 @@ body {
    whichever way round the slide is built. */
 .output-stage.ref-above .output-ref {
   margin-top: 0;
-  margin-bottom: var(--ref-gap, 2em);
+  margin-bottom: var(--ref-gap, 0.9em);
 }
 
 /* A song section. Same face, weight and colour as a verse so the wall does

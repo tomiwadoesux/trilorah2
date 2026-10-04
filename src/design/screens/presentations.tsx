@@ -7,6 +7,7 @@ import { TabDock } from './songs/TabDock';
 import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
 import { useDrag } from './drag';
 import { deckPage, type DeckPageSpec } from './deckPage';
+import { readTriLocal, TRI_DECKS_KEY, TRI_DECKS_EVENT } from '../../lib/triClient';
 
 /*
  * S-05 — imported presentation slides.
@@ -336,6 +337,11 @@ export function SlidesBrowser() {
 
   const [importedDecks, setImportedDecks] = useState<LoadedDeck[]>([]);
   useEffect(() => {
+    const reload = () => setCustomDecks(readTriLocal<LoadedDeck[]>(TRI_DECKS_KEY, []));
+    window.addEventListener(TRI_DECKS_EVENT, reload);
+    return () => window.removeEventListener(TRI_DECKS_EVENT, reload);
+  }, []);
+  useEffect(() => {
     const reload = () => { void window.api?.loadPresentations().then(items => setImportedDecks(items.map(d => ({
       id: d.id, title: d.title, paths: d.slides, pages: d.slides.length, rendered: d.slides.length,
       seed: 0, excerpt: '', sample: [], spec: { title: d.title, sections: [] },
@@ -359,6 +365,7 @@ export function SlidesBrowser() {
       } catch {}
       return updated;
     });
+    window.dispatchEvent(new Event('trilorah-library-changed'));
   };
 
   /* Which page each card is showing, once paged off its first. Sparse and

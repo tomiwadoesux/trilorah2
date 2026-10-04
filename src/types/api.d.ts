@@ -496,7 +496,8 @@ interface SongsApi {
 /* The bridge                                                          */
 /* ------------------------------------------------------------------ */
 
-interface WindowApi {
+type TriPackageApi = import('../../shared/triBridge').TriApi;
+interface WindowApi extends Partial<TriPackageApi> {
   qrBackground(action:'status'|'choose'|'clear'):Promise<{success:boolean;name?:string|null;canceled?:boolean;error?:string}>;
   mobileStatus(): Promise<{running:boolean; urls:string[]; error:string|null; pending:{id:string;name:string;expiresAt:number}[]; devices:PairedDeviceInfo[]}>;
   mobileEnable(enabled:boolean): Promise<boolean>;

@@ -1,6 +1,7 @@
 import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
 import { outputThemeSettings } from '../../lib/outputTheme';
+import { normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
 import { editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
@@ -348,17 +349,15 @@ const OPENING_VERSES: readonly { book: string; chapter: number; verse: number }[
 
 const DEFAULT_THEME: ThemeSettings = {
   backgroundId: 'quiet-sea',
-  dimness: 48,
-  blur: 0,
+  dimness: 60,
+  blur: 2,
   shadow: 65,
   font: 'default',
   size: 0,
   verseSize: 0,
-  /* 0.45em — what the gap was hard-coded to before it became a control, so
-     an existing theme looks the same until someone moves the slider. */
-  refGap: 0.45,
-  layout: 'top',
-  safeMargin: 7,
+  refGap: 0.9,
+  layout: 'center',
+  safeMargin: 10,
 };
 
 /*
@@ -422,8 +421,9 @@ function useTextTransition() {
       ?.getSettings?.()
       ?.then((s: Record<string, unknown> | undefined) => {
         if (gone || !s) return;
-        if (isTextTransition(s.textTransition)) setId(s.textTransition);
-        if (s.textTransitionMs != null) setMs(clampTransitionMs(s.textTransitionMs));
+        const appearance = { ...s, ...readTriLocal<Record<string, unknown>>(TRI_DISPLAY_KEY, {}) };
+        if (isTextTransition(appearance.textTransition)) setId(appearance.textTransition);
+        if (appearance.textTransitionMs != null) setMs(clampTransitionMs(appearance.textTransitionMs));
       })
       .catch(() => undefined);
     return () => {
@@ -431,10 +431,21 @@ function useTextTransition() {
     };
   }, []);
 
+  useEffect(() => {
+    const imported = (event: Event) => {
+      const display = (event as CustomEvent<Record<string, unknown>>).detail;
+      if (isTextTransition(display.textTransition)) setId(display.textTransition);
+      if (display.textTransitionMs != null) setMs(clampTransitionMs(display.textTransitionMs));
+    };
+    window.addEventListener(TRI_DISPLAY_EVENT, imported);
+    return () => window.removeEventListener(TRI_DISPLAY_EVENT, imported);
+  }, []);
+
   const choose = useCallback((next: TextTransition) => {
     setId(next);
     setPlay((n) => n + 1);
     void window.api?.setSetting?.('textTransition', next);
+    updateStagedTriDisplay({ textTransition: next });
   }, []);
 
   /* The speed is heard on release, not during: replaying on every step of a
@@ -444,6 +455,7 @@ function useTextTransition() {
     const clamped = clampTransitionMs(next);
     setMs(clamped);
     void window.api?.setSetting?.('textTransitionMs', clamped);
+    updateStagedTriDisplay({ textTransitionMs: clamped });
     window.clearTimeout(replay.current);
     replay.current = window.setTimeout(() => setPlay((n) => n + 1), 260);
   }, []);
@@ -1904,6 +1916,10 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
       .catch(() => undefined);
   }, [store]);
   useEffect(refresh, [refresh]);
+  useEffect(() => {
+    window.addEventListener('trilorah-package-imported', refresh);
+    return () => window.removeEventListener('trilorah-package-imported', refresh);
+  }, [refresh]);
 
   /* The header's import menu asks for the add dialog by stamping the time —
      this tab may not have been mounted when it was pressed, so the request
@@ -1957,6 +1973,7 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
       : await store.update(id, { title: song.title, authors, sections: song.sections });
     if (!saved) return false;
     refresh();
+    window.dispatchEvent(new Event('trilorah-library-changed'));
     return true;
   };
 
@@ -1965,7 +1982,7 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
       <AddSongDialog
         open={addOpen}
         onRequestClose={() => setAddOpen(false)}
-        onImported={refresh}
+        onImported={() => { refresh(); window.dispatchEvent(new Event('trilorah-library-changed')); }}
         onReady={({ base, note }) => {
           setAddOpen(false);
           setOpenId(null);
@@ -2009,7 +2026,7 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
             clearDraft(id);
             if (isNewId(id)) return;
             setDeleted((d) => new Set(d).add(id));
-            if (store) void store.remove(id).then(refresh).catch(() => undefined);
+            if (store) void store.remove(id).then(() => { refresh(); window.dispatchEvent(new Event('trilorah-library-changed')); }).catch(() => undefined);
           }}
         />
       )}
@@ -2849,10 +2866,13 @@ function SongCatches() {
   useEffect(() => {
     if (!active) return;
     let alive = true;
-    void window.api?.songs?.list().then((list) => {
+    const reload = () => { void window.api?.songs?.list().then((list) => {
       if (alive) setSongs(list.map((song) => ({ id: song.id, title: song.title, author: (song.authors ?? []).join(', '), verses: song.sections.map((section, i) => ({ ...section, id: `${song.id}:${i}` })) })));
-    }).catch(() => undefined);
-    return () => { alive = false; };
+    }).catch(() => undefined); };
+    reload();
+    window.addEventListener('trilorah-package-imported', reload);
+    window.addEventListener('trilorah-library-changed', reload);
+    return () => { alive = false; window.removeEventListener('trilorah-package-imported', reload); window.removeEventListener('trilorah-library-changed', reload); };
   }, [active]);
   const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial].join(' ').split(/\s+/).slice(-10).join(' ');
   const matches = useMemo(() => active ? songs.flatMap((song) => song.verses.map((verse) => ({ song, verse, score: lyricScore(heard, verse.lines.join(' ')) })))
@@ -4783,10 +4803,38 @@ function LiveBody({ state }: { state?: string }) {
      in it from the first frame; the one from the online library replaces it
      a moment later (below). Only the preview: the wall's own background is a
      setting, and it changes on promote like everything else. */
-  const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(() => ({
+  const restoredTheme = useRef(!!readTriLocal(TRI_THEME_KEY, null));
+  const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(() => normalizeTriTheme(readTriLocal(TRI_THEME_KEY, null), {
     ...DEFAULT_THEME,
     backgroundId: randomStill()?.id ?? DEFAULT_THEME.backgroundId,
   }));
+  const latestTheme = useRef(previewTheme);
+  latestTheme.current = previewTheme;
+  useEffect(() => {
+    try { localStorage.setItem(TRI_THEME_KEY, JSON.stringify(previewTheme)); } catch { /* Desktop package saves also hold the layout. */ }
+    window.dispatchEvent(new Event('trilorah-theme-changed'));
+  }, [previewTheme]);
+  useEffect(() => {
+    const initial = latestTheme.current;
+    const importTheme = (event: Event) => {
+      restoredTheme.current = true;
+      setPreviewTheme(current => normalizeTriTheme((event as CustomEvent).detail, current));
+    };
+    window.addEventListener(TRI_THEME_EVENT, importTheme);
+    if (!readTriLocal(TRI_DISPLAY_KEY, null)) {
+      void window.api?.getSetting('triThemeDisplay').then(value => {
+        if (value && typeof value === 'object' && !readTriLocal(TRI_DISPLAY_KEY, null)) stageTriDisplay(value as Record<string, unknown>);
+      }).catch(() => undefined);
+    }
+    if (!restoredTheme.current) {
+      void window.api?.getSetting('triThemeLayout').then(value => {
+        if (!value || latestTheme.current !== initial || restoredTheme.current) return;
+        restoredTheme.current = true;
+        setPreviewTheme(current => normalizeTriTheme(value, current));
+      }).catch(() => undefined);
+    }
+    return () => window.removeEventListener(TRI_THEME_EVENT, importTheme);
+  }, []);
   const openedOn = useRef(previewTheme.backgroundId);
   const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
 
@@ -4795,9 +4843,17 @@ function LiveBody({ state }: { state?: string }) {
   const themeLibrary = useMediaLibrary();
   useEffect(() => projector.beforeSend(async () => {
     const media = themeLibrary.find(item => item.id === previewTheme.backgroundId) ?? themeLibrary[0];
-    const settings = outputThemeSettings(previewTheme, media ? mediaSrc(media) : '');
+    const appearance = readTriLocal<Record<string, unknown>>(TRI_DISPLAY_KEY, {});
+    const settings = { ...appearance, ...outputThemeSettings(previewTheme, media ? mediaSrc(media) : ''),
+      ...(typeof appearance.backgroundFit === 'string' ? { backgroundFit: appearance.backgroundFit } : {}),
+      ...(typeof appearance.backgroundPosition === 'string' ? { backgroundPosition: appearance.backgroundPosition } : {}),
+    };
     if (window.api) {
       await Promise.all(Object.entries(settings).map(([key, value]) => window.api!.setSetting(key, value)));
+      if (Object.keys(appearance).length) {
+        await window.api.setSetting('triThemeDisplay', null);
+        localStorage.removeItem(TRI_DISPLAY_KEY);
+      }
     }
     setLiveTheme(previewTheme);
   }), [projector.beforeSend, previewTheme, themeLibrary]);
@@ -4869,7 +4925,7 @@ function LiveBody({ state }: { state?: string }) {
      * simply stays. It also stays if the operator has chosen a background in
      * the meantime — theirs is a choice and this one is a default.
      */
-    if (!api.searchStock || !api.downloadStock) return;
+    if (restoredTheme.current || !api.searchStock || !api.downloadStock) return;
     const { searchStock, downloadStock } = api;
     void (async () => {
       const preset = STOCK_PRESETS[Math.floor(Math.random() * STOCK_PRESETS.length)];
@@ -4893,7 +4949,7 @@ function LiveBody({ state }: { state?: string }) {
         kind: 'photo',
       });
       setPreviewTheme((prev) =>
-        prev.backgroundId === openedOn.current ? { ...prev, backgroundId: item.id } : prev,
+        !restoredTheme.current && prev.backgroundId === openedOn.current ? { ...prev, backgroundId: item.id } : prev,
       );
     })().catch((err) => console.error('opening background: could not fetch one', err));
   }, [projector]);

@@ -459,6 +459,9 @@ export function usePreachers(): PreachersState {
      store that fetches on import runs in tests and in the sandbox too. */
   useEffect(() => {
     ensureLoaded();
+    const refreshImported = () => { void loadPreachers(); };
+    window.addEventListener('trilorah-package-imported', refreshImported);
+    return () => window.removeEventListener('trilorah-package-imported', refreshImported);
   }, []);
   return useSyncExternalStore(subscribe, () => state, () => state);
 }

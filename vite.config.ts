@@ -19,6 +19,7 @@ const external = [
   'tesseract.js',
   'whisper-node',
   'ws',
+  'yauzl',
   // optional on-device notes model — installed only by user opt-in,
   // imported lazily behind try/catch in notesProvider.ts
   '@xenova/transformers',

@@ -11,6 +11,7 @@ export function outputThemeSettings(theme: SlideTheme, backgroundUrl: string) {
     verseLayout: theme.layout,
     safeMargin: theme.safeMargin,
     refScale: Math.max(0.28, 0.46 + theme.verseSize * 0.035) / 0.46,
-    refGap: (theme.refGap / 0.45) * 2,
+    // Both renderers measure this gap in reference-line ems.
+    refGap: theme.refGap,
   }
 }

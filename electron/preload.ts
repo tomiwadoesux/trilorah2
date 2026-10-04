@@ -3,8 +3,25 @@ import type { IpcRendererEvent } from 'electron'
 import type { SongPatch } from '../shared/types'
 import type { LiveContent } from '../shared/liveContent'
 import type { ImportedSong } from './songs/import'
+import type { TriApi } from '../shared/triBridge'
+
+const triApi: TriApi = {
+  triCatalog: state => ipcRenderer.invoke('tri-catalog', state),
+  triSave: request => ipcRenderer.invoke('tri-save', request),
+  triInspect: recentPath => ipcRenderer.invoke('tri-inspect', recentPath),
+  triImport: request => ipcRenderer.invoke('tri-import', request),
+  triRecent: () => ipcRenderer.invoke('tri-recent'),
+  triStatus: () => ipcRenderer.invoke('tri-status'),
+  triNew: () => ipcRenderer.invoke('tri-new'),
+  onTriOpenRequested: callback => {
+    const handler = () => callback()
+    ipcRenderer.on('tri-open-requested', handler)
+    return () => ipcRenderer.removeListener('tri-open-requested', handler)
+  },
+}
 
 contextBridge.exposeInMainWorld('api', {
+  ...triApi,
   qrBackground: (action: 'status'|'choose'|'clear') => ipcRenderer.invoke('qr-background',action),
   mobileStatus: () => ipcRenderer.invoke('mobile-status'),
   mobileCode: (generate = false) => ipcRenderer.invoke('mobile-code', generate),

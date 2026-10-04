@@ -3,7 +3,7 @@ import { cx } from '../lib/cx';
 import { useNudge } from '../hooks/useNudge';
 import { useElementWidth } from '../hooks/useElementWidth';
 
-export type TextPositionOption = 'top' | 'bottom-right' | 'bottom-center' | 'bottom-left';
+export type TextPositionOption = 'center' | 'top' | 'bottom-right' | 'bottom-center' | 'bottom-left';
 
 export interface TextPositionItem {
   id: TextPositionOption;
@@ -11,6 +11,7 @@ export interface TextPositionItem {
 }
 
 export const TEXT_POSITION_OPTIONS: TextPositionItem[] = [
+  { id: 'center', label: 'center' },
   { id: 'top', label: 'top' },
   { id: 'bottom-right', label: 'bottom right' },
   { id: 'bottom-center', label: 'bottom center' },
@@ -31,13 +32,13 @@ export interface TextPositionPickerProps {
 
 export function TextPositionPicker({
   label = 'text position',
-  value = 'top',
+  value,
   onChange,
   columns = 4,
   disabled = false,
   className = '',
 }: TextPositionPickerProps) {
-  const [internalSelected, setInternalSelected] = useState<TextPositionOption>('top');
+  const [internalSelected, setInternalSelected] = useState<TextPositionOption>('center');
   const selected = value ?? internalSelected;
 
   const handleSelect = (id: TextPositionOption) => {
@@ -264,7 +265,7 @@ function PositionGraphic({ id, isSelected }: { id: TextPositionOption; isSelecte
     );
   }
 
-  if (id === 'bottom-center') {
+  if (id === 'center' || id === 'bottom-center') {
     return (
       <div ref={graphicRef} className={cx(stack, 'items-center')} style={frame}>
         {lines('center')}

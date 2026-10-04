@@ -9,6 +9,11 @@ describe('preview theme delivery', () => {
       backgroundFit: 'cover', backgroundPosition: 'center', verseLayout: 'top', safeMargin: 7,
     })
   })
+  it('preserves centered layout and reference spacing on the projector', () => {
+    expect(outputThemeSettings({ ...theme, layout: 'center', safeMargin: 10, refGap: 0.9 }, '')).toMatchObject({
+      verseLayout: 'center', safeMargin: 10, refGap: 0.9,
+    })
+  })
   it('keeps a procedural background when the selected card has no file', () => {
     const data = 'data:image/svg+xml,%3Csvg%3E%3C/svg%3E'
     expect(outputThemeSettings(theme, data).defaultBackgroundUrl).toBe(data)

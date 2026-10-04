@@ -105,12 +105,12 @@ const DEFAULT_THEME: Theme = {
   secondaryVersion: '',
   stageShowVerseText: true,
   stageShowTimer: '',
-  verseLayout: 'top',
-  safeMargin: 7,
+  verseLayout: 'center',
+  safeMargin: 10,
   refScale: 1,
   /* 4vh was this gap's hard-coded value before it became a control; as an
      em of the reference it lands in the same place at the default size. */
-  refGap: 2,
+  refGap: 0.9,
   textTransition: 'fade',
   textTransitionMs: 450,
 };
@@ -149,12 +149,12 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     secondaryVersion: typeof s.secondaryVersion === 'string' ? s.secondaryVersion : '',
     stageShowVerseText: s.stageShowVerseText !== false,
     stageShowTimer: typeof s.stageShowTimer === 'string' ? s.stageShowTimer : '',
-    verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'top',
-    safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 7,
+    verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'center',
+    safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 10,
     /* Both default when a theme saved before these existed is read back, so
        an older church file keeps the wall it already had. */
     refScale: typeof s.refScale === 'number' && s.refScale > 0 ? s.refScale : 1,
-    refGap: typeof s.refGap === 'number' && s.refGap >= 0 ? s.refGap : 2,
+    refGap: typeof s.refGap === 'number' && s.refGap >= 0 ? s.refGap : 0.9,
     textTransition: isTextTransition(s.textTransition) ? s.textTransition : 'fade',
     textTransitionMs: clampTransitionMs(s.textTransitionMs),
   };
@@ -401,7 +401,7 @@ function OutputSurface() {
     : null;
 
   const atBottom = theme.verseLayout !== 'top';
-  const stageJustify = atBottom ? 'flex-end' : 'flex-start';
+  const stageJustify = theme.verseLayout === 'center' ? 'center' : atBottom ? 'flex-end' : 'flex-start';
   const stageAlign =
     theme.verseLayout === 'bottom-left' ? 'flex-start' : theme.verseLayout === 'bottom-right' ? 'flex-end' : 'center';
   const stageTextAlign =

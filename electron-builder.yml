@@ -1,5 +1,10 @@
 appId: com.trilorah.app
 productName: Trilorah
+fileAssociations:
+  - ext: tri
+    name: Trilorah Package
+    description: Trilorah service and resource package
+    role: Editor
 
 directories:
   output: release

@@ -88,6 +88,19 @@ export function addMedia(media: ThemeMedia): void {
   emit();
 }
 
+/** A package copies resources into this laptop's shelf in one update. */
+export function importMedia(media: ThemeMedia[]): void {
+  if (!media.length) return;
+  const ids = new Set(media.map(item => item.id));
+  items = [...media, ...items.filter(item => !ids.has(item.id))];
+  savePersistedMedia(items);
+  emit();
+}
+
+export function getMediaLibrary(): ThemeMedia[] {
+  return items;
+}
+
 /**
  * Any still off the shelf — what the preview opens on while the one from
  * the online library is on its way, and what it keeps when there is no

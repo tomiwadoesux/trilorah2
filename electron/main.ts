@@ -153,7 +153,8 @@ import { CorrectionLedger } from './preachers/correctionLedger'
 import { seasonalBoost, seasonalThemeId } from './engine/seasonalPriors'
 import { resolveNotesProvider } from './llm/notesProvider'
 import { ScriptureSession } from './engine/scriptureSession'
-import { getAllSettings, getSetting, setSetting } from './data/settings'
+import { getAllSettings, getSetting, setSetting, getStore } from './data/settings'
+import { registerTriPackages } from './packages/triIpc'
 import { TransitionDetector } from './engine/transitionDetector'
 import { FalsePositiveFilter } from './engine/falsePositiveFilter'
 import { DisplayTimingManager } from './engine/displayTimingManager'
@@ -280,6 +281,7 @@ function getMimeType(filePath: string): string {
 }
 
 const isDev = process.env.NODE_ENV === 'development'
+if (app.isPackaged && !app.requestSingleInstanceLock()) app.quit()
 
 // TRI_DEBUG_PORT=9222 lets a script attach over CDP (screenshots, driving the
 // sandbox from the terminal). Dev-only affordance; nothing reads it in prod.
@@ -2418,7 +2420,9 @@ ipcMain.handle('generate-sermon-notes', async () => {
   // Honors the notesProvider setting (cloud | local); local falls back to
   // cloud until the on-device model integration graduates.
   const provider = resolveNotesProvider(getSetting('notesProvider'))
-  return provider.generate(transcript)
+  const notes = await provider.generate(transcript)
+  triCurrentNotes = notes
+  return notes
 })
 
 ipcMain.handle('export-sermon-notes-pdf', async (_event, notes) => {
@@ -3069,6 +3073,41 @@ function onDisplaysChanged(): void {
   }, 700)
 }
 
+let triCurrentNotes: unknown = null
+registerTriPackages({
+  window: () => mainWindow,
+  settings: () => getAllSettings(),
+  replaceSettings: values => { getStore().store = values as ReturnType<typeof getAllSettings> },
+  songs: () => {
+    const store = songStore()
+    if (store.problem) throw new Error(store.problem)
+    return store.list()
+  },
+  records: () => {
+    const transcript = serviceAgent?.getSermonText()
+    return [
+      ...(transcript ? [{ id: 'current-transcript', label: 'Current sermon transcript', data: { kind: 'transcript', text: transcript } }] : []),
+      ...(triCurrentNotes ? [{ id: 'current-notes', label: 'Current sermon notes', data: { kind: 'notes', value: triCurrentNotes } }] : []),
+    ]
+  },
+  imported: snapshot => {
+    if (snapshot.categories.songs?.length) songs = null
+    for (const key of Object.keys(libraryFolders)) delete libraryFolders[key]
+    for (const item of snapshot.categories.tools ?? []) {
+      for (const definition of item.data?.timers ?? []) timers.create(definition)
+    }
+    if (snapshot.categories.tools?.some(item => item.data?.timers?.length)) persistTimers()
+    if (snapshot.categories.service?.length) {
+      const run = getSetting('operatorRunV1')
+      const segments = Array.isArray(run) ? run : run?.segments ?? []
+      const entries = segments.map(segment => ({ type: segment.type })) as ScheduleEntry[]
+      setSetting('serviceSchedule', entries)
+      transitionDetector?.setSchedule(entries)
+    }
+    mainWindow?.webContents.send('tri-libraries-updated')
+  },
+})
+
 app.whenReady().then(() => {
   electronScreen.on('display-added', onDisplaysChanged)
   electronScreen.on('display-removed', onDisplaysChanged)
@@ -3257,6 +3296,7 @@ app.whenReady().then(() => {
       context: serviceAgent.context
     })
     const notesBuilder = new IncrementalNotesBuilder((snapshot) => {
+      triCurrentNotes = snapshot
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('on-notes-updated', snapshot)
       }

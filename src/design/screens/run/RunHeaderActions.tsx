@@ -15,6 +15,7 @@ import { rowsToSegments } from '../../../../shared/runPlan';
 import { useRun } from '../run';
 import { ScanReview } from './ScanReview';
 import { SEGMENT_TYPES } from './segmentTypes';
+import { TriPackageActions } from './TriPackageActions';
 import './run.css';
 
 /*
@@ -119,6 +120,7 @@ export function RunHeaderActions({ say }: { say?: (line: { text: string }) => vo
       className="flex items-center gap-[var(--tri-gap)]"
       style={{ '--tri-control-h': '26px', '--tri-control-pad-x': '8px' } as React.CSSProperties}
     >
+      <TriPackageActions />
       <ActionMenu
         groups={ADD_MENU}
         onArrange={(_parent, picked) => run.addSegments(picked)}

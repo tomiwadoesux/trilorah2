@@ -213,7 +213,7 @@ export function useMobileRemote() {
           if (key==='backgroundId') { const bg=m.find(x=>x.id===a.value && x.url); if(!bg) throw new Error('Background not found'); return api!.setSetting('defaultBackgroundUrl',bg.url); }
           if (key==='scriptureFontPreset' && ['display-serif','classic-serif','modern-sans','bold-slab','display-rounded'].includes(String(a.value))) return api!.setSetting(key,a.value);
           if (key==='defaultTextColor' && /^#[0-9a-f]{6}$/i.test(String(a.value))) return api!.setSetting(key,a.value);
-          if (key==='verseLayout' && ['top','bottom','bottom-left','bottom-right'].includes(String(a.value))) return api!.setSetting(key,a.value);
+          if (key==='verseLayout' && ['center','top','bottom','bottom-center','bottom-left','bottom-right'].includes(String(a.value))) return api!.setSetting(key,a.value);
           if (ranges[key] && typeof a.value==='number' && Number.isFinite(a.value)) return api!.setSetting(key,Math.max(ranges[key][0],Math.min(ranges[key][1],a.value)));
           throw new Error('Unsupported theme setting');
         }
