@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Panel } from '../parts';
-import { ClockIcon } from '../../../ui';
 import { Expandable } from './expand';
 import { formatTimerDisplay } from '../../../../shared/timerDisplay';
 import { getTimerColor } from '../../../../shared/timerColor';
@@ -762,8 +761,7 @@ export function TimersTile({ className }: { className?: string }) {
       tile={({ onOpen, open }) => (
         <Panel
           title={`service timer${timers.length > 1 ? ` (${timers.length})` : ''}`}
-          icon={<ClockIcon size={13} />}
-          blurb="how long is left, on the wall and the stage monitor."
+          empty={timers.length === 0}
           onOpen={onOpen}
           className="min-h-0 flex-1 transition-colors hover:border-neutral-700"
           bodyClass="p-3.5 flex flex-col"

@@ -34,6 +34,8 @@ export interface SongDraft {
   title: string
   author: string
   cards: EditorCard[]
+  /** Unedited lyrics while a new song is being split into slides. */
+  sourceLyrics?: string
   /** Where the grid was scrolled to. */
   scrollTop: number
   /** The card that held the caret, and where in it. */
@@ -272,6 +274,7 @@ export function parseDrafts(raw: unknown): DraftMap {
       caret: typeof d.caret === 'number' && Number.isFinite(d.caret) ? Math.max(0, d.caret) : 0,
       updatedAt: typeof d.updatedAt === 'number' ? d.updatedAt : 0,
     }
+    if (str(d.sourceLyrics)) draft.sourceLyrics = d.sourceLyrics
     if (d.base && typeof d.base === 'object') {
       const b = d.base as Record<string, unknown>
       const sections = parseSections(b.sections)
@@ -283,4 +286,17 @@ export function parseDrafts(raw: unknown): DraftMap {
     out[id] = draft
   }
   return out
+}
+
+/** Section labels and empty placeholder cards are not song content. */
+export function hasSongDraftContent(draft: Pick<SongDraft, 'title' | 'author' | 'cards' | 'sourceLyrics'>): boolean {
+  return Boolean(draft.title.trim() || draft.author.trim() ||
+    (draft.sourceLyrics !== undefined ? draft.sourceLyrics.trim() : draft.cards.some(card => card.text.trim())))
+}
+
+/** Recovery expires thirty minutes after the editor is closed. */
+export const SONG_RECOVERY_MS = 30 * 60 * 1000
+export function activeDrafts(map: DraftMap, now = Date.now()): DraftMap {
+  const entries = Object.entries(map).filter(([id, draft]) => (!isNewId(id) || hasSongDraftContent(draft)) && Number.isFinite(draft.updatedAt) && now - draft.updatedAt < SONG_RECOVERY_MS)
+  return entries.length === Object.keys(map).length ? map : Object.fromEntries(entries)
 }

@@ -73,11 +73,17 @@ export function boxInShell(el: HTMLElement, shell: HTMLElement): Box {
 
 /** Where an open tile lands: centred, capped, with room for the ground. */
 export function targetBox(shell: HTMLElement, wanted: { w: number; h: number }): Box {
-  const W = shell.offsetWidth;
-  const H = shell.offsetHeight;
-  const width = Math.min(wanted.w, W - 80);
-  const height = Math.min(wanted.h, H - 80);
-  return { left: (W - width) / 2, top: (H - height) / 2, width, height };
+  const rect = shell.getBoundingClientRect();
+  const scaleX = rect.width / shell.offsetWidth || 1;
+  const scaleY = rect.height / shell.offsetHeight || 1;
+  const visibleLeft = Math.max(0, -rect.left) / scaleX;
+  const visibleTop = Math.max(0, -rect.top) / scaleY;
+  const W = Math.max(0, Math.min(rect.right, window.innerWidth) - Math.max(0, rect.left)) / scaleX;
+  const H = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(0, rect.top)) / scaleY;
+  const margin = Math.min(40, W * .04, H * .04);
+  const width = Math.max(0, Math.min(wanted.w, W - margin * 2));
+  const height = Math.max(0, Math.min(wanted.h, H - margin * 2));
+  return { left: visibleLeft + (W - width) / 2, top: visibleTop + (H - height) / 2, width, height };
 }
 
 export interface ExpandableProps {

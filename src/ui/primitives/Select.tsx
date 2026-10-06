@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import { usePopupPlacement, popupBounds } from './usePopupPlacement';
 import { useState, useRef, useEffect } from 'react';
 import { cx } from '../lib/cx';
 import { ChevronDownIcon } from '../icons';
@@ -59,6 +61,10 @@ export function Select({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const position = usePopupPlacement(isOpen, triggerRef, menuRef, 'left');
+
   const handleToggle = () => {
     if (disabled) return;
     setIsOpen((prev) => !prev);
@@ -75,7 +81,7 @@ export function Select({
     if (!isOpen) return;
 
     const handlePointerDown = (e: PointerEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node) && !menuRef.current?.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -102,6 +108,7 @@ export function Select({
       {/* Select Trigger Button */}
       <button
         type="button"
+        ref={triggerRef}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-disabled={disabled || undefined}
@@ -169,11 +176,16 @@ export function Select({
         the menu. The selected row is marked by weight plus a flat wash rather
         than tri-surface, which would drag the gradient back in.
       */}
-      {isOpen && (
+      {isOpen && createPortal(
         <ul
+          ref={menuRef}
           role="listbox"
-          className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 flex flex-col p-1.5 gap-1 overflow-hidden"
+          className="fixed z-[100] flex flex-col p-1.5 gap-1 overflow-hidden"
           style={{
+            ...popupBounds,
+            left: position?.left ?? 0, top: position?.top ?? 0,
+            visibility: position ? 'visible' : 'hidden',
+            width: triggerRef.current?.getBoundingClientRect().width,
             borderRadius: '16px',
             /*
              * The app's panel grey. Panel paints rgb(255 255 255 / 0.022) over
@@ -205,7 +217,7 @@ export function Select({
                      menus open feet apart in the rail and ActionMenu's own
                      comment claims it copies this row's type size — which was
                      only true of its padding and height until now. */
-                  'flex h-[var(--tri-option-h)] w-full items-center justify-between px-3.5 rounded-[10px] text-[length:var(--tri-control-size)] lowercase cursor-pointer transition-[opacity,background-color] duration-150 select-none text-[var(--tri-ink,#e5f3f2)]',
+                  'flex shrink-0 h-[var(--tri-option-h)] w-full items-center justify-between px-3.5 rounded-[10px] text-[length:var(--tri-control-size)] lowercase cursor-pointer transition-[opacity,background-color] duration-150 select-none text-[var(--tri-ink,#e5f3f2)]',
                   isSelected
                     ? 'font-medium bg-[rgb(255_255_255_/_0.07)]'
                     : 'opacity-75 hover:opacity-100 hover:bg-[rgb(255_255_255_/_0.05)]',
@@ -215,7 +227,7 @@ export function Select({
               </li>
             );
           })}
-        </ul>
+        </ul>, document.body
       )}
     </div>
   );

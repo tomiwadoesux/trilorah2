@@ -1,7 +1,7 @@
 {
   "name": "ai-preacher-assistant",
   "private": true,
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Trilorah — church presentation software with an agentic sermon engine. Beautiful, effortless, intelligent.",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -18,11 +18,14 @@
     "bible:index": "node scripts/build-bible-index.mjs",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "icon": "node scripts/make-icon.mjs",
-    "dist": "npm run build && node scripts/write-service-defaults.mjs && electron-builder; node scripts/write-service-defaults.mjs --restore",
-    "dist:dir": "npm run build && node scripts/write-service-defaults.mjs && electron-builder --dir; node scripts/write-service-defaults.mjs --restore",
+    "dist": "npm run passages:model && npm run build && node scripts/write-service-defaults.mjs && electron-builder; node scripts/write-service-defaults.mjs --restore",
+    "dist:dir": "npm run passages:model && npm run build && node scripts/write-service-defaults.mjs && electron-builder --dir; node scripts/write-service-defaults.mjs --restore",
     "eval": "tsx evals/run.ts",
     "eval:gate": "tsx evals/gate.ts",
-    "bible:fts": "node scripts/build-bible-fts.mjs"
+    "bible:fts": "node scripts/build-bible-fts.mjs",
+    "passages:model": "node scripts/fetch-embedding-model.mjs",
+    "passages:vectors": "tsx scripts/build-passage-vectors.ts",
+    "eval:allusions": "node --import tsx evals/allusion-check.ts"
   },
   "dependencies": {
     "@deepgram/sdk": "4.11.3",
@@ -35,6 +38,7 @@
     "js.foresight": "^4.2.1",
     "motion": "^13.4.0",
     "obs-websocket-js": "5.0.7",
+    "onnxruntime-node": "1.30.0",
     "pdfkit": "0.18.0",
     "qrcode": "1.5.4",
     "react": "19.2.3",

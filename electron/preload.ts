@@ -3,6 +3,7 @@ import type { IpcRendererEvent } from 'electron'
 import type { SongPatch } from '../shared/types'
 import type { LiveContent } from '../shared/liveContent'
 import type { ImportedSong } from './songs/import'
+import type { RecognitionWithdrawal } from '../shared/recognitionWithdrawal'
 import type { TriApi } from '../shared/triBridge'
 
 const triApi: TriApi = {
@@ -73,6 +74,12 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('on-verse-preview', subscription)
   },
 
+  onRecognitionWithdrawn: (callback: (data: RecognitionWithdrawal) => void) => {
+    const subscription = (_event: IpcRendererEvent, data: RecognitionWithdrawal) => callback(data)
+    ipcRenderer.on('on-recognition-withdrawn', subscription)
+    return () => ipcRenderer.removeListener('on-recognition-withdrawn', subscription)
+  },
+
   // Listener for AI verse detection events (goes directly to live)
   onVerseDetected: (callback: (data: any) => void) => {
     const subscription = (_event: IpcRendererEvent, data: any) => callback(data)
@@ -121,6 +128,13 @@ contextBridge.exposeInMainWorld('api', {
 
   // Sermon Transcript & Notes
   getSermonTranscript: () => ipcRenderer.invoke('get-sermon-transcript'),
+  getSermonStart: () => ipcRenderer.invoke('get-sermon-start'),
+  respondSermonStart: (action: string, requestId?: number) => ipcRenderer.invoke('respond-sermon-start', action, requestId),
+  onSermonStart: (callback: (state: import('../shared/sermonStart').SermonStartState) => void) => {
+    const subscription = (_event: IpcRendererEvent, state: import('../shared/sermonStart').SermonStartState) => callback(state)
+    ipcRenderer.on('on-sermon-start', subscription)
+    return () => ipcRenderer.removeListener('on-sermon-start', subscription)
+  },
   getServiceLog: () => ipcRenderer.invoke('get-service-log'),
   saveServiceSummary: () => ipcRenderer.invoke('save-service-summary'),
   generateSermonNotes: () => ipcRenderer.invoke('generate-sermon-notes'),
@@ -134,6 +148,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Service Agent
   setServiceSchedule: (schedule: any) => ipcRenderer.send('set-service-schedule', schedule),
+  setRunOrderContext: (schedule: any) => ipcRenderer.send('set-service-schedule', schedule, false),
   setCurrentSongLyrics: (lyrics: string) => ipcRenderer.send('set-current-song-lyrics', lyrics),
   onShowCleanBackground: (callback: () => void) => {
     const subscription = () => callback()
@@ -253,6 +268,8 @@ contextBridge.exposeInMainWorld('api', {
   // Mentioned-but-not-displayed queue
   getVerseQueue: () => ipcRenderer.invoke('get-verse-queue'),
   showQueuedVerse: (ref: string) => ipcRenderer.invoke('show-queued-verse', ref),
+  // Operator asks which passage the last words spoken point to
+  findHeardScripture: (text?: string) => ipcRenderer.invoke('find-heard-scripture', { text }),
   // Translation control (also reachable by the preacher's voice)
   setDisplayVersion: (version: string) =>
     ipcRenderer.invoke('set-display-version', version),
@@ -490,6 +507,7 @@ contextBridge.exposeInMainWorld('api', {
     importFiles: () => ipcRenderer.invoke('songs-import-file'),
     importCommit: (songs: ImportedSong[]) => ipcRenderer.invoke('songs-import-commit', { songs }),
     // Online sources. All three resolve to `{ ok }` results and never reject.
+    discoverChristianSongs: (query: string) => ipcRenderer.invoke('songs-discover', { query }),
     searchLyrics: (query: string) => ipcRenderer.invoke('lyrics-search', { query }),
     getLyrics: (id: number) => ipcRenderer.invoke('lyrics-get', { id }),
     youtubeCaptions: (url: string) => ipcRenderer.invoke('youtube-captions', { url })

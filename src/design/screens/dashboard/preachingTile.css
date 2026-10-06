@@ -80,6 +80,16 @@
 .transcript-reader__entry:last-child { border-bottom:0; }
 .transcript-reader__empty { padding:28px 0; font-size:14px; line-height:24px; color:var(--tri-ink-muted); }
 .transcript-reader__footer { display:flex; justify-content:space-between; gap:16px; flex-shrink:0; padding:16px 0 20px; border-top:1px solid rgb(229 243 242 / .10); font-size:11px; line-height:18px; color:rgb(229 243 242 / .45); }
+/* The same card, living in the operator rail's catches panel while no verse
+   is waiting there. The panel already has its own edge and padding, so the
+   face gives up its margins and its footer and keeps everything else. */
+.preaching-card--rail { border-radius:0; animation:preaching-rail-in 260ms var(--tri-ease-out, ease-out) both; }
+.preaching-card--rail .preaching-card__header { padding:2px 4px 12px; }
+.preaching-card--rail .preaching-card__history { padding:0 0 0 4px; }
+.preaching-card--rail .preaching-card__live { margin:12px 4px 0; padding-top:12px; }
+.preaching-card--rail .preaching-card__caption { font-size:15px; }
+@keyframes preaching-rail-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce) { .preaching-card--rail { animation:none; } }
 @container (max-width:350px) {
  .preaching-card__header { padding:14px 16px 16px; gap:8px; }
  .preaching-card__title { letter-spacing:.1em; font-size:11px; }

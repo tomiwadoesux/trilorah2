@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { cx } from '../lib/cx';
 import { useNudge } from '../hooks/useNudge';
+import { nextTextCase, resolveTextCase, type TextCase } from '../../../shared/textCase';
+import { nextTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
+import './displayFontPicker.css';
 
 export type FontOption = 'default' | 'serif' | 'uppercase';
 
 export interface DisplayFontOption {
-  id: FontOption;
+  id: FontOption | 'spacing';
   label: string;
   sample: string;
   fontFamily?: string;
@@ -30,11 +33,21 @@ export const DISPLAY_FONT_OPTIONS: DisplayFontOption[] = [
     sample: 'AA',
     fontFamily: 'var(--tri-font, Roboto, sans-serif)',
   },
+  {
+    id: 'spacing',
+    label: 'normal',
+    sample: 'AA',
+    fontFamily: 'var(--tri-font, Roboto, sans-serif)',
+  },
 ];
 
 export interface DisplayFontPickerProps {
   value?: FontOption;
   onChange?: (next: FontOption) => void;
+  textCase?: TextCase;
+  onTextCaseChange?: (next: TextCase) => void;
+  textSpacing?: TextSpacing;
+  onTextSpacingChange?: (next: TextSpacing) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -42,11 +55,19 @@ export interface DisplayFontPickerProps {
 export function DisplayFontPicker({
   value,
   onChange,
+  textCase,
+  onTextCaseChange,
+  textSpacing,
+  onTextSpacingChange,
   disabled = false,
   className = '',
 }: DisplayFontPickerProps) {
   const [internalSelected, setInternalSelected] = useState<FontOption>('default');
-  const selected = value ?? internalSelected;
+  const [internalCase, setInternalCase] = useState<TextCase>(() => resolveTextCase(undefined, value));
+  const selected = (value ?? internalSelected) === 'serif' ? 'serif' : 'default';
+  const caseAction = nextTextCase(textCase ?? internalCase);
+  const [internalSpacing, setInternalSpacing] = useState<TextSpacing>('normal');
+  const spacing = textSpacing ?? internalSpacing;
 
   const handleSelect = (id: FontOption) => {
     if (disabled) return;
@@ -54,23 +75,46 @@ export function DisplayFontPicker({
     onChange?.(id);
   };
 
+  const handleCaseChange = () => {
+    if (disabled) return;
+    setInternalCase(caseAction);
+    onTextCaseChange?.(caseAction);
+  };
+
+  const handleSpacingChange = () => {
+    if (disabled) return;
+    const next = nextTextSpacing(spacing);
+    setInternalSpacing(next);
+    onTextSpacingChange?.(next);
+  };
+
+  const renderCard = (opt: DisplayFontOption) => {
+    const id = opt.id;
+    return (
+      <FontCardItem
+        key={id}
+        option={opt}
+        displaySample={id === 'uppercase' ? (caseAction === 'uppercase' ? 'AA' : 'aa') : opt.sample}
+        displayLabel={id === 'uppercase' ? caseAction : id === 'spacing' ? spacing : opt.label}
+        isSelected={selected === id}
+        spacing={id === 'spacing' ? spacing : undefined}
+        disabled={disabled}
+        onClick={id === 'uppercase' ? handleCaseChange : id === 'spacing' ? handleSpacingChange : () => handleSelect(id)}
+      />
+    );
+  };
+
   return (
-    <div className={cx('flex flex-col gap-2 lowercase', className)}>
+    <div className={cx('flex min-w-0 flex-col gap-2 lowercase', className)}>
       <span className="tri-label text-[var(--tri-ink-muted)]">display font</span>
-      <div className="flex items-start gap-4">
-        {DISPLAY_FONT_OPTIONS.map((opt) => {
-          return (
-            <FontCardItem
-              key={opt.id}
-              option={opt}
-              displaySample={opt.sample}
-              displayLabel={opt.label}
-              isSelected={selected === opt.id}
-              disabled={disabled}
-              onClick={() => handleSelect(opt.id)}
-            />
-          );
-        })}
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] items-start gap-x-2.5">
+        <div role="group" aria-label="font choices" className="grid min-w-0 grid-cols-2 gap-3">
+          {DISPLAY_FONT_OPTIONS.slice(0, 2).map(renderCard)}
+        </div>
+        <span aria-hidden className="h-5 w-px -translate-y-3 self-center bg-white/15" />
+        <div role="group" aria-label="text controls" className="grid min-w-0 grid-cols-2 gap-3">
+          {DISPLAY_FONT_OPTIONS.slice(2).map(renderCard)}
+        </div>
       </div>
     </div>
   );
@@ -81,6 +125,7 @@ interface FontCardItemProps {
   displaySample: string;
   displayLabel: string;
   isSelected: boolean;
+  spacing?: TextSpacing;
   disabled: boolean;
   onClick: () => void;
 }
@@ -90,10 +135,16 @@ function FontCardItem({
   displaySample,
   displayLabel,
   isSelected,
+  spacing,
   disabled,
   onClick,
 }: FontCardItemProps) {
   const { ref, nudge } = useNudge<HTMLButtonElement>();
+  const isCaseControl = option.id === 'uppercase';
+  const isSpacingControl = option.id === 'spacing';
+  const isSettingControl = isCaseControl || isSpacingControl;
+  const [animateSample, setAnimateSample] = useState(false);
+  const sampleShift = TEXT_SPACING[spacing ?? 'normal'].sampleShift;
 
   /*
    * The card fills its share of the row and keeps its shape while doing it:
@@ -118,7 +169,7 @@ function FontCardItem({
 
   return (
     <div
-      className="flex min-w-0 flex-1 flex-col items-center gap-[2px]"
+      className="flex w-full min-w-0 flex-col items-center gap-[2px]"
       /* Capped: the glyph inside is cqw-scaled and would otherwise balloon
          with the window while the caption stays put — see --tri-card-max. */
       style={{ containerType: 'inline-size', maxWidth: 'var(--tri-card-max)' }}
@@ -126,11 +177,17 @@ function FontCardItem({
       <button
         ref={ref}
         type="button"
-        aria-pressed={isSelected}
+        aria-label={isSpacingControl ? `text spacing: ${displayLabel}` : displayLabel}
+        title={isCaseControl ? `Switch text to ${displayLabel}` : isSpacingControl ? `Text spacing: ${displayLabel}. Click for ${nextTextSpacing(spacing ?? 'normal')}.` : undefined}
+        aria-pressed={isSettingControl ? undefined : isSelected}
         aria-disabled={disabled || undefined}
-        onClick={disabled ? nudge : onClick}
+        onClick={(event) => {
+          if (disabled) { nudge(); return; }
+          setAnimateSample(event.detail > 0);
+          onClick();
+        }}
         className={cx(
-          'relative flex w-full items-center justify-center transition-all duration-200 focus:outline-none select-none',
+          'tri-font-card relative flex w-full items-center justify-center select-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--tri-accent-yellow)]',
           disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
         )}
         style={{
@@ -139,35 +196,51 @@ function FontCardItem({
           borderRadius: OUTER_RADIUS,
           // Width comes from --tri-border; only the overlay is set here.
           boxShadow: isSelected
-            ? 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.20), inset 0 0 0 var(--tri-border) var(--tri-edge, #07271c)'
+            ? 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.30)'
             : 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
         }}
       >
         {/* Inner Linear Card (computed 76px x 76px with 5px gap & 20px radius) */}
         <div
           className={cx(
-            'flex h-full w-full items-center justify-center transition-all duration-200',
-            isSelected
-              ? 'tri-surface tri-interactive'
-              : 'bg-[rgb(0_0_0_/_0.20)] hover:bg-[rgb(255_255_255_/_0.04)]',
+            'relative flex h-full w-full items-center justify-center bg-[rgb(0_0_0_/_0.20)] transition-colors duration-150',
+            !isSelected && !isSettingControl && 'hover:bg-[rgb(255_255_255_/_0.04)]',
           )}
           style={{
             borderRadius: INNER_RADIUS,
           }}
         >
+          {(isSelected || isSettingControl) && (
+            <span
+              aria-hidden
+              className="tri-surface pointer-events-none absolute inset-0"
+              style={{ borderRadius: 'inherit', opacity: isSettingControl ? 0.4 : 1 }}
+            />
+          )}
           <span
-            className="font-normal leading-none tracking-normal select-none transition-colors duration-200"
+            className="relative font-normal leading-none tracking-normal select-none transition-colors duration-150"
             style={{
               /* The drawn 32px on the drawn 86px card, as a proportion — the
                  glyph is the card's content, not a caption, so it scales with
                  the card the way the corner does. */
               fontSize: '37cqw',
               fontFamily: option.fontFamily,
+              textTransform: 'none',
               color: 'var(--tri-accent-yellow, #e4d87a)',
-              opacity: isSelected ? 1 : 0.65,
+              opacity: isSelected ? 1 : isSettingControl ? 0.8 : 0.65,
             }}
           >
-            {displaySample}
+            {isCaseControl ? (
+              <span aria-hidden className="tri-case-sample" data-animate={animateSample}>
+                <span data-visible={displaySample === 'AA'}>AA</span>
+                <span data-visible={displaySample === 'aa'}>aa</span>
+              </span>
+            ) : isSpacingControl ? (
+              <span aria-hidden className="tri-spacing-sample" data-spacing={spacing} data-animate={animateSample}>
+                <span style={{ transform: `translateX(${-sampleShift}em)` }}>A</span>
+                <span style={{ transform: `translateX(${sampleShift}em)` }}>A</span>
+              </span>
+            ) : displaySample}
           </span>
         </div>
       </button>
@@ -179,7 +252,7 @@ function FontCardItem({
           backgroundColor: 'var(--tri-accent-yellow, #e4d87a)',
           opacity: isSelected ? 1 : 0,
           transform: isSelected ? 'scaleX(1)' : 'scaleX(0.7)',
-          transition: 'all 180ms cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'opacity 150ms ease, transform 150ms ease',
         }}
       />
 
@@ -190,9 +263,7 @@ function FontCardItem({
         className="tri-label lowercase"
         style={{
           color: isSelected ? 'var(--tri-ink, #e5f3f2)' : 'var(--tri-ink-muted, rgb(229 243 242 / 0.64))',
-          transform: isSelected ? 'translateY(2px)' : 'translateY(-11px)',
-          transition:
-            'transform 180ms cubic-bezier(0.16, 1, 0.3, 1), color 180ms cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'color 150ms ease',
         }}
       >
         {displayLabel}

@@ -1,0 +1,15 @@
+{
+  "translation": "King James (Authorized) Version, standardized 1769 text, protocanon",
+  "sourceId": "eng-kjv2006",
+  "publisher": "CrossWire Bible Society and eBible.org",
+  "sourceUrl": "https://ebible.org/Scriptures/eng-kjv2006_usfm.zip",
+  "detailsUrl": "https://ebible.org/bible/details.php?id=eng-kjv2006",
+  "rights": "Public domain outside the United Kingdom; source publisher notes UK Crown printing rights.",
+  "retrieved": "2026-10-03",
+  "archiveSha256": "2e698d1c6e865341c4193c719079f9767c8db09a488fffe18c24e51978a4f9c3",
+  "books": 66,
+  "chapters": 1189,
+  "verses": 31102,
+  "numbering": "Explicit USFM chapter and verse identifiers; never an array index.",
+  "omittedMetadata": ["Strong's numbers", "footnotes", "cross-references", "section headings", "Psalm superscriptions outside numbered verses", "formatting markers"]
+}

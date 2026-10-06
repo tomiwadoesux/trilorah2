@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { cx, surface, Button, SegmentedControl } from '../../../ui';
+import { cx, surface, Button, SegmentedControl, PlusIcon } from '../../../ui';
 import { Panel } from '../parts';
-import { EmptyMotion, QrRollArt } from '../emptyArt';
+import { EmptyMark } from '../emptyArt';
+import { CompanionBoxesArt } from '../CompanionBoxesArt';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
 
@@ -141,6 +142,8 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
           className="relative min-h-0 flex-1"
           bodyClass="pt-3"
           title={stacked ? 'companion' : undefined}
+          empty={!link}
+          right={!link ? <button type="button" aria-label="set up companion" onClick={onOpen} className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tri-ink)] hover:bg-white/10"><PlusIcon size={14} /></button> : undefined}
           tone={live ? 'live' : 'default'}
         >
           {confirm && (
@@ -164,7 +167,7 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
             link, then the controls pushed to the foot — so both sides start
             on one line and end on another.
           */}
-          <div className={cx('flex h-full min-h-0 gap-4', stacked ? 'flex-col items-stretch' : 'items-stretch')}>
+          {!link ? <EmptyMark plain art={<CompanionBoxesArt />} w={185} h={160} line="your companion is waiting" hint="set up the page people follow along with" below={<div className="mt-2"><Button label="set up companion" icon={<PlusIcon size={12} />} onClick={onOpen} /></div>} /> : <div className={cx('companion-face flex h-full min-h-0 gap-4', stacked ? 'companion-face--stacked flex-col items-stretch' : 'items-stretch')}>
             {/* The code is the door: press it and the tile opens. The
                 controls beside it act without opening anything. */}
             <button
@@ -172,7 +175,7 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
               onClick={onOpen}
               title="open companion settings"
               className={cx(
-                'tri-rounded-control group relative flex min-h-0 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-white/[0.04] transition-colors hover:border-white/20',
+                'companion-face__qr tri-rounded-control group relative flex min-h-0 shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-white/[0.04] transition-colors hover:border-white/20',
                 /* Stacked, the code takes whatever height the stack under it
                    leaves and squares itself off that — width follows height,
                    never the other way, or the controls fall off the floor. */
@@ -196,13 +199,11 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
                    failed-image read this tile's comment warns about,
                    reached from the other side. The square is real and
                    drawn; the modules are absent. */
-                <EmptyMotion className="flex h-full w-full items-center justify-center p-2">
-                  <QrRollArt />
-                </EmptyMotion>
+                <span className="flex h-full w-full items-center justify-center p-2"><CompanionBoxesArt /></span>
               )}
             </button>
 
-            <div className={cx('flex min-w-0 flex-col gap-2', stacked ? 'shrink-0' : 'flex-1 justify-center')}>
+            <div className={cx('companion-face__details flex min-w-0 flex-col gap-2', stacked ? 'shrink-0' : 'flex-1 justify-center')}>
               <div className="min-w-0">
                 {!stacked && (
                   <p className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">
@@ -246,7 +247,7 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
                 </button>
               </div>
             </div>
-          </div>
+          </div>}
         </Panel>
       )}
     >

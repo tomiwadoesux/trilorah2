@@ -5,6 +5,8 @@ import './index.css';
 import './ui/tokens.css';
 import './design/sandbox.css';
 import { Gallery } from './design/Gallery';
+import { LibraryEmptyPreview } from './design/entries/LibraryEmptyPreview';
+import { EmptyIllustrationPreview } from './design/entries/EmptyIllustrationPreview';
 
 /*
  * Entry point for the design sandbox window (design.html).
@@ -17,6 +19,10 @@ restoreAurora();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Gallery />
+    {new URLSearchParams(window.location.search).has('empty-art-preview')
+      ? <main className="mx-auto max-w-[1100px] p-5"><EmptyIllustrationPreview /></main>
+      : new URLSearchParams(window.location.search).has('library-empty-preview')
+      ? <main className="mx-auto max-w-[1000px] p-5"><LibraryEmptyPreview /></main>
+      : <Gallery />}
   </StrictMode>,
 );

@@ -1,191 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-
-const FAMOUS_VERSES: Record<string, number> = {
-  // John
-  'John 3:16': 3,
-  'John 1:1': 3,
-  'John 14:6': 3,
-  'John 11:35': 3,
-  'John 8:32': 3,
-  'John 10:10': 3,
-  'John 15:13': 3,
-  'John 3:3': 3,
-  'John 1:14': 3,
-  'John 14:1': 3,
-  'John 14:27': 3,
-  // Romans
-  'Romans 8:28': 3,
-  'Romans 3:23': 3,
-  'Romans 6:23': 3,
-  'Romans 5:8': 3,
-  'Romans 10:9': 3,
-  'Romans 10:10': 3,
-  'Romans 8:1': 3,
-  'Romans 8:38': 3,
-  'Romans 12:1': 3,
-  'Romans 12:2': 3,
-  // Psalms
-  'Psalms 23:1': 3,
-  'Psalms 23:4': 3,
-  'Psalms 46:1': 3,
-  'Psalms 119:105': 3,
-  'Psalms 27:1': 3,
-  'Psalms 37:4': 3,
-  'Psalms 91:1': 3,
-  'Psalms 100:1': 3,
-  'Psalms 139:14': 3,
-  'Psalms 34:8': 3,
-  'Psalms 118:24': 3,
-  'Psalms 121:1': 3,
-  'Psalms 51:10': 3,
-  // Proverbs
-  'Proverbs 3:5': 3,
-  'Proverbs 3:6': 3,
-  'Proverbs 22:6': 3,
-  'Proverbs 18:21': 3,
-  'Proverbs 27:17': 3,
-  'Proverbs 4:23': 3,
-  'Proverbs 16:3': 3,
-  'Proverbs 31:10': 3,
-  // Genesis
-  'Genesis 1:1': 3,
-  'Genesis 1:27': 3,
-  'Genesis 12:1': 3,
-  // Isaiah
-  'Isaiah 40:31': 3,
-  'Isaiah 41:10': 3,
-  'Isaiah 53:5': 3,
-  'Isaiah 55:8': 3,
-  'Isaiah 55:9': 3,
-  'Isaiah 54:17': 3,
-  'Isaiah 9:6': 3,
-  'Isaiah 26:3': 3,
-  'Isaiah 43:2': 3,
-  'Isaiah 61:1': 3,
-  // Jeremiah
-  'Jeremiah 29:11': 3,
-  'Jeremiah 33:3': 3,
-  'Jeremiah 1:5': 3,
-  // Matthew
-  'Matthew 6:33': 3,
-  'Matthew 11:28': 3,
-  'Matthew 28:19': 3,
-  'Matthew 28:20': 3,
-  'Matthew 5:14': 3,
-  'Matthew 5:16': 3,
-  'Matthew 7:7': 3,
-  'Matthew 18:20': 3,
-  'Matthew 19:26': 3,
-  'Matthew 22:37': 3,
-  // Philippians
-  'Philippians 4:13': 3,
-  'Philippians 4:6': 3,
-  'Philippians 4:7': 3,
-  'Philippians 4:8': 3,
-  'Philippians 2:10': 3,
-  'Philippians 1:6': 3,
-  // Ephesians
-  'Ephesians 2:8': 3,
-  'Ephesians 2:9': 3,
-  'Ephesians 6:11': 3,
-  'Ephesians 6:12': 3,
-  'Ephesians 3:20': 3,
-  // Galatians
-  'Galatians 2:20': 3,
-  'Galatians 5:22': 3,
-  // Hebrews
-  'Hebrews 11:1': 3,
-  'Hebrews 12:1': 3,
-  'Hebrews 12:2': 3,
-  'Hebrews 13:8': 3,
-  'Hebrews 4:12': 3,
-  'Hebrews 11:6': 3,
-  // 2 Timothy
-  '2 Timothy 1:7': 3,
-  '2 Timothy 3:16': 3,
-  // 1 Corinthians
-  '1 Corinthians 13:4': 3,
-  '1 Corinthians 13:13': 3,
-  '1 Corinthians 10:13': 3,
-  // 2 Corinthians
-  '2 Corinthians 5:17': 3,
-  '2 Corinthians 5:7': 3,
-  '2 Corinthians 12:9': 3,
-  // Colossians
-  'Colossians 3:23': 3,
-  // 1 Peter
-  '1 Peter 5:7': 3,
-  // James
-  'James 1:2': 3,
-  'James 1:5': 3,
-  'James 4:7': 3,
-  // Revelation
-  'Revelation 3:20': 3,
-  'Revelation 21:4': 3,
-  // Deuteronomy
-  'Deuteronomy 31:6': 3,
-  // Joshua
-  'Joshua 1:9': 3,
-  // Micah
-  'Micah 6:8': 3,
-  // Habakkuk
-  'Habakkuk 2:2': 3,
-  // Malachi
-  'Malachi 3:10': 3,
-  // Luke
-  'Luke 1:37': 3,
-  // Mark
-  'Mark 11:24': 3,
-  // Acts
-  'Acts 1:8': 3,
-  'Acts 2:38': 3,
-  // 1 John
-  '1 John 1:9': 3,
-  '1 John 4:4': 3,
-  '1 John 4:8': 3
-}
-
-const WELL_KNOWN_VERSES: Record<string, number> = {
-  'Psalms 23:2': 4,
-  'Psalms 23:3': 4,
-  'Psalms 23:5': 4,
-  'Psalms 23:6': 4,
-  'Romans 8:29': 4,
-  'Romans 8:30': 4,
-  'Romans 8:31': 4,
-  'Isaiah 53:4': 4,
-  'Isaiah 53:6': 4,
-  'John 3:17': 4,
-  'John 14:2': 4,
-  'John 14:3': 4,
-  'Matthew 5:3': 4,
-  'Matthew 5:4': 4,
-  'Matthew 5:5': 4,
-  'Matthew 5:6': 4,
-  'Matthew 5:7': 4,
-  'Matthew 5:8': 4,
-  'Matthew 5:9': 4,
-  '1 Corinthians 13:5': 4,
-  '1 Corinthians 13:6': 4,
-  '1 Corinthians 13:7': 4,
-  'Ephesians 6:13': 4,
-  'Ephesians 6:14': 4,
-  'Ephesians 6:15': 4,
-  'Ephesians 6:16': 4,
-  'Ephesians 6:17': 4,
-  'Galatians 5:23': 4,
-  'Genesis 1:2': 4,
-  'Genesis 1:3': 4
-}
-
-const DEFAULT_MIN_MATCHES = 6
-
-function getMinMatches(ref: string): number {
-  if (FAMOUS_VERSES[ref] !== undefined) return FAMOUS_VERSES[ref]
-  if (WELL_KNOWN_VERSES[ref] !== undefined) return WELL_KNOWN_VERSES[ref]
-  return DEFAULT_MIN_MATCHES
-}
+import modernBible from '../data/passages/bsb-sections.json'
 
 const STOPWORDS = new Set([
   'the',
@@ -276,15 +91,15 @@ const STOPWORDS = new Set([
   'its'
 ])
 
-const WINDOW_SIZE = 5
-
-/** One entry of bible_index.json — the pre-built quote-matching index. */
+/** Keep original word order: removing 'for God so' loses useful quote evidence. */
 export interface BibleIndexEntry {
   ref: string
   bookId: number
   chapter: number
   verse: number
+  /** Legacy substantive words, retained for older packaged indexes. */
   words: string[]
+  rawWords?: string[]
 }
 
 export interface QuoteMatch {
@@ -292,63 +107,90 @@ export interface QuoteMatch {
   bookId: number
   chapter: number
   verse: number
+  /** Word-alignment strength, not a probability that the preacher intended this verse. */
   confidence: number
   lowConfidence: boolean
   matchedWords?: number
 }
 
-export class QuoteMatcher {
-  verses: BibleIndexEntry[]
-  wordIndex: Record<string, number[]>
-  rollingWords: string[]
-  lastQuoteRef: string | null
-  lastQuoteTime: number
-  isLoaded: boolean
+type Evidence = QuoteMatch & { score: number; start: number; end: number; errors: number }
+type Alignment = {
+  heard: number; verse: number; exact: number; errors: number; typo: number
+  informative: Set<string>
+}
 
-  constructor() {
-    this.verses = []
-    this.wordIndex = {}
-    this.rollingWords = []
-    this.lastQuoteRef = null
-    this.lastQuoteTime = 0
-    this.isLoaded = false
+const MAX_CONTEXT_WORDS = 64
+const MAX_SEARCH_WORDS = 28
+const MAX_FRAGMENT_WORDS = 16
+const MAX_CANDIDATES = 160
+// Short English phrases can be unique in the Bible yet ordinary in a meeting
+// ("a sword before the", "all things work together"). Permit tiny quotations
+// only for these distinctive anchors, still verified against the actual corpus.
+// All other Bible verses use the same longer-fragment evidence rules below.
+const SHORT_QUOTE_ANCHORS = new Set([
+  'for god so loved',
+  'the lord is my shepherd',
+  'i am the resurrection',
+])
+// These are complete verses, not a general permission to guess from two words.
+const COMPLETE_SHORT_QUOTES = new Set([
+  'jesus wept',
+  'pray without ceasing',
+  'rejoice evermore',
+])
+
+/** One letter inserted, removed, replaced, or transposed; never fuzzy-match short words. */
+function oneLetterApart(a: string, b: string): boolean {
+  if (Math.min(a.length, b.length) < 4 || Math.abs(a.length - b.length) > 1) return false
+  let i = 0
+  while (i < a.length && a[i] === b[i]) i++
+  if (a.length === b.length) {
+    return a.slice(i + 1) === b.slice(i + 1) ||
+      (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2))
   }
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1)
+}
 
-  /**
-   * Load Bible index and build all-words lookup
-   * The all-words index allows matching from ANY position in a verse,
-   * not just the beginning
-   */
+export class QuoteMatcher {
+  verses: BibleIndexEntry[] = []
+  wordIndex: Record<string, number[]> = Object.create(null)
+  /** Compatibility/debug view: finalized and current interim words, without stopwords. */
+  rollingWords: string[] = []
+  lastQuoteRef: string | null = null
+  lastQuoteTime = 0
+  isLoaded = false
+  private finalizedWords: string[] = []
+  private interimWords: string[] = []
+  private currentChunkLength = 0
+  private indexedVerses: BibleIndexEntry[] | null = null
+  private phraseCounts = new Map<string, number>()
+  private revision = 0
+  private searchedRevision = -1
+  private cachedMatches: QuoteMatch[] = []
+  private lastPublishedRevision = -1
+  private lastSpeechAt: number | null = null
+
   loadIndex(): boolean {
     try {
-      const candidates = [
-        path.join(process.cwd(), 'electron', 'data', 'bible_index.json')
-      ]
-      if (process.resourcesPath) {
-        // Packaged: bible_index.json ships via electron-builder extraResources
-        candidates.unshift(path.join(process.resourcesPath, 'bible_index.json'))
-      }
-      const versesPath = candidates.find((p) => fs.existsSync(p))
-      if (!versesPath) {
-        console.error(
-          '❌ bible_index.json not found. Run build scripts first.'
-        )
-        return false
-      }
-      this.verses = JSON.parse(fs.readFileSync(versesPath, 'utf8'))
-      this.wordIndex = {}
-      this.verses.forEach((v, i) => {
-        const uniqueWords = new Set(v.words)
-        for (const word of uniqueWords) {
-          if (STOPWORDS.has(word)) continue
-          if (!this.wordIndex[word]) this.wordIndex[word] = []
-          this.wordIndex[word].push(i)
+      const candidates = [path.join(process.cwd(), 'electron', 'data', 'bible_index.json')]
+      if (process.resourcesPath) candidates.unshift(path.join(process.resourcesPath, 'bible_index.json'))
+      const file = candidates.find((candidate) => fs.existsSync(candidate))
+      if (!file) throw new Error('bible_index.json not found. Run npm run bible:index first.')
+      const kjv = JSON.parse(fs.readFileSync(file, 'utf8')) as BibleIndexEntry[]
+      const bookIds = new Map(kjv.map(verse => [verse.ref.replace(/ \d+:\d+$/, ''), verse.bookId]))
+      const modern = modernBible.sections.flatMap(section => section.verses.map(verse => {
+        const rawWords = this.normalizeText(verse.text)
+        return {
+          ref: `${section.book} ${section.chapter}:${verse.verse}`,
+          bookId: bookIds.get(section.book) ?? -1,
+          chapter: section.chapter,
+          verse: verse.verse,
+          words: rawWords.filter(word => !STOPWORDS.has(word)),
+          rawWords,
         }
-      })
-      this.isLoaded = true
-      console.log(
-        `✅ QuoteMatcher loaded: ${this.verses.length} verses, ${Object.keys(this.wordIndex).length} unique words indexed`
-      )
+      })).filter(verse => verse.bookId >= 0)
+      this.loadEntries([...kjv, ...modern])
+      console.log(`✅ QuoteMatcher loaded: ${new Set(this.verses.map(verse => verse.ref)).size} references, ${this.verses.length} KJV/BSB wordings`)
       return true
     } catch (error) {
       console.error('❌ Failed to load quote index:', error)
@@ -356,159 +198,217 @@ export class QuoteMatcher {
     }
   }
 
-  /**
-   * Normalize text to word array
-   */
+  /** Also accepts legacy indexes; raw phrases require the rebuilt index. */
+  loadEntries(entries: BibleIndexEntry[]) {
+    this.verses = entries
+    this.wordIndex = Object.create(null)
+    entries.forEach((verse, index) => {
+      for (const word of new Set(verse.rawWords ?? verse.words)) {
+        (this.wordIndex[word] ??= []).push(index)
+      }
+    })
+    this.indexedVerses = entries
+    this.phraseCounts.clear()
+    this.isLoaded = true
+    this.searchedRevision = -1
+  }
+
   normalizeText(text: string): string[] {
-    return text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(Boolean)
+    return text.toLowerCase().replace(/['’]/g, '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean)
   }
 
-  /**
-   * Update rolling word buffer with new transcript text
-   */
-  updateRollingWords(text: string) {
-    const words = this.normalizeText(text).filter((w) => !STOPWORDS.has(w))
-    this.rollingWords.push(...words)
-    if (this.rollingWords.length > 60) {
-      this.rollingWords = this.rollingWords.slice(-60)
-    }
-  }
-
-  /**
-   * Clear the rolling word buffer
-   */
-  clearBuffer() {
-    this.rollingWords = []
-  }
-
-  /**
-   * Count matching words at same positions
-   */
-  countMatches(a: string[], b: string[]): number {
-    let matches = 0
-    for (let i = 0; i < a.length && i < b.length; i++) {
-      if (a[i] === b[i]) matches++
-    }
-    return matches
-  }
-
-  /**
-   * Find the rarest word in a set (fewest verses containing it)
-   * Used to minimize candidate lookups for performance
-   */
-  getRarestWord(words: string[]): string {
-    let rarest = words[0]
-    let minCount = this.wordIndex[rarest]?.length ?? Infinity
-    for (const word of words) {
-      const count = this.wordIndex[word]?.length ?? Infinity
-      if (count < minCount) {
-        minCount = count
-        rarest = word
-      }
-    }
-    return rarest
-  }
-
-  /**
-   * Find ALL quoted verses matching the rolling buffer
-   * Uses rarest-word lookup for performance, supports mid-verse matching
-   */
-  findAllQuotedVerses(): QuoteMatch[] {
-    if (!this.isLoaded || this.rollingWords.length < WINDOW_SIZE) return []
-    const matches = new Map<string, QuoteMatch>()
-    // General verses need six matches; familiar passages can match five-word windows.
-    for (const windowSize of [DEFAULT_MIN_MATCHES, WINDOW_SIZE]) {
-      for (let i = 0; i <= this.rollingWords.length - windowSize; i++) {
-        const win = this.rollingWords.slice(i, i + windowSize)
-        const rarestWord = this.getRarestWord(win)
-        const candidates = this.wordIndex[rarestWord]
-        if (!candidates) continue
-        for (const verseIdx of candidates) {
-          const verse = this.verses[verseIdx]
-          if (!verse || verse.words.length < windowSize) continue
-          if (matches.get(verse.ref)?.confidence === 1) continue
-          const minRequired = getMinMatches(verse.ref)
-          if (minRequired > windowSize) continue
-          for (let j = 0; j <= verse.words.length - windowSize; j++) {
-            const verseSlice = verse.words.slice(j, j + windowSize)
-            const matchCount = this.countMatches(win, verseSlice)
-            if (matchCount >= minRequired) {
-              let substantiveMatches = 0
-              for (let k = 0; k < windowSize; k++) {
-                if (win[k] === verseSlice[k] && !STOPWORDS.has(win[k])) {
-                  substantiveMatches++
-                }
-              }
-              if (substantiveMatches < 2) continue
-              const confidence = matchCount / windowSize
-              if ((matches.get(verse.ref)?.confidence ?? 0) >= confidence) continue
-              matches.set(verse.ref, {
-                ref: verse.ref,
-                bookId: verse.bookId,
-                chapter: verse.chapter,
-                verse: verse.verse,
-                confidence,
-                lowConfidence: confidence < 0.8
-              })
-              if (confidence === 1) break
-            }
-          }
-        }
-      }
-    }
-    return [...matches.values()].sort((a, b) => b.confidence - a.confidence)
-  }
-
-  /**
-   * Find a single quoted verse (backwards-compatible)
-   */
-  findQuotedVerse(): QuoteMatch | null {
-    const results = this.findAllQuotedVerses()
-    return results.length > 0 ? results[0] : null
-  }
-
-  /**
-   * Try to detect quotes with debouncing
-   * Returns all matching verses (may be multiple with similar wording)
-   */
-  tryDetectQuotes(): QuoteMatch[] {
-    const results = this.findAllQuotedVerses()
+  /** Deepgram revises its interim sentence. Replace it; only finals are appended. */
+  updateTranscript(text: string, isFinal: boolean) {
     const now = Date.now()
-    if (results.length === 0) return []
-    const bestRef = results[0].ref
-    if (bestRef === this.lastQuoteRef && now - this.lastQuoteTime < 1500) {
-      return []
+    if (this.lastSpeechAt !== null && now - this.lastSpeechAt > 30_000) this.reset()
+    this.lastSpeechAt = now
+    const words = this.normalizeText(text)
+    this.currentChunkLength = words.length
+    if (isFinal) {
+      this.finalizedWords = [...this.finalizedWords, ...words].slice(-MAX_CONTEXT_WORDS)
+      this.interimWords = []
+    } else {
+      this.interimWords = words.slice(-MAX_CONTEXT_WORDS)
     }
-    this.lastQuoteRef = bestRef
-    this.lastQuoteTime = now
+    this.rollingWords = [...this.finalizedWords, ...this.interimWords].filter((word) => !STOPWORDS.has(word))
+    this.revision++
+  }
+
+  /** Existing callers can append a finalized chunk through this API. */
+  updateRollingWords(text: string) { this.updateTranscript(text, true) }
+
+  clearBuffer() {
+    this.finalizedWords = []
+    this.interimWords = []
+    this.currentChunkLength = 0
     this.rollingWords = []
-    console.log(
-      `📜 Quote detected: ${results.length} candidate(s), best: ${bestRef}`
-    )
+    this.revision++
+  }
+
+  /** A new listening session (or replay) must not inherit the previous one's dedup. */
+  reset() {
+    this.clearBuffer()
+    this.lastQuoteRef = null
+    this.lastQuoteTime = 0
+    this.lastPublishedRevision = -1
+    this.lastSpeechAt = null
+  }
+
+  private wordsFor(index: number): string[] {
+    const verse = this.verses[index]
+    return verse.rawWords ?? verse.words
+  }
+
+  /** Count up to two occurrences across verses, not just the shortlisted candidates. */
+  private phraseFrequency(words: string[]): number {
+    const key = words.join(' ')
+    const cached = this.phraseCounts.get(key)
+    if (cached !== undefined) return cached
+    const references = new Set<string>()
+    const anchor = words.reduce((best, word) =>
+      (this.wordIndex[word]?.length ?? 0) < (this.wordIndex[best]?.length ?? 0) ? word : best)
+    for (const index of this.wordIndex[anchor] ?? []) {
+      const verse = this.wordsFor(index)
+      if (verse.some((_, start) => words.every((word, offset) => word === verse[start + offset]))) references.add(this.verses[index].ref)
+      if (references.size >= 2) break
+    }
+    // A bounded cache avoids growing throughout an entire service.
+    if (this.phraseCounts.size >= 512) this.phraseCounts.clear()
+    this.phraseCounts.set(key, references.size)
+    return references.size
+  }
+
+  private candidates(words: string[]): number[] {
+    const unique = [...new Set(words.slice(-18))]
+    const anchors = unique.filter((word) => !STOPWORDS.has(word) && this.wordIndex[word]?.length)
+      .sort((a, b) => this.wordIndex[a].length - this.wordIndex[b].length).slice(0, 8)
+    const votes = new Map<number, number>()
+    for (const word of anchors) {
+      const weight = Math.log1p(this.verses.length / this.wordIndex[word].length)
+      for (const index of this.wordIndex[word]) votes.set(index, (votes.get(index) ?? 0) + weight)
+    }
+    return [...votes].sort((a, b) => b[1] - a[1]).slice(0, MAX_CANDIDATES).map(([index]) => index)
+  }
+
+  private align(words: string[], index: number, freshStart: number, similar: (a: string, b: string) => boolean): Evidence | null {
+    const verse = this.verses[index]
+    const target = this.wordsFor(index)
+    let best: Evidence | null = null
+    const rareLimit = Math.max(2, this.verses.length * 0.015)
+    const inspect = (start: number, origin: number, state: Alignment) => {
+      const heardLength = state.heard - start
+      const targetLength = state.verse - origin
+      const length = Math.max(heardLength, targetLength)
+      const matched = state.exact + state.typo
+      // A final ASR chunk may include commentary after a quotation. Search
+      // anywhere in this chunk, but never resurrect a quote entirely in an old one.
+      if (length < 2 || matched < 2 || state.heard <= freshStart) return
+      const phrase = words.slice(start, state.heard).join(' ')
+      const completeShortVerse = state.errors === 0 && origin === 0 && state.verse === target.length && COMPLETE_SHORT_QUOTES.has(phrase)
+      if (!completeShortVerse && (length < 4 || matched < 4)) return
+      const content = [...state.informative]
+      if (!content.length) return
+      const information = content.reduce((sum, word) => sum + Math.log1p(this.verses.length / (this.wordIndex[word]?.length ?? this.verses.length)), 0)
+      if (state.errors === 0 && length < 6) {
+        const anchor = completeShortVerse || SHORT_QUOTE_ANCHORS.has(phrase)
+        if (!anchor && (length < 5 || content.length < 3 || information < 8)) return
+        if (!content.some((word) => this.wordIndex[word]?.length <= rareLimit)) return
+        if (this.phraseFrequency(words.slice(start, state.heard)) !== 1) return
+      } else {
+        // Error tolerance requires more independent evidence than a tiny fragment.
+        if (length < 6 || state.exact < 4 || content.length < 2) return
+        if (this.verses.length > 100 && information < 5) return
+      }
+      const confidence = Math.min(1, (state.exact + state.typo * 0.8) / length)
+      if (confidence < 0.72) return
+      const score = matched * 1.2 + information * 0.45 - state.errors * 1.5 + state.heard / words.length * 0.25
+      if (best && best.score >= score) return
+      best = {
+        ref: verse.ref, bookId: verse.bookId, chapter: verse.chapter, verse: verse.verse,
+        confidence, lowConfidence: confidence < 0.85, matchedWords: matched,
+        score, start, end: state.heard, errors: state.errors
+      }
+    }
+    const extend = (start: number, origin: number, state: Alignment) => {
+      while (state.heard < words.length && state.verse < target.length && state.heard - start < MAX_FRAGMENT_WORDS) {
+        const heard = words[state.heard]
+        const expected = target[state.verse]
+        if (heard === expected) {
+          state = { ...state, heard: state.heard + 1, verse: state.verse + 1, exact: state.exact + 1,
+            informative: STOPWORDS.has(expected) ? state.informative : new Set([...state.informative, expected]) }
+          inspect(start, origin, state)
+          continue
+        }
+        if (state.errors) return
+        if (similar(heard, expected)) {
+          extend(start, origin, { ...state, heard: state.heard + 1, verse: state.verse + 1, errors: 1, typo: 1,
+            informative: STOPWORDS.has(expected) ? state.informative : new Set([...state.informative, expected]) })
+        }
+        // One wrong, omitted, or extra ASR word. Further errors stop the alignment.
+        extend(start, origin, { ...state, heard: state.heard + 1, verse: state.verse + 1, errors: 1 })
+        extend(start, origin, { ...state, heard: state.heard + 1, errors: 1 })
+        extend(start, origin, { ...state, verse: state.verse + 1, errors: 1 })
+        return
+      }
+    }
+    for (let start = 0; start <= words.length - 2; start++) {
+      for (let origin = 0; origin <= target.length - 2; origin++) {
+        if (words[start] !== target[origin]) continue
+        extend(start, origin, { heard: start, verse: origin, exact: 0, errors: 0, typo: 0, informative: new Set() })
+      }
+    }
+    return best
+  }
+
+  findAllQuotedVerses(): QuoteMatch[] {
+    if (!this.isLoaded) return []
+    if (this.indexedVerses !== this.verses) this.loadEntries(this.verses)
+    if (this.searchedRevision === this.revision) return this.cachedMatches.map((match) => ({ ...match }))
+    const words = [...this.finalizedWords, ...this.interimWords].slice(-MAX_SEARCH_WORDS)
+    const freshStart = Math.max(0, words.length - this.currentChunkLength)
+    const spellings = new Map<string, boolean>()
+    const similar = (a: string, b: string) => {
+      const key = `${a}:${b}`
+      if (!spellings.has(key)) spellings.set(key, oneLetterApart(a, b))
+      return spellings.get(key)!
+    }
+    const aligned = words.length < 2 ? [] : this.candidates(words)
+      .map((index) => this.align(words, index, freshStart, similar))
+      .filter((match): match is Evidence => match !== null)
+    const byReference = new Map<string, Evidence>()
+    for (const match of aligned) {
+      if ((byReference.get(match.ref)?.score ?? -Infinity) < match.score) byReference.set(match.ref, match)
+    }
+    const ranked = [...byReference.values()].sort((a, b) => b.score - a.score)
+    // Nearly tied fuzzy fragments need more speech. Long exact parallel passages
+    // can still return alternatives for the operator, without choosing one for them.
+    const ambiguous = ranked[0]?.errors > 0 && ranked[1] && ranked[0].score - ranked[1].score < 1.25
+    this.cachedMatches = ambiguous ? [] : ranked.slice(0, 6).map(({ score: _score, start: _start, end: _end, errors: _errors, ...match }) => match)
+    this.searchedRevision = this.revision
+    return this.cachedMatches.map((match) => ({ ...match }))
+  }
+
+  findQuotedVerse(): QuoteMatch | null { return this.findAllQuotedVerses()[0] ?? null }
+
+  tryDetectQuotes(): QuoteMatch[] {
+    if (this.lastPublishedRevision === this.revision) return []
+    const results = this.findAllQuotedVerses()
+    if (!results.length) return []
+    const now = Date.now()
+    if (results[0].ref === this.lastQuoteRef && now - this.lastQuoteTime < 15_000) return []
+    this.lastQuoteRef = results[0].ref
+    this.lastQuoteTime = now
+    this.lastPublishedRevision = this.revision
+    // Keep context while the current interim sentence is being revised/finalized.
     return results
   }
 
-  /**
-   * Single-result version (backwards-compatible)
-   */
-  tryDetectQuote(): QuoteMatch | null {
-    const results = this.tryDetectQuotes()
-    return results.length > 0 ? results[0] : null
-  }
-
-  /**
-   * Get current rolling buffer state (for debugging)
-   */
-  getBufferState(): string[] {
-    return [...this.rollingWords]
-  }
+  tryDetectQuote(): QuoteMatch | null { return this.tryDetectQuotes()[0] ?? null }
+  getBufferState(): string[] { return [...this.rollingWords] }
 }
 
 let instance: QuoteMatcher | null = null
-
 export function getQuoteMatcher(): QuoteMatcher {
-  if (!instance) {
-    instance = new QuoteMatcher()
-  }
+  if (!instance) instance = new QuoteMatcher()
   return instance
 }

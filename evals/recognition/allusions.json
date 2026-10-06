@@ -1,0 +1,1448 @@
+{
+ "provenance": {
+  "kind": "synthetic",
+  "written": "2026-10-05",
+  "description": "Hand-written allusions in a preacher's words and sentences that are not Scripture, typed, never spoken. Used to compare allusion-matching options. 'allusions', 'notScripture', 'afterAName' and 'insideSermonPassage' were also used to choose thresholds; the three 'fresh*' lists were written afterwards and never tuned on. Expected values are [book, chapter] and list Gospel parallels. 'everydayStories' are he/she anecdotes that are not Scripture, some deliberately close to a Bible story; they were used to measure false suggestions once a Bible name is being remembered. One sentence was removed from 'notScripture' on review: it is Deuteronomy 28:13."
+ },
+ "allusions": [
+  [
+   "don't you think he was scared when God told Abraham that his only son, his only son should be sacrificed",
+   [
+    [
+     "Genesis",
+     22
+    ]
+   ]
+  ],
+  [
+   "Rachel was so desperate for a baby she told her husband give me children or I will die",
+   [
+    [
+     "Genesis",
+     30
+    ]
+   ]
+  ],
+  [
+   "the boy nobody believed in walked out to face what the whole army was afraid of",
+   [
+    [
+     "1 Samuel",
+     17
+    ]
+   ]
+  ],
+  [
+   "when Jesus told the disciples to throw the net on the other side of the boat",
+   [
+    [
+     "John",
+     21
+    ],
+    [
+     "Luke",
+     5
+    ]
+   ]
+  ],
+  [
+   "his father saw him from far off and ran to him and put a ring on his finger",
+   [
+    [
+     "Luke",
+     15
+    ]
+   ]
+  ],
+  [
+   "he was asleep in the boat while the storm was raging and they woke him up saying don't you care",
+   [
+    [
+     "Mark",
+     4
+    ],
+    [
+     "Luke",
+     8
+    ],
+    [
+     "Matthew",
+     8
+    ]
+   ]
+  ],
+  [
+   "Peter stepped out of the boat and started walking but when he looked at the wind he began to sink",
+   [
+    [
+     "Matthew",
+     14
+    ]
+   ]
+  ],
+  [
+   "they threw him into a pit and sold him to traders going down to Egypt",
+   [
+    [
+     "Genesis",
+     37
+    ]
+   ]
+  ],
+  [
+   "she just touched the edge of his clothes and immediately the bleeding stopped",
+   [
+    [
+     "Mark",
+     5
+    ],
+    [
+     "Luke",
+     8
+    ],
+    [
+     "Matthew",
+     9
+    ]
+   ]
+  ],
+  [
+   "the walls came down after they marched around the city seven days and shouted",
+   [
+    [
+     "Joshua",
+     6
+    ]
+   ]
+  ],
+  [
+   "three men refused to bow to the statue and the king had them thrown in the fire",
+   [
+    [
+     "Daniel",
+     3
+    ]
+   ]
+  ],
+  [
+   "he ran from God and ended up inside a fish for three days",
+   [
+    [
+     "Jonah",
+     1
+    ]
+   ]
+  ],
+  [
+   "a little man climbed up a tree because he wanted to see Jesus passing by",
+   [
+    [
+     "Luke",
+     19
+    ]
+   ]
+  ],
+  [
+   "the widow only had a little flour and a little oil and the prophet said make me a cake first",
+   [
+    [
+     "1 Kings",
+     17
+    ]
+   ]
+  ],
+  [
+   "Moses saw a bush that was on fire but it was not burning up and God spoke to him from it",
+   [
+    [
+     "Exodus",
+     3
+    ]
+   ]
+  ],
+  [
+   "the man was beaten and left on the road and the religious people just walked past him",
+   [
+    [
+     "Luke",
+     10
+    ]
+   ]
+  ],
+  [
+   "he dipped himself seven times in the river and his skin became clean",
+   [
+    [
+     "2 Kings",
+     5
+    ]
+   ]
+  ],
+  [
+   "Thomas said unless I put my finger in the holes in his hands I will not believe",
+   [
+    [
+     "John",
+     20
+    ]
+   ]
+  ],
+  [
+   "they lowered their friend through the roof because the house was too crowded",
+   [
+    [
+     "Mark",
+     2
+    ],
+    [
+     "Luke",
+     5
+    ]
+   ]
+  ],
+  [
+   "the queen went before the king without being called risking her life for her people",
+   [
+    [
+     "Esther",
+     5
+    ],
+    [
+     "Esther",
+     4
+    ]
+   ]
+  ],
+  [
+   "Paul and Silas were singing at midnight and the prison doors flew open",
+   [
+    [
+     "Acts",
+     16
+    ]
+   ]
+  ],
+  [
+   "he wrestled all night and would not let go until he got the blessing",
+   [
+    [
+     "Genesis",
+     32
+    ]
+   ]
+  ],
+  [
+   "the woman poured expensive perfume on his feet and wiped them with her hair",
+   [
+    [
+     "John",
+     12
+    ],
+    [
+     "Luke",
+     7
+    ]
+   ]
+  ],
+  [
+   "Samuel thought it was Eli calling him in the night but it was the Lord",
+   [
+    [
+     "1 Samuel",
+     3
+    ]
+   ]
+  ],
+  [
+   "Elijah called fire down from heaven in front of the prophets of Baal",
+   [
+    [
+     "1 Kings",
+     18
+    ]
+   ]
+  ],
+  [
+   "she said where you go I will go and your people will be my people",
+   [
+    [
+     "Ruth",
+     1
+    ]
+   ]
+  ],
+  [
+   "Gideon's army was cut down to three hundred men who lapped the water",
+   [
+    [
+     "Judges",
+     7
+    ]
+   ]
+  ],
+  [
+   "the rich young man went away sad because he had many possessions",
+   [
+    [
+     "Matthew",
+     19
+    ],
+    [
+     "Mark",
+     10
+    ],
+    [
+     "Luke",
+     18
+    ]
+   ]
+  ],
+  [
+   "Saul kept the best of the sheep when God told him to destroy everything and Samuel said obedience is better than sacrifice",
+   [
+    [
+     "1 Samuel",
+     15
+    ]
+   ]
+  ],
+  [
+   "Jesus wept at the tomb of his friend and then called him out after four days",
+   [
+    [
+     "John",
+     11
+    ]
+   ]
+  ]
+ ],
+ "notScripture": [
+  "please remember that the youth meeting is tomorrow at five in the fellowship hall",
+  "I was driving to work on Tuesday and my car broke down on the highway",
+  "we need to love one another more and forgive those who hurt us",
+  "God is good all the time and all the time God is good",
+  "turn to your neighbor and say you are blessed this morning",
+  "the offering will be received now so please prepare your envelopes",
+  "faith is not about what you see it is about trusting when things are hard",
+  "my grandmother used to wake us up at five every morning to pray",
+  "somebody shout hallelujah if you believe this year is your year",
+  "we thank the choir for that wonderful song this morning",
+  "prayer is the key to everything in the life of a believer",
+  "let me tell you about a man in my office who lost his job last year",
+  "world only",
+  "son",
+  "god loves you and we should have faith and hope for tomorrow",
+  "the children should meet their parents by the door after the second service",
+  "god helps those who help themselves",
+  "lunch is ready",
+  "we all face giants in our lives and we must stay strong",
+  "this has been a stormy season but things will get better",
+  "david watched the giants win the baseball game last night",
+  "all things work together when the team practices",
+  "john explained that david borrowed a sword before the baseball game",
+  "this is the day of your wedding",
+  "please give me the numbers for tomorrow and the time for our meeting",
+  "everyone came to church with hope love joy and faith",
+  "we need a lamb for the school play and a lion costume",
+  "peter was fishing on his boat last weekend",
+  "jesus spoke",
+  "It is a singular fact, but nevertheless most certain",
+  "I want to welcome all our first time visitors please stand so we can greet you",
+  "the building project has reached the roofing stage and we need your support",
+  "when I was a young man my father told me never to borrow money from a friend",
+  "you cannot keep doing the same thing and expect a different result",
+  "the doctor told her there was nothing more they could do but she kept believing",
+  "marriage is hard work and you have to choose your partner every single day",
+  "some of you have been waiting for a breakthrough for many years",
+  "there was a king in my village who never listened to his elders",
+  "open your hearts this morning because the word is coming to you",
+  "the enemy wants you to give up but you will not give up in the name of Jesus",
+  "children obey your teachers and do your homework before you play",
+  "he lost his house his car and his job in one month and still came to church",
+  "sister Mary and brother John will be leading the prayer team this week",
+  "David our youth leader will be traveling to Egypt next month for a conference",
+  "my son asked me daddy why do we go to church every sunday",
+  "God will make a way where there seems to be no way",
+  "if you sow a seed today you will reap a harvest"
+ ],
+ "afterAName": [
+  {
+   "before": "Think about Jacob for a moment",
+   "said": "he wrestled all night and would not let go until he got the blessing",
+   "expected": [
+    [
+     "Genesis",
+     32
+    ]
+   ]
+  },
+  {
+   "before": "Look at the life of Joseph",
+   "said": "his own brothers hated him so much they could not speak a kind word to him",
+   "expected": [
+    [
+     "Genesis",
+     37
+    ]
+   ]
+  },
+  {
+   "before": "Consider Hannah",
+   "said": "she was praying so hard that the priest thought she was drunk",
+   "expected": [
+    [
+     "1 Samuel",
+     1
+    ]
+   ]
+  },
+  {
+   "before": "Remember Elijah after the great victory",
+   "said": "he ran into the wilderness and sat under a tree and asked to die",
+   "expected": [
+    [
+     "1 Kings",
+     19
+    ]
+   ]
+  },
+  {
+   "before": "And then there is Peter",
+   "said": "he swore he did not know him and then the rooster crowed and he wept bitterly",
+   "expected": [
+    [
+     "Matthew",
+     26
+    ],
+    [
+     "Mark",
+     14
+    ],
+    [
+     "Luke",
+     22
+    ],
+    [
+     "John",
+     18
+    ]
+   ]
+  },
+  {
+   "before": "Think about Moses",
+   "said": "he said I cannot speak well please send somebody else",
+   "expected": [
+    [
+     "Exodus",
+     4
+    ]
+   ]
+  },
+  {
+   "before": "Look at Naomi",
+   "said": "she said do not call me pleasant anymore call me bitter because I went out full and came back empty",
+   "expected": [
+    [
+     "Ruth",
+     1
+    ]
+   ]
+  },
+  {
+   "before": "Consider Job",
+   "said": "he lost his children his wealth and his health in a short time and still did not curse God",
+   "expected": [
+    [
+     "Job",
+     1
+    ],
+    [
+     "Job",
+     2
+    ]
+   ]
+  },
+  {
+   "before": "Saul was on his way to arrest the believers",
+   "said": "a light from heaven knocked him to the ground and he heard a voice asking why are you persecuting me",
+   "expected": [
+    [
+     "Acts",
+     9
+    ],
+    [
+     "Acts",
+     22
+    ],
+    [
+     "Acts",
+     26
+    ]
+   ]
+  },
+  {
+   "before": "Let us talk about Samson",
+   "said": "he told her the secret of his strength and they cut his hair while he slept",
+   "expected": [
+    [
+     "Judges",
+     16
+    ]
+   ]
+  },
+  {
+   "before": "David was supposed to be at war",
+   "said": "he stayed home and from the roof he saw a woman bathing",
+   "expected": [
+    [
+     "2 Samuel",
+     11
+    ]
+   ]
+  },
+  {
+   "before": "Nehemiah heard the news about the city",
+   "said": "he sat down and wept and fasted for days because the walls were broken down",
+   "expected": [
+    [
+     "Nehemiah",
+     1
+    ]
+   ]
+  },
+  {
+   "before": "Think about Esther",
+   "said": "she said if I perish I perish and went in to see the king",
+   "expected": [
+    [
+     "Esther",
+     4
+    ],
+    [
+     "Esther",
+     5
+    ]
+   ]
+  },
+  {
+   "before": "Daniel knew the law had been signed",
+   "said": "he still went home opened his windows and prayed three times a day like he always did",
+   "expected": [
+    [
+     "Daniel",
+     6
+    ]
+   ]
+  },
+  {
+   "before": "Joshua was told exactly what to do",
+   "said": "they marched around the city once a day for six days without saying a word",
+   "expected": [
+    [
+     "Joshua",
+     6
+    ]
+   ]
+  },
+  {
+   "before": "Look at Mary the sister of Martha",
+   "said": "she sat at his feet listening while her sister was busy in the kitchen",
+   "expected": [
+    [
+     "Luke",
+     10
+    ]
+   ]
+  },
+  {
+   "before": "Abraham was already an old man",
+   "said": "he was told to look at the stars and count them because that is how many descendants he would have",
+   "expected": [
+    [
+     "Genesis",
+     15
+    ]
+   ]
+  },
+  {
+   "before": "Think about Noah",
+   "said": "he kept building for years while people laughed and then the rain came",
+   "expected": [
+    [
+     "Genesis",
+     6
+    ],
+    [
+     "Genesis",
+     7
+    ]
+   ]
+  },
+  {
+   "before": "Jonah finally obeyed",
+   "said": "he preached and the whole city repented from the king down to the animals",
+   "expected": [
+    [
+     "Jonah",
+     3
+    ]
+   ]
+  },
+  {
+   "before": "Gideon was hiding from the enemy",
+   "said": "he was threshing wheat in a winepress when the angel called him a mighty man of valor",
+   "expected": [
+    [
+     "Judges",
+     6
+    ]
+   ]
+  },
+  {
+   "before": "Ruth went out to the fields",
+   "said": "she gathered what the harvesters left behind and the owner of the field noticed her",
+   "expected": [
+    [
+     "Ruth",
+     2
+    ]
+   ]
+  },
+  {
+   "before": "Solomon had two women standing before him",
+   "said": "he said bring me a sword and cut the baby in two",
+   "expected": [
+    [
+     "1 Kings",
+     3
+    ]
+   ]
+  },
+  {
+   "before": "Stephen stood before the council",
+   "said": "as they were stoning him he prayed do not hold this sin against them",
+   "expected": [
+    [
+     "Acts",
+     7
+    ]
+   ]
+  },
+  {
+   "before": "Zacchaeus heard that he was coming to town",
+   "said": "he was short so he climbed a tree to get a better look",
+   "expected": [
+    [
+     "Luke",
+     19
+    ]
+   ]
+  },
+  {
+   "before": "Elisha told the widow what to do",
+   "said": "she borrowed empty jars from all her neighbors and the oil kept flowing until every jar was full",
+   "expected": [
+    [
+     "2 Kings",
+     4
+    ]
+   ]
+  },
+  {
+   "before": "Hezekiah was told he was going to die",
+   "said": "he turned his face to the wall and prayed and wept and God gave him fifteen more years",
+   "expected": [
+    [
+     "2 Kings",
+     20
+    ],
+    [
+     "Isaiah",
+     38
+    ]
+   ]
+  },
+  {
+   "before": "Philip was sent down a desert road",
+   "said": "he heard a man reading in his chariot and asked do you understand what you are reading",
+   "expected": [
+    [
+     "Acts",
+     8
+    ]
+   ]
+  },
+  {
+   "before": "Paul was gathering sticks on the island",
+   "said": "a snake bit his hand and he just shook it off into the fire and nothing happened to him",
+   "expected": [
+    [
+     "Acts",
+     28
+    ]
+   ]
+  }
+ ],
+ "insideSermonPassage": [
+  {
+   "sermon": [
+    "Genesis",
+    22
+   ],
+   "said": "he got up early the next morning and saddled the donkey without arguing",
+   "expected": [
+    [
+     "Genesis",
+     22
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Genesis",
+    22
+   ],
+   "said": "the boy asked where is the lamb",
+   "expected": [
+    [
+     "Genesis",
+     22
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Genesis",
+    22
+   ],
+   "said": "he said God himself will provide",
+   "expected": [
+    [
+     "Genesis",
+     22
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Genesis",
+    22
+   ],
+   "said": "they walked for three days before he saw the place far off",
+   "expected": [
+    [
+     "Genesis",
+     22
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Luke",
+    15
+   ],
+   "said": "the older brother got angry and refused to go inside",
+   "expected": [
+    [
+     "Luke",
+     15
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Luke",
+    15
+   ],
+   "said": "he ended up feeding pigs and wishing he could eat what they ate",
+   "expected": [
+    [
+     "Luke",
+     15
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Luke",
+    15
+   ],
+   "said": "when he came to his senses he said I will go back home",
+   "expected": [
+    [
+     "Luke",
+     15
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Luke",
+    15
+   ],
+   "said": "his father saw him from far off and ran to him and put a ring on his finger",
+   "expected": [
+    [
+     "Luke",
+     15
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "1 Samuel",
+    17
+   ],
+   "said": "the boy nobody believed in walked out to face what the whole army was afraid of",
+   "expected": [
+    [
+     "1 Samuel",
+     17
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "1 Samuel",
+    17
+   ],
+   "said": "his oldest brother got angry and said who is watching the sheep",
+   "expected": [
+    [
+     "1 Samuel",
+     17
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "1 Samuel",
+    17
+   ],
+   "said": "he took off the armor because he had never tested it",
+   "expected": [
+    [
+     "1 Samuel",
+     17
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "1 Samuel",
+    17
+   ],
+   "said": "he said I already killed a lion and a bear",
+   "expected": [
+    [
+     "1 Samuel",
+     17
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Exodus",
+    14
+   ],
+   "said": "they were trapped between the army and the water and they started blaming their leader",
+   "expected": [
+    [
+     "Exodus",
+     14
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Exodus",
+    14
+   ],
+   "said": "he told them stand still and watch what God will do today",
+   "expected": [
+    [
+     "Exodus",
+     14
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Exodus",
+    14
+   ],
+   "said": "the wind blew all night and the ground became dry",
+   "expected": [
+    [
+     "Exodus",
+     14
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "John",
+    11
+   ],
+   "said": "she said if you had been here my brother would not have died",
+   "expected": [
+    [
+     "John",
+     11
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "John",
+    11
+   ],
+   "said": "he waited two more days before going to them",
+   "expected": [
+    [
+     "John",
+     11
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "John",
+    11
+   ],
+   "said": "they rolled the stone away even though she warned about the smell",
+   "expected": [
+    [
+     "John",
+     11
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Acts",
+    16
+   ],
+   "said": "the jailer was about to kill himself when he thought they had escaped",
+   "expected": [
+    [
+     "Acts",
+     16
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Acts",
+    16
+   ],
+   "said": "he asked them what must I do to be saved",
+   "expected": [
+    [
+     "Acts",
+     16
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Daniel",
+    3
+   ],
+   "said": "they said even if he does not rescue us we still will not bow",
+   "expected": [
+    [
+     "Daniel",
+     3
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Daniel",
+    3
+   ],
+   "said": "the king looked in and saw a fourth man walking with them",
+   "expected": [
+    [
+     "Daniel",
+     3
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Mark",
+    5
+   ],
+   "said": "she had spent everything she had on doctors and only got worse",
+   "expected": [
+    [
+     "Mark",
+     5
+    ],
+    [
+     "Luke",
+     8
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Mark",
+    5
+   ],
+   "said": "he asked who touched me in the middle of that crowd",
+   "expected": [
+    [
+     "Mark",
+     5
+    ],
+    [
+     "Luke",
+     8
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Ruth",
+    1
+   ],
+   "said": "one kissed her mother in law goodbye and went back home but the other one stayed",
+   "expected": [
+    [
+     "Ruth",
+     1
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "1 Kings",
+    18
+   ],
+   "said": "he poured water on the sacrifice three times before he prayed",
+   "expected": [
+    [
+     "1 Kings",
+     18
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "1 Kings",
+    18
+   ],
+   "said": "he mocked them saying shout louder maybe your god is sleeping",
+   "expected": [
+    [
+     "1 Kings",
+     18
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Matthew",
+    14
+   ],
+   "said": "they thought it was a ghost and cried out in fear",
+   "expected": [
+    [
+     "Matthew",
+     14
+    ],
+    [
+     "Mark",
+     6
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Matthew",
+    14
+   ],
+   "said": "he said come and he got out of the boat",
+   "expected": [
+    [
+     "Matthew",
+     14
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Jonah",
+    4
+   ],
+   "said": "he was angry that the city was spared and sat outside waiting to see what would happen",
+   "expected": [
+    [
+     "Jonah",
+     4
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Jonah",
+    4
+   ],
+   "said": "a plant grew up to give him shade and then a worm killed it",
+   "expected": [
+    [
+     "Jonah",
+     4
+    ]
+   ]
+  },
+  {
+   "sermon": [
+    "Nehemiah",
+    4
+   ],
+   "said": "they built with one hand and held a weapon in the other",
+   "expected": [
+    [
+     "Nehemiah",
+     4
+    ]
+   ]
+  }
+ ],
+ "freshAllusions": [
+  [
+   "the prophet told the king you are the man after telling him a story about a poor man's lamb",
+   [
+    [
+     "2 Samuel",
+     12
+    ]
+   ]
+  ],
+  [
+   "she hid the spies on her roof and let them down by a rope through the window",
+   [
+    [
+     "Joshua",
+     2
+    ]
+   ]
+  ],
+  [
+   "the donkey spoke to him because it saw the angel standing in the road",
+   [
+    [
+     "Numbers",
+     22
+    ]
+   ]
+  ],
+  [
+   "he saw a ladder reaching up to heaven with angels going up and down on it",
+   [
+    [
+     "Genesis",
+     28
+    ]
+   ]
+  ],
+  [
+   "the sea split open and they walked across on dry ground",
+   [
+    [
+     "Exodus",
+     14
+    ]
+   ]
+  ],
+  [
+   "they brought back a cluster of grapes so big it took two men to carry it",
+   [
+    [
+     "Numbers",
+     13
+    ]
+   ]
+  ],
+  [
+   "the sun stood still in the sky until the battle was won",
+   [
+    [
+     "Joshua",
+     10
+    ]
+   ]
+  ],
+  [
+   "she put the baby in a basket and placed it among the reeds by the river",
+   [
+    [
+     "Exodus",
+     2
+    ]
+   ]
+  ],
+  [
+   "a hand appeared and wrote on the wall while the king was drinking from the temple cups",
+   [
+    [
+     "Daniel",
+     5
+    ]
+   ]
+  ],
+  [
+   "he was taken up to heaven in a chariot of fire and his servant picked up his cloak",
+   [
+    [
+     "2 Kings",
+     2
+    ]
+   ]
+  ],
+  [
+   "the ax head floated on the water after he threw a stick in",
+   [
+    [
+     "2 Kings",
+     6
+    ]
+   ]
+  ],
+  [
+   "ten were healed but only one came back to say thank you",
+   [
+    [
+     "Luke",
+     17
+    ]
+   ]
+  ],
+  [
+   "the little girl was dead and he took her by the hand and told her to get up",
+   [
+    [
+     "Mark",
+     5
+    ],
+    [
+     "Luke",
+     8
+    ],
+    [
+     "Matthew",
+     9
+    ]
+   ]
+  ],
+  [
+   "he turned over the tables of the money changers and drove them out",
+   [
+    [
+     "Matthew",
+     21
+    ],
+    [
+     "Mark",
+     11
+    ],
+    [
+     "John",
+     2
+    ],
+    [
+     "Luke",
+     19
+    ]
+   ]
+  ],
+  [
+   "a boy gave his lunch of five loaves and two fish and thousands were fed",
+   [
+    [
+     "John",
+     6
+    ],
+    [
+     "Matthew",
+     14
+    ],
+    [
+     "Mark",
+     6
+    ],
+    [
+     "Luke",
+     9
+    ]
+   ]
+  ],
+  [
+   "the thief beside him said remember me when you come into your kingdom",
+   [
+    [
+     "Luke",
+     23
+    ]
+   ]
+  ],
+  [
+   "the stone was rolled away and the women found the tomb empty",
+   [
+    [
+     "Matthew",
+     28
+    ],
+    [
+     "Mark",
+     16
+    ],
+    [
+     "Luke",
+     24
+    ],
+    [
+     "John",
+     20
+    ]
+   ]
+  ],
+  [
+   "he fell out of the window because he fell asleep during the long sermon",
+   [
+    [
+     "Acts",
+     20
+    ]
+   ]
+  ],
+  [
+   "a husband and wife lied about the money and both dropped dead",
+   [
+    [
+     "Acts",
+     5
+    ]
+   ]
+  ],
+  [
+   "the spirit came like wind and tongues of fire rested on each of them",
+   [
+    [
+     "Acts",
+     2
+    ]
+   ]
+  ],
+  [
+   "the wife looked back and turned into a pillar of salt",
+   [
+    [
+     "Genesis",
+     19
+    ]
+   ]
+  ],
+  [
+   "he sold his birthright for a bowl of stew",
+   [
+    [
+     "Genesis",
+     25
+    ]
+   ]
+  ],
+  [
+   "the youngest son was out with the sheep when the prophet came to anoint a king",
+   [
+    [
+     "1 Samuel",
+     16
+    ]
+   ]
+  ],
+  [
+   "he cut off a corner of the king's robe in the cave but would not kill him",
+   [
+    [
+     "1 Samuel",
+     24
+    ]
+   ]
+  ]
+ ],
+ "freshPlainTalk": [
+  "the car park behind the church will be closed next sunday for repairs",
+  "my wife and I celebrated twenty years of marriage last month",
+  "if you are visiting for the first time please fill the card in front of you",
+  "I remember when I was in university I had no money for food",
+  "the ushers will now come forward to collect the tithes",
+  "can somebody help the sound team my microphone is cutting off",
+  "we are starting a new class for young couples this month",
+  "the price of everything has gone up and people are struggling",
+  "I told my son you have to work hard if you want to succeed",
+  "the women's fellowship is cooking for the whole church after service",
+  "he phoned me at two in the morning asking for prayer",
+  "you need to stop comparing yourself with other people",
+  "a friend of mine started a company with almost nothing and today he employs fifty people",
+  "do not let anyone tell you that you are too old to start again",
+  "we are believing God for a new building by the end of this year",
+  "that song the choir just sang touched my heart deeply",
+  "she trained as a nurse and now she runs a clinic in her village",
+  "some people only come to church when they have a problem",
+  "let us give a big hand to everyone who served today",
+  "I want to speak to the young people for a few minutes"
+ ],
+ "freshBibleFlavoured": [
+  "God will fight your battles if you just stand firm",
+  "the Lord is going to provide everything you need this month",
+  "every giant in your life is coming down this year",
+  "your season of harvest has finally come",
+  "there is power in the name of Jesus to break every chain",
+  "the enemy thought he had you but God had another plan",
+  "you are coming out of that wilderness into your promised land",
+  "God is opening doors for you that no man can shut",
+  "whatever you lost God is going to restore it double",
+  "the storm you are in will not destroy you",
+  "this is your year of breakthrough and open heavens",
+  "God did not bring you this far to leave you",
+  "your miracle is on the way do not give up now",
+  "heaven is fighting for your family tonight",
+  "the blood of Jesus covers your household",
+  "you will finish this year stronger than you started",
+  "let the fire of God fall on this congregation tonight",
+  "somebody here is about to receive a miracle in their finances",
+  "God is raising you up as a leader for your generation",
+  "do not be afraid of what the doctor said God has the final word"
+ ],
+ "everydayStories": [
+  "he called me last night and said pastor I do not know what to do",
+  "she lost her husband two years ago and she still serves in this church every Sunday",
+  "he fought that sickness for three years and never stopped believing",
+  "they told him he would never walk again but look at him today",
+  "he was a faithful man who loved his family and worked hard all his life",
+  "she prayed for her children every single night before she went to bed",
+  "he left everything behind and moved to another country to start again",
+  "they laughed at him when he started that business in his garage",
+  "he was in prison for ten years and came out a changed man",
+  "she gave her last money to help a stranger and never told anybody",
+  "he stood up in front of everyone and said I was wrong please forgive me",
+  "his brothers did not speak to him for years after their father died",
+  "he was the youngest in his family and nobody expected anything from him",
+  "she walked five miles to church every week carrying her baby on her back",
+  "he killed it on that exam and got the scholarship",
+  "they threw him out of the house when he told them he had become a Christian",
+  "he faced a giant problem in his marriage and God gave him victory",
+  "he heard a voice inside telling him to turn the car around",
+  "she was crying at the altar and the ushers thought something was wrong",
+  "he built that house with his own hands and then lost it in the fire",
+  "they were singing in the hospital room at midnight when the doctor walked in",
+  "he dreamed about it for years before it finally happened",
+  "his father gave him the business and he wasted all the money in two years",
+  "he ran away from home at sixteen and came back ten years later"
+ ]
+}

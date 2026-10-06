@@ -1,5 +1,4 @@
 import { Panel } from '../parts';
-import { HistoryIcon } from '../../../ui';
 import { Expandable } from './expand';
 import { LogHistory, type HistoryEntry } from '../LogHistory';
 
@@ -31,8 +30,7 @@ export function NotificationsTile({
       tile={({ onOpen }) => (
         <Panel
           title="notifications"
-          icon={<HistoryIcon size={13} />}
-          blurb="what the app has done, newest first."
+          empty={entries.length === 0}
           onOpen={onOpen}
           className="min-h-0 w-full flex-1"
           bodyClass="px-2 pb-2"

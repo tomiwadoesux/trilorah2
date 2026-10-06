@@ -1,10 +1,13 @@
+import { isEmptyPreview } from '../emptyPreviewMode';
 import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
 import { useProjector } from './projector';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BACKDROP_BY_CONTENT, Button, ImportIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, cx } from '../../ui';
+import { BACKDROP_BY_CONTENT, Button, ImportIcon, PresentationIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, cx } from '../../ui';
 import { FlightPopup } from './songs/FlightPopup';
-import { TabDock } from './songs/TabDock';
-import { LibraryBrowser, LibraryPane, useLibrarySelection } from './library';
+import { LibraryToolbar } from './LibraryToolbar';
+import { LibraryBrowser, LibraryPane, LibrarySearch, useLibrarySelection } from './library';
+import { EmptyMark } from './emptyArt';
+import { PresentationEmptyArt } from './PresentationEmptyArt';
 import { useDrag } from './drag';
 import { deckPage, type DeckPageSpec } from './deckPage';
 import { readTriLocal, TRI_DECKS_KEY, TRI_DECKS_EVENT } from '../../lib/triClient';
@@ -350,7 +353,7 @@ export function SlidesBrowser() {
     window.addEventListener('presentations-updated', reload);
     return () => window.removeEventListener('presentations-updated', reload);
   }, []);
-  const allDecks = useMemo(() => [...importedDecks, ...customDecks, ...DECKS], [importedDecks, customDecks]);
+  const allDecks = useMemo(() => [...importedDecks, ...customDecks, ...(isEmptyPreview ? [] : DECKS)], [importedDecks, customDecks]);
 
   const handleCreateQuickDeck = (deck: Deck) => {
     const loaded: LoadedDeck = {
@@ -433,15 +436,17 @@ export function SlidesBrowser() {
         onCreate={handleCreateQuickDeck}
       />
       <LibraryBrowser
-        framed
+        gap={16}
         search={
-          searchOpen || importNote ? <div ref={searchRow} className="flex min-w-0 flex-1 items-center gap-3">
-            {searchOpen ? (
+          searchOpen || allDecks.length === 0 || importNote ? <div ref={searchRow} className="flex min-w-0 flex-1 items-center gap-3">
+            {searchOpen || allDecks.length === 0 ? (
+            <LibrarySearch disabled={allDecks.length === 0}>
             <SearchField
               value={query}
               onChange={setQuery}
               placeholder="type a deck name or anything written on a slide..."
             />
+            </LibrarySearch>
             ) : null}
             {/* What the import said, where the "import slides" card used to
                 say it. Only while there is something to say. */}
@@ -453,14 +458,15 @@ export function SlidesBrowser() {
           </div> : null
         }
         dock={
-          <TabDock
-            label="presentation slides"
-            actions={[
+          <LibraryToolbar
+            label="presentations"
+            searchActions={[
               {
                 id: 'search',
                 label: 'search slides',
+                disabled: allDecks.length === 0,
                 text: 'search slides',
-                icon: <SearchIcon size={14} />,
+                icon: <SearchIcon size={13} />,
                 active: searchOpen,
                 onClick: () => {
                   setSearchOpen(!searchOpen);
@@ -468,11 +474,13 @@ export function SlidesBrowser() {
                   else requestAnimationFrame(() => searchRow.current?.querySelector('input')?.focus());
                 },
               },
+            ]}
+            actions={[
               {
                 id: 'import',
                 label: window.api?.importPresentation ? 'import slides — pptx, ppt or odp' : 'importing slides needs the desktop app',
                 text: 'import slides',
-                icon: <ImportIcon size={14} />,
+                icon: <ImportIcon size={13} />,
                 disabled: !window.api?.importPresentation,
                 onClick: importSlides,
               },
@@ -480,7 +488,7 @@ export function SlidesBrowser() {
                 id: 'quick',
                 label: 'quick slide — a title, a line under it, and where they sit',
                 text: 'quick slide',
-                icon: <SparkleIcon size={14} />,
+                icon: <PresentationIcon size={13} />,
                 onClick: () => setQuickModalOpen(true),
               },
             ]}
@@ -489,16 +497,20 @@ export function SlidesBrowser() {
       >
         <LibraryPane header={false}>
           {matches.length === 0 ? (
-            <div className="flex h-full items-center justify-center px-5">
-              <p className="text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.38)]">
-                nothing matches
-              </p>
-            </div>
+            <EmptyMark w={220} h={220} plain art={<PresentationEmptyArt />}
+              line={allDecks.length === 0 ? 'no presentations yet' : 'nothing matches'}
+              hint={allDecks.length === 0 ? 'import a deck or create your first slide' : 'try a different deck name or a line from a slide'}
+              below={<div className="mt-4 flex gap-2">
+                {allDecks.length === 0 ? <>
+                  {window.api?.importPresentation && <Button label="import slides" icon={<ImportIcon size={14} />} onClick={importSlides} />}
+                  <Button label="quick slide" tone="go" icon={<PresentationIcon size={14} />} onClick={() => setQuickModalOpen(true)} />
+                </> : <Button label="clear search" onClick={() => setQuery('')} />}
+              </div>}
+            />
           ) : (
             <div ref={sel.listRef}>
               <div
-                className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4 px-5 pt-4"
-                style={{ paddingBottom: 'var(--tri-gap)' }}
+                className="grid auto-rows-min grid-cols-4 gap-4 px-4 pb-1"
               >
               {matches.map((deck, i) => {
                 const at = pageOf(deck);

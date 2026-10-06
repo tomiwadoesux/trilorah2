@@ -1,0 +1,44 @@
+.tri-font-card {
+  transition: box-shadow 150ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tri-font-card:active:not(:focus-visible):not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+.tri-case-sample {
+  display: grid;
+  text-transform: none;
+}
+
+.tri-case-sample > span {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(3px) scale(0.97);
+}
+
+.tri-case-sample > [data-visible='true'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.tri-case-sample[data-animate='true'] > span {
+  transition: opacity 140ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tri-spacing-sample {
+  display: inline-flex;
+  text-transform: none;
+}
+
+.tri-spacing-sample[data-animate='true'] > span {
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-font-card { transition: box-shadow 150ms ease; }
+  .tri-font-card:active:not(:focus-visible):not([aria-disabled='true']) { transform: none; }
+  .tri-case-sample > span { transform: none; }
+  .tri-case-sample[data-animate='true'] > span { transition: opacity 100ms ease; }
+  .tri-spacing-sample[data-animate='true'] > span { transition: none; }
+}

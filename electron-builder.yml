@@ -17,11 +17,15 @@ files:
   - dist-electron/**
   - "!dist-electron/node_modules"
   - "!**/.DS_Store"
+  # The sentence-model runtime carries a binary per platform; ship only ours.
+  - "!**/node_modules/onnxruntime-node/bin/napi-v6/!(${platform})/**"
+  - "!**/node_modules/onnxruntime-node/bin/napi-v6/${platform}/!(${arch})/**"
 
 # Native modules — must live outside app.asar to be require()-able.
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
   - "**/node_modules/whisper-node/**"
+  - "**/node_modules/onnxruntime-node/**"
 
 # Runtime data shipped next to the app (resolved via process.resourcesPath).
 extraResources:
@@ -31,6 +35,17 @@ extraResources:
     to: bible_index.json
   - from: electron/agent/transition-phrases.json
     to: transition-phrases.json
+  # Allusion matching: passage vectors, the sentence model they were made with,
+  # and the model that judges whether a sentence and a passage match.
+  - from: electron/data/passages/bsb-vectors.bin
+    to: bsb-vectors.bin
+  - from: data/models/all-MiniLM-L6-v2
+    to: models/all-MiniLM-L6-v2
+  - from: data/models/ms-marco-MiniLM-L-6-v2
+    to: models/ms-marco-MiniLM-L-6-v2
+  # Programme scanning: the English OCR model, so a scan works offline.
+  - from: eng.traineddata
+    to: eng.traineddata
 
 mac:
   category: public.app-category.productivity

@@ -1,3 +1,5 @@
+import { popupPlacement } from '../../../lib/popupPlacement';
+import { popupBounds } from '../../../ui/primitives/usePopupPlacement';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDownIcon, cx } from '../../../ui';
@@ -45,7 +47,7 @@ const BUBBLE = {
   boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
 } as const;
 
-const EDGE_GAP = 8;
+
 const OPENED = 'tri-context-menu-opened';
 
 /**
@@ -119,12 +121,12 @@ export function ContextMenu({
     if (!at) return;
     const el = menu.current;
     if (!el) return;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    setPos({
-      left: Math.max(EDGE_GAP, Math.min(at.x, window.innerWidth - w - EDGE_GAP)),
-      top: Math.max(EDGE_GAP, at.y + h + EDGE_GAP > window.innerHeight ? at.y - h : at.y),
-    });
+    const place = () => setPos(popupPlacement({ left: at.x, right: at.x, top: at.y, bottom: at.y }, el.getBoundingClientRect(), { width: window.innerWidth, height: window.innerHeight }, 'left'));
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(el);
+    window.addEventListener('resize', place);
+    return () => { observer.disconnect(); window.removeEventListener('resize', place); };
   }, [at, path.length]);
 
   /* Focus follows the level: first row on open and on every drill. */
@@ -185,7 +187,7 @@ export function ContextMenu({
   };
 
   const row =
-    'flex w-full items-center gap-2.5 rounded-[10px] px-3.5 text-left lowercase transition-colors h-[var(--tri-option-h)] text-[length:var(--tri-control-size)] outline-none hover:bg-[rgb(255_255_255_/_0.06)] focus-visible:bg-[rgb(255_255_255_/_0.08)]';
+    'flex shrink-0 w-full items-center gap-2.5 rounded-[10px] px-3.5 text-left lowercase transition-colors h-[var(--tri-option-h)] text-[length:var(--tri-control-size)] outline-none hover:bg-[rgb(255_255_255_/_0.06)] focus-visible:bg-[rgb(255_255_255_/_0.08)]';
 
   return createPortal(
     <div
@@ -197,7 +199,8 @@ export function ContextMenu({
       className="tri-ctx-in fixed z-[70] flex flex-col gap-1 p-1.5"
       style={{
         ...BUBBLE,
-        minWidth: 176,
+        ...popupBounds,
+        minWidth: 'min(176px, calc(100vw - 24px))',
         left: pos?.left ?? at.x,
         top: pos?.top ?? at.y,
         /* Measured invisible for one layout pass, so it never shows at the

@@ -1,11 +1,15 @@
+import './dashboardBento.css';
+import { BentoCell, BentoGrid } from './BentoCell';
 import { Panel } from '../parts';
-import { BalanceArt, EmptyMark } from '../emptyArt';
+import { EmptyMark } from '../emptyArt';
+import { Button } from '../../../ui';
+import { AppearancePaletteArt } from '../AppearancePaletteArt';
+import { LanguageLettersArt } from '../LanguageLettersArt';
 import { PreachingTile } from './PreachingTile';
 import { TimersTile } from './TimersTile';
 import { ConnectedTile } from './ConnectedTile';
 import { PreachersTile } from './PreachersTile';
 import { ReadinessTile } from './ReadinessTile';
-import { RecentServicesTile } from './RecentServicesTile';
 import { TrustTrendTile } from './TrustTrendTile';
 import { CompanionTile } from './CompanionTile';
 import { GivingTile } from './GivingTile';
@@ -14,7 +18,6 @@ import { SermonNotesTile } from './SermonNotesTile';
 import { useViewEnter } from '../viewEnter';
 import { OutputsTile } from './OutputsTile';
 import type { HistoryEntry } from '../LogHistory';
-import { useEffect, useRef, useState } from 'react';
 
 /*
  * S-02 · dashboard — the bento the rest of the team watches.
@@ -34,90 +37,43 @@ export function DashboardBento({
   log,
   onLogAction,
   onViewProfile,
+  onOpenSettings,
 }: {
   log: HistoryEntry[];
   onLogAction?: () => void;
-  /* Both of the band-3 summary cards are about a preacher's record, and
-     the whole of that record is the profile view. They open there rather
-     than into a box of their own: a second, deeper copy of "recent
-     services" would be the same table twice, in two places, drifting. */
+  /** The trust history opens the preacher's detailed profile. */
   onViewProfile?: () => void;
+  onOpenSettings?: (page: 'appearance' | 'language') => void;
 }) {
   /* The tiles settle in, in reading order, each time the dashboard is
      turned to — see ../viewEnter. */
   const root = useViewEnter<HTMLDivElement>();
 
-  /* The held card below matches the timers card's width, so the gap
-     between them runs straight down through both bands. Ratios alone
-     cannot do it: the companion square makes band 1's widths depend on
-     its height. */
-  const timersCell = useRef<HTMLDivElement>(null);
-  const [timersW, setTimersW] = useState<number | null>(null);
-  useEffect(() => {
-    const el = timersCell.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setTimersW(e.contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   return (
-    <div ref={root} className="flex min-h-0 flex-1 flex-col gap-[var(--tri-gap)] [&_section.tri-rounded-surface]:bg-[#111111]">
-      {/* Band 1 — what the booth looks up at: how long is left, what is
-          being said, the code on the wall, and the ways to give. The
-          companion is a square, with the code on top and everything under
-          it; giving takes the room that frees up. */}
-      <div className="flex min-h-0 basis-0 grow-[300] gap-[var(--tri-gap)]">
-        <div ref={timersCell} className="flex min-w-0 basis-0 grow-[330]">
-          <TimersTile className="min-w-0 flex-1" />
-        </div>
-        <PreachingTile className="basis-0 grow-[400]" />
-        <CompanionTile stacked className="aspect-square shrink-0" />
-        <GivingTile face="card" className="min-w-0 basis-0 grow-[330]" />
-      </div>
-
-      {/* Band 2 — the working cards: a held card, readiness over
-          connections, then the log and the notes. */}
-      <div className="flex min-h-0 basis-0 grow-[330] gap-[var(--tri-gap)]">
-        {/* The outputs card down the left — which screens are plugged in
-            and what each one does. Readiness over connections on the
-            right. */}
-        <div className="flex min-w-0 basis-0 grow-[520] gap-[var(--tri-gap)]">
-          <div
-            className={timersW == null ? 'flex min-w-0 basis-0 grow-[1]' : 'flex shrink-0'}
-            style={timersW == null ? undefined : { width: timersW }}
-          >
-            <OutputsTile className="flex-1" />
-          </div>
-          <div className="flex min-w-0 basis-0 grow-[1] flex-col gap-[var(--tri-gap)]">
-            <ReadinessTile className="min-h-0 basis-0 grow-[150]" />
-            <ConnectedTile className="min-h-0 basis-0 grow-[200]" />
-          </div>
-        </div>
-        <NotificationsTile entries={log} onAction={onLogAction} className="min-w-0 basis-0 grow-[300]" />
-        <SermonNotesTile className="min-w-0 basis-0 grow-[420]" />
-      </div>
-
-      {/* Band 3 — the preachers (who is on today, everyone the app knows,
-          and each one's profile behind a press), recent services, and the
-          trust trend. */}
-      <div className="flex min-h-0 basis-0 grow-[246] gap-[var(--tri-gap)]">
-        {/* The preachers card keeps the left half of what the old two-card
-            split occupied. Beside it, a card held open on purpose: a bare
-            gap in the band reads as a layout that broke, where an empty
-            card reads as a place kept. It says what it is waiting for, so
-            it is a promise rather than a hole. */}
-        <PreachersTile className="basis-0 grow-[340]" />
-        {/* A word in the header rather than a blank band: a card whose
-            header is empty where every sibling has one is the thing that
-            reads as a render that stopped halfway. "kept" makes the
-            emptiness a decision someone took. */}
-        <Panel title="kept" className="basis-0 grow-[283]" bodyClass="px-4 pb-3">
-          <EmptyMark w={170} h={170} plain art={<BalanceArt />} play="hover" line="room kept for what comes next" />
-        </Panel>
-        <RecentServicesTile onOpen={onViewProfile} className="basis-0 grow-[258]" />
-        <TrustTrendTile onOpen={onViewProfile} className="basis-0 grow-[265]" />
-      </div>
+    <div ref={root} className="dashboard-bento">
+      <BentoGrid>
+        <BentoCell><TimersTile className="dashboard-bento__tile dashboard-bento__timer" /></BentoCell>
+        <BentoCell><PreachingTile className="dashboard-bento__tile dashboard-bento__transcript" /></BentoCell>
+        <BentoCell><CompanionTile stacked className="dashboard-bento__tile dashboard-bento__companion" /></BentoCell>
+        <BentoCell><GivingTile face="card" className="dashboard-bento__tile dashboard-bento__giving" /></BentoCell>
+        <BentoCell><OutputsTile className="dashboard-bento__tile dashboard-bento__outputs" /></BentoCell>
+        <BentoCell><div className="dashboard-bento__status">
+          <ReadinessTile className="dashboard-bento__readiness" />
+          <ConnectedTile className="dashboard-bento__connections" />
+        </div></BentoCell>
+        <BentoCell><NotificationsTile entries={log} onAction={onLogAction} className="dashboard-bento__tile dashboard-bento__notifications" /></BentoCell>
+        <BentoCell><SermonNotesTile className="dashboard-bento__tile dashboard-bento__notes" /></BentoCell>
+        <BentoCell><PreachersTile className="dashboard-bento__tile dashboard-bento__preachers" /></BentoCell>
+        <BentoCell><Panel empty title="appearance" className="dashboard-bento__tile dashboard-bento__appearance">
+          <EmptyMark w={175} h={160} plain art={<AppearancePaletteArt />} line="make it feel like your church"
+            below={<Button label="change appearance" onClick={() => onOpenSettings?.('appearance')} />} />
+        </Panel></BentoCell>
+        <BentoCell><Panel empty title="language" className="dashboard-bento__tile dashboard-bento__language">
+          <EmptyMark w={175} h={160} plain art={<LanguageLettersArt />} line="the language of your service"
+            below={<Button label="choose language" onClick={() => onOpenSettings?.('language')} />} />
+        </Panel></BentoCell>
+        <BentoCell><TrustTrendTile onOpen={onViewProfile} className="dashboard-bento__tile dashboard-bento__trust" /></BentoCell>
+      </BentoGrid>
     </div>
   );
 }

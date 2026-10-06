@@ -6,7 +6,8 @@
  * Book ids are 0-based in canonical order (Genesis = 0 … Revelation = 65).
  *
  * Sources, all public domain and safe to redistribute:
- *   thiagobodruk/bible (JSON) — KJV, BBE, and the multilingual set
+ *   eBible / CrossWire explicitly numbered USFM — KJV (1769, 66 books)
+ *   thiagobodruk/bible (JSON) — BBE and the multilingual set
  *   bible.helloao.org (eBible's own API) — WEB
  * Licensed translations (NIV, ESV, NLT, NKJV, NASB) are NOT here and cannot
  * be: displaying a chapter to a congregation is past every publisher's free
@@ -26,9 +27,22 @@
 import { DatabaseSync } from 'node:sqlite'
 import path from 'node:path'
 import fs from 'node:fs'
+import os from 'node:os'
+import { createHash } from 'node:crypto'
+import { KJV_USFM_URL, parseKjvArchive } from './lib/usfm-bible.mjs'
+import { replaceBibleVersion } from './lib/replace-bible-version.mjs'
 
 const ROOT = path.join(import.meta.dirname, '..')
-const DB_PATH = path.join(ROOT, 'bible.db')
+const args = process.argv.slice(2)
+const valueOf = (flag) => {
+  const index = args.indexOf(flag)
+  if (index < 0) return undefined
+  if (!args[index + 1] || args[index + 1].startsWith('--')) throw new Error(`Missing value for ${flag}`)
+  return args[index + 1]
+}
+const DB_PATH = path.resolve(valueOf('--database') ?? path.join(ROOT, 'bible.db'))
+const ONLY_VERSION = valueOf('--version')?.toUpperCase()
+if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB'].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
 
 /**
  * Pinned to a commit, not `master`. On 2026-09-23 upstream "refreshed" its
@@ -41,7 +55,6 @@ const DB_PATH = path.join(ROOT, 'bible.db')
 const THIAGO = 'https://raw.githubusercontent.com/thiagobodruk/bible/13225a15fa5e3e3043495b0c82df56c3fdfeb7f4/json'
 
 const SOURCES = [
-  { version: 'KJV', url: `${THIAGO}/en_kjv.json` },
   { version: 'BBE', url: `${THIAGO}/en_bbe.json` },
   // Multilingual, public-domain:
   { version: 'RVR', url: `${THIAGO}/es_rvr.json` }, // Reina-Valera (Spanish)
@@ -116,6 +129,7 @@ async function fetchJson(url) {
 }
 
 const db = new DatabaseSync(DB_PATH)
+db.exec('PRAGMA busy_timeout = 10000')
 db.exec(`
   CREATE TABLE IF NOT EXISTS bible (
     Book INTEGER NOT NULL,
@@ -127,41 +141,53 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_bible_lookup ON bible (Version, Book, Chapter, Versecount);
 `)
 
-const insert = db.prepare(
-  'INSERT INTO bible (Book, Chapter, Versecount, verse, Version) VALUES (?, ?, ?, ?, ?)'
-)
-const wipe = db.prepare('DELETE FROM bible WHERE Version = ?')
+if (!ONLY_VERSION || ONLY_VERSION === 'KJV') {
+  const localArchive = valueOf('--kjv-usfm')
+  console.log(`Reading explicitly numbered KJV USFM${localArchive ? ' from local archive' : ' from eBible.org'}…`)
+  let archive
+  if (localArchive) archive = fs.readFileSync(path.resolve(localArchive))
+  else {
+    const response = await fetch(KJV_USFM_URL)
+    if (!response.ok) throw new Error(`KJV source download failed: ${response.status}`)
+    archive = Buffer.from(await response.arrayBuffer())
+  }
+  // All corpus/reference validation happens before either backup or mutation.
+  const rows = parseKjvArchive(archive)
+  const archiveSha256 = createHash('sha256').update(archive).digest('hex')
+  console.log(`Validated KJV: 66 books, 1,189 chapters, ${rows.length} verses; SHA-256 ${archiveSha256}`)
+  const backup = path.join(os.tmpdir(), `trilorah-bible-before-kjv-${Date.now()}.db`)
+  db.prepare('VACUUM INTO ?').run(backup)
+  console.log(`Full database backup: ${backup}`)
+  replaceBibleVersion(db, 'KJV', rows)
+  console.log(`KJV repaired transactionally; other translations and database schema preserved.`)
+}
 
-for (const { version, url } of SOURCES) {
+for (const { version, url } of SOURCES.filter(source => !ONLY_VERSION || source.version === ONLY_VERSION)) {
   console.log(`⬇️  Downloading ${version}…`)
   const books = await fetchJson(url)
   if (!Array.isArray(books) || books.length !== 66) {
     throw new Error(`${version}: expected 66 books, got ${Array.isArray(books) ? books.length : typeof books}`)
   }
-  wipe.run(version)
-  db.exec('BEGIN')
-  let count = 0
+  const rows = []
   books.forEach((book, bookId) => {
     book.chapters.forEach((verses, chapterIdx) => {
       verses.forEach((text, verseIdx) => {
-        insert.run(bookId, chapterIdx + 1, verseIdx + 1, String(text), version)
-        count++
+        rows.push([bookId, chapterIdx + 1, verseIdx + 1, String(text)])
       })
     })
   })
-  db.exec('COMMIT')
-  console.log(`✅ ${version}: ${count} verses imported`)
+  replaceBibleVersion(db, version, rows)
+  console.log(`✅ ${version}: ${rows.length} verses imported`)
 }
 
+if (!ONLY_VERSION || ONLY_VERSION === 'WEB') {
 console.log('⬇️  Downloading WEB (a call per chapter — this one takes a minute)…')
 const webRows = await fetchWeb((done, all) => {
   if (done % 120 === 0 || done === all) process.stdout.write(`   ${done}/${all} chapters\r`)
 })
-wipe.run('WEB')
-db.exec('BEGIN')
-for (const [book, chapter, verse, text] of webRows) insert.run(book, chapter, verse, text, 'WEB')
-db.exec('COMMIT')
+replaceBibleVersion(db, 'WEB', webRows)
 console.log(`\n✅ WEB: ${webRows.length} verses imported`)
+}
 
 const total = db.prepare('SELECT COUNT(*) AS n FROM bible').get()
 console.log(`📖 bible.db ready at ${DB_PATH} (${total.n} rows)`)

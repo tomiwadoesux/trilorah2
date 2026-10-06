@@ -1,5 +1,6 @@
+import { isEmptyPreview } from '../../emptyPreviewMode';
 import { Panel } from '../parts';
-import { GiftIcon, BankIcon, LinkIcon } from '../../../ui';
+import { BankIcon, LinkIcon } from '../../../ui';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
 
@@ -99,7 +100,8 @@ function MethodMark({ id, color }: { id: string; color: string }) {
 
 
 export function GivingTile({ className, face = 'strip' }: { className?: string; face?: 'strip' | 'card' }) {
-  const set = new Set(ROWS.filter((r) => r.kind === 'text' && r.value).map((r) => r.key));
+  const rows = isEmptyPreview ? ROWS.map(row => row.kind === 'text' ? { ...row, value: '' } : row) : ROWS;
+  const set = new Set(rows.filter((r) => r.kind === 'text' && r.value).map((r) => r.key));
   const on = METHODS.filter((m) => set.has(m.key));
 
   return (
@@ -123,8 +125,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
           */
           <Panel
             title="giving"
-            icon={<GiftIcon size={13} />}
-            blurb="the ways this church takes an offering."
+            empty={set.size === 0}
             onOpen={onOpen}
             className="min-h-0 flex-1"
             bodyClass="pt-1"
@@ -135,7 +136,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
               className="flex h-full w-full flex-col justify-between text-left"
             >
               {METHODS.map((m) => {
-                const row = ROWS.find((r) => r.key === m.key);
+                const row = rows.find((r) => r.key === m.key);
                 const value = row?.kind === 'text' ? String(row.value ?? '') : '';
                 const active = set.has(m.key);
                 const ink = active ? m.ink : 'rgb(229 243 242 / 0.28)';
@@ -181,7 +182,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
             <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
               {METHODS.map((m) => {
                 const active = set.has(m.key);
-                const row = ROWS.find((r) => r.key === m.key);
+                const row = rows.find((r) => r.key === m.key);
                 const value = row?.kind === 'text' ? row.value : undefined;
                 return (
                   <span
@@ -208,7 +209,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
         )
       }
     >
-      <RowList rows={ROWS} />
+      <RowList rows={rows} />
     </Expandable>
   );
 }

@@ -1,0 +1,12 @@
+.tri-outline-art { display:block; width:100%; height:100%; overflow:visible; fill:none; color:#ededed; stroke:currentColor; stroke-width:.8; stroke-linecap:round; stroke-linejoin:round; }
+.tri-outline-art__lines { fill:none; stroke-opacity:.3; stroke-width:.65; }
+.tri-outline-art__fold { transition:transform 750ms cubic-bezier(.32,.72,0,1); }
+.tri-outline-art__fold--left { transform-origin:60px 8px; }
+.tri-outline-art__fold--right { transform-origin:118px 0; }
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .tri-empty-surface[data-empty-active="true"] .tri-outline-art__fold--left,
+  .tri-outline-art:hover .tri-outline-art__fold--left { transform:skewY(-7.6deg); }
+  .tri-empty-surface[data-empty-active="true"] .tri-outline-art__fold--right,
+  .tri-outline-art:hover .tri-outline-art__fold--right { transform:skewY(-7.6deg); transition-delay:90ms; }
+}
+@media (prefers-reduced-motion:reduce) { .tri-outline-art__fold { transition:none; } }

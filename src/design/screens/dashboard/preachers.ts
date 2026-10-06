@@ -1,3 +1,4 @@
+import { isEmptyPreview } from '../../emptyPreviewMode';
 import { useEffect, useSyncExternalStore } from 'react';
 import type { PreacherLearningDetail, PreacherTeaching } from '../../../../shared/preacherLearning';
 
@@ -325,7 +326,7 @@ const api = () => (typeof window === 'undefined' ? undefined : window.api);
    five people who do not exist in front of an operator. */
 const hasEngine = () => !!api()?.listPreacherProfiles;
 
-let state: PreachersState = hasEngine()
+let state: PreachersState = hasEngine() || isEmptyPreview
   ? { preachers: [], activeId: null }
   : { preachers: SEED, activeId: 'pastor-dan' };
 

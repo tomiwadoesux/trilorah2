@@ -1,0 +1,10 @@
+.tri-globe-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: #ededed;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

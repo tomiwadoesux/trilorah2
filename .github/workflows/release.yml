@@ -43,6 +43,11 @@ jobs:
 
       - run: npm ci
 
+      - name: Fetch verified offline recognition and OCR models
+        run: |
+          npm run passages:model
+          node scripts/fetch-ocr-model.mjs
+
       # bible.db and its index are far too large for git, so they are rebuilt
       # here from the same public-domain sources the developer machine used.
       # Without this step the installer ships an app with no Bible in it.
@@ -113,6 +118,13 @@ jobs:
           $need = @(
             "$r/bible.db",
             "$r/bible_index.json",
+            "$r/bsb-vectors.bin",
+            "$r/models/all-MiniLM-L6-v2/model_quantized.onnx",
+            "$r/models/all-MiniLM-L6-v2/tokenizer.json",
+            "$r/models/ms-marco-MiniLM-L-6-v2/model_quantized.onnx",
+            "$r/models/ms-marco-MiniLM-L-6-v2/tokenizer.json",
+            "$r/eng.traineddata",
+            "$r/app.asar.unpacked/node_modules/onnxruntime-node/bin/napi-v6/win32/x64/onnxruntime_binding.node",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/main.exe",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/whisper.dll",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/vcruntime140.dll",
@@ -127,7 +139,12 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           r="release/mac-arm64/Trilorah.app/Contents/Resources"
-          for f in bible.db bible_index.json \
+          for f in bible.db bible_index.json bsb-vectors.bin eng.traineddata \
+            models/all-MiniLM-L6-v2/model_quantized.onnx \
+            models/all-MiniLM-L6-v2/tokenizer.json \
+            models/ms-marco-MiniLM-L-6-v2/model_quantized.onnx \
+            models/ms-marco-MiniLM-L-6-v2/tokenizer.json \
+            app.asar.unpacked/node_modules/onnxruntime-node/bin/napi-v6/darwin/arm64/onnxruntime_binding.node \
             app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/main \
             app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node; do
             [ -e "$r/$f" ] || { echo "MISSING: $r/$f"; exit 1; }

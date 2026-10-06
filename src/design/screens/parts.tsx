@@ -26,8 +26,11 @@ export function Panel({
   tone = 'default',
   bare = false,
   unavailable = false,
+  empty = false,
 }: {
   title?: string;
+  /** Center the heading until this panel has content. */
+  empty?: boolean;
   /**
    * One sentence under the title, saying what the card is for.
    *
@@ -125,14 +128,15 @@ export function Panel({
              space in a 38px strip. Without one the row keeps --tri-bar-h
              exactly, so every card that had no blurb is untouched. */
           className={cx(
-            'flex shrink-0 gap-x-2 px-4',
+            'tri-panel-header flex shrink-0 gap-x-2 px-4',
+            empty && 'tri-panel-header--empty',
             blurb ? 'flex-col pb-2.5 pt-3' : 'h-[var(--tri-bar-h)] items-center justify-between',
           )}
         >
           {/* `length:` because text-[var(...)] is ambiguous to Tailwind — it
               reads it as a colour and never sets a size, which left this
               label at the browser default. */}
-          <span className={cx('flex min-w-0 items-center gap-2', blurb && 'w-full justify-between')}>
+          <span className={cx('tri-panel-heading flex min-w-0 items-center gap-2', blurb && 'w-full justify-between')}>
             <span className="flex min-w-0 items-center gap-2">
               {icon && (
                 <span
@@ -146,7 +150,7 @@ export function Panel({
                   {icon}
                 </span>
               )}
-              <span className="truncate text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
+              <span className="tri-panel-title truncate text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
                 {title}
               </span>
             </span>
@@ -173,7 +177,7 @@ export function Panel({
           holding surfaces has no padding of its own to override. */}
       <div
         className={cx(
-          'min-h-0 flex-1 overflow-hidden',
+          'tri-panel-body min-h-0 flex-1 overflow-hidden',
           !bare && 'px-3 pb-3',
           /* The overlay is absolutely positioned, so the body it covers has
              to be the containing block. Only when there is one to draw —

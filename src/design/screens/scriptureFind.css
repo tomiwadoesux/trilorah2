@@ -1,0 +1,80 @@
+/*
+ * "Find scripture" answers, drawn over the preview screen.
+ *
+ * Sizes are in cqw: the preview box is a size container, and the picture is
+ * as wide as it, so the cards scale with the screen they sit on instead of
+ * with the window.
+ */
+.find-veil {
+  position: absolute; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; gap: 2.2cqw;
+  padding: 3cqw 3.4cqw 2.6cqw;
+  border-radius: inherit;
+  background: rgb(4 9 10 / .86);
+  backdrop-filter: blur(6px);
+  animation: find-veil-in 180ms var(--tri-ease-out) both;
+}
+.find-head { display: flex; align-items: center; gap: 2cqw; min-height: 0; }
+.find-heard {
+  flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: clamp(10px, 1.9cqw, 13px); color: var(--tri-ink-muted);
+}
+.find-heard em { font-style: normal; color: var(--tri-ink); }
+.find-round {
+  display: grid; place-items: center; flex: none;
+  width: clamp(22px, 4.4cqw, 30px); aspect-ratio: 1; border-radius: 999px;
+  color: var(--tri-ink); background: rgb(229 243 242 / .08);
+  box-shadow: inset 0 0 0 1px rgb(229 243 242 / .16);
+  transition: background var(--tri-dur-state) var(--tri-ease-out), transform var(--tri-dur-press) var(--tri-ease-out);
+}
+.find-round:hover:not(:disabled) { background: rgb(229 243 242 / .16); }
+.find-round:active:not(:disabled) { transform: scale(.94); }
+.find-round:disabled { opacity: .3; }
+.find-grid {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2cqw;
+}
+.find-card {
+  position: relative; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; gap: .9cqw;
+  padding: 2.2cqw 2.6cqw; text-align: left;
+  border-radius: clamp(10px, 2.4cqw, 16px);
+  border: 1px solid rgb(229 243 242 / .14);
+  background: radial-gradient(ellipse at 0 0, rgb(var(--tri-teal-2) / .6), transparent 78%), #141818;
+  animation: find-card-in 260ms var(--tri-ease-out) both;
+  animation-delay: calc(var(--find-i) * 45ms);
+  transition: border-color var(--tri-dur-state) var(--tri-ease-out), transform var(--tri-dur-press) var(--tri-ease-out);
+}
+.find-card:nth-child(2), .find-card:nth-child(3) {
+  background: radial-gradient(ellipse at 100% 100%, rgb(var(--tri-teal-4) / .65), transparent 78%), #191817;
+}
+.find-card:hover { border-color: var(--tri-accent-yellow); }
+.find-card:active { transform: scale(.985); }
+.find-card:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 2px; }
+.find-ref { font-size: clamp(11px, 2.5cqw, 17px); font-weight: 600; color: var(--tri-ink); line-height: 1.15; }
+.find-title {
+  font-size: clamp(8px, 1.45cqw, 10px); letter-spacing: .12em; text-transform: uppercase;
+  color: rgb(229 243 242 / .45); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.find-text {
+  /* Two whole lines. Letting it fill the card cut a third line in half. */
+  flex: none; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  font-size: clamp(9px, 1.75cqw, 12px); line-height: 1.5; color: var(--tri-ink-muted);
+}
+.find-go {
+  position: absolute; right: 2.2cqw; bottom: 1.6cqw;
+  font-size: clamp(8px, 1.45cqw, 10px); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--tri-accent-yellow); opacity: 0;
+  transition: opacity var(--tri-dur-state) var(--tri-ease-out);
+}
+.find-card:hover .find-go, .find-card:focus-visible .find-go { opacity: 1; }
+.find-foot { display: flex; align-items: center; justify-content: center; gap: 2cqw; }
+.find-count { font-size: clamp(9px, 1.6cqw, 11px); font-variant-numeric: tabular-nums; color: var(--tri-ink-muted); }
+
+@keyframes find-veil-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes find-card-in { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .find-veil, .find-card { animation-duration: 1ms; animation-delay: 0ms; }
+  .find-card:active, .find-round:active:not(:disabled) { transform: none; }
+}

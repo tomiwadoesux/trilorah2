@@ -220,7 +220,7 @@ function StatusCluster() {
   const listening = asrStatus === 'listening';
 
   return (
-    <div className="flex items-center gap-x-4 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
       <span className={`flex items-center gap-x-1.5 ${listening ? 'text-accent' : ''}`}>
         <span aria-hidden="true" className={listening ? 'animate-pulse-quiet' : ''}>
           ●
@@ -245,16 +245,16 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <header className="shrink-0 border-b border-hairline bg-surface">
-        <div className="flex items-center justify-between gap-x-6 px-4 py-2">
-          <div className="flex items-center gap-x-6">
-            <span className="select-none text-sm font-bold tracking-[0.3em]">TRILORAH</span>
-            <nav data-tour="tabs" className="flex items-center gap-x-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2">
+          <div className="flex min-w-0 max-w-full items-center gap-x-4">
+            <span className="shrink-0 select-none text-sm font-bold tracking-[0.3em]">TRILORAH</span>
+            <nav data-tour="tabs" className="flex min-w-0 items-center gap-x-1 overflow-x-auto">
               {TABS.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setTab(t.id)}
-                  className={`rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
+                  className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-widest transition-colors ${
                     tab === t.id ? 'bg-accent text-[var(--color-on-accent)]' : 'text-neutral-500 hover:text-ink'
                   }`}
                 >
@@ -263,7 +263,7 @@ export default function App() {
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-x-5">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-5 gap-y-2">
             <StatusCluster />
             <MobileRemotePanel />
             <button
@@ -285,7 +285,7 @@ export default function App() {
 
       <div style={{ display: tab === 'live' ? 'flex' : 'none', flex: 1, minHeight: 0 }}>
         {/* The control surface owns the whole viewport below the header. */}
-        <main className="min-h-0 flex-1">
+        <main className="min-h-0 min-w-0 flex-1">
           <LiveHost />
         </main>
       </div>

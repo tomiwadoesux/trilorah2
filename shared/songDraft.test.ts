@@ -231,4 +231,17 @@ describe('drafts', () => {
     expect(Object.keys(back)).toEqual(['new:1'])
     expect(back['new:1'].base).toEqual(base)
   })
+
+  it('preserves the original lyrics of a new song through closing and reopening', () => {
+    const sourceLyrics = '[Verse 1]\n[C]lamp one on the hill\n\n[Chorus]\ncarry the lamps\n'
+    const entry = { ...draft, base, sourceLyrics }
+    const back = parseDrafts(JSON.stringify({ 'new:lyrics': entry }))
+    expect(back['new:lyrics']).toEqual(entry)
+  })
+
+  it('ignores malformed source lyrics without dropping the arranged slides', () => {
+    const back = parseDrafts({ 'new:lyrics': { ...draft, base, sourceLyrics: 42 } })
+    expect(back['new:lyrics'].sourceLyrics).toBeUndefined()
+    expect(back['new:lyrics'].cards).toEqual(draft.cards)
+  })
 })

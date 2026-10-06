@@ -14,6 +14,7 @@ import {
   NoteIcon,
   PencilIcon,
   PlusIcon,
+  ScanIcon,
   TrashIcon,
   type ActionMenuGroup,
   cx,
@@ -25,10 +26,12 @@ import { useDrag } from '../drag';
 import { useProjector } from '../projector';
 import { useRun, type QueueItem, type RunSegment } from '../run';
 import { ContextMenu, useContextMenu, type ContextMenuItem } from './ContextMenu';
+import { ADD_MENU, askRun } from './RunHeaderActions';
 import { RunSongEditor, type LibrarySong } from './RunSongEditor';
 import { SEGMENT_TYPES, segmentIcon, segmentTypeLabel } from './segmentTypes';
 import './run.css';
-import { EmptyMark, PopStackArt } from '../emptyArt';
+import { EmptyMark } from '../emptyArt';
+import { LayeredProgrammeArt } from './LayeredProgrammeArt';
 
 /*
  * The run of service, as drawn in the rail.
@@ -553,45 +556,50 @@ function SegmentCard({
  */
 
 /*
- * The empty rail's own way in — the header's + and clock again, at a size
- * you cannot miss, directly under the sentence that names them. The + here
- * offers only "add segment": the scan and paste flows live in the header,
- * whose review popovers they belong to. The clock loads straight away, as
- * the header's does when the rail is empty — there is nothing to replace.
+ * The empty rail's own way in — everything the header offers, at a size you
+ * cannot miss, directly under the sentence that names it. Reading the
+ * programme the church already made comes first and is spelled out, because
+ * it is the route that saves the most work and a bare "+" hid it. The
+ * dialogs themselves stay in the header (see askRun); these only ask.
+ * The clock loads straight away — there is nothing to replace.
+ *
+ * The "+" drops the attach-to-a-segment tiles: there is no segment yet to
+ * hang a clip or a note on.
  */
-const EMPTY_ADD: ActionMenuGroup[] = [
-  {
-    items: [
-      {
-        id: 'segment',
-        label: 'add segment',
-        icon: <PlusIcon size={13} />,
-        arrange: true,
-        items: SEGMENT_TYPES.map((t) => ({ id: t.value, label: t.label })),
-      },
-    ],
-  },
-];
+const EMPTY_ADD: ActionMenuGroup[] = ADD_MENU.slice(0, 1);
 
 function RunEmptyActions() {
   const run = useRun();
   return (
-    <div
-      className="mt-4 flex items-center gap-3"
-      style={{ '--tri-control-h': '40px', '--tri-control-pad-x': '13px' } as CSSProperties}
-    >
-      <ActionMenu
-        groups={EMPTY_ADD}
-        onArrange={(_parent, picked) => run.addSegments(picked)}
-        trigger={<Button label="" icon={<PlusIcon size={17} />} title="add to the run" />}
-      />
-      <Button
-        label=""
-        tone="ash"
-        icon={<HistoryIcon size={16} />}
-        title="load the default order of service"
-        onClick={() => run.loadSundayTemplate()}
-      />
+    <div className="mt-3 flex flex-col items-center gap-2">
+      <div
+        className="flex items-center gap-2"
+        style={{ '--tri-control-h': '32px', '--tri-control-pad-x': '11px' } as CSSProperties}
+      >
+        <Button label="scan image" icon={<ScanIcon size={14} />} title="read a photo of the programme" onClick={() => askRun('scan')} />
+        <Button label="paste" tone="ash" icon={<NoteIcon size={13} />} title="paste the programme as text" onClick={() => askRun('paste')} />
+      </div>
+      <div
+        className="flex items-center gap-2"
+        style={{ '--tri-control-h': '36px', '--tri-control-pad-x': '11px' } as CSSProperties}
+      >
+        <ActionMenu
+          groups={EMPTY_ADD}
+          onArrange={(_parent, picked) => run.addSegments(picked)}
+          onSelect={(item) => {
+            if (item.id === 'scan' || item.id === 'paste') askRun(item.id);
+          }}
+          trigger={<Button label="" icon={<PlusIcon size={16} />} title="add to the run" />}
+        />
+        <Button
+          label=""
+          tone="ash"
+          icon={<HistoryIcon size={15} />}
+          title="load the default order of service"
+          onClick={() => run.loadSundayTemplate()}
+        />
+        <Button label=".tri" tone="ash" title="open, import or save a .tri service file" onClick={() => askRun('tri')} />
+      </div>
     </div>
   );
 }
@@ -613,11 +621,14 @@ export function RunOfService({
     <>
       {run.segments.length === 0 ? (
         <EmptyMark
-          w={220}
-          h={220}
+          /* Smaller than the other empty marks: this one has two rows of
+             ways in under it, and on a laptop-height window the full-size
+             art pushed the second row out of the card. */
+          w={172}
+          h={172}
           plain
-          art={<PopStackArt />}
-          line="use + to build today’s run"
+          art={<LayeredProgrammeArt />}
+          line="scan, paste or build today’s run"
           below={<RunEmptyActions />}
         />
       ) : (

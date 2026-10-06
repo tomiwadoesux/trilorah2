@@ -5,6 +5,10 @@ import { operatorRunStore } from '../stores/operatorRunStore';
 import { validRun } from './persistentRun';
 import type { SlideTheme } from '../design/screens/slide';
 import type { FontOption, TextPositionOption } from '../ui';
+import { isTextPosition } from '../../shared/textPosition';
+import { clampTextWidth } from '../../shared/textWidth';
+import { resolveTextCase } from '../../shared/textCase';
+import { resolveTextSpacing } from '../../shared/textSpacing';
 
 export const TRI_THEME_KEY = 'trilorah_theme_layout';
 export const TRI_THEME_EVENT = 'trilorah-theme-imported';
@@ -36,16 +40,19 @@ export function readTriLocal<T>(key: string, fallback: T): T {
 
 /** Keep every editable layout field while rejecting malformed package values. */
 type PackageTheme = Omit<SlideTheme, 'font' | 'layout'> & { font: FontOption; layout: TextPositionOption };
-export function normalizeTriTheme(value: unknown, fallback: PackageTheme): PackageTheme {
-  if (!value || typeof value !== 'object') return fallback;
+export function normalizeTriTheme(value: unknown, fallback: PackageTheme): PackageTheme & { textWidth: number } {
+  if (!value || typeof value !== 'object') return { ...fallback, textWidth: clampTextWidth(fallback.textWidth, 100 - fallback.safeMargin * 2) };
   const input = value as Record<string, unknown>;
   const number = (key: keyof SlideTheme, min: number, max: number) => typeof input[key] === 'number' && Number.isFinite(input[key]) ? Math.max(min, Math.min(max, input[key] as number)) : fallback[key] as number;
   return {
     backgroundId: typeof input.backgroundId === 'string' && input.backgroundId ? input.backgroundId : fallback.backgroundId,
     dimness: number('dimness', 0, 100), blur: number('blur', 0, 12), shadow: number('shadow', 0, 100),
     size: number('size', -2, 8), verseSize: number('verseSize', -2, 8), refGap: number('refGap', 0, 3), safeMargin: number('safeMargin', 3, 20),
+    textWidth: clampTextWidth(input.textWidth, 100 - number('safeMargin', 3, 20) * 2),
     font: ['default', 'serif', 'uppercase'].includes(String(input.font)) ? input.font as FontOption : fallback.font,
-    layout: ['center', 'top', 'bottom-right', 'bottom-center', 'bottom-left'].includes(String(input.layout)) ? input.layout as TextPositionOption : fallback.layout,
+    textCase: resolveTextCase(input.textCase, typeof input.font === 'string' ? input.font : fallback.font),
+    textSpacing: resolveTextSpacing(input.textSpacing),
+    layout: isTextPosition(input.layout) ? input.layout : input.layout === 'bottom' ? 'bottom-center' : fallback.layout,
   };
 }
 
@@ -103,9 +110,14 @@ export function applyTriSnapshot(snapshot: TriSnapshot, openService: boolean): v
     // overwrite the imported appearance with the previous layout.
     if (!layout) {
       const converted = { ...readTriLocal<Record<string, unknown>>(TRI_THEME_KEY, {}) };
+      if (display.scriptureFontPreset === 'display-serif') converted.font = 'serif';
+      if (display.scriptureFontPreset === 'modern-sans') converted.font = 'default';
       if (typeof display.overlayOpacity === 'number') converted.dimness = display.overlayOpacity * 100;
       if (typeof display.backgroundBlur === 'number') converted.blur = display.backgroundBlur;
       if (typeof display.safeMargin === 'number') converted.safeMargin = display.safeMargin;
+      if (typeof display.textWidth === 'number') converted.textWidth = clampTextWidth(display.textWidth);
+      if (display.textCase !== undefined) converted.textCase = resolveTextCase(display.textCase);
+      if (display.textSpacing !== undefined) converted.textSpacing = resolveTextSpacing(display.textSpacing);
       if (typeof display.verseLayout === 'string') converted.layout = display.verseLayout;
       if (typeof display.refGap === 'number') converted.refGap = display.refGap;
       if (typeof display.refScale === 'number') converted.verseSize = (display.refScale * 0.46 - 0.46) / 0.035;

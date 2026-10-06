@@ -11,11 +11,6 @@
 .gradient-study-name { display:flex; gap:9px; align-items:center; padding:9px 10px; border-top:1px solid #ffffff0a; font-size:12px; }
 .gradient-study-name small { color:#ffffff40; font-size:9px; font-variant-numeric:tabular-nums; }
 .gradient-preview { position:relative; aspect-ratio:16/10; overflow:hidden; isolation:isolate; border-radius:14px; border:1px solid #ffffff20; background:#090d0e; }
-.gradient-preview > .gradient-art { inset:-5%; width:110%; height:110%; transform-origin:65% 40%; }
-.gradient-preview > .gradient-art { animation:study-drift 14s ease-in-out infinite alternate; }
-.gradient-preview[data-style=orbit] > .gradient-art { animation:study-turn 24s ease-in-out infinite alternate; }
-.gradient-preview[data-style=contour] > .gradient-art { animation:study-contour 18s ease-in-out infinite alternate; }
-.gradient-preview[data-style=veil] > .gradient-art { animation:study-veil 16s ease-in-out infinite alternate; }
 .gradient-preview-caption { position:absolute; bottom:14px; left:18px; color:#ffffff65; font-size:10px; letter-spacing:.08em; }
 .gradient-context { position:absolute; inset:12% 7% 17%; display:flex; flex-direction:column; gap:9px; }
 .gradient-context-top { display:flex; justify-content:space-between; align-items:center; padding:10px 13px; border:1px solid #ffffff16; background:#0a0e10ba; border-radius:9px; font-size:10px; }
@@ -35,14 +30,4 @@
 .gradient-lab button:focus-visible { outline:2px solid #e4d584; outline-offset:3px; }
 .gradient-lab-note { margin-top:12px; }
 @media (hover:hover) { .gradient-lab button:hover { border-color:#ffffff65; } }
-@keyframes study-drift { from { transform:translate(-1%,2%) rotate(-3deg); } to { transform:translate(2%,-2%) rotate(3deg); } }
-@keyframes study-turn { from { transform:rotate(-12deg) scale(.96); } to { transform:rotate(10deg) scale(1.04); } }
-@keyframes study-contour { from { transform:translate(-3%,0) scale(1); opacity:.65; } to { transform:translate(3%,0) scale(1.06); opacity:1; } }
-@keyframes study-veil { from { transform:skewX(-4deg) translateX(-2%); } to { transform:skewX(4deg) translateX(2%); } }
-@media (prefers-reduced-motion:reduce) { .gradient-preview[data-motion=true] > .gradient-art { animation:none; } }
 @media (max-width:540px) { .gradient-studies { gap:6px; } .gradient-study-name { gap:5px; font-size:10px; padding:8px; } .gradient-context { inset:10% 5% 17%; } .gradient-context-grid > div { padding:8px; } .gradient-context-grid > div:first-child span { padding:5px 0; } }
-
-.gradient-preview[data-motion=false] > .gradient-art { animation-play-state: paused; }
-.gradient-preview[data-motion=true] > .gradient-art { animation-play-state: running; }
-.gradient-reduced-note { display:none; }
-@media (prefers-reduced-motion:reduce) { .gradient-preview > .gradient-art { animation:none !important; } .gradient-reduced-note { display:block; } }

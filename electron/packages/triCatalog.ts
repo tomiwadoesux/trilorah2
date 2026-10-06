@@ -10,7 +10,7 @@ export const DISPLAY_KEYS = [
   'defaultFontWeight', 'defaultTextColor', 'overlayOpacity', 'defaultBackgroundUrl',
   'backgroundBlur', 'backgroundFit', 'backgroundPosition', 'accentId', 'colorMode',
   'uiFont', 'scriptureFontPreset', 'displayVersion', 'secondaryVersion',
-  'streamLayout', 'verseLayout', 'safeMargin', 'refScale', 'refGap', 'stageShowClock',
+  'streamLayout', 'verseLayout', 'safeMargin', 'textWidth', 'textCase', 'textSpacing', 'refScale', 'refGap', 'stageShowClock',
   'stageShowNext', 'stageShowVerseText', 'stageShowTimer', 'stageShowElapsed',
   'breakOnVerse', 'showVerseNumbers', 'referenceMode', 'showTranslation', 'maxCharsPerSlide',
 ] as const

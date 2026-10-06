@@ -1,0 +1,7 @@
+.tri-portrait-art { display:block; width:100%; height:100%; overflow:visible; color:#ededed; }
+.tri-portrait-art__highlight { opacity:.55; transition:opacity 500ms ease; }
+@media (hover:hover) and (pointer:fine) {
+  .tri-empty-surface[data-empty-active="true"] .tri-portrait-art__highlight,
+  .tri-portrait-art:hover .tri-portrait-art__highlight { opacity:1; }
+}
+@media (prefers-reduced-motion:reduce) { .tri-portrait-art__highlight { transition:none; } }

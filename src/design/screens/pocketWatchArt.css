@@ -1,0 +1,24 @@
+.tri-pocket-watch-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: #ededed;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tri-pocket-watch-art__hand {
+  transform-box: view-box;
+  transform-origin: 150px 155px;
+  transition: transform 160ms cubic-bezier(.23, 1, .32, 1);
+}
+
+.tri-pocket-watch-art__second {
+  transition-duration: 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-pocket-watch-art__hand { transition: none; }
+}

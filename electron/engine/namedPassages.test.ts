@@ -14,6 +14,7 @@ describe('named passages', () => {
     expect(findNamedPassage('david and goliath')).toMatchObject({ book: '1 Samuel', chapter: 17 })
     expect(findNamedPassage('turn to the beatitudes')).toMatchObject({ book: 'Matthew', chapter: 5, verse: 3 })
     expect(findNamedPassage('the ten commandments')).toMatchObject({ book: 'Exodus', chapter: 20 })
+    expect(findNamedPassage('jesus calms the storm')).toMatchObject({ book: 'Mark', chapter: 4, verse: 35, end: 41 })
   })
   it('ordinary preaching vocabulary is not a passage', () => {
     for (const t of ['you must be born again', 'after the fall we were lost', 'he is risen indeed', 'on the day he arrived']) {

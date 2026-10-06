@@ -479,6 +479,7 @@ interface SongsApi {
    * as `{ ok: false, reason, message }`, with a `message` fit to show as-is.
    * Hits are already de-duplicated and all have lyrics; at most 25.
    */
+  discoverChristianSongs(query: string): Promise<{ ok: true; songs: import('../../shared/christianSongs').ChristianSong[] } | { ok: false; reason: string }>;
   searchLyrics(query: string): Promise<LyricsSearchResult>;
   /** The words for one hit, as plain text with blank lines between stanzas — feed it to `importText`. */
   getLyrics(id: number): Promise<LyricsGetResult>;
@@ -527,6 +528,7 @@ interface WindowApi extends Partial<TriPackageApi> {
   /** Punctuated transcript lines, each marked final or still growing. */
   onTranscriptLine?(callback: (line: { text: string; isFinal: boolean }) => void): Unsubscribe;
   onVersePreview(callback: (detection: VerseDetection) => void): Unsubscribe;
+  onRecognitionWithdrawn?(callback: (withdrawal: import('../../shared/recognitionWithdrawal').RecognitionWithdrawal) => void): Unsubscribe;
   onVerseDetected(callback: (detection: VerseDetection) => void): Unsubscribe;
   onAudioLevel(callback: (level: number) => void): Unsubscribe;
   onShowCleanBackground(callback: () => void): Unsubscribe;
@@ -557,6 +559,10 @@ interface WindowApi extends Partial<TriPackageApi> {
 
   /* Sermon transcript & notes ---------------------------------------- */
   getSermonTranscript(): Promise<string>;
+  setRunOrderContext(schedule: { type: string; title: string }[]): void;
+  getSermonStart(): Promise<import('../../shared/sermonStart').SermonStartState | null>;
+  respondSermonStart(action: import('../../shared/sermonStart').SermonStartAction, requestId?: number): Promise<import('../../shared/sermonStart').SermonStartState>;
+  onSermonStart(callback: (state: import('../../shared/sermonStart').SermonStartState) => void): Unsubscribe;
   getServiceLog(): Promise<any[]>;
   saveServiceSummary(): Promise<{ success: boolean; path?: string; error?: string }>;
   generateSermonNotes(): Promise<SermonNotes>;
@@ -650,6 +656,12 @@ interface WindowApi extends Partial<TriPackageApi> {
   resolveReviewItem?(id: string, resolution: ReviewResolution, amendedTo?: VerseRef): Promise<void>;
   getVerseQueue?(): Promise<VerseQueueItem[]>;
   showQueuedVerse?(ref: string): Promise<{ success: boolean }>;
+  /** Passages the last words spoken point to, nearest first, eight at most. With no text, searches what was said in the last 45 seconds. `meaning` is false when the sentence model is not installed. */
+  findHeardScripture?(text?: string): Promise<{
+    heard: string;
+    meaning: boolean;
+    matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: 'named' | 'story' | 'meaning' }[];
+  }>;
   setDisplayVersion?(version: string): Promise<void>;
   getSeasonalTheme?(): Promise<string>;
   getNotesProviderStatus?(): Promise<{ id: string; status: string }>;

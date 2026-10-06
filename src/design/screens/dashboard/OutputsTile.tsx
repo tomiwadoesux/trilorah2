@@ -1,5 +1,10 @@
+import { useEngine } from '../engine';
+import { isEmptyPreview } from '../../emptyPreviewMode';
 import { useEffect, useRef, useState } from 'react';
-import { cx } from '../../../ui';
+import { Button, cx } from '../../../ui';
+import { Panel } from '../parts';
+import { EmptyMark } from '../emptyArt';
+import { DisplayConnectionArt } from '../DisplayConnectionArt';
 import { Expandable } from './expand';
 import { SettingRow, type Row } from '../settingsRows';
 import { OUTPUTS_STYLES, SHIPPED_OUTPUTS, outputsStyle } from './outputs/styles';
@@ -101,7 +106,8 @@ export function OutputsTile({ className }: { className?: string }) {
      draws nothing rather than a room that is not there. */
   const [engine] = useState(() => !design && typeof window !== 'undefined' && !!window.api);
   const status = useOutputsStatus();
-  const [sample, setSample] = useState<Screen[]>(SAMPLE);
+  const { latestReference } = useEngine();
+  const [sample, setSample] = useState<Screen[]>(isEmptyPreview ? [] : SAMPLE);
   const screens = engine ? (status ? screensFrom(status) : []) : sample;
 
   useEffect(() => {
@@ -162,7 +168,13 @@ export function OutputsTile({ className }: { className?: string }) {
         glyph={false}
         blurb="The screens this machine drives — what each one shows, and which display it is on."
         size={{ w: 640, h: 620 }}
-        tile={({ onOpen }) => <Face screens={screens} onRole={onRole} onOpen={onOpen} className="min-h-0 w-full flex-1" />}
+        tile={({ onOpen }) => screens.length === 0 || screens.every(screen => screen.disabled || screen.windowed)
+          ? <Panel empty title="outputs" onOpen={onOpen} className="min-h-0 w-full flex-1">
+              <EmptyMark w={180} h={170} plain art={<DisplayConnectionArt reference={latestReference ?? undefined} />}
+                line="choose where the room sees it"
+                below={<div className="mt-3"><Button label="select display" onClick={onOpen} /></div>} />
+            </Panel>
+          : <Face screens={screens} onRole={onRole} onOpen={onOpen} className="min-h-0 w-full flex-1" />}
       >
         <div>
           {rowsFor(screens, picker, onRole, onDisplay).map(({ row, onChange }) => (

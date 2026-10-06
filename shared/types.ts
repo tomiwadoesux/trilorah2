@@ -23,6 +23,12 @@ export interface ScheduleEntry {
 }
 
 /** A detected scripture reference flowing through the engine. */
+export interface ScriptureRecognition {
+  suggestionId: string
+  source: 'quote' | 'passage' | 'named'
+  evidence: string[]
+}
+
 export interface VerseDetection {
   book: string
   chapter: number
@@ -33,6 +39,7 @@ export interface VerseDetection {
   isPreview?: boolean
   version?: string
   explicitBook?: boolean
+  recognition?: ScriptureRecognition
 }
 
 /** Payload ScriptureSession emits toward the display layer. */

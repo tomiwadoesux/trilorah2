@@ -67,7 +67,7 @@ const ROWS: Row[] = [
   [['the wedding at cana', 'water into wine', 'wedding at cana'], 'John', 2, 1, 11],
   [['feeding of the five thousand', 'feeding the five thousand', 'five loaves and two fish'], 'John', 6, 5, 14],
   [['jesus walks on water', 'walking on the water'], 'Matthew', 14, 22, 33],
-  [['calming the storm', 'jesus calms the storm'], 'Mark', 4, 35, 40], // bible.db's KJV ends Mark 4 at 40
+  [['calming the storm', 'jesus calms the storm'], 'Mark', 4, 35, 41],
   [['the transfiguration', 'mount of transfiguration'], 'Matthew', 17, 1, 9],
   [['the raising of lazarus', 'raising of lazarus', 'lazarus come forth'], 'John', 11, 38, 44],
   [['zacchaeus'], 'Luke', 19, 1, 10],

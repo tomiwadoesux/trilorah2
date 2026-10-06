@@ -2,11 +2,11 @@
  * Build electron/data/bible_index.json — the QuoteMatcher's word index.
  *
  * Shape (must match BibleIndexEntry in electron/engine/quoteMatcher.ts):
- *   [{ ref: "John 3:16", bookId: 42, chapter: 3, verse: 16, words: [...] }]
+ *   [{ ref: "John 3:16", bookId: 42, chapter: 3, verse: 16, words: [...], rawWords: [...] }]
  *
- * `words` are normalized EXACTLY like the matcher's transcript side —
- * lowercase, strip [^a-z\s], split, STOPWORDS REMOVED — because the sliding
- * window compares positionally against a stopword-filtered buffer.
+ * `rawWords` preserve the word order, including short grammatical words, so
+ * distinctive fragments can match before a full quotation has been spoken.
+ * `words` keep the older substantive-word representation for compatibility.
  * The stopword list is parsed out of quoteMatcher.ts at build time so the
  * two can never drift apart.
  */
@@ -53,18 +53,22 @@ const rows = db
   .all()
 if (rows.length === 0) throw new Error('No KJV rows — run build-bible-db.mjs first')
 
-const entries = rows.map((r) => ({
-  ref: `${BOOKS[r.bookId]} ${r.chapter}:${r.verse}`,
-  bookId: r.bookId,
-  chapter: r.chapter,
-  verse: r.verse,
-  words: String(r.text)
+const entries = rows.map((r) => {
+  const rawWords = String(r.text)
     .toLowerCase()
-    .replace(/[^a-z\s]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/[^a-z\s]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
-    .filter((w) => !STOPWORDS.has(w))
-}))
+  return {
+    ref: `${BOOKS[r.bookId]} ${r.chapter}:${r.verse}`,
+    bookId: r.bookId,
+    chapter: r.chapter,
+    verse: r.verse,
+    words: rawWords.filter((word) => !STOPWORDS.has(word)),
+    rawWords
+  }
+})
 
 fs.mkdirSync(OUT_DIR, { recursive: true })
 fs.writeFileSync(OUT_PATH, JSON.stringify(entries))

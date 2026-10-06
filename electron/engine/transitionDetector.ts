@@ -1,6 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ScheduleEntry, SegmentType } from '../../shared/types'
+import { SermonStartDetector } from './sermonStartDetector'
+import type { SermonStartAction, SermonStartState } from '../../shared/sermonStart'
 
 /** Enter/exit phrase lists for one segment type (loaded from transition-phrases.json). */
 export interface TransitionPhrases {
@@ -24,8 +26,11 @@ export class TransitionDetector {
   currentSegment: Segment
   listeners: ((segment: Segment, previous: Segment) => void)[]
   recentText: string[] // Rolling 50-word buffer
+  readonly sermonStart: SermonStartDetector
+  private scheduleIndex = -1
 
-  constructor() {
+  constructor(onSermonStartChanged?: (state: SermonStartState) => void) {
+    this.sermonStart = new SermonStartDetector(Date.now, onSermonStartChanged)
     this.phrases = {}
     this.schedule = []
     this.currentSegment = {
@@ -63,7 +68,11 @@ export class TransitionDetector {
   }
 
   setSchedule(schedule: DetectorScheduleEntry[]) {
+    const previous = this.schedule[this.scheduleIndex]
+    const occurrence = this.schedule.slice(0, this.scheduleIndex + 1).filter(s => s.type === previous?.type).length
     this.schedule = schedule
+    let seen = 0
+    this.scheduleIndex = previous ? schedule.findIndex(s => s.type === previous.type && ++seen === occurrence) : -1
   }
 
   /**
@@ -82,7 +91,10 @@ export class TransitionDetector {
     return { ...this.currentSegment }
   }
 
-  processTranscript(text: string) {
+  processTranscript(text: string, speaker?: number) {
+    this.sermonStart.process(text, { sermonNext: this.isNextInSchedule('sermon'), speaker })
+    // Prayer, reading and music within a confirmed sermon do not end it.
+    if (this.sermonStart.getState().status === 'active') return
     const words = text.toLowerCase().split(/\s+/).filter(Boolean)
     this.recentText.push(...words)
     if (this.recentText.length > 50) {
@@ -94,7 +106,7 @@ export class TransitionDetector {
       for (const phrase of currentPhrases.exit) {
         if (joined.includes(phrase)) {
           const nextSegment = this.getNextScheduledSegment()
-          if (nextSegment) {
+          if (nextSegment && nextSegment !== 'sermon') {
             this.transitionTo(nextSegment, 0.7)
             return
           }
@@ -103,6 +115,7 @@ export class TransitionDetector {
     }
     let bestMatch: { type: SegmentType; confidence: number } | null = null
     for (const [segType, phraseSet] of Object.entries(this.phrases)) {
+      if (segType === 'sermon') continue
       if (segType === this.currentSegment.type) continue
       for (const phrase of phraseSet.enter) {
         if (joined.includes(phrase)) {
@@ -120,13 +133,18 @@ export class TransitionDetector {
   }
 
   transitionTo(type: SegmentType, confidence: number) {
+    if (type === 'sermon' && this.sermonStart.getState().status !== 'active') return
+    if (this.sermonStart.getState().status === 'active' && type !== 'sermon') return
+    if (type === this.currentSegment.type) return
     const previous = { ...this.currentSegment }
     this.currentSegment = {
       type,
-      startedAt: Date.now(),
+      startedAt: type === 'sermon' ? this.sermonStart.getState().startedAt ?? Date.now() : Date.now(),
       confidence
     }
     this.recentText = []
+    const nextIndex = this.schedule.findIndex((entry, index) => index > this.scheduleIndex && entry.type === type)
+    if (nextIndex >= 0) this.scheduleIndex = nextIndex
     console.log(
       `🔄 Segment transition: ${previous.type} → ${type} (confidence: ${confidence})`
     )
@@ -137,13 +155,21 @@ export class TransitionDetector {
 
   getNextScheduledSegment(): SegmentType | null {
     if (this.schedule.length === 0) return null
-    const idx = this.schedule.findIndex(
-      (e) => e.type === this.currentSegment.type
-    )
-    if (idx >= 0 && idx < this.schedule.length - 1) {
-      return this.schedule[idx + 1].type
-    }
-    return null
+    return this.schedule[this.scheduleIndex + 1]?.type ?? null
+  }
+
+  respondToSermonStart(action: SermonStartAction, requestId?: number) {
+    const state = this.sermonStart.respond(action, requestId)
+    if (state.status === 'active') this.transitionTo('sermon', 1)
+    else if (action === 'end') this.transitionTo(this.getNextScheduledSegment() ?? 'unknown', 0)
+    return state
+  }
+
+  reset() {
+    this.sermonStart.reset()
+    this.recentText = []
+    this.scheduleIndex = -1
+    this.currentSegment = { type: 'unknown', confidence: 0, startedAt: Date.now() }
   }
 
   isNextInSchedule(type: SegmentType): boolean {

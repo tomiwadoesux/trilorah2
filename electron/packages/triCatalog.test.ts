@@ -55,7 +55,7 @@ function fixture(): TriSnapshot {
   save('service-logs/service-sunday.json', { date: '2026-10-03', segments: [{ type: 'sermon', duration: 30 }], stats: { totalScriptures: 10 } })
   return buildTriCatalog(dir, {
     churchName: 'Grace Church', churchLogoUrl: 'C:\\Church\\logo.png', churchBrandColor: '#007755', givingCustomUrl: 'https://example.org/give', publicWebUrl: 'https://example.org',
-    defaultFontFamily: 'Georgia', defaultFontSize: 1.2, verseLayout: 'top', safeMargin: 7, outputRoles: { main: 'projector' },
+    defaultFontFamily: 'Georgia', defaultFontSize: 1.2, verseLayout: 'top', safeMargin: 7, textWidth: 72, textCase: 'lowercase', textSpacing: 'airy', outputRoles: { main: 'projector' },
     timers: [{ id: 'countdown', name: 'Welcome', kind: 'countdown', durationSec: 300, overrun: true }], scheduleTemplates: [{ name: 'Sunday', entries: [] }], alertPresets: ['Welcome'], serviceStartTime: '10:00',
     deepgramApiKey: 'secret-deepgram', hfToken: 'secret-hf', obsPassword: 'secret-obs', accountSlug: 'private-account', outputDisplays: { main: 9831 }, remotePairToken: 'secret-remote', asrDevice: 'private-microphone', autoModeMinTrust: 0.1,
   }, renderer(), [
@@ -77,6 +77,9 @@ describe('portable content catalog', () => {
     expect(preacher.data.commands.navNext).toEqual(['move forward'])
     expect(preacher.data.commandLog.neverTreatAsCommand).toEqual(['move forward in faith'])
     expect(snapshot.categories.themes!.find(item => item.id === 'layout')!.data).toEqual(renderer().theme)
+    expect(snapshot.categories.themes!.find(item => item.id === 'display')!.data.textWidth).toBe(72)
+    expect(snapshot.categories.themes!.find(item => item.id === 'display')!.data.textCase).toBe('lowercase')
+    expect(snapshot.categories.themes!.find(item => item.id === 'display')!.data.textSpacing).toBe('airy')
     expect(snapshot.categories.presentations!.find(item => item.id === 'pres-1')!.data.value.slides).toHaveLength(2)
     expect(snapshot.categories.records!.find(item => item.id === 'service-log:service-sunday.json')!.data.value.stats.totalScriptures).toBe(10)
     expect(snapshot.categories.records!.find(item => item.id === 'transcript-1')!.data.text).toBe('Faith and grace')

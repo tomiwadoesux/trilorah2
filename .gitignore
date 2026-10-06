@@ -13,6 +13,7 @@ dist/
 dist-electron/*.js
 web/.next/
 *.tsbuildinfo
+:memory:.ses
 
 # data artifacts (rebuilt by scripts)
 bible.db

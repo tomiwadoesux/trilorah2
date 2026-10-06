@@ -1,5 +1,5 @@
+import { isEmptyPreview } from '../../emptyPreviewMode';
 import { Panel, Dot } from '../parts';
-import { CheckIcon } from '../../../ui';
 import { Expandable } from './expand';
 
 /*
@@ -103,7 +103,7 @@ export function ReadinessTile({ className }: { className?: string }) {
           listed with what it actually found, so "ready for service" can be
           audited rather than trusted. */}
       <ul className="flex flex-col">
-        {CHECKS.map((c, i) => (
+        {(isEmptyPreview ? [] : CHECKS).map((c, i) => (
           <li
             key={c.id}
             className="flex items-center gap-3 py-2.5"
@@ -125,7 +125,7 @@ export function ReadinessTile({ className }: { className?: string }) {
 
 export function ReadinessTileFull({
   className,
-  checks = CHECKS,
+  checks = isEmptyPreview ? [] : CHECKS,
   onOpen,
 }: {
   className?: string;
@@ -140,8 +140,7 @@ export function ReadinessTileFull({
   return (
     <Panel
       title="readiness"
-      icon={<CheckIcon size={13} />}
-      blurb="everything checked before the service starts."
+      empty={unknown}
       onOpen={onOpen}
       className={className}
       tone={ready || unknown ? 'default' : worst === 'fail' ? 'danger' : 'live'}

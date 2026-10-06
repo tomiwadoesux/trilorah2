@@ -1,0 +1,131 @@
+.dashboard-bento {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  container: dashboard / inline-size;
+  --tri-size: 12px;
+  --tri-size-sm: 11px;
+  --tri-size-xs: 11px;
+  --tri-control-h: 32px;
+  --tri-bar-h: 38px;
+}
+.dashboard-bento__grid {
+  position: relative;
+  display: grid;
+  min-height: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(274px, 1fr) minmax(310px, 1.1fr) minmax(246px, .9fr);
+  gap: max(8px, var(--tri-gap));
+  padding: 1px;
+}
+.dashboard-bento__tile { min-width: 0; min-height: 0; }
+.dashboard-bento section.tri-rounded-surface { background: #111; }
+.dashboard-bento__status {
+  display: grid;
+  grid-template-rows: minmax(100px, .8fr) minmax(180px, 1.2fr);
+  gap: max(8px, var(--tri-gap));
+  min-width: 0;
+  min-height: 0;
+}
+.dashboard-bento .tri-panel-header { padding-inline: 16px; }
+.dashboard-bento .tri-panel-title { font-size: 11px; letter-spacing: .14em; }
+.dashboard-bento .tri-panel-body { min-width: 0; }
+.dashboard-bento__readiness .tri-panel-body,
+.dashboard-bento__connections .tri-panel-body { overflow-y: auto; }
+.dashboard-bento__connections li { min-height: 26px; }
+.dashboard-bento__readiness p { white-space: normal; overflow: visible; }
+.dashboard-bento__readiness p:first-child { font-size: 15px; }
+.dashboard-bento .preaching-card__header { padding: 12px 16px 14px; }
+.dashboard-bento .preaching-card__title { font-size: 11px; }
+.dashboard-bento .preaching-card__caption { font-size: 15px; }
+.dashboard-bento .preaching-card__history { padding-inline: 16px; }
+.dashboard-bento .preaching-card__live { margin-inline: 16px; }
+.dashboard-bento .preaching-card__footer { padding: 12px 16px; }
+
+/* Reflow by the space the dashboard owns, including the desktop app's chrome. */
+@container dashboard (max-width: 1179px) {
+  .dashboard-bento__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: minmax(284px, auto);
+    align-content: start;
+  }
+  .dashboard-bento__status { grid-template-rows: minmax(100px, auto) minmax(180px, 1fr); }
+}
+@container dashboard (max-width: 899px) {
+  .dashboard-bento__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container dashboard (max-width: 599px) {
+  .dashboard-bento__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.dashboard-bento .tri-panel-title,
+.dashboard-bento .preaching-card__title {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Keep the title centered on the card, independently of right-side actions. */
+.dashboard-bento .tri-panel-header--empty {
+  position: relative;
+  justify-content: center;
+}
+.dashboard-bento .tri-panel-header--empty > .tri-panel-heading {
+  justify-content: center;
+  max-width: 100%;
+  padding-inline: 24px;
+}
+.dashboard-bento .tri-panel-header--empty > :not(.tri-panel-heading) {
+  position: absolute;
+  right: 16px;
+}
+.dashboard-bento .preaching-card--empty .preaching-card__header {
+  position: relative;
+  justify-content: center;
+  text-align: center;
+}
+.dashboard-bento .preaching-card--empty .preaching-card__header > svg {
+  position: absolute;
+  right: 20px;
+}
+
+/* The QR keeps a usable square; controls never compete for its last pixels. */
+.dashboard-bento .companion-face--stacked {
+  display: grid;
+  grid-template-rows: minmax(96px, 1fr) auto;
+  justify-items: center;
+  gap: 10px;
+}
+.dashboard-bento .companion-face--stacked .companion-face__qr {
+  width: 112px;
+  height: 112px;
+  max-height: 100%;
+  min-height: 96px;
+  align-self: center;
+}
+.dashboard-bento .companion-face--stacked .companion-face__details {
+  width: 100%;
+  max-width: 260px;
+  text-align: center;
+}
+.dashboard-bento .companion-face__details p { font-size: 11px; }
+
+/* Both sides of a shared boundary use the same easing and duration.
+   Real widths change together; text stays crisp and the gutter stays 8px. */
+.dashboard-bento__cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+.dashboard-bento__motion,
+.dashboard-bento__motion > * { width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.dashboard-bento__motion { position: relative; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .dashboard-bento__motion {
+    left: var(--bento-left, 0px);
+    width: calc(100% + var(--bento-right, 0px) - var(--bento-left, 0px));
+    transition: left var(--bento-motion-ms, 680ms) cubic-bezier(.4, 0, .2, 1), width var(--bento-motion-ms, 680ms) cubic-bezier(.4, 0, .2, 1);
+  }
+}

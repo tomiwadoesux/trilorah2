@@ -1,0 +1,8 @@
+.stock-search { container: stock-search / size; }
+.stock-search__presets { overflow-x: auto; padding-bottom: 3px; }
+.stock-search__presets > button { flex-shrink: 0; }
+@container stock-search (max-height: 330px) {
+  .stock-search__toolbar { gap: 6px; }
+  .stock-search__presets { gap: 4px; }
+  .stock-search__presets > button { height: 24px; }
+}

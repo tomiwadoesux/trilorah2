@@ -149,7 +149,7 @@ const PAGES: Page[] = [
     blurb: 'How the app looks to the operator, and the typeface scripture wears on the projector.',
     icon: <PencilIcon size={ICON} />,
     rows: [
-      { kind: 'segment', key: 'appAurora', label: 'App colour', blurb: 'A quiet aurora across the workspace.', value: 'fern', options: ['fern', 'iris', 'tide', 'ember', 'rose'] },
+      { kind: 'segment', key: 'appAurora', label: 'App colour', blurb: 'The colour behind your workspace. Buttons take on its tint.', value: 'fern', options: ['fern', 'iris', 'tide', 'ember', 'rose'] },
       { kind: 'segment', key: 'colorMode', label: 'Colour mode', blurb: 'The booth is dark. So is the default.', value: 'dark', options: ['dark', 'light'] },
       { kind: 'fonts', key: 'scriptureFontPreset', label: 'Scripture font', blurb: 'The face the congregation reads. Themes choose serif or sans serif; this is which serif and which sans they get.', value: 'cormorant', faces: SCRIPTURE_FACES },
       { kind: 'number', key: 'defaultFontWeight', label: 'Default weight', blurb: '', value: 600, advanced: true },
@@ -326,11 +326,11 @@ function PageBody({ page }: { page: Page }) {
         {normal.map((row) => row.key === 'appAurora' ? (
           <fieldset key={row.key} className="mb-6 border-b border-white/10 pb-6">
             <legend className="mb-2 text-sm font-medium">App colour</legend>
-            <p className="mb-4 text-xs text-white/50">Choose the light and colour across your workspace.</p>
+            <p className="mb-4 text-xs text-white/50">The colour behind your workspace. Buttons take on its tint.</p>
             <div className="grid grid-cols-5 gap-2">
               {AURORA_SWATCHES.map(({ id, colors }) => (
                 <button key={id} type="button" aria-pressed={values.appAurora === id}
-                  aria-label={`${id} aurora`} onClick={() => set('appAurora')(id)}
+                  aria-label={`${id} app colour`} onClick={() => set('appAurora')(id)}
                   className="aurora-choice">
                   <span className="aurora-choice-art" style={{ background: colors[0], borderBottom: `2px solid ${colors[1]}` }}>
                     {values.appAurora === id && <CheckIcon size={16} />}
@@ -391,7 +391,7 @@ function PageBody({ page }: { page: Page }) {
 /* ------------------------------------------------------------------ */
 
 const AURORA_SWATCHES = [
-  { id: 'fern', colors: ['#091d1b', '#397465', '#3d516d'] },
+  { id: 'fern', colors: ['#07151a', '#397465', '#3d516d'] },
   { id: 'iris', colors: ['#131026', '#69509d', '#855077'] },
   { id: 'tide', colors: ['#091724', '#286b87', '#445f99'] },
   { id: 'ember', colors: ['#201217', '#a3653f', '#854860'] },

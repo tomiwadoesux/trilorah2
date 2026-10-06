@@ -1,0 +1,15 @@
+.tri-dashboard-symbol { display:block; width:100%; height:100%; overflow:visible; color:#ededed; stroke-linecap:round; stroke-linejoin:round; }
+.tri-trust-bars-art__bar { transform-box:view-box; transform-origin:0 192px; transition:transform 700ms cubic-bezier(.32,.72,0,1); }
+.tri-palette-art__brush { transform-box:view-box; transform-origin:165px 203px; transition:transform 700ms cubic-bezier(.32,.72,0,1); }
+.tri-language-art__chinese { transform-box:view-box; transform-origin:198px 190px; transition:transform 700ms cubic-bezier(.32,.72,0,1); }
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .tri-empty-surface[data-empty-active="true"] .tri-trust-bars-art__bar,
+  .tri-trust-bars-art:hover .tri-trust-bars-art__bar { transform:scaleY(1.07); transition-delay:var(--symbol-delay,0ms); }
+  .tri-empty-surface[data-empty-active="true"] .tri-palette-art__brush,
+  .tri-palette-art:hover .tri-palette-art__brush { transform:rotate(-5deg); }
+  .tri-empty-surface[data-empty-active="true"] .tri-language-art__chinese,
+  .tri-language-art:hover .tri-language-art__chinese { transform:translateY(-8px) rotate(3deg); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .tri-trust-bars-art__bar, .tri-palette-art__brush, .tri-language-art__chinese { transition:none; }
+}

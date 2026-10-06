@@ -16,4 +16,15 @@ describe('FalsePositiveFilter — complete named references', () => {
   it('still blocks an ambiguous narrative mention', () => {
     expect(filter.shouldBlock(john, ['brother', 'john', 'spoke'], 'sermon')).toBe(true)
   })
+
+  it('does not mistake a matched John quotation for an ambiguous person name', () => {
+    expect(filter.shouldBlock({ ...john, source: 'quote', confidence: 0.82 }, ['for', 'god', 'so', 'loved', 'the', 'world'], 'sermon')).toBe(false)
+  })
+
+  it('keeps service-context checks for quotes and story suggestions', () => {
+    for (const source of ['quote', 'passage', 'named']) {
+      expect(filter.shouldBlock({ ...john, source }, ['ordinary', 'lyrics'], 'worship')).toBe(true)
+      expect(filter.shouldBlock({ ...john, source }, ['parking', 'announcement'], 'announcements')).toBe(true)
+    }
+  })
 })

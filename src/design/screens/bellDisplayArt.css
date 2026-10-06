@@ -1,0 +1,49 @@
+.tri-notification-bell-art,
+.tri-display-connection-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: #ededed;
+}
+
+.tri-notification-bell-art__ring {
+  transform-origin: 150px 156px;
+  opacity: 0;
+}
+
+.tri-display-connection-art__signal {
+  opacity: 0;
+  stroke-dasharray: 5 115;
+  stroke-dashoffset: 5;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .tri-empty-surface[data-empty-active="true"] .tri-notification-bell-art__ring,
+  .tri-notification-bell-art:hover .tri-notification-bell-art__ring {
+    animation: tri-bell-ring 2600ms cubic-bezier(.23, 1, .32, 1) infinite;
+  }
+
+  .tri-empty-surface[data-empty-active="true"] .tri-notification-bell-art__ring--second,
+  .tri-notification-bell-art:hover .tri-notification-bell-art__ring--second {
+    animation-delay: 320ms;
+  }
+
+  .tri-empty-surface[data-empty-active="true"] .tri-display-connection-art__signal,
+  .tri-display-connection-art:hover .tri-display-connection-art__signal {
+    animation: tri-display-connect 4000ms linear infinite;
+  }
+}
+
+@keyframes tri-bell-ring {
+  0% { transform: scale(.96); opacity: 0; }
+  18% { opacity: .7; }
+  75%, 100% { transform: scale(1.13); opacity: 0; }
+}
+
+@keyframes tri-display-connect {
+  0% { stroke-dashoffset: 5; opacity: 0; }
+  7% { opacity: .95; }
+  91% { opacity: .95; }
+  100% { stroke-dashoffset: -100; opacity: 0; }
+}

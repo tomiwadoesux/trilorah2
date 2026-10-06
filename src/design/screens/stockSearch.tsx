@@ -1,5 +1,9 @@
+import './stockSearch.css';
+import { EmptyMark } from './emptyArt';
+import { GlobeEmptyArt } from './GlobeEmptyArt';
+import { stockSearchQuery } from '../../../shared/stockSearchQuery';
 import { useEffect, useRef, useState } from 'react';
-import { cx, SearchField, SegmentedControl, type SegmentOption } from '../../ui';
+import { cx, Button, SearchField, SegmentedControl, type SegmentOption } from '../../ui';
 import { PRESET_GROUPS, presetsIn, type PresetGroup, type StockPreset } from '../../lib/stockPresets';
 import type { ThemeMedia } from './mediaLibrary';
 
@@ -35,7 +39,7 @@ type Phase =
   | { at: 'ready'; items: StockItem[]; total: number; provider: StockProvider; more: boolean }
   | { at: 'error'; message: string };
 
-export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void }) {
+export function StockSearch({ onPick, searchQuery, searchMode = 'media', onOpenSettings }: { onOpenSettings?: () => void; onPick: (media: ThemeMedia) => void; searchQuery?: string; searchMode?: 'themes' | 'media' }) {
   const [group, setGroup] = useState<PresetGroup>('creation');
   const [kind, setKind] = useState<Kind>('photo');
   const [preset, setPreset] = useState<StockPreset | null>(null);
@@ -48,26 +52,27 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
   /* The query is the preset's, or the operator's — never both. Typing
      clears the chip so the grid never claims to be showing "cross" while
      it is showing what was typed over it. */
-  const query = preset ? preset.query : typed.trim();
+  const embedded = searchQuery !== undefined;
+  const query = embedded ? stockSearchQuery(searchQuery, searchMode) : preset ? preset.query : typed.trim();
 
   useEffect(() => {
     if (!window.api?.getStockProviders) {
       setProviders([]);
       return;
     }
-    window.api.getStockProviders().then(setProviders);
+    window.api.getStockProviders().then(setProviders).catch(() => setProviders([]));
   }, []);
 
   /* One in-flight search at a time wins. A slow answer for "cro" must not
      land on top of the answer for "cross". */
   const ticket = useRef(0);
   useEffect(() => {
+    const mine = ++ticket.current;
     setPage(1);
     if (!query || !window.api?.searchStock) {
       setPhase({ at: 'idle' });
       return;
     }
-    const mine = ++ticket.current;
     const delay = preset ? 0 : 400;
     const timer = setTimeout(() => {
       setPhase({ at: 'loading' });
@@ -78,7 +83,7 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
           return;
         }
         setPhase({ at: 'ready', items: res.items, total: res.total, provider: res.provider, more: res.items.length < res.total });
-      });
+      }).catch(() => { if (mine === ticket.current) setPhase({ at: 'error', message: 'Search is unavailable. Check your connection and try again.' }); });
     }, delay);
     return () => clearTimeout(timer);
   }, [query, kind, preset]);
@@ -109,7 +114,7 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
     }
     onPick({
       id: item.id,
-      label: preset?.label ?? typed.trim() ?? item.tags,
+      label: (searchQuery ?? preset?.label ?? typed.trim()) || item.tags,
       detail: item.credit,
       seed: 0,
       style: 'smoke',
@@ -124,11 +129,12 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
   const noKey = providers !== null && providers.length === 0;
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    <div className="stock-search flex h-full min-h-0 flex-col gap-3">
+      {embedded && <SegmentedControl options={KINDS} value={kind} onChange={setKind} size="sm" />}
       {/* The two ways in, on one row: the vocabulary on the left, the field
           on the right, and the photo/video switch between them where it
           applies to both. */}
-      <div className="flex shrink-0 items-center gap-3 px-1">
+      {!embedded && <div className="stock-search__toolbar flex shrink-0 flex-wrap items-center gap-3 px-1">
         <SegmentedControl options={GROUPS} value={group} onChange={setGroup} size="sm" />
         <SegmentedControl options={KINDS} value={kind} onChange={setKind} size="sm" />
         <SearchField
@@ -139,14 +145,14 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
           }}
           placeholder="or search for anything…"
           disabled={noEngine || noKey}
-          className="max-w-[320px]"
+          className="min-w-[180px] max-w-[320px] flex-1"
         />
-      </div>
+      </div>}
 
       {/* The presets of the chosen group. Chips, not a grid of pictures: the
           words are the point, and thirty pictures before the search has run
           would look like results. */}
-      <div className="flex shrink-0 flex-wrap gap-1.5 px-1">
+      {!embedded && !noEngine && !noKey && <div className="stock-search__presets flex shrink-0 gap-1.5 px-1">
         {presetsIn(group).map((x) => {
           const on = preset?.id === x.id;
           return (
@@ -170,19 +176,19 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
             </button>
           );
         })}
-      </div>
+      </div>}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1" style={{ paddingBottom: 'var(--tri-gap)' }}>
         {noEngine ? (
-          <Note>no engine — the stock library needs the app running</Note>
+          <OnlineEmpty line="find something for the room" hint="set up a photo library to search images and clips" onSetup={onOpenSettings} />
         ) : noKey ? (
-          <Note>add a pixabay or pexels key in settings to search the stock library</Note>
+          <OnlineEmpty line="connect your photo library" hint="add a Pixabay or Pexels key in settings to get started" onSetup={onOpenSettings} />
         ) : phase.at === 'idle' ? (
-          <Note>pick a theme above, or search for anything</Note>
+          <OnlineEmpty line="find something for the room" hint="pick a theme above, or search for an image or clip" />
         ) : phase.at === 'error' ? (
-          <Note>{phase.message}</Note>
+          <OnlineEmpty line="search could not load" hint={phase.message} onSetup={onOpenSettings} />
         ) : phase.at === 'loading' ? (
-          <div className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4">
+          <div className="grid auto-rows-min grid-cols-4 gap-x-3 gap-y-4">
             {Array.from({ length: 10 }, (_, i) => (
               <div key={i} className="pb-3">
                 <div className="tri-rounded-control animate-pulse bg-[rgb(255_255_255_/_0.05)]" style={{ aspectRatio: '16 / 9' }} />
@@ -191,15 +197,15 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
             ))}
           </div>
         ) : phase.items.length === 0 ? (
-          <Note>nothing for “{query}” — try another word</Note>
+          <OnlineEmpty line="nothing found yet" hint={`nothing for “${query}” — try another word`} />
         ) : (
           <>
-            <div className="grid auto-rows-min grid-cols-5 gap-x-3 gap-y-4">
+            <div className="grid auto-rows-min grid-cols-4 gap-x-3 gap-y-4">
               {phase.items.map((item) => (
                 <StockCard
                   key={item.id}
                   item={item}
-                  title={preset?.label ?? typed.trim()}
+                  title={searchQuery ?? preset?.label ?? typed.trim()}
                   saving={saving === item.id}
                   disabled={saving !== null}
                   onPick={() => pick(item)}
@@ -227,10 +233,9 @@ export function StockSearch({ onPick }: { onPick: (media: ThemeMedia) => void })
   );
 }
 
-function Note({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="px-1 py-6 text-[length:var(--tri-size-sm)] lowercase text-[rgb(229_243_242_/_0.42)]">{children}</p>
-  );
+function OnlineEmpty({ line, hint, onSetup }: { line: string; hint: string; onSetup?: () => void }) {
+  return <div className="h-full min-h-0"><EmptyMark plain art={<GlobeEmptyArt />} w={180} h={160} line={line} hint={hint}
+    below={onSetup ? <div className="mt-3"><Button label="set up online search" onClick={onSetup} /></div> : undefined} /></div>;
 }
 
 function StockCard({

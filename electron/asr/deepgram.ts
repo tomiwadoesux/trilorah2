@@ -51,18 +51,20 @@ export function startDeepgram(
     model: 'nova-2',
     language: getSetting('asrLanguage') || 'en-US',
     smart_format: true,
+    // Smart formatting otherwise holds unfinished number/entity phrases for
+    // up to three seconds. Recognition takes priority over polished formatting.
+    no_delay: true,
     interim_results: true,
     punctuate: true,
     // Per-word start/end times. The companion page lights the word being
     // spoken from these; without them a phone can only fade paragraphs.
     // Costs nothing extra — it is the same transcription either way.
     words: true,
-    /* Milliseconds of silence before Deepgram closes a sentence. This was
-       3500, and the engine acts on finals — so every spoken command and
-       every reference waited three and a half seconds after the preacher
-       stopped talking. A reference split across a pause is already joined
-       by the resolver's own pending window, so the recogniser does not need
-       to hold the sentence open to keep it together. */
+    diarize: true,
+    /* Milliseconds of silence before Deepgram closes a sentence. Quotes and
+       passages can already act on interim words. Final-only commands should
+       not wait several seconds, and the reference resolver handles its own
+       pending window for numbers split across pauses. */
     endpointing: 350,
     sample_rate: SAMPLE_RATE,
     encoding: 'linear16',

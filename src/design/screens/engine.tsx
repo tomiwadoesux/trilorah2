@@ -12,6 +12,8 @@ import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay'
 import type { LiveItem, ScreenState } from './projector';
 import type { Spoken } from './transcript/types';
 import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
+import type { ScriptureRecognition } from '../../../shared/types';
+import { removeWithdrawnProposals } from '../../lib/recognitionWithdrawal';
 
 /*
  * The one door between this surface and the real engine.
@@ -66,6 +68,7 @@ interface Detection {
   confidence?: number;
   version?: string;
   isPreview?: boolean;
+  recognition?: ScriptureRecognition;
   /* Not in api.d.ts but always emitted — main.ts composes both before it
      broadcasts. Optional here because the declared type is the contract and
      this is an observation of the implementation. */
@@ -106,6 +109,8 @@ export interface EngineValue {
 
   /** Engine proposals the operator has not answered yet, newest first. */
   proposals: Proposal[];
+  /** Most recently called scripture, retained when its proposal is cleared. */
+  latestReference: string | null;
   dismissProposal: (id: string) => void;
   /** Fires when the engine pushes something itself. */
   onEngineLive: (fn: (item: LiveItem) => void) => () => void;
@@ -129,6 +134,7 @@ export interface Proposal {
   verses: { verse: number; text: string }[];
   /** The database had no such verse. Shown, but never offered to the room. */
   missing: boolean;
+  recognition?: ScriptureRecognition;
 }
 
 const EngineContext = createContext<EngineValue | null>(null);
@@ -212,6 +218,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     partial: '',
   });
   const [screen, setScreenState] = useState<ScreenState>('live');
+  const [latestReference, setLatestReference] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
 
   /* Subscribers rather than a state value: a push is an event, and a
@@ -300,6 +307,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       api.onVersePreview?.((d: Detection) => {
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
         const reference = referenceOf(d);
+        setLatestReference(reference);
 
         const verses = d.verses?.length ? d.verses : d.verse != null && d.text ? [{ verse: d.verse, text: d.text }] : [];
         const text = d.text || verses.map((v) => v.text).join(' ');
@@ -310,20 +318,27 @@ export function EngineProvider({ children }: { children: ReactNode }) {
            never be one press away from the projector. */
         const missing = /\bnot found\b/i.test(text);
         const proposal: Proposal = {
-          id: `${reference}@${version}`,
+          id: `${d.recognition?.suggestionId ?? reference}@${version}`,
           reference,
           version,
           text,
           /* No invented figure. The trust meter is the product's own promise
              and a made-up number on it is worse than no meter. */
-          trust: typeof d.confidence === 'number' ? d.confidence : null,
+          // Word alignment and story ranking are evidence, not measured accuracy.
+          trust: !d.recognition && typeof d.confidence === 'number' ? d.confidence : null,
+          recognition: d.recognition,
           slides: buildVerseSlides({ book: d.book, chapter: d.chapter, version }, verses, fitRules(verses)),
           verses,
           missing,
         };
-        setProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id)].slice(0, PROPOSAL_CAP));
+        setProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id &&
+          !(x.reference === proposal.reference && x.version === proposal.version))].slice(0, PROPOSAL_CAP));
       }),
     );
+
+    off.push(api.onRecognitionWithdrawn?.(({ suggestionId }) => {
+      setProposals(proposals => removeWithdrawnProposals(proposals, suggestionId));
+    }));
 
     /* The engine put something up itself — auto mode, or a push from the
        app window running beside this one. Either way the congregation is
@@ -332,6 +347,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       api.onVerseDetected?.((d: Detection) => {
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
         const reference = referenceOf(d);
+        setLatestReference(reference);
         const verses = d.verses?.length ? d.verses : d.verse != null && d.text ? [{ verse: d.verse, text: d.text }] : [];
         const version = d.version || 'KJV';
         const item: LiveItem = {
@@ -345,7 +361,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           verses,
           origin: 'engine',
         };
-        setProposals((p) => p.filter((x) => x.id !== `${reference}@${version}`));
+        setProposals((p) => p.filter((x) => !(x.reference === reference && x.version === version)));
         liveListeners.current.forEach((fn) => fn(item));
       }),
     );
@@ -499,6 +515,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       openProjector,
       lookup,
       proposals,
+      latestReference,
       dismissProposal,
       onEngineLive,
     }),
@@ -518,6 +535,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       openProjector,
       lookup,
       proposals,
+      latestReference,
       dismissProposal,
       onEngineLive,
     ],
@@ -551,6 +569,7 @@ const DEAD: EngineValue = {
   openProjector: () => undefined,
   lookup: async () => null,
   proposals: [],
+  latestReference: null,
   dismissProposal: () => undefined,
   onEngineLive: () => () => undefined,
 };

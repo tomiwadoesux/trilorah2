@@ -59,34 +59,31 @@ function Art({ style }: { style: Style }) {
 export function GradientLab() {
   const [chosen, setChosen] = useState<Style>('fold');
   const [color, setColor] = useState(0);
-  const [moving, setMoving] = useState(false);
   const [context, setContext] = useState(true);
   const selected = STYLES.find(s => s.id === chosen)!;
   const vars = { '--lab-a': COLORS[color].a, '--lab-b': COLORS[color].b } as CSSProperties;
   return <section className="gradient-lab" aria-label="Temporary gradient studio" style={vars}>
     <div className="gradient-lab-heading"><span>STYLE STUDIES</span><span>temporary preview</span></div>
     <h2>Find the right atmosphere.</h2>
-    <p>Six directions. Try each in motion, or see how it sits behind the controls.</p>
+    <p>Six directions, all still. See how each sits behind the controls.</p>
     <div className="gradient-studies" aria-label="Gradient styles">
       {STYLES.map((s, i) => <button key={s.id} type="button" aria-pressed={chosen === s.id} onClick={() => setChosen(s.id)} aria-label={`${s.name} gradient`}>
         <span className="gradient-study-art"><Art style={s.id}/></span>
         <span className="gradient-study-name"><small>0{i+1}</small>{s.name}</span>
       </button>)}
     </div>
-    <div className="gradient-preview" data-motion={moving} data-style={chosen}>
+    <div className="gradient-preview">
       <Art key={chosen} style={chosen}/>
       {context && <div className="gradient-context" aria-hidden="true">
         <div className="gradient-context-top"><span>operator</span><span>listening <i/></span></div>
         <div className="gradient-context-grid"><div><small>TODAY’S RUN</small><span>Welcome</span><span>Worship</span><span>Sermon</span></div><div><small>PREVIEW</small><p>Let everything that has breath<br/>praise the Lord.</p><span className="gradient-context-live">go live ↗</span></div></div>
       </div>}
-      <span className="gradient-preview-caption">{selected.name} / {moving ? 'motion study' : 'still study'}</span>
+      <span className="gradient-preview-caption">{selected.name}</span>
     </div>
     <div className="gradient-lab-tools">
       <div className="gradient-colors" aria-label="Preview colour">{COLORS.map((c,i) => <button key={c.name} type="button" aria-label={`${c.name} preview colour`} title={c.name} aria-pressed={color===i} style={{'--swatch':c.a} as CSSProperties} onClick={() => setColor(i)}/>)}</div>
-      <button type="button" aria-pressed={moving} onClick={() => setMoving(v => !v)}>{moving ? 'Pause motion' : 'Play motion'}</button>
       <button type="button" aria-pressed={context} onClick={() => setContext(v => !v)}>{context ? 'Hide controls' : 'Show controls'}</button>
     </div>
-    <p className="gradient-reduced-note">Your reduced-motion setting keeps these previews still.</p>
     <p className="gradient-lab-note">{selected.note} These studies only change this preview.</p>
   </section>;
 }

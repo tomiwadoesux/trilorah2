@@ -1,6 +1,8 @@
+import { isEmptyPreview } from '../../emptyPreviewMode';
+import { EmptyMark } from '../emptyArt';
+import { RunningOrderArt } from '../RunningOrderArt';
 import { useId, useState } from 'react';
 import { Panel } from '../parts';
-import { SparkleIcon } from '../../../ui';
 import { useBoxSize } from './useBoxSize';
 
 /*
@@ -249,11 +251,11 @@ export function TrustTrendTile({ className, onOpen }: { className?: string; onOp
   };
   const hov = hover != null ? { p: HISTORY[hover], pt: trustPts[hover] } : null;
 
+  if (isEmptyPreview || HISTORY.length === 0) return <Panel empty title="trust trend" className={className}><EmptyMark plain w={190} h={170} art={<RunningOrderArt />} line="trust grows with each service" hint="your first service starts the story" /></Panel>;
+
   return (
     <Panel
       title="trust trend"
-      icon={<SparkleIcon size={13} />}
-      blurb="how well the app has been reading this church, service by service."
       onOpen={onOpen}
       className={className}
     >

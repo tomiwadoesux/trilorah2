@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { usePopupPlacement, popupBounds } from './usePopupPlacement';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cx } from '../lib/cx';
 import { ChevronDownIcon } from '../icons';
@@ -62,9 +63,9 @@ export interface ActionMenuProps {
 }
 
 /** Gap between the trigger and the menu it opens. */
-const OFFSET = 6;
+
 /** Closest the menu may come to the window edge before it stops travelling. */
-const EDGE_GAP = 8;
+
 
 /** Each group is its own floating surface, so each carries the whole recipe. */
 const BUBBLE = {
@@ -77,10 +78,11 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
   const [open, setOpen] = useState(false);
   /* Ids drilled into. Empty = the top level. */
   const [path, setPath] = useState<string[]>([]);
-  const [box, setBox] = useState<{ top: number; right: number } | null>(null);
+
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const box = usePopupPlacement(open, anchorRef, menuRef);
 
   /* Walk the path to whatever list is showing, and remember its parent so the
      back row can name where it came from. Drilling in collapses the groups:
@@ -102,30 +104,6 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
    * edge would run off the panel. Measured in viewport coordinates because
    * the portal escapes every containing block on the way up.
    */
-  useLayoutEffect(() => {
-    if (!open) return;
-    const place = () => {
-      const r = anchorRef.current?.getBoundingClientRect();
-      if (!r) return;
-      /*
-       * Right edges align — but not past the window. A rail sits near the left
-       * edge, so a menu wide enough to matter runs straight off it; clamping
-       * `right` is what stops the last few characters disappearing. Measured
-       * from the rendered menu because its width changes as you drill in.
-       */
-      const w = menuRef.current?.offsetWidth ?? 0;
-      const wanted = window.innerWidth - r.right;
-      const most = Math.max(0, window.innerWidth - w - EDGE_GAP);
-      setBox({ top: r.bottom + OFFSET, right: Math.min(wanted, most) });
-    };
-    place();
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    return () => {
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-    };
-  }, [open, path.length]);
 
   /* Closing returns it to the top level: reopening into a submenu the operator
      drilled to minutes ago would be answering a question they did not ask. */
@@ -181,22 +159,23 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
       <span onClick={() => (open ? close() : setOpen(true))}>{trigger}</span>
 
       {open &&
-        box &&
         createPortal(
           <div
             ref={menuRef}
             role="menu"
             className="fixed z-[60] flex flex-col gap-[var(--tri-gap)] lowercase"
             style={{
-              top: box.top,
-              right: box.right,
+              ...popupBounds,
+              top: box?.top ?? 0,
+              left: box?.left ?? 0,
+              visibility: box ? 'visible' : 'hidden',
               /* Sized to the longest label rather than to a round number:
                  the top level is two short rows and a pair of tiles, and the
                  segment list underneath runs a little longer. An arranged set
                  takes that same submenu width — it carries a handle and a box
                  ahead of the label, but at the menu's own type size those fit
                  inside the width the words already needed. */
-              minWidth: parent ? 190 : 168,
+              minWidth: `min(${parent ? 190 : 168}px, calc(100vw - 24px))`,
             }}
           >
             {(parent
@@ -205,7 +184,7 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
             ).map((group, gi) => (
               <div
                 key={gi}
-                className="flex flex-col p-1.5 gap-1"
+                className="flex shrink-0 flex-col p-1.5 gap-1"
                 /* Less corner while arranging: the rows inside sit on an 8px
                    radius, and a 14px shell around them read as a capsule
                    holding rectangles. */

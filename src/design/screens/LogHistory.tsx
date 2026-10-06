@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cx, surface } from '../../ui';
-import { EmptyMark, OrbitLogArt } from './emptyArt';
+import { EmptyMark } from './emptyArt';
+import { NotificationBellArt } from './NotificationBellArt';
 
 /*
  * The service log, as a column of cards.
@@ -83,13 +84,13 @@ export function LogHistory({
       <style>{KEYFRAMES}</style>
       {ordered.length === 0 ? (
         <EmptyMark
-          art={<OrbitLogArt />}
+          art={<NotificationBellArt />}
           w={170}
           h={170}
           plain
           play="hover"
-          line="nothing has happened yet"
-          hint="what the service does lands here"
+          line="all quiet for now"
+          hint="what the app has done, newest first"
         />
       ) : (
         ordered.map((e, i) => (

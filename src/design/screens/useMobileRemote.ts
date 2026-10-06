@@ -10,6 +10,7 @@ import { deckPage, type DeckPageSpec } from './deckPage';
 import { BOOKS, CHAPTER_COUNTS, bookIdFromName } from '../../lib/books';
 import { parts } from '../../../shared/referenceParts';
 import { editSongCard, songCards } from '../../../shared/songCards';
+import { isTextPosition } from '../../../shared/textPosition';
 
 export function useMobileRemote() {
   const engine = useEngine();
@@ -18,6 +19,15 @@ export function useMobileRemote() {
   const media = useMediaLibrary();
   const current = useRef({engine,projector,run,media});
   current.current = {engine,projector,run,media};
+  const order = JSON.stringify(run.segments.map(s => ({ type: s.type, title: s.label })));
+  const hadRunOrder = useRef(false);
+  useEffect(() => {
+    // An initially empty rail must not overwrite a saved service schedule.
+    if (order !== '[]' || hadRunOrder.current) window.api?.setRunOrderContext(JSON.parse(order));
+    hadRunOrder.current = order !== '[]';
+  }, [order]);
+  const lyrics = projector.live?.source === 'song' ? projector.live.lines?.join(' ') ?? '' : '';
+  useEffect(() => { window.api?.setCurrentSongLyrics(lyrics); }, [lyrics]);
   useEffect(() => {
     const api=window.api;
     if (!api) return;
@@ -53,19 +63,25 @@ export function useMobileRemote() {
     }
     async function execute(command: string, a: Record<string,unknown>): Promise<unknown> {
       const {engine:e,projector:p,run:r,media:m} = current.current;
-      const version = text(a.version,20) || String(await api!.getSetting('displayVersion') || 'KJV');
+      const version = command === 'state' ? 'KJV' : text(a.version,20) || String(await api!.getSetting('displayVersion') || 'KJV');
       switch(command) {
+        case 'sermon': {
+          if (!['start','confirm','not-yet','end'].includes(String(a.action))) throw new Error('Invalid sermon action');
+          return api!.respondSermonStart(a.action as import('../../../shared/sermonStart').SermonStartAction, typeof a.requestId === 'number' ? a.requestId : undefined);
+        }
         case 'state': {
           const songSearchActive = useSongListeningStore.getState().active;
           const heard = [...e.spoken.lines.slice(-3).map(line => line.text), e.spoken.partial].join(' ').split(/\s+/).slice(-10).join(' ');
-          const songs = songSearchActive ? await api!.songs?.list() ?? [] : [];
+          const [songs, cloud, sermon, timers] = await Promise.all([
+            songSearchActive ? api!.songs?.list().then(s => s ?? []) ?? Promise.resolve([]) : Promise.resolve([]),
+            api!.cloudStatus(), api!.getSermonStart(), api!.listTimers?.() ?? Promise.resolve([]),
+          ]);
           const songMatches = songs.flatMap(song => song.sections.map((section, index) => ({ id: song.id, title: song.title, index, label: section.label, lines: section.lines, score: lyricScore(heard, section.lines.join(' ')) })))
             .filter(match => match.score > 0).sort((a,b) => b.score-a.score).filter((match,index,all) => all.findIndex(other => other.id===match.id)===index).slice(0,4);
-          const cloud = await api!.cloudStatus();
-          return {aurora:document.documentElement.dataset.aurora || 'fern',songSearchActive,songMatches,run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))})),preview:publicItem(p.preview),live:publicItem(p.live),screen:e.screen,asr:e.asr,asrMessage:e.asrMessage,
-            proposals:e.proposals.map(x=>({id:x.id,reference:x.reference,version:x.version,text:x.text,missing:x.missing})),
+          return {sermon,aurora:document.documentElement.dataset.aurora || 'fern',songSearchActive,songMatches,run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))})),preview:publicItem(p.preview),live:publicItem(p.live),screen:e.screen,asr:e.asr,asrMessage:e.asrMessage,
+            proposals:e.proposals.map(x=>({id:x.id,reference:x.reference,version:x.version,text:x.text,missing:x.missing,recognition:x.recognition})),
             sharing:!!cloud.activeServiceId,cloudReady:cloud.configured && cloud.signedIn,
-            timers:await api!.listTimers?.() || []};
+            timers};
         }
         case 'thumbnail': {
           const item=a.target==='live' ? p.live : p.preview;
@@ -134,13 +150,13 @@ export function useMobileRemote() {
         }
         case 'media': {
           const item=m.find(x=>x.id===a.id && x.url); if (!item) throw new Error('Media not found.');
-          p.stage({source:'media',id:item.id,label:item.label,path:item.url,mediaKind:item.kind}); return true;
+          p.stage({source:'media',id:item.id,label:item.label,path:item.url,mediaKind:item.kind,origin:'operator'}); return true;
         }
         case 'run': {
           const item=r.segments.flatMap(s=>s.items).find(i=>i.key===a.id);
           if (!item || item.source==='note') throw new Error('This run item cannot be presented.');
           if (item.source==='scripture') p.stage(await verse(item.label,version));
-          else p.stage({...item,id:item.key,source:item.source});
+          else p.stage({...item,id:item.key,source:item.source,origin:'operator'});
           return true;
         }
         case 'live': {
@@ -213,7 +229,7 @@ export function useMobileRemote() {
           if (key==='backgroundId') { const bg=m.find(x=>x.id===a.value && x.url); if(!bg) throw new Error('Background not found'); return api!.setSetting('defaultBackgroundUrl',bg.url); }
           if (key==='scriptureFontPreset' && ['display-serif','classic-serif','modern-sans','bold-slab','display-rounded'].includes(String(a.value))) return api!.setSetting(key,a.value);
           if (key==='defaultTextColor' && /^#[0-9a-f]{6}$/i.test(String(a.value))) return api!.setSetting(key,a.value);
-          if (key==='verseLayout' && ['center','top','bottom','bottom-center','bottom-left','bottom-right'].includes(String(a.value))) return api!.setSetting(key,a.value);
+          if (key==='verseLayout' && (isTextPosition(a.value) || a.value === 'bottom')) return api!.setSetting(key,a.value);
           if (ranges[key] && typeof a.value==='number' && Number.isFinite(a.value)) return api!.setSetting(key,Math.max(ranges[key][0],Math.min(ranges[key][1],a.value)));
           throw new Error('Unsupported theme setting');
         }

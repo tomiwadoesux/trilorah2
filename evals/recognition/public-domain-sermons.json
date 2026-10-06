@@ -1,0 +1,32 @@
+{
+  "provenance": {
+    "kind": "published-sermon-excerpt",
+    "description": "Short, verbatim excerpts of public-domain sermons by Charles Haddon Spurgeon, checked against The Spurgeon Library on 2026-10-03. These are published sermon text, not microphone recordings or ASR output. Expected references identify the event described, not necessarily the sermon's title text."
+  },
+  "cases": [
+    {
+      "id": "sermon-spurgeon-david-sword",
+      "engine": "passage",
+      "tags": ["published-sermon", "story", "paraphrase"],
+      "source": { "title": "David's First Victory", "author": "Charles Haddon Spurgeon", "editionYear": 1904, "url": "https://www.spurgeon.org/sermons/davids-first-victory", "locator": "Paragraph beginning 'And remember that David cut off'" },
+      "expected": [{ "book": "1 Samuel", "chapter": 17, "verse": 51 }],
+      "chunks": [{ "text": "And remember that David cut off Goliath’s head with his own sword.", "isFinal": true }]
+    },
+    {
+      "id": "sermon-spurgeon-quoted-warning",
+      "engine": "quote",
+      "tags": ["published-sermon", "quotation"],
+      "source": { "title": "A Caution to the Presumptuous", "author": "Charles Haddon Spurgeon", "editionYear": 1855, "url": "https://www.spurgeon.org/sermons/a-caution-to-the-presumptuous", "locator": "Opening scripture quotation" },
+      "expected": [{ "book": "1 Corinthians", "chapter": 10, "verse": 12 }],
+      "chunks": [{ "text": "Let him that thinketh he standeth take heed lest he fall.", "isFinal": true }]
+    },
+    {
+      "id": "sermon-spurgeon-general-introduction",
+      "engine": "passage",
+      "tags": ["published-sermon", "negative", "general-introduction"],
+      "source": { "title": "A Caution to the Presumptuous", "author": "Charles Haddon Spurgeon", "editionYear": 1855, "url": "https://www.spurgeon.org/sermons/a-caution-to-the-presumptuous", "locator": "Opening prose phrase, ending before the subject of the statement" },
+      "expected": [],
+      "chunks": [{ "text": "It is a singular fact, but nevertheless most certain", "isFinal": true }]
+    }
+  ]
+}

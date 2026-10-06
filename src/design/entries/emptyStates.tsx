@@ -4,17 +4,18 @@ import { Panel } from '../screens/parts';
 import { HistoryIcon } from '../../ui/icons';
 import {
   EmptyMark,
-  RunArt,
-  FlatlineArt,
   ListeningArt,
-  GridArt,
   ChartArt,
   TranscriptArt,
   CompanionArt,
-  LogArt,
   KeptArt,
-  OutlineArt,
 } from '../screens/emptyArt';
+import { LayeredProgrammeArt } from '../screens/run/LayeredProgrammeArt';
+import { ScriptureQuoteArt } from '../screens/ScriptureQuoteArt';
+import { SongRackArt } from '../screens/SongRackArt';
+import { LibraryEmptyPreview } from './LibraryEmptyPreview';
+import { NotificationBellArt } from '../screens/NotificationBellArt';
+import { SermonOutlineArt } from '../screens/SermonOutlineArt';
 
 /*
  * D-30 — every empty state in one place.
@@ -64,6 +65,9 @@ export function EmptyStates() {
       status="draft"
       summary="Every region of the app with nothing in it yet, at the size it really occupies. Not a stock icon over a sentence — each one is the panel's own content drawn as an empty wireframe, in the same line language as the dashboard's card art."
     >
+      <Group title="Library empty states" hint="scripture, songs, and presentations · visible search, disabled while empty">
+        <LibraryEmptyPreview />
+      </Group>
       <Group
         title="First run"
         hint="a fresh install, nothing configured, nobody listening — the actual first screen"
@@ -73,7 +77,10 @@ export function EmptyStates() {
             <Region label="run rail · 352 × 470" w={352} h={470}>
               <Panel title="run of service (0)" className="h-full">
                 <EmptyMark
-                  art={<RunArt />}
+                  art={<LayeredProgrammeArt />}
+                  w={220}
+                  h={220}
+                  plain
                   line="nothing in the run yet"
                   hint="use + to build one, or the clock for the default order"
                 />
@@ -82,8 +89,11 @@ export function EmptyStates() {
             <Region label="catches · 352 × 330 · engine idle" w={352} h={330}>
               <Panel className="h-full" bodyClass="pt-3">
                 <EmptyMark
-                  art={<FlatlineArt />}
-                  line="not listening yet"
+                  art={<ScriptureQuoteArt />}
+                  w={220}
+                  h={220}
+                  plain
+                  line="verses caught land here"
                   hint="start listening and catches land here"
                 />
               </Panel>
@@ -116,7 +126,10 @@ export function EmptyStates() {
             <Region label="songs · query matches nothing" w={352} h={330}>
               <Panel className="h-full" bodyClass="pt-3">
                 <EmptyMark
-                  art={<GridArt />}
+                  art={<SongRackArt />}
+                  w={220}
+                  h={220}
+                  plain
                   line="nothing matches"
                   hint="try a line of the words instead"
                 />
@@ -132,12 +145,12 @@ export function EmptyStates() {
       >
         <Stage>
           <div className="flex gap-4">
-            <Region label="not listening · flat line" w={352} h={260}>
+            <Region label="not listening · quotation marks" w={352} h={330}>
               <Panel className="h-full" bodyClass="pt-3">
-                <EmptyMark art={<FlatlineArt />} line="not listening yet" />
+                <EmptyMark w={220} h={220} plain art={<ScriptureQuoteArt />} line="verses caught land here" />
               </Panel>
             </Region>
-            <Region label="listening · the field is live" w={352} h={260}>
+            <Region label="listening · the field is live" w={352} h={330}>
               <Panel className="h-full" bodyClass="pt-3">
                 <EmptyMark art={<ListeningArt />} line="listening — nothing caught yet" />
               </Panel>
@@ -164,8 +177,9 @@ export function EmptyStates() {
             <Region label="notifications · 352 × 300" w={352} h={300}>
               <Panel title="notifications" className="h-full" bodyClass="pt-3">
                 <EmptyMark
-                  art={<LogArt />}
-                  line="nothing has happened yet"
+                  art={<NotificationBellArt />}
+                  w={170} h={170} plain
+                  line="all quiet for now"
                   hint="what the service does will be kept here"
                 />
               </Panel>
@@ -173,7 +187,8 @@ export function EmptyStates() {
             <Region label="sermon notes · 352 × 300" w={352} h={300}>
               <Panel title="sermon notes" className="h-full" bodyClass="pt-3">
                 <EmptyMark
-                  art={<OutlineArt />}
+                  art={<SermonOutlineArt />}
+                  w={170} h={170} plain
                   line="no outline yet"
                   hint="the engine builds it as the sermon is preached"
                 />
@@ -213,7 +228,10 @@ export function EmptyStates() {
             <Region label="after · the rail, drawn empty" w={352} h={330}>
               <Panel className="h-full" bodyClass="pt-3">
                 <EmptyMark
-                  art={<RunArt />}
+                  art={<LayeredProgrammeArt />}
+                  w={220}
+                  h={220}
+                  plain
                   line="nothing in the run yet"
                   hint="use + to build one, or the clock for the default order"
                 />

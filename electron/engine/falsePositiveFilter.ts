@@ -114,7 +114,9 @@ export class FalsePositiveFilter {
         return true
       }
     }
-    if (AMBIGUOUS_BOOKS.has(detection.book)) {
+    // A quotation/passage matcher checked the actual text. Its book name was
+    // looked up, not inferred from somebody saying "John" or "my job".
+    if (!['quote', 'passage', 'named'].includes(detection.source ?? '') && AMBIGUOUS_BOOKS.has(detection.book)) {
       const bookPhrases = FALSE_POSITIVE_PHRASES[detection.book]
       if (bookPhrases) {
         for (const phrase of bookPhrases) {

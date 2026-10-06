@@ -1,7 +1,12 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type { VerseSlide } from '../../../shared/verseDisplay';
 import type { TextTransition } from '../../../shared/textTransitions';
+import { resolveTextPosition } from '../../../shared/textPosition';
+import { textWidthFrame } from '../../../shared/textWidth';
+import { resolveTextCase, type TextCase } from '../../../shared/textCase';
+import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
+import { displayFontFamily } from '../../../shared/displayFont';
 
 /*
  * D-23 — the one renderer.
@@ -127,6 +132,7 @@ export interface SlideCanvasProps {
  * Keep these three in step with output.css; nothing else can.
  */
 const TX_CSS = `
+  .tri-slide-words :where(*) { font-family: inherit; }
   .tri-tx { animation-duration: var(--tri-tx-ms, 450ms); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); animation-fill-mode: both; }
   .tri-tx-fade { animation-name: tri-tx-fade; }
   .tri-tx-rise { animation-name: tri-tx-rise; }
@@ -134,9 +140,9 @@ const TX_CSS = `
   .tri-tx-zoom { animation-name: tri-tx-zoom; }
   .tri-tx-cut { animation: none; }
   @keyframes tri-tx-fade { from { opacity: 0; } }
-  @keyframes tri-tx-rise { from { opacity: 0; transform: translateY(1.6cqh); } }
-  @keyframes tri-tx-blur { from { opacity: 0; filter: blur(1.3cqh); } }
-  @keyframes tri-tx-zoom { from { opacity: 0; transform: scale(0.965); } }
+  @keyframes tri-tx-rise { from { opacity: 0; transform: translateY(.22em); } }
+  @keyframes tri-tx-blur { from { opacity: 0; filter: blur(.2em); } }
+  @keyframes tri-tx-zoom { from { opacity: 0; transform: scale(.92); } }
   @media (prefers-reduced-motion: reduce) { .tri-tx { animation-name: tri-tx-fade !important; } }
 `;
 
@@ -172,6 +178,8 @@ export interface SlideTheme {
   blur: number;
   shadow: number;
   font: string;
+  textCase?: TextCase;
+  textSpacing?: TextSpacing;
   /** The scripture body. */
   size: number;
   /** The reference line (John 3:16) — its own size, not a scale of the body. */
@@ -180,6 +188,8 @@ export interface SlideTheme {
   refGap: number;
   layout: string;
   safeMargin: number;
+  /** Percentage of the screen width; absent in older saved themes. */
+  textWidth?: number;
 }
 
 export function SlideCanvas({
@@ -223,14 +233,12 @@ export function SlideCanvas({
       : {};
   const library = useMediaLibrary();
   const media = library.find((item) => item.id === theme.backgroundId) ?? library[0];
-  const atBottom = theme.layout !== 'top';
-  const justifyContent = theme.layout === 'center' ? 'center' : atBottom ? 'flex-end' : 'flex-start';
-  const alignItems =
-    theme.layout === 'bottom-left' ? 'flex-start' : theme.layout === 'bottom-right' ? 'flex-end' : 'center';
-  const textAlign =
-    theme.layout === 'bottom-left' ? 'left' : theme.layout === 'bottom-right' ? 'right' : 'center';
-  const fontFamily = theme.font === 'serif' ? 'Georgia, "Times New Roman", serif' : 'var(--tri-font, Roboto, sans-serif)';
-  const textTransform = theme.font === 'uppercase' ? 'uppercase' : undefined;
+  const { justifyContent, alignItems, textAlign, referenceAbove } = resolveTextPosition(theme.layout);
+  const atBottom = !referenceAbove;
+  const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, textAlign);
+  const fontFamily = displayFontFamily(theme.font);
+  const textTransform = resolveTextCase(theme.textCase, theme.font);
+  const textSpacing = TEXT_SPACING[resolveTextSpacing(theme.textSpacing)];
 
   /* 'clear' is the app's word for background-only — the words go, the
      picture stays. Black and logo are covers and handled further down. */
@@ -317,7 +325,7 @@ export function SlideCanvas({
     const g = refGrab.current;
     if (!g) return;
     /* The body's computed px size is the em the gap is measured in. */
-    const em = Math.max(17, 27 + theme.size * 2);
+    const em = parseFloat(getComputedStyle(e.currentTarget.parentElement!).fontSize) || 27;
     const moved = ((e.clientY - g.y) * refSign) / em;
     const snapped = Math.round((g.gap + moved) / refGapRange.step) * refGapRange.step;
     const next = Math.min(refGapRange.max, Math.max(refGapRange.min, snapped));
@@ -350,12 +358,12 @@ export function SlideCanvas({
         borderRadius: `calc(var(--tri-radius-surface) - var(${seated ? '--tri-gap' : '--tri-card-gap'}))`,
       }}
     >
-      <img
+      {media && <img
         src={mediaSrc(media)}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         style={{ filter: `blur(${theme.blur}px)`, transform: theme.blur > 0 ? 'scale(1.04)' : undefined }}
-      />
+      />}
       <span aria-hidden className="absolute inset-0 bg-black" style={{ opacity: theme.dimness / 100 }} />
       {/* Editor-only guide: the projector never draws this line. It makes
           the exact area the safe-margin slider reserves visible here. */}
@@ -369,16 +377,8 @@ export function SlideCanvas({
           className={`pointer-events-none absolute z-10 opacity-35 group-hover/canvas:opacity-100 group-focus-within/canvas:opacity-100 transition-opacity border border-dashed ${
             pickable && selected === 'margin' ? 'border-[var(--tri-accent-yellow)]' : 'border-white/40'
           }`}
-          /*
-           * THE safe rectangle — and the words' box below is positioned by
-           * the identical declaration, on purpose. `inset: N%` is N% of the
-           * width across and N% of the HEIGHT down, which is what the wall
-           * does (.output-stage in src/output.css). Percentage PADDING is
-           * N% of the width on all four sides — a different, squarer
-           * rectangle — and a text box laid out with one inside a guide
-           * drawn with the other is a verse that is visibly off-centre in
-           * the area it is supposed to demonstrate. One source, stated twice.
-           */
+          /* The safe guide stays fixed while the independent width control
+             can extend the text horizontally past it, up to the screen edges. */
           style={{ inset: `${theme.safeMargin}%` }}
         >
           {CORNERS.map((c) => (
@@ -410,26 +410,35 @@ export function SlideCanvas({
       <div
         className="absolute flex flex-col"
         style={{
-          inset: `${theme.safeMargin}%`,
+          top: `${theme.safeMargin}%`,
+          bottom: `${theme.safeMargin}%`,
+          left: `${textFrame.left}%`,
+          width: `${textFrame.width}%`,
           justifyContent,
           alignItems,
           textAlign,
         }}
       >
+        {guide && textFrame.width !== 100 - theme.safeMargin * 2 && (
+          <span
+            aria-hidden
+            data-text-width-guide
+            className="pointer-events-none absolute inset-0 border-x border-dashed border-white/25"
+          />
+        )}
         {words ? (
           <div
             /* Re-mounted when `play` changes, which is what replays the
                entrance — the same trick the wall uses on .output-enter.
-               max-w-full, not the 92% this had: the safe rectangle IS the
-               limit, the wall lets a line run to it, and a second, invisible
-               margin inside the drawn one made the preview wrap earlier than
-               the room would see. */
+               Width is independent of the safe guide, just as on the
+               projector; it stays anchored to the chosen text position. */
             key={transition ? `tx-${transition.play}` : undefined}
-            className={`flex max-w-full flex-col text-white ${transition ? `tri-tx tri-tx-${transition.id}` : ''}`}
+            className={`tri-slide-words flex max-w-full flex-col text-white ${transition ? `tri-tx tri-tx-${transition.id}` : ''}`}
             style={{
               ...(transition ? ({ '--tri-tx-ms': `${transition.ms}ms` } as React.CSSProperties) : null),
               fontFamily,
-              fontSize: `${Math.max(17, 27 + theme.size * 2)}px`,
+              width: '100%',
+              fontSize: `${Math.max(17, 27 + theme.size * 2) / 6}cqw`,
               fontWeight: 500,
               lineHeight: 1.35,
               textWrap: 'balance',
@@ -481,7 +490,11 @@ export function SlideCanvas({
               }}
             >
               {slide.lines.map((line, i) => (
-                <p key={`${line.version}-${i}`} className={i > 0 ? 'mt-[0.45em] mb-0 whitespace-pre-line' : 'm-0 whitespace-pre-line'}>
+                <p
+                  key={`${line.version}-${i}`}
+                  className={i > 0 ? 'mt-[0.45em] mb-0 whitespace-pre-line' : 'm-0 whitespace-pre-line'}
+                  style={{ letterSpacing: textSpacing.letterSpacing, lineHeight: 1.35 + textSpacing.lineHeightDelta }}
+                >
                   {line.text}
                 </p>
               ))}
@@ -564,7 +577,7 @@ export function SlideCanvas({
             }}
           />
         ))}
-      {transition && <style>{TX_CSS}</style>}
+      <style>{TX_CSS}</style>
 
       {/* Over the cover on purpose: the pager still has to be readable
           when the screen is black, or the operator loses their place in

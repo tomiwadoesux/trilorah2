@@ -189,6 +189,13 @@ import { generateSermonNotes } from './notes/sermonNotesGenerator'
 import { exportSermonNotesPdf, exportSermonNotesMarkdown } from './notes/sermonNotesGenerator'
 import { getQuoteMatcher } from './engine/quoteMatcher'
 import { findNamedPassage } from './engine/namedPassages'
+import { quotesForNamedPassage } from './engine/recognitionPriority'
+import { PassageMatcher } from './engine/passageMatcher'
+import { SemanticMatcher, loadEmbedder, loadJudge } from './engine/semanticMatcher'
+import { AllusionFinder } from './engine/allusionFinder'
+import { HeardWindow } from './engine/heardWindow'
+import { SuggestionTracker, type RecognitionCandidate } from './engine/suggestionTracker'
+import type { ScriptureRecognition } from '../shared/types'
 import { initAliasLogger } from './data/aliasLogger'
 import { convertPptxToImages } from './media/pptxConverter'
 import {
@@ -402,7 +409,7 @@ function tokenContext(values?: Record<string, string>) {
   }
 }
 let isListening = false
-let lastResolverConfidence = 0.85
+let lastResolverConfidence: number | undefined = 0.85
 let lastHeardText = ''
 let lastQuoteCandidates: Candidate[] = []
 let lastCandidates: Candidate[] = []
@@ -707,6 +714,8 @@ function pushPreviewToLive(via: VersePushSource): void {
   currentLiveContent = null
   screen.onContentPushed()
   emitVerseDetected(liveVerse)
+  // Only an operator's press teaches the finder what is being preached.
+  if (!via.startsWith('auto') && currentPreviewData.book && currentPreviewData.chapter) allusionFinder.sermon.noteLive(currentPreviewData.book, currentPreviewData.chapter)
   // Explicit Go live is held until the operator clears or replaces it.
   displayTimingManager.onVerseDisplayed(currentPreviewData.text, false)
   intentEngine.disarmGraceWindow()
@@ -743,6 +752,84 @@ function reEmitCurrentVerseInVersion(version: string): void {
   }
 }
 
+const suggestionTracker = new SuggestionTracker()
+let passageMatcher: PassageMatcher | null = null
+const heardWindow = new HeardWindow()
+/** Names, stories, meaning, who "he" is and what is being preached, in one place. */
+const allusionFinder = new AllusionFinder({ semantic: null, judge: null, detectStory: text => passageMatcher?.detect(text) ?? null })
+/** Recent finals that reached no other matcher, for an allusion split across two. */
+let allusionFinals: { text: string; at: number }[] = []
+/** Bumped on every reset, so a search that was under way knows it is stale. */
+let storyEpoch = 0
+
+function resetStoryMemory() {
+  passageMatcher?.reset()
+  allusionFinals = []
+  storyEpoch++
+}
+
+/** Vectors and the two small models ship beside the app; without them allusions are off. */
+async function loadSemanticMatcher() {
+  const roots = [process.resourcesPath, path.join(process.cwd(), 'electron', 'data', 'passages'), path.join(process.cwd(), 'data')].filter(Boolean)
+  const vectors = roots.map(root => path.join(root, 'bsb-vectors.bin')).find(file => fs.existsSync(file))
+  const model = (name: string) => roots.map(root => path.join(root, 'models', name)).find(dir => fs.existsSync(path.join(dir, 'model_quantized.onnx')))
+  const sentenceModel = model('all-MiniLM-L6-v2')
+  if (!vectors || !sentenceModel) { console.log('ℹ️ Allusion matching off: vectors or sentence model not installed'); return }
+  try {
+    const matcher = new SemanticMatcher()
+    if (!matcher.loadVectors(vectors)) { console.warn('⚠️ Allusion vectors do not match the passage corpus. Run npm run passages:vectors.'); return }
+    matcher.setEmbedder(await loadEmbedder(sentenceModel))
+    // The judge is optional: without it the automatic path keeps its stricter thresholds.
+    const judgeModel = model('ms-marco-MiniLM-L-6-v2')
+    const judge = judgeModel ? await loadJudge(judgeModel).catch(() => null) : null
+    allusionFinder.install(matcher, judge)
+    console.log(`🧭 Allusion matching ready${judge ? '' : ' (judge model not installed)'}`)
+  } catch (error) {
+    console.warn('⚠️ Allusion matching unavailable:', error)
+  }
+}
+
+/**
+ * Last resort on a final: nothing was named, quoted or retold in the Bible's
+ * own words. A passage is staged only when the judge says the sentence is
+ * about it, and only if nothing else reached the preview while it was thinking.
+ */
+function suggestAllusion(text: string) {
+  if (!allusionFinder.meaning) return
+  const now = Date.now()
+  allusionFinals = [...allusionFinals.filter(final => now - final.at < 12_000), { text, at: now }].slice(-4)
+  const words = text.split(/\s+/).filter(Boolean)
+  const heard = words.length >= 8 ? text : allusionFinals.map(final => final.text).join(' ').split(/\s+/).slice(-25).join(' ')
+  const revision = previewRevision
+  const epoch = storyEpoch
+  void allusionFinder.suggest(heard, now).then((best) => {
+    if (!best || previewRevision !== revision || storyEpoch !== epoch) return
+    stageRecognizedPassage({
+      book: best.book, chapter: best.chapter, verse: best.verse,
+      endVerse: best.endVerse > best.verse ? best.endVerse : null,
+      source: 'passage', passageId: best.passageId, evidence: best.evidence
+    }, heard)
+  }).catch(() => undefined)
+}
+let pendingRecognition: ScriptureRecognition | undefined
+let provisionalRecognition: { candidate: RecognitionCandidate; recognition: ScriptureRecognition } | null = null
+
+function withdrawProvisionalRecognition(): void {
+  if (!provisionalRecognition) return
+  const { candidate, recognition } = provisionalRecognition
+  provisionalRecognition = null
+  suggestionTracker.withdraw(recognition.suggestionId)
+  if (currentPreviewData?.recognition?.suggestionId === recognition.suggestionId) {
+    currentPreviewData = null
+    verseDelivery.preview = null
+    previewRevision++
+    session.exitReadingMode()
+  }
+  broadcastToWindows('on-recognition-withdrawn', { suggestionId: recognition.suggestionId,
+    book: candidate.book, chapter: candidate.chapter, verse: candidate.verse, endVerse: candidate.endVerse })
+  broadcastState()
+}
+
 const session = new ScriptureSession((display: any) => {
   if (!db) return
   const displayVersion = display.version || getSetting('displayVersion') || 'KJV'
@@ -755,14 +842,15 @@ const session = new ScriptureSession((display: any) => {
     return
   }
   if (!preview) return
-  const detection: any = {
+  const detection = verseDelivery.stage({
     ...preview,
     confidence: lastResolverConfidence,
+    ...(pendingRecognition ? { recognition: pendingRecognition, source: pendingRecognition.source } : {}),
     // Pass range metadata
     rangeEnd: display.rangeEnd,
     chunkSize: display.chunkSize
-  }
-  currentPreviewData = verseDelivery.stage(detection)
+  })
+  currentPreviewData = detection
   previewRevision++
   // Only a LIVE push lifts a CLEAR. This used to run for previews too, so a
   // reference the engine merely HEARD un-cleared the projector — the verse
@@ -796,7 +884,7 @@ const session = new ScriptureSession((display: any) => {
     displayedAt: Date.now()
   }
   intentEngine.onReferenceDetected()
-  if (detection.isPreview && detection.text) {
+  if (detection.isPreview && detection.text && lastResolverConfidence !== undefined) {
     const preacherId = activePreacherId()
     // Ranked candidates: the primary plus ASR-confusion alternates, quote
     // matches and context. Feeds the clash rule, the operator prompt and
@@ -868,6 +956,11 @@ function stageVerseReference(reference: string, version = getSetting('displayVer
 function startASR(deviceLabel?: string) {
   if (soundCheck.active) { emitASRStatus('Finish the sound check before starting a service.'); return }
   if (isListening) return
+  withdrawProvisionalRecognition()
+  getQuoteMatcher().reset()
+  resetStoryMemory()
+  suggestionTracker.reset()
+  lastNamedPassage = null
   activeASR = resolveASRProvider(getSetting('asrProvider'))
   console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
   // Both of these BEFORE start(), never after. A provider that cannot run at
@@ -892,6 +985,15 @@ function startASR(deviceLabel?: string) {
       console.log(`📝 ${isFinal ? 'Final' : 'Partial'}: ${text}`)
       emitTranscript(text)
       emitTranscriptLine(display ?? text, isFinal)
+      heardWindow.note(text, isFinal)
+      if (isFinal) allusionFinder.names.note(text)
+      // Detection always watches final speech, independently of optional AI tools.
+      if (isFinal && transitionDetector) {
+        const speakers = wordTimings?.map(w => w.speaker).filter((s): s is number => s !== undefined) ?? []
+        const speaker = speakers.length && new Set(speakers).size === 1 ? speakers[0] : undefined
+        transitionDetector.processTranscript(text, speaker)
+        serviceAgent?.processTranscript(text, true)
+      }
       if (isFinal) {
         const segType = transitionDetector?.getCurrentSegment().type ?? 'unknown'
         pushTranscriptChunk(text, true, segType, wordTimings)
@@ -910,7 +1012,10 @@ function startASR(deviceLabel?: string) {
       if (isFinal && navFiredOnPartial) {
         navFiredOnPartial = false
         if (session.isUnambiguousNav(text)) {
+          withdrawProvisionalRecognition()
           discardPartialReference()
+          getQuoteMatcher().clearBuffer()
+          resetStoryMemory()
           return
         }
       }
@@ -918,14 +1023,14 @@ function startASR(deviceLabel?: string) {
       // switch must not also get parsed for verse references).
       if (isFinal && voiceCommands && preacherCommandsEnabled()) {
         if (voiceCommands.process(text)) {
+          withdrawProvisionalRecognition()
           discardPartialReference()
+          getQuoteMatcher().clearBuffer()
+          resetStoryMemory()
           return
         }
       }
       session.processTranscript(text)
-      if (isFinal && transitionDetector && getSetting('agentEnabled')) {
-        transitionDetector.processTranscript(text)
-      }
       if (getSetting('agentEnabled')) {
         displayTimingManager.onTranscript(text, isFinal)
         if (isFinal && transitionDetector) {
@@ -944,7 +1049,7 @@ function startASR(deviceLabel?: string) {
         })
       }
       const quoteMatcher = getQuoteMatcher()
-      if (isFinal) quoteMatcher.updateRollingWords(text)
+      quoteMatcher.updateTranscript(text, isFinal)
       if (isFinal) {
         handleASRText(text)
       } else {
@@ -955,7 +1060,7 @@ function startASR(deviceLabel?: string) {
           navFiredOnPartial = true
           return
         }
-        sendTranscript(text, false)
+        handleASRText(text, false)
       }
     },
     // onError callback
@@ -966,6 +1071,10 @@ function startASR(deviceLabel?: string) {
       // wedge the button: isListening stayed true, so every later Start
       // returned immediately and only Stop could clear it.
       isListening = false
+      withdrawProvisionalRecognition()
+      getQuoteMatcher().reset()
+      resetStoryMemory()
+      suggestionTracker.reset()
       activeASR = null
     },
     deviceLabel,
@@ -978,11 +1087,16 @@ function startASR(deviceLabel?: string) {
 }
 
 function stopASR() {
+  transitionDetector?.sermonStart.suspend()
   if (!isListening) return
   ;(activeASR ?? resolveASRProvider(getSetting('asrProvider'))).stop()
   activeASR = null
   isListening = false
   navFiredOnPartial = false
+  withdrawProvisionalRecognition()
+  getQuoteMatcher().reset()
+  resetStoryMemory()
+  suggestionTracker.reset()
   emitASRStatus('Stopped')
 }
 
@@ -1094,73 +1208,126 @@ function handleSessionCommand(text: string): boolean {
   return consumed
 }
 
-function handleASRText(text: string) {
+function handleASRText(text: string, isFinal = true) {
   if (activeCommandConfig.ignoreTails?.length) {
     text = stripIgnoreTails(text, activeCommandConfig.ignoreTails)
   }
-  if (handleSessionCommand(text)) {
+  if (isFinal && handleSessionCommand(text)) {
+    withdrawProvisionalRecognition()
     discardPartialReference()
+    getQuoteMatcher().clearBuffer()
+    resetStoryMemory()
     return
   }
   const before = previewRevision
-  const completeReference = sendTranscript(text, true)
+  const completeReference = sendTranscript(text, isFinal)
   if (previewRevision !== before || completeReference) {
     // A complete spoken reference wins over older words in the quote buffer.
     getQuoteMatcher().clearBuffer()
+    resetStoryMemory()
+    suggestionTracker.reset()
+    withdrawProvisionalRecognition()
     return
   }
-  // "bring up the Lord's Prayer" — a passage called by its heading rather
-  // than its numbers. Goes to preview like any other detection. One per
-  // name per minute: a preacher repeats the name while teaching from it.
-  const named = findNamedPassage(text)
-  if (named && !(lastNamedPassage?.name === named.name && Date.now() - lastNamedPassage.at < 60_000)) {
-    lastNamedPassage = { name: named.name, at: Date.now() }
-    console.log(`📖 Named passage: "${named.name}" → ${named.book} ${named.chapter}:${named.verse}-${named.end}`)
-    session.onReferenceDetected({
-      book: named.book,
-      chapter: named.chapter,
-      verse: named.verse,
-      rangeEnd: named.end > named.verse ? named.end : null
-    })
+  // A quote within a named passage is more precise than its title. Keep an
+  // interim Psalm 23:1 when "the Lord is my shepherd" becomes final rather
+  // than withdrawing it and replacing it with the whole named psalm.
+  const named = isFinal ? findNamedPassage(text) : null
+  const quoteResults = quotesForNamedPassage(getQuoteMatcher().findAllQuotedVerses(), named)
+  // A genuinely new named passage still beats unrelated older context.
+  // Even a repeated title consumes its chunk instead of reviving a story.
+  if (named && quoteResults.length === 0) {
+    withdrawProvisionalRecognition()
+    if (!(lastNamedPassage?.name === named.name && Date.now() - lastNamedPassage.at < 60_000)) {
+      const accepted = stageRecognizedPassage({
+        book: named.book, chapter: named.chapter, verse: named.verse,
+        endVerse: named.end > named.verse ? named.end : null,
+        source: 'named', evidence: [named.name]
+      }, text)
+      if (accepted) lastNamedPassage = { name: named.name, at: Date.now() }
+    }
+    getQuoteMatcher().clearBuffer()
+    resetStoryMemory()
+    passageMatcher?.updateTranscript(text, true)
     return
   }
-  if (preacherCommandsEnabled() && voiceCommands?.isInPrayer()) return
-  const quoteMatcher = getQuoteMatcher()
-  const quoteResults = quoteMatcher.tryDetectQuotes()
+  const passage = passageMatcher?.updateTranscript(text, isFinal)
+  if (preacherCommandsEnabled() && voiceCommands?.isInPrayer()) {
+    withdrawProvisionalRecognition()
+    return
+  }
+  // The tracker owns duplicate suppression across quote/story refinements.
+  // Retain the strongest current quotation even when it was already suggested.
   if (quoteResults.length > 0) {
     const best = quoteResults[0]
-    lastResolverConfidence = best.confidence
     const bestBook = best.ref.split(' ').slice(0, -1).join(' ')
-    console.log(
-      `📜 Quote match: ${best.ref} (+${quoteResults.length - 1} candidates)`
-    )
     lastQuoteCandidates = candidatesFromQuotes(quoteResults.slice(0, 4))
-    queueRecognitionReview({ book: bestBook, chapter: best.chapter, verse: best.verse }, recentTranscriptBuffer.join(' '))
-    if (getSetting('falsePositiveFilterEnabled') && transitionDetector) {
-      const segment = transitionDetector.getCurrentSegment()
-      if (falsePositiveFilter.shouldBlock(
-        { book: bestBook, chapter: best.chapter, verse: best.verse, confidence: best.confidence },
-        recentTranscriptBuffer,
-        segment.type
-      )) {
-        return
+    const accepted = stageRecognizedPassage({
+      book: bestBook, chapter: best.chapter, verse: best.verse, source: 'quote', evidence: [text],
+      ...(passage?.book === bestBook && passage.chapter === best.chapter ? { passageId: passage.passageId } : {})
+    }, text, best.confidence, isFinal)
+    if (accepted) {
+      let queued = false
+      // Do not leave runner-up references in the persistent queue from an
+      // interim hypothesis that may subsequently be withdrawn.
+      for (const alternative of isFinal ? quoteResults.slice(1, 4) : []) {
+        if (!verseQueue.some(q => q.ref === alternative.ref)) {
+          verseQueue.push({ ref: alternative.ref, reason: 'possible quote match', ts: Date.now() })
+          queued = true
+        }
       }
+      if (queued) emitQueueUpdated(verseQueue)
+      return
     }
-    session.onReferenceDetected({
-      book: bestBook,
-      chapter: best.chapter,
-      verse: best.verse,
-      rangeEnd: null
-    })
-    // Runner-up quote candidates wait in the queue — never straight to live.
-    for (const alt of quoteResults.slice(1, 6)) {
-      const ref = alt.ref
-      if (!verseQueue.some((q) => q.ref === ref)) {
-        verseQueue.push({ ref, reason: 'possible quote match', ts: Date.now() })
-      }
-    }
-    if (quoteResults.length > 1) emitQueueUpdated(verseQueue)
+    lastQuoteCandidates = []
   }
+  if (passage && stageRecognizedPassage({ ...passage, source: 'passage' }, text, undefined, isFinal)) return
+  withdrawProvisionalRecognition()
+  if (isFinal) suggestAllusion(text)
+}
+
+function stageRecognizedPassage(candidate: RecognitionCandidate, heard: string, strength?: number, isFinal = true): boolean {
+  if (!db || !verseExists(candidate.book, candidate.chapter, candidate.verse)) return false
+  if (candidate.endVerse && !verseExists(candidate.book, candidate.chapter, candidate.endVerse)) return false
+  // A reference existing in another translation is not enough: only accept a
+  // suggestion when the entire requested passage can actually be previewed.
+  const version = getSetting('displayVersion') || 'KJV'
+  const reference = `${candidate.book} ${candidate.chapter}:${candidate.verse}-${candidate.endVerse ?? candidate.verse}`
+  if (!readVersePreview(db, reference, version)) return false
+  if (getSetting('falsePositiveFilterEnabled') && transitionDetector && falsePositiveFilter.shouldBlock(
+    { ...candidate, confidence: strength },
+    [...recentTranscriptBuffer, ...heard.toLowerCase().split(/\s+/)].slice(-60),
+    transitionDetector.getCurrentSegment().type
+  )) return false
+  if (provisionalRecognition) {
+    const previous = provisionalRecognition.candidate
+    const broadens = previous.book === candidate.book && previous.chapter === candidate.chapter &&
+      candidate.verse <= previous.verse && (candidate.endVerse ?? candidate.verse) >= (previous.endVerse ?? previous.verse) &&
+      (candidate.endVerse ?? candidate.verse) - candidate.verse > (previous.endVerse ?? previous.verse) - previous.verse
+    if (broadens) withdrawProvisionalRecognition()
+  }
+  const recognition = suggestionTracker.accept(candidate)
+  if (!recognition) {
+    if (isFinal) provisionalRecognition = null // The final confirms the preview.
+    return true
+  }
+  if (provisionalRecognition && provisionalRecognition.recognition.suggestionId !== recognition.suggestionId) {
+    withdrawProvisionalRecognition()
+  }
+  if (candidate.source !== 'quote') lastQuoteCandidates = []
+  lastResolverConfidence = strength
+  pendingRecognition = recognition
+  try {
+    queueRecognitionReview(candidate, heard)
+    session.onReferenceDetected({ ...candidate, rangeEnd: candidate.endVerse, version })
+    // An early match must not advance to the following verse when the same
+    // unfinished quotation arrives again with its last few words attached.
+    session.exitReadingMode()
+    provisionalRecognition = isFinal ? null : { candidate, recognition }
+  } finally {
+    pendingRecognition = undefined
+  }
+  return true
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -1284,9 +1451,14 @@ function createOutputWindow(id: string, title: string) {
 }
 
 function createWindow() {
+  const { workArea } = electronScreen.getDisplayNearestPoint(electronScreen.getCursorScreenPoint())
+  const width = Math.min(1400, workArea.width)
+  const height = Math.min(900, workArea.height)
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width,
+    height,
+    x: workArea.x + Math.round((workArea.width - width) / 2),
+    y: workArea.y + Math.round((workArea.height - height) / 2),
     backgroundColor: '#050505',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -1419,6 +1591,8 @@ ipcMain.on('process-text', (_event, text) => {
    * caught a verse and could not show what had been said to catch it.
    */
   emitTranscriptLine(text, true)
+  heardWindow.note(text, true)
+  allusionFinder.names.note(text)
 })
 
 /*
@@ -1787,6 +1961,26 @@ ipcMain.handle('show-queued-verse', (_event, ref: string) => {
   if (idx >= 0) verseQueue.splice(idx, 1)
   emitQueueUpdated(verseQueue)
   return { success: true }
+})
+
+/**
+ * The operator asks "what was that?". Unlike the auto path this never
+ * abstains: every matcher is tried on the last words spoken and the nearest
+ * four come back for a person to choose from. Nothing is staged here.
+ */
+ipcMain.handle('find-heard-scripture', async (_event, payload: { text?: string }) => {
+  // No text given means "what was just said": words older than the window
+  // have expired, so a press long after the sentence finds nothing.
+  const words = (typeof payload?.text === 'string' ? payload.text : heardWindow.recent()).split(/\s+/).filter(Boolean).slice(-25)
+  const version = getSetting('displayVersion') || 'KJV'
+  const matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: string }[] = []
+  for (const hit of await allusionFinder.find(words)) {
+    const reference = `${hit.book} ${hit.chapter}:${hit.verse}${hit.endVerse > hit.verse ? `-${hit.endVerse}` : ''}`
+    // Only what the selected translation can actually show.
+    const preview = db ? readVersePreview(db, reference, version) : null
+    if (preview) matches.push({ reference, title: hit.title, text: preview.text, version, evidence: hit.evidence, kind: hit.kind })
+  }
+  return { heard: words.join(' '), meaning: allusionFinder.meaning, matches }
 })
 
 ipcMain.handle('set-display-version', (_event, version: string) => {
@@ -2373,6 +2567,7 @@ ipcMain.handle('get-available-versions', () => {
 let worshipTimeoutHandle: NodeJS.Timeout | null = null
 
 ipcMain.on('set-current-song-lyrics', (_event, lyrics) => {
+  if (typeof lyrics === 'string') transitionDetector?.sermonStart.setLyrics(lyrics)
   if (worshipTimeoutHandle) clearTimeout(worshipTimeoutHandle)
   worshipTimeoutHandle = setTimeout(() => {
     // Blanking every output thirty seconds into worship, unannounced, is
@@ -2388,19 +2583,35 @@ ipcMain.on('set-current-song-lyrics', (_event, lyrics) => {
   }, 30000)
 })
 
-ipcMain.on('set-service-schedule', (_event, schedule) => {
+ipcMain.on('set-service-schedule', (_event, schedule, persist = true) => {
+  if (!Array.isArray(schedule)) return
+  const previous = transitionDetector?.schedule ?? []
+  const counts = new Map<string, number>()
   const entries: ScheduleEntry[] = schedule.map(
-    (s: string | ScheduleEntry) => typeof s === 'string' ? { type: s } : s
+    (s: string | ScheduleEntry) => {
+      const item = typeof s === 'string' ? { type: s } : s
+      const occurrence = counts.get(item.type) ?? 0
+      counts.set(item.type, occurrence + 1)
+      return { ...previous.filter(p => p.type === item.type)[occurrence], ...item }
+    }
   )
   if (transitionDetector) {
     transitionDetector.setSchedule(entries)
   }
-  setSetting('serviceSchedule', entries)
+  if (persist) setSetting('serviceSchedule', entries)
   console.log(`📋 Service schedule updated: ${entries.length} entries`)
 })
 
 ipcMain.handle('get-sermon-transcript', () => {
   return serviceAgent ? serviceAgent.getSermonText() : ''
+})
+
+ipcMain.handle('get-sermon-start', () => transitionDetector?.sermonStart.getState() ?? null)
+ipcMain.handle('respond-sermon-start', (event, action, requestId) => {
+  if (event.sender !== mainWindow?.webContents) throw new Error('Use the desktop control surface or paired remote.')
+  if (!transitionDetector) throw new Error('The sermon detector is not ready yet.')
+  if (!['start', 'confirm', 'not-yet', 'end'].includes(action)) throw new Error('Invalid sermon action')
+  return transitionDetector.respondToSermonStart(action, requestId)
 })
 
 ipcMain.handle('get-service-log', () => {
@@ -2484,6 +2695,9 @@ const THEME_KEYS = new Set([
   'stageShowElapsed',
   'verseLayout',
   'safeMargin',
+  'textWidth',
+  'textCase',
+  'textSpacing',
   'textTransition',
   'textTransitionMs',
 ])
@@ -2520,6 +2734,7 @@ ipcMain.handle('set-sermon-plan', (_event, jsonOrPath) => {
   try {
     const plan = loadSermonPlan(jsonOrPath)
     const refs = getExpectedVerseRefs(plan)
+    transitionDetector?.sermonStart.setPlan(plan.title, refs, plan.themes)
     if (serviceAgent) {
       serviceAgent.context.sermonPlanVerses = refs
     }
@@ -3233,6 +3448,8 @@ app.whenReady().then(() => {
   console.log('🗣️ Voice commands + intent engine + correction ledger ready')
   const quoteMatcher = getQuoteMatcher()
   quoteMatcher.loadIndex()
+  passageMatcher = new PassageMatcher()
+  void loadSemanticMatcher()
   displayTimingManager.setAutoDisplayTimeout(getSetting('autoDisplayTimeout'))
   displayTimingManager.setDismissCallback(() => {
     dismissLiveVerse()
@@ -3240,7 +3457,10 @@ app.whenReady().then(() => {
   mediaMatcher.onSuggestion((result) => {
     emitMediaSuggestion(result)
   })
-  transitionDetector = new TransitionDetector()
+  transitionDetector = new TransitionDetector(state => {
+    // Private controls only: never send a preacher's question to the congregation.
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('on-sermon-start', state)
+  })
   const schedule = getSetting('serviceSchedule')
   if (schedule) {
     const entries: ScheduleEntry[] = schedule.map(
@@ -3318,10 +3538,12 @@ app.whenReady().then(() => {
           if (segment === 'prayer' || segment === 'worship' || segment === 'announcements') return
           const preview = readVersePreview(db, verse.ref, getSetting('displayVersion') || 'KJV')
           if (!preview || !shouldEmit(`implicit:${verse.ref}`)) return
-          currentPreviewData = verseDelivery.stage({ ...preview, confidence: verse.confidence })
-          previewRevision++
-          emitVerseDetected(currentPreviewData)
-          serviceAgent!.context.addDetection(verse)
+          // Reuse the same suggestion identity as local passage recognition.
+          // A model's own confidence is not a measured accuracy percentage.
+          if (stageRecognizedPassage({
+            book: preview.book, chapter: preview.chapter, verse: preview.verse,
+            endVerse: preview.endVerse, source: 'passage',
+          }, '')) serviceAgent!.context.addDetection(verse)
         },
         onNotesUpdate: (update) => {
           notesBuilder.processUpdate(update)

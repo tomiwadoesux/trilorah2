@@ -33,6 +33,8 @@ export interface FlightPopupProps {
   /** The header's left side. The ✕ is drawn for you. */
   header: ReactNode;
   footer?: ReactNode;
+  overlay?: ReactNode;
+  attention?: number;
   children: ReactNode;
   /**
    * The ground's z-index; the box sits ten above it. 40 is the dashboard
@@ -54,9 +56,20 @@ export function FlightPopup({
   onClosed,
   header,
   footer,
+  overlay,
+  attention = 0,
   children,
   layer = 40,
 }: FlightPopupProps) {
+  const card = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!attention || reducedMotion()) return;
+    const animation = card.current?.animate(
+      [0, -4, 4, -2, 2, 0].map(x => ({ transform: `translateX(${x}px)` })),
+      { duration: 240, easing: 'ease-in-out' },
+    );
+    return () => animation?.cancel();
+  }, [attention]);
   const anchor = useRef<HTMLSpanElement>(null);
   const [phase, setPhase] = useState<Phase>('closed');
   const [from, setFrom] = useState<Box | null>(null);
@@ -161,6 +174,7 @@ export function FlightPopup({
                 }}
               />
               <section
+                ref={card}
                 role="dialog"
                 aria-modal="true"
                 aria-label={label}
@@ -184,6 +198,8 @@ export function FlightPopup({
                     leaves before it takes off, so nothing is read at the
                     wrong size — the rule the tiles follow. */}
                 <div
+                  inert={!!overlay}
+                  aria-hidden={overlay ? true : undefined}
                   className="flex min-h-0 flex-1 flex-col"
                   style={{
                     opacity: atTarget ? 1 : 0,
@@ -207,6 +223,7 @@ export function FlightPopup({
                   {children}
                   {footer}
                 </div>
+                {overlay}
               </section>
             </>,
             shell,

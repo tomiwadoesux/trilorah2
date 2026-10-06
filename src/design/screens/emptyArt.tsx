@@ -99,45 +99,26 @@ export function EmptyMark({
    */
   plain?: boolean;
 }) {
+  const px = (value: number | string) => typeof value === 'number' ? `${value}px` : value;
   return (
-    <EmptyMotion
-      play={play}
-      className="flex h-full flex-col items-center justify-center px-6 text-center"
-    >
-      <div
-        aria-hidden="true"
-        style={
-          plain
-            ? { width: w, height: h, color: INK }
-            : {
-                width: w,
-                height: h,
-                color: INK,
-                opacity: 0.72,
-                maskImage: 'linear-gradient(to bottom, #000 74%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, #000 74%, transparent 100%)',
-              }
-        }
-      >
-        {art}
+    <EmptyMotion play={play} className="tri-empty-mark">
+      <div className="tri-empty-mark__layout" style={{ '--empty-art-w': px(w), '--empty-art-h': px(h) } as CSSProperties}>
+        <div className="tri-empty-mark__stage" aria-hidden="true">
+          <div className="tri-empty-mark__art" style={plain ? { color: INK } : {
+            color: INK,
+            opacity: 0.72,
+            maskImage: 'linear-gradient(to bottom, #000 74%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, #000 74%, transparent 100%)',
+          }}>
+            {art}
+          </div>
+        </div>
+        {(line || hint || below) && <div className="tri-empty-mark__copy">
+          {line !== '' && <p className="tri-empty-mark__line">{line}</p>}
+          {hint && <p className="tri-empty-mark__hint">{hint}</p>}
+          {below && <div className="tri-empty-mark__actions">{below}</div>}
+        </div>}
       </div>
-      {line !== '' && (
-        <p
-          className="mt-3 text-[length:var(--tri-size)] lowercase leading-[1.6] text-[rgb(229_243_242_/_0.5)]"
-          style={{ maxWidth: '32ch' }}
-        >
-          {line}
-        </p>
-      )}
-      {hint && (
-        <p
-          className="mt-1.5 text-[length:var(--tri-size-sm)] lowercase leading-[1.6] text-[rgb(229_243_242_/_0.3)]"
-          style={{ maxWidth: '32ch' }}
-        >
-          {hint}
-        </p>
-      )}
-      {below}
     </EmptyMotion>
   );
 }

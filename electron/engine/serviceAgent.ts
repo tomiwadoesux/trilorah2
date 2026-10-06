@@ -29,6 +29,7 @@ export class ServiceAgent {
   displayTimingManager: DisplayTimingManager
   mediaMatcher: MediaMatcher
   context: ServiceContext
+  private recentFinals: SermonTranscriptEntry[] = []
 
   constructor(
     transitionDetector: TransitionDetector,
@@ -46,6 +47,14 @@ export class ServiceAgent {
     this.mediaMatcher = mediaMatcher
     this.context = new ServiceContext()
     this.transitionDetector.onSegmentChanged((segment, previous) => {
+      if (segment.type === 'sermon') {
+        const start = this.transitionDetector.sermonStart.getState().startedAt ?? Date.now()
+        const retained = this.recentFinals.filter(chunk => chunk.timestamp >= start)
+        this.sermonTranscript.push(...retained)
+        for (const chunk of this.context.recentTranscript) {
+          if (chunk.timestamp >= start) chunk.segment = 'sermon'
+        }
+      }
       this.serviceLog.push({
         type: 'segment-change',
         timestamp: Date.now(),
@@ -62,7 +71,6 @@ export class ServiceAgent {
    * Main entry point — call with every transcript chunk
    */
   processTranscript(text: string, isFinal: boolean) {
-    if (!this.enabled) return
     const words = text.toLowerCase().split(/\s+/).filter(Boolean)
     this.recentWords.push(...words)
     if (this.recentWords.length > 30) {
@@ -70,10 +78,11 @@ export class ServiceAgent {
     }
     const segment = this.transitionDetector.getCurrentSegment()
     this.context.addTranscript(text, isFinal, segment.type)
-    this.transitionDetector.processTranscript(text)
-    this.displayTimingManager.onTranscript(text, isFinal)
-    this.mediaMatcher.processTranscript(text, segment.type)
-    if (segment.type === 'sermon' && isFinal) {
+    if (isFinal) {
+      this.recentFinals.push({ text, timestamp: Date.now(), detectedScriptures: [] })
+      this.recentFinals = this.recentFinals.filter(c => Date.now() - c.timestamp < 180_000).slice(-300)
+    }
+    if (this.transitionDetector.sermonStart.getState().status === 'active' && isFinal) {
       this.sermonTranscript.push({
         text,
         timestamp: Date.now(),
@@ -142,5 +151,7 @@ export class ServiceAgent {
     this.recentWords = []
     this.mediaMatcher.reset()
     this.context.reset()
+    this.recentFinals = []
+    this.transitionDetector.reset()
   }
 }

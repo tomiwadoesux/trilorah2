@@ -8,7 +8,12 @@ import { getTimerColor } from '../shared/timerColor';
 import { cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
 import type { LiveContent } from '../shared/liveContent';
 import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
+import { resolveTextPosition } from '../shared/textPosition';
+import { clampTextWidth, textWidthFrame, TEXT_WIDTH } from '../shared/textWidth';
+import { resolveTextCase, type TextCase } from '../shared/textCase';
+import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
 import './output.css';
+import { DISPLAY_FONTS } from '../shared/displayFont';
 
 /**
  * The projector / stream / stage window: a transparent surface that fades
@@ -64,6 +69,9 @@ interface Theme {
   stageShowTimer: string;
   verseLayout: string;
   safeMargin: number;
+  textWidth: number;
+  textCase: TextCase;
+  textSpacing: TextSpacing;
   /** The reference line's own size, independent of the verse body's. */
   refScale: number;
   /** Space between the verse and its reference, in ems of the reference. */
@@ -74,9 +82,9 @@ interface Theme {
 }
 
 const FONT_PRESETS: Record<string, string> = {
-  'display-serif': "Georgia, 'Times New Roman', serif",
+  'display-serif': DISPLAY_FONTS.serif,
   'classic-serif': "'Times New Roman', Georgia, serif",
-  'modern-sans': "system-ui, -apple-system, 'Segoe UI', sans-serif",
+  'modern-sans': DISPLAY_FONTS.default,
   'bold-slab': "'Alfa Slab One', Georgia, serif",
   'display-rounded': "'Paytone One', system-ui, sans-serif",
 };
@@ -107,6 +115,9 @@ const DEFAULT_THEME: Theme = {
   stageShowTimer: '',
   verseLayout: 'center',
   safeMargin: 10,
+  textWidth: TEXT_WIDTH.default,
+  textCase: 'none',
+  textSpacing: 'normal',
   refScale: 1,
   /* 4vh was this gap's hard-coded value before it became a control; as an
      em of the reference it lands in the same place at the default size. */
@@ -151,6 +162,9 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     stageShowTimer: typeof s.stageShowTimer === 'string' ? s.stageShowTimer : '',
     verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'center',
     safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 10,
+    textWidth: clampTextWidth(s.textWidth, 100 - 2 * (typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 10)),
+    textCase: resolveTextCase(s.textCase),
+    textSpacing: resolveTextSpacing(s.textSpacing),
     /* Both default when a theme saved before these existed is read back, so
        an older church file keeps the wall it already had. */
     refScale: typeof s.refScale === 'number' && s.refScale > 0 ? s.refScale : 1,
@@ -179,6 +193,7 @@ function useClock(enabled: boolean): string {
 
 function OutputSurface() {
   // `shown` keeps the last verse during fade-out; `visible` drives opacity.
+  const [delivery, setDelivery] = useState(0);
   const [shown, setShown] = useState<Shown | null>(null);
   const [visible, setVisible] = useState(false);
   const [media, setMedia] = useState<string | null>(null); // data URL
@@ -228,6 +243,7 @@ function OutputSurface() {
     void api.listTimers?.().then((t) => takeTimers(t ?? [])).catch(() => undefined);
 
     const display = (detection: VerseDetection, isPreview: boolean) => {
+      setDelivery(n => n + 1);
       contentRevision++;
       setMedia(null); // scripture supersedes a slide
       setVideo(null);
@@ -299,6 +315,7 @@ function OutputSurface() {
     };
 
     const displayContent = (content: LiveContent) => {
+      setDelivery(n => n + 1);
       if (content.kind === 'slide' && content.path) {
         displayMedia(content.path, 'photo');
         return;
@@ -400,12 +417,10 @@ function OutputSurface() {
     ? timers.find((t) => t.id === theme.stageShowTimer || t.name === theme.stageShowTimer) ?? null
     : null;
 
-  const atBottom = theme.verseLayout !== 'top';
-  const stageJustify = theme.verseLayout === 'center' ? 'center' : atBottom ? 'flex-end' : 'flex-start';
-  const stageAlign =
-    theme.verseLayout === 'bottom-left' ? 'flex-start' : theme.verseLayout === 'bottom-right' ? 'flex-end' : 'center';
-  const stageTextAlign =
-    theme.verseLayout === 'bottom-left' ? 'left' : theme.verseLayout === 'bottom-right' ? 'right' : 'center';
+  const { justifyContent: stageJustify, alignItems: stageAlign, textAlign: stageTextAlign, referenceAbove } = resolveTextPosition(theme.verseLayout);
+  const atBottom = !referenceAbove;
+  const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, stageTextAlign);
+  const textSpacing = TEXT_SPACING[theme.textSpacing];
 
   const themedStage = {
     '--verse-font': theme.fontFamily,
@@ -413,6 +428,11 @@ function OutputSurface() {
     '--verse-weight': String(theme.weight),
     '--verse-color': theme.color,
     '--safe-margin': `${theme.safeMargin}%`,
+    '--text-width': `${textFrame.width}%`,
+    '--text-case': theme.textCase,
+    '--text-letter-spacing': textSpacing.letterSpacing,
+    '--text-line-spacing': String(textSpacing.lineHeightDelta),
+    '--text-left': `${textFrame.left}%`,
     '--ref-scale': String(theme.refScale),
     '--ref-gap': `${theme.refGap}em`,
     '--tx-ms': `${theme.textTransition === 'cut' ? 0 : theme.textTransitionMs}ms`,
@@ -623,8 +643,8 @@ function OutputSurface() {
       {song && screen === 'live' && (
         <div className="output-stage visible output-song">
           {/* Keyed by what is showing, so each new section re-mounts and the
-              entrance plays again; the same section re-sent does not. */}
-          <div className="output-enter" key={`${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
+              entrance plays again, including when the same section is sent again. */}
+          <div className="output-enter" key={`${delivery}|${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
           {song.lines?.map((line: string, i: number) => (
             <div key={i} className="output-verse">
               {line}
@@ -639,7 +659,7 @@ function OutputSurface() {
       )}
       <div className={`output-stage ${contentVisible ? 'visible' : ''} ${atBottom ? '' : 'ref-above'}`}>
         {shown && (
-          <div className="output-enter" key={`${formatRef(shown.detection)}|${slideIndex}`}>
+          <div className="output-enter" key={`${delivery}|${formatRef(shown.detection)}|${slideIndex}`}>
             {shown.isPreview && <div className="output-preview-mark">preview</div>}
             {slide ? (
               <>

@@ -22,6 +22,8 @@ export interface WordTiming {
   /** Seconds from the start of the recognised audio. */
   s: number
   e: number
+  /** Session-local diarization label; never a preacher identity. */
+  speaker?: number
 }
 
 /** Deepgram's per-word shape, as it arrives on the wire. */
@@ -30,6 +32,7 @@ interface DeepgramWord {
   punctuated_word?: string
   start?: number
   end?: number
+  speaker?: number
 }
 
 /**
@@ -48,7 +51,7 @@ export function toWordTimings(words: unknown): WordTiming[] | null {
     const s = typeof raw?.start === 'number' ? raw.start : NaN
     const e = typeof raw?.end === 'number' ? raw.end : NaN
     if (!w || !Number.isFinite(s) || !Number.isFinite(e) || e < s) continue
-    out.push({ w, s: round(s), e: round(e) })
+    out.push({ w, s: round(s), e: round(e), ...(Number.isInteger(raw.speaker) && raw.speaker! >= 0 ? { speaker: raw.speaker } : {}) })
   }
   return out.length > 0 ? out : null
 }

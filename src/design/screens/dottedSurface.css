@@ -1,7 +1,7 @@
 /* Shared dark glass with a faint dotted texture behind the content. */
 .tri-dotted-surface {
   isolation: isolate;
-  background: linear-gradient(165deg, rgb(12 22 18 / 0.78), rgb(9 16 13 / 0.66));
+  background: linear-gradient(165deg, rgb(var(--tri-teal-3) / 0.4), rgb(var(--tri-teal-1) / 0.66));
 }
 
 .tri-dotted-surface::before,
@@ -12,7 +12,7 @@
   z-index: -1;
   pointer-events: none;
   border-radius: inherit;
-  background-image: radial-gradient(circle, rgb(200 231 215 / var(--tri-dot-alpha, 0.3)) 0.7px, transparent 0.95px);
+  background-image: radial-gradient(circle, rgb(229 235 243 / var(--tri-dot-alpha, 0.3)) 0.7px, transparent 0.95px);
   background-size: 7px 7px;
   mask-image: var(--tri-dot-patches);
   mask-size: 100% 100%;
@@ -32,6 +32,18 @@
 }
 
 /* Move only the soft mask: the dot grid and card content stay still. */
+.tri-library-tabs {
+  --library-radius: calc(var(--tri-radius-control) + var(--tri-card-gap));
+  padding: var(--tri-card-gap);
+  border-radius: var(--library-radius);
+  corner-shape: round;
+}
+.tri-library-tabs [role='tab'],
+.tri-library-tabs [data-library-indicator] {
+  border-radius: max(0px, calc(var(--library-radius) - var(--tri-card-gap)));
+  corner-shape: round;
+}
+
 @keyframes tri-dot-drift {
   0%, 100% {
     mask-position: -2px 1px;

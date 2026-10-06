@@ -1,6 +1,7 @@
+import { isEmptyPreview } from '../../emptyPreviewMode';
 import { useEffect, useState } from 'react';
 import { Panel, Dot } from '../parts';
-import { PlusIcon, GlobeIcon } from '../../../ui';
+import { PlusIcon } from '../../../ui';
 
 /*
  * The connections list — the OTHER SOFTWARE this app talks to.
@@ -101,7 +102,7 @@ function useLinks(): Link[] {
   useEffect(() => {
     const api = typeof window === 'undefined' ? undefined : window.api;
     if (!api) {
-      setStates(SAMPLE);
+      setStates(isEmptyPreview ? { obs: 'off', vmix: 'off', companion: 'off', cloud: 'off' } : SAMPLE);
       return;
     }
     let alive = true;
@@ -189,8 +190,7 @@ export function ConnectionsTile({
   return (
     <Panel
       title="connected"
-      icon={<GlobeIcon size={13} />}
-      blurb="other software this app talks to during a service."
+      empty={links.every(link => link.state === 'off')}
       onOpen={onOpen}
       className={className}
     >

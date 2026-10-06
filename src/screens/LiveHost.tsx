@@ -39,7 +39,7 @@ export function LiveHost() {
   }, []);
 
   return (
-    <div ref={ref} className="h-full w-full overflow-hidden">
+    <div ref={ref} className="h-full w-full min-w-0 overflow-hidden">
       {size && (
         <ArtboardProvider value={size}>
           <LiveScreen />

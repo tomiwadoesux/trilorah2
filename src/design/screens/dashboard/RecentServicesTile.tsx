@@ -1,3 +1,4 @@
+import { isEmptyPreview } from '../../emptyPreviewMode';
 import { Panel } from '../parts';
 import { HistoryIcon } from '../../../ui';
 import { EmptyMark, ChartArt } from '../emptyArt';
@@ -90,9 +91,9 @@ export function RecentServicesTile({ className, onOpen }: { className?: string; 
      standing over an empty region: both of them are claims about services
      that exist — "verses · accuracy · length" labels columns that aren't
      there, and the summary asserts an average drawn from nothing. */
-  if (SERVICES.length === 0) {
+  if (isEmptyPreview || SERVICES.length === 0) {
     return (
-      <Panel className={className} bodyClass="pt-3">
+      <Panel title="recent services" className={className} bodyClass="pt-3">
         <EmptyMark art={<ChartArt />} line="no services yet" />
       </Panel>
     );

@@ -52,8 +52,10 @@ export function AppShell({ model, children }: { model: ShellModel; children?: Re
          dashboard/expand.tsx. The shell, not the viewport, because the
          sandbox scales the artboard and the real app does not. */
       data-shell
-      className="relative flex flex-col overflow-hidden bg-paper text-ink"
-      style={{ width: size.w, height: size.h, borderRadius: size.full ? 0 : 10 }}
+      className="relative flex min-w-0 flex-col overflow-hidden bg-paper text-ink"
+      // A real window follows its parent immediately. A fixed pixel width here
+      // becomes the flex parent's minimum width and prevents resize observation.
+      style={{ width: size.full ? '100%' : size.w, height: size.full ? '100%' : size.h, borderRadius: size.full ? 0 : 10 }}
     >
       {/* A banner pushes the content down rather than covering it — an
           operator mid-service must never lose a control to a notice. */}

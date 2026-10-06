@@ -67,6 +67,9 @@ export function TriPackageActions() {
       if (status?.pendingOpen) void inspectRef.current(true);
     })().catch(() => setNotice('Could not restore package details. Your local run is still available.'));
     const unsubscribe = operatorRunStore.subscribe(markChanged);
+    /* The empty rail's own .tri button — see askRun in RunHeaderActions. */
+    const openFiles = () => { setOpen(true); setView('home'); void refreshStatus(); };
+    window.addEventListener('trilorah-open-tri', openFiles);
     window.addEventListener('trilorah-theme-changed', markChanged);
     window.addEventListener(TRI_DECKS_EVENT, markChanged);
     window.addEventListener('trilorah-package-imported', markChanged);
@@ -74,6 +77,7 @@ export function TriPackageActions() {
     window.addEventListener('presentations-updated', markChanged);
     return () => {
       unsubscribe();
+      window.removeEventListener('trilorah-open-tri', openFiles);
       window.removeEventListener('trilorah-theme-changed', markChanged);
       window.removeEventListener(TRI_DECKS_EVENT, markChanged);
       window.removeEventListener('trilorah-package-imported', markChanged);

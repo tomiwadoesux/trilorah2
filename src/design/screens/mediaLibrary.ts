@@ -1,3 +1,4 @@
+import { isEmptyPreview } from '../emptyPreviewMode';
 import { useSyncExternalStore } from 'react';
 import { slideBackdrop, type BackdropStyle } from '../../ui';
 import { toDisplayUrl } from '../../../shared/mediaUrl';
@@ -16,6 +17,7 @@ import { toDisplayUrl } from '../../../shared/mediaUrl';
 export type MediaSource = 'local' | 'stock';
 
 export interface ThemeMedia {
+  collection?: 'themes' | 'media';
   id: string;
   label: string;
   detail: string;
@@ -50,6 +52,7 @@ const SEED: ThemeMedia[] = [
 const STORAGE_KEY = 'trilorah_saved_media_library';
 
 function loadPersistedMedia(): ThemeMedia[] {
+  if (isEmptyPreview) return [];
   if (typeof window === 'undefined') return SEED;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

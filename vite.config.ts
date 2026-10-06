@@ -14,6 +14,7 @@ const external = [
   'dotenv',
   'electron-store',
   'obs-websocket-js',
+  'onnxruntime-node',
   'pdfkit',
   'qrcode',
   'tesseract.js',
@@ -59,6 +60,7 @@ export default defineConfig({
         // The design sandbox — createDesignWindow() loads dist/design.html
         // in production, so it has to be emitted alongside the app.
         design: resolve(__dirname, 'design.html'),
+        emptyPreview: resolve(__dirname, 'empty-preview.html'),
       },
     },
   },

@@ -66,6 +66,7 @@ const RING_C = 2 * Math.PI * RING_R;
 /* ------------------------------------------------------------------ */
 
 export interface DragItem {
+  mediaId?: string;
   source: QueueSource;
   /** The caption under the chip, and the row's label once dropped. */
   label: string;

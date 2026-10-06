@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VerseSlide } from '../../../shared/verseDisplay';
 import { publishLiveItem } from '../../lib/publishLiveItem';
+import { withdrawRecognizedPreview } from '../../lib/recognitionWithdrawal';
 
 /*
  * What is on the projector, and what is about to be.
@@ -67,6 +68,8 @@ export interface LiveItem {
       or apart without going back to the database. */
   verses?: { verse: number; text: string }[];
   origin?: Origin;
+  /** Identifies an automatically staged provisional speech suggestion. */
+  recognitionSuggestionId?: string;
 
   /** A song section's words, one slide's worth. What the projector draws. */
   lines?: string[];
@@ -100,11 +103,14 @@ interface ProjectorValue {
   preview: LiveItem | null;
   /** Which slide of the staged/live reading is showing. */
   slide: number;
+  delivery: number;
   /** Blacked, cleared, logo, or showing what is live. */
   screen: ScreenState;
 
   /** Put something in the preview box. Never reaches the congregation. */
   stage: (item: LiveItem | null) => void;
+  /** Retract only an automatic preview from this provisional suggestion. */
+  withdrawRecognition: (suggestionId: string) => void;
   /** Put something on the projector, staged or not. */
   send: (item: LiveItem) => Promise<void>;
   /** The local half of a push: what was staged becomes what is live. */
@@ -129,18 +135,23 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     prepareOutput.current = prepare;
     return () => { if (prepareOutput.current === prepare) prepareOutput.current = null; };
   }, []);
+  const [delivery, setDelivery] = useState(0);
   const [live, setLive] = useState<LiveItem | null>(null);
   const [preview, setPreview] = useState<LiveItem | null>(null);
   const [slide, setSlideIndex] = useState(0);
   const [screen, setScreen] = useState<ScreenState>('live');
 
   const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
-  const reflect = useCallback((item: LiveItem | null) => { setLive(item); setSlideIndex(0); }, []);
+  const withdrawRecognition = useCallback((suggestionId: string) => {
+    setPreview(current => withdrawRecognizedPreview(current, suggestionId));
+  }, []);
+  const reflect = useCallback((item: LiveItem | null) => { setLive(item); setDelivery(n => n + 1); setSlideIndex(0); }, []);
 
   const send = useCallback(async (item: LiveItem) => {
     await prepareOutput.current?.();
     const delivered = await publishLiveItem(item);
     setLive(delivered);
+    setDelivery(n => n + 1);
     /* A new reading starts at its first slide. Carrying the old index over
        lands the congregation on slide 3 of a reading that has two. */
     setSlideIndex(0);
@@ -194,6 +205,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      delivery,
       beforeSend,
       reflect,
       live,
@@ -201,6 +213,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       slide,
       screen,
       stage,
+      withdrawRecognition,
       send,
       promote,
       clear,
@@ -210,7 +223,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       isLive,
       isStaged,
     }),
-    [beforeSend, live, preview, slide, screen, stage, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
+    [delivery, beforeSend, live, preview, slide, screen, stage, withdrawRecognition, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
   );
   return <ProjectorContext.Provider value={value}>{children}</ProjectorContext.Provider>;
 }

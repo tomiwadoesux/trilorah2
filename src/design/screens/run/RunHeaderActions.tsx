@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { usePopupPlacement, popupBounds } from '../../../ui/primitives/usePopupPlacement';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ActionMenu,
@@ -26,7 +27,7 @@ import './run.css';
  * list rather than flying it out sideways, because there is no room beside a
  * rail pinned to the left edge.
  */
-const ADD_MENU: ActionMenuGroup[] = [
+export const ADD_MENU: ActionMenuGroup[] = [
   {
     items: [
       /* The one route that saves real work: the church already made a flyer,
@@ -60,13 +61,37 @@ const ADD_MENU: ActionMenuGroup[] = [
   },
 ];
 
+/*
+ * How the empty rail's own buttons reach the dialogs that live here.
+ *
+ * The scan review, the paste box and the .tri files window are mounted once,
+ * in the header, and stay mounted when the rail goes from empty to built —
+ * a programme that has just been added must not take its own review window
+ * down with it. So the empty rail's big buttons do not own a second copy;
+ * they ask this one.
+ */
+export type RunAsk = 'scan' | 'paste' | 'tri';
+const RUN_ASK_EVENT = 'trilorah-run-ask';
+export const TRI_OPEN_EVENT = 'trilorah-open-tri';
+
+export function askRun(what: RunAsk) {
+  window.dispatchEvent(what === 'tri' ? new Event(TRI_OPEN_EVENT) : new CustomEvent<RunAsk>(RUN_ASK_EVENT, { detail: what }));
+}
+
 interface Review {
   open: boolean;
   rows?: ParsedRow[];
   note?: string;
 }
 
-export function RunHeaderActions({ say }: { say?: (line: { text: string }) => void }) {
+export function RunHeaderActions({
+  say,
+  hidden = false,
+}: {
+  say?: (line: { text: string }) => void;
+  /** Keep the dialogs alive but draw no buttons — the empty rail draws its own. */
+  hidden?: boolean;
+}) {
   const run = useRun();
   const [review, setReview] = useState<Review | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -109,6 +134,18 @@ export function RunHeaderActions({ say }: { say?: (line: { text: string }) => vo
     }
   };
 
+  const scanRef = useRef(scan);
+  scanRef.current = scan;
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const what = (e as CustomEvent<RunAsk>).detail;
+      if (what === 'scan') void scanRef.current();
+      else if (what === 'paste') setReview({ open: true });
+    };
+    window.addEventListener(RUN_ASK_EVENT, onAsk);
+    return () => window.removeEventListener(RUN_ASK_EVENT, onAsk);
+  }, []);
+
   const loadDefault = () => {
     run.loadSundayTemplate();
     setConfirm(false);
@@ -117,7 +154,7 @@ export function RunHeaderActions({ say }: { say?: (line: { text: string }) => vo
 
   return (
     <div
-      className="flex items-center gap-[var(--tri-gap)]"
+      className={hidden ? 'hidden' : 'flex items-center gap-[var(--tri-gap)]'}
       style={{ '--tri-control-h': '26px', '--tri-control-pad-x': '8px' } as React.CSSProperties}
     >
       <TriPackageActions />
@@ -202,16 +239,9 @@ function ReplaceConfirm({
   onNo: () => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const r = anchor?.getBoundingClientRect();
-    const w = box.current?.offsetWidth ?? 0;
-    if (!r) return;
-    /* Hung from the button's left edge, because the rail is at the window's
-       left and a bubble right-aligned to it would hang off-screen. */
-    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top: r.bottom + 6 });
-  }, [anchor]);
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
+  const pos = usePopupPlacement(true, anchorRef, box, 'left');
 
   useEffect(() => {
     box.current?.querySelector<HTMLElement>('[data-keep] button, button[data-keep]')?.focus({ preventScroll: true });
@@ -242,6 +272,7 @@ function ReplaceConfirm({
       aria-label="replace the run of service?"
       className="tri-ctx-in fixed z-[70] w-[236px] p-3"
       style={{
+        ...popupBounds,
         left: pos?.left ?? 0,
         top: pos?.top ?? 0,
         visibility: pos ? 'visible' : 'hidden',

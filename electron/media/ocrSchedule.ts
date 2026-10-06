@@ -14,7 +14,7 @@
  * picks). `entries` and `unmatchedLines` are kept in their old shape for the
  * legacy Schedule screen: entries are the rows we could type, in order.
  */
-import { extractTextFromImage } from './ocrProcessor'
+import { extractTextAnyOrientation } from './ocrProcessor'
 import type { ScheduleEntry } from '../../shared/types'
 import { parseOrderOfService, formatClock, type ParsedRow } from '../../shared/runOfServiceParse'
 
@@ -44,6 +44,6 @@ export function parseSchedule(text: string): ParsedSchedule {
 }
 
 export async function importScheduleFromImage(imagePath: string): Promise<ParsedSchedule> {
-  const text = await extractTextFromImage(imagePath)
+  const text = await extractTextAnyOrientation(imagePath)
   return parseSchedule(text)
 }

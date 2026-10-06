@@ -1,3 +1,4 @@
+import { discoverChristianSongs } from './songDiscovery';
 /**
  * IPC for the two online lyric sources. Kept out of main.ts because neither
  * touches app state — no store, no windows — so there is nothing here that
@@ -21,6 +22,7 @@ const backstop = (err: unknown) => ({
 })
 
 export function registerLyricsIpc(ipcMain: IpcMain): void {
+  ipcMain.handle('songs-discover', (_event, payload: { query?: string } | undefined) => discoverChristianSongs(String(payload?.query ?? '')));
   ipcMain.handle('lyrics-search', (_event, payload: { query?: string } | undefined) =>
     searchLyrics(String(payload?.query ?? '')).catch(backstop)
   )

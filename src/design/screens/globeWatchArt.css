@@ -1,0 +1,50 @@
+.tri-globe-art,
+.tri-pocket-watch-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: #ededed;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tri-globe-art__turn {
+  transform-box: view-box;
+  transform-origin: 150px 132px;
+  transform: rotate(0deg);
+  transition: transform 1100ms cubic-bezier(.32, .72, 0, 1);
+}
+
+.tri-pocket-watch-art__second {
+  transform-box: view-box;
+  transform-origin: 150px 155px;
+  transform: rotate(36deg);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .tri-empty-surface[data-empty-active="true"] .tri-globe-art__turn,
+  .tri-globe-art:hover .tri-globe-art__turn {
+    transform: rotate(18deg);
+  }
+
+  .tri-pocket-watch-art__second {
+    animation: tri-pocket-watch-tick 60s steps(60, end) infinite paused;
+  }
+
+  .tri-empty-surface[data-empty-active="true"] .tri-pocket-watch-art__second,
+  .tri-pocket-watch-art:hover .tri-pocket-watch-art__second {
+    animation-play-state: running;
+  }
+}
+
+@keyframes tri-pocket-watch-tick {
+  from { transform: rotate(36deg); }
+  to { transform: rotate(396deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-globe-art__turn { transition: none; }
+  .tri-pocket-watch-art__second { animation: none; }
+}

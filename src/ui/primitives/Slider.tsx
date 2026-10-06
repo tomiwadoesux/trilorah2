@@ -82,6 +82,7 @@ type Mode = 'idle' | 'pressed' | 'dragging';
 
 interface SliderProps {
   label?: string;
+  valueSuffix?: string;
   value: number;
   onChange: (next: number) => void;
   min?: number;
@@ -102,6 +103,7 @@ interface SliderProps {
 
 export function Slider({
   label,
+  valueSuffix = '',
   value,
   onChange,
   min = 0,
@@ -232,14 +234,14 @@ export function Slider({
   const held = mode !== 'idle';
 
   return (
-    <div className={cx('w-full select-none', className)}>
+    <div className={cx('min-w-0 w-full select-none', className)}>
       {/*
         Label and value share one line above the track. The value used to sit
         inside the track, where the fill eventually slides underneath it and
         the two fight for the same pixels; up here it is always legible and
         reads as what it is — the label's answer.
       */}
-      <div className="tri-label flex items-baseline justify-between gap-4 lowercase select-none">
+      <div className="tri-label flex min-w-0 items-baseline justify-between gap-2 lowercase select-none">
         {/*
           Both inherit .tri-label's --tri-size from the row above rather than
           setting a size of their own. The label is a control label — every
@@ -247,11 +249,11 @@ export function Slider({
           answer on the same baseline, so a step between them was two sizes on
           one line.
         */}
-        <span className="font-medium" style={{ color: 'var(--tri-ink-muted)' }}>
+        <span className="min-w-0 font-medium" style={{ color: 'var(--tri-ink-muted)' }}>
           {label}
         </span>
-        <span className="tabular-nums opacity-80" style={{ color: 'var(--tri-ink-muted)' }}>
-          {value}
+        <span className="shrink-0 tabular-nums opacity-80" style={{ color: 'var(--tri-ink-muted)' }}>
+          {value}{valueSuffix}
         </span>
       </div>
 
@@ -343,6 +345,7 @@ export function Slider({
           value={value}
           disabled={disabled}
           aria-label={label}
+          aria-valuetext={valueSuffix ? `${value}${valueSuffix}` : undefined}
           onChange={(e) => onChange(Number(e.target.value))}
           // Keyboard and assistive tech only — pointer handling lives above,
           // because the native jump-to-pointer is exactly what rule 4 rejects.

@@ -19,6 +19,7 @@ export { Button } from './primitives/Button';
 export { Slider } from './primitives/Slider';
 export { DashboardButton } from './primitives/DashboardButton';
 export { DisplayFontPicker, type FontOption } from './primitives/DisplayFontPicker';
+export { TextTransitionPicker } from './primitives/TextTransitionPicker';
 export { TextPositionPicker, type TextPositionOption } from './primitives/TextPositionPicker';
 export { Select, type SelectOption, TEXT_EFFECT_OPTIONS } from './primitives/Select';
 export {
@@ -43,7 +44,7 @@ export {
 } from './primitives/SegmentedControl';
 export { ArrangeList, type ArrangeOption, type ArrangeListProps } from './primitives/ArrangeList';
 
-export { SettingsIcon, OperatorIcon, DashboardIcon, ProfileIcon, TrashIcon, ResetIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, PencilIcon, PlusIcon, ScanIcon, SparkleIcon, MediaIcon, NoteIcon, GripIcon, CheckIcon, HistoryIcon, BookIcon, MusicIcon, MicIcon, PlayIcon, PauseIcon, ImportIcon, PresentationIcon, QrIcon, GlobeIcon, LaptopIcon, CloseIcon, SplitIcon, MergeIcon, CopyIcon, ArrowIcon, ClockIcon, PrayerIcon, GiftIcon, CupIcon, PaletteIcon, ExpandIcon, MinimizeIcon, BankIcon, LinkIcon, type IconProps } from './icons';
+export { SettingsIcon, OperatorIcon, DashboardIcon, ProfileIcon, TrashIcon, ResetIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, PencilIcon, PlusIcon, ScanIcon, SparkleIcon, MediaIcon, NoteIcon, GripIcon, CheckIcon, HistoryIcon, BookIcon, MusicIcon, MicIcon, PlayIcon, PauseIcon, ImportIcon, PresentationIcon, QrIcon, GlobeIcon, LaptopIcon, CloseIcon, SplitIcon, MergeIcon, CopyIcon, ClipboardIcon, AddSongIcon, VideoPlayIcon, ArrowIcon, ClockIcon, PrayerIcon, GiftIcon, CupIcon, PaletteIcon, ExpandIcon, MinimizeIcon, BankIcon, LinkIcon, type IconProps } from './icons';
 
 export { cx, type ClassValue } from './lib/cx';
 export {

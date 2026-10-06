@@ -25,6 +25,17 @@ import { useProjector, type LiveItem, type LiveSource } from './projector';
 const HEADER_RULE = 'inset 0 -1px 0 rgb(255 255 255 / 0.09)';
 const COLUMN_RULE = 'inset -1px 0 0 rgb(255 255 255 / 0.07)';
 
+/** Keep the search row visible while unavailable, with no pointer or keyboard actions. */
+export function LibrarySearch({ disabled = false, children }: { disabled?: boolean; children: ReactNode }) {
+  return (
+    <fieldset disabled={disabled} inert={disabled || undefined} aria-label="library search" aria-disabled={disabled || undefined}
+      className="m-0 flex min-w-0 flex-1 items-center gap-[var(--tri-gap)] border-0 p-0"
+      style={{ opacity: disabled ? 0.35 : 1 }}>
+      {children}
+    </fieldset>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Layout                                                              */
 /* ------------------------------------------------------------------ */
@@ -98,22 +109,23 @@ export interface LibraryBrowserProps {
   /** Whatever control finds things in this library. */
   search: ReactNode;
   /**
-   * Draw a border around the panes. Songs is framed and scriptures is not —
-   * that is how each was drawn, and a bare list of verses reads better
-   * without a second edge inside the panel it already sits in.
+   * Optionally frame the panes when they need a separate boundary inside
+   * their parent panel.
    */
   framed?: boolean;
   /**
    * The tab's full-width action capsule, above optional search.
    */
   dock?: ReactNode;
+  /** Space between the toolbar, search field, and library contents. */
+  gap?: number;
   /** One or more LibraryPane. */
   children: ReactNode;
 }
 
-export function LibraryBrowser({ search, framed = false, dock, children }: LibraryBrowserProps) {
+export function LibraryBrowser({ search, framed = false, dock, gap, children }: LibraryBrowserProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]">
+    <div className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]" style={{ gap }}>
       {/*
         -mx-3 cancels the Panel body's padding so the row can reach both edges,
         and px-4 then puts it back on the same inset the column headers use —
@@ -126,7 +138,7 @@ export function LibraryBrowser({ search, framed = false, dock, children }: Libra
       <div className={cx(
         '-mx-3 flex shrink-0 gap-[var(--tri-gap)] px-4',
         dock ? 'flex-col items-stretch' : 'items-center justify-center',
-      )}>
+      )} style={{ gap }}>
         {dock}
         {search}
       </div>

@@ -113,7 +113,12 @@ export function PreachingTile({ className }: { className?: string }) {
 
 /** Final sentences stay in normal text flow. Only the fixed live-caption area
  * changes when ASR revises its hypothesis; no word remounts, blur or roll animations. */
-export function TranscriptFace({ spoken, asr, className, onOpen }: { spoken: Spoken; asr: string; className?: string; onOpen: () => void }) {
+export function TranscriptFace({ spoken, asr, className, onOpen, rail = false }: {
+  spoken: Spoken; asr: string; className?: string; onOpen: () => void;
+  /** Drawn inside the operator rail's catches card: no card of its own, no
+   *  footer, and the rail's margins rather than the dashboard tile's. */
+  rail?: boolean;
+}) {
   const history = useRef<HTMLDivElement>(null);
   const followHistory = useRef(true);
   const caption = useRef<HTMLDivElement>(null);
@@ -183,7 +188,7 @@ export function TranscriptFace({ spoken, asr, className, onOpen }: { spoken: Spo
     timer.current = null;
   }, []);
   return (
-    <Panel className={cx('preaching-card', className)} bodyStyle={{ padding: 0 }}>
+    <Panel bare={rail} className={cx('preaching-card', !spoken.lines.length && !spoken.partial && 'preaching-card--empty', rail && 'preaching-card--rail', className)} bodyStyle={{ padding: 0 }}>
       <div className="preaching-card__content" onWheel={(e) => {
         const el = history.current;
         if (!el || el.contains(e.target as Node)) return;
@@ -193,7 +198,6 @@ export function TranscriptFace({ spoken, asr, className, onOpen }: { spoken: Spo
         <button type="button" className="preaching-card__header" onClick={onOpen} aria-label="Open the whole preacher transcript">
           <div className="min-w-0">
             <h3 className="preaching-card__title">Preacher transcript</h3>
-            <p className="preaching-card__subtitle">what is being said, as it is said.</p>
           </div>
           <ArrowIcon size={14} />
         </button>
@@ -222,7 +226,7 @@ export function TranscriptFace({ spoken, asr, className, onOpen }: { spoken: Spo
             </div>
           </div>
         </div>
-        <button type="button" className="preaching-card__footer" onClick={onOpen}>open transcript<ArrowIcon size={14} /></button>
+        {!rail && <button type="button" className="preaching-card__footer" onClick={onOpen}>open transcript<ArrowIcon size={14} /></button>}
       </div>
     </Panel>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { dropDraft, parseDrafts, putDraft, type DraftMap, type SongDraft } from '../../../../shared/songDraft';
+import { activeDrafts, hasSongDraftContent, isNewId, dropDraft, parseDrafts, putDraft, type DraftMap, type SongDraft } from '../../../../shared/songDraft';
 
 /*
  * Where unsaved editor work is kept.
@@ -20,7 +20,7 @@ const LOCAL_KEY = 'trilorah_song_drafts';
 
 function readLocal(): DraftMap {
   try {
-    return parseDrafts(localStorage.getItem(LOCAL_KEY));
+    return activeDrafts(parseDrafts(localStorage.getItem(LOCAL_KEY)));
   } catch {
     return {};
   }
@@ -43,7 +43,7 @@ export function useSongDrafts(): SongDrafts {
     let live = true;
     void get(KEY)
       .then((raw) => {
-        if (live && !touched.current) setDrafts(parseDrafts(raw));
+        if (live && !touched.current) setDrafts(activeDrafts(parseDrafts(raw)));
       })
       .catch(() => undefined);
     return () => {
@@ -67,7 +67,7 @@ export function useSongDrafts(): SongDrafts {
   const save = useCallback(
     (id: string, draft: SongDraft) =>
       setDrafts((map) => {
-        const next = putDraft(map, id, draft);
+        const next = isNewId(id) && !hasSongDraftContent(draft) ? dropDraft(map, id) : putDraft(map, id, draft);
         persist(next);
         return next;
       }),
@@ -83,6 +83,15 @@ export function useSongDrafts(): SongDrafts {
       }),
     [persist],
   );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setDrafts(map => {
+      const next = activeDrafts(map);
+      if (next !== map) persist(next);
+      return next;
+    }), 1000);
+    return () => clearInterval(timer);
+  }, [persist]);
 
   return { drafts, save, clear };
 }

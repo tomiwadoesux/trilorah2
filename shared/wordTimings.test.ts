@@ -4,6 +4,11 @@ import { toWordTimings, playheadSeconds, wordState, activeWordIndex, type WordTi
 const W = (w: string, s: number, e: number): WordTiming => ({ w, s, e })
 
 describe('toWordTimings — Deepgram’s words, trimmed to what a phone needs', () => {
+  it('preserves valid session speaker labels and ignores invalid labels', () => {
+    expect(toWordTimings([{ word: 'hello', start: 0, end: 1, speaker: 0 }, { word: 'there', start: 1, end: 2, speaker: -1 }])).toEqual([
+      { w: 'hello', s: 0, e: 1, speaker: 0 }, { w: 'there', s: 1, e: 2 },
+    ])
+  })
   it('prefers the punctuated word, so the capital and comma survive', () => {
     expect(toWordTimings([{ word: 'lord', punctuated_word: 'Lord,', start: 1, end: 1.4 }])).toEqual([
       { w: 'Lord,', s: 1, e: 1.4 },

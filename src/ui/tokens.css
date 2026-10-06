@@ -100,7 +100,7 @@
   --tri-stroke-opacity: 0.12;
   --tri-stroke-opacity-hover: 0.04;
   --tri-ink-faint: rgb(229 243 242 / var(--tri-stroke-opacity)); /* control borders */
-  --tri-edge: #07271c; /* solid border on panels + track */
+  --tri-edge: rgb(var(--tri-teal-4) / 0.48); /* follows the selected colour theme */
 
   --tri-ink-danger: #eac7c6;
   --tri-ink-danger-hover: #fec9c9;
@@ -787,13 +787,15 @@
 :root[data-aurora="ember"] { --tri-go-1: 185 133 112; --tri-go-2: 226 184 153; --tri-go-3: 236 197 166; --tri-go-4: 201 148 149; }
 :root[data-aurora="rose"] { --tri-go-1: 187 123 157; --tri-go-2: 222 173 199; --tri-go-3: 234 191 210; --tri-go-4: 190 159 205; }
 
-/* Static light ribbons: no canvas, blur filter or continuous repaint. */
+/*
+ * The workspace ground is one plain colour: the darkest stop of whichever
+ * App colour is chosen, which is also the swatch the picker shows. The owner
+ * tried lit grounds (ribbons, then the Fold study) and settled on plain
+ * (2026-10-05). The gradient stays on the controls (.tri-surface), with its
+ * staged hover.
+ */
 .tri-workspace-aurora {
-  background:
-    radial-gradient(ellipse 72% 32% at 12% 105%, rgb(var(--tri-teal-2) / .9), transparent 75%),
-    radial-gradient(ellipse 50% 90% at 105% 20%, rgb(var(--tri-teal-4) / .75), transparent 75%),
-    radial-gradient(ellipse 80% 35% at 35% -15%, rgb(var(--tri-teal-2) / .72), transparent 80%),
-    rgb(var(--tri-teal-1));
+  background: rgb(var(--tri-teal-1));
 }
 .aurora-choice { display: flex; flex-direction: column; gap: 8px; padding: 5px 5px 9px; border: 1px solid rgb(255 255 255 / .12); border-radius: 14px; font-size: 12px; text-align: center; background: rgb(0 0 0 / .18); }
 .aurora-choice[aria-pressed="true"] { border-color: rgb(229 243 242 / .75); background: rgb(255 255 255 / .06); }

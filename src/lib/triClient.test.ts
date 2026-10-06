@@ -4,8 +4,8 @@ import type { TriSnapshot } from '../../shared/triPackage';
 
 const theme = {
   backgroundId: 'imported-background', dimness: 42, blur: 3, shadow: 77,
-  font: 'serif' as const, size: 4, verseSize: 2, refGap: 1.25,
-  layout: 'bottom-right' as const, safeMargin: 12.5,
+  font: 'serif' as const, textCase: 'none' as const, textSpacing: 'normal' as const, size: 4, verseSize: 2, refGap: 1.25,
+  layout: 'bottom-right' as const, safeMargin: 12.5, textWidth: 75,
 };
 
 describe('portable package choices', () => {
@@ -30,6 +30,33 @@ describe('portable package choices', () => {
     expect(normalizeTriTheme({ ...theme, layout: 'center' }, theme)).toEqual({ ...theme, layout: 'center' });
   });
 
+  it('keeps older themes at their safe width and bounds imported text widths', () => {
+    const { textWidth: _width, ...legacy } = theme;
+    expect(normalizeTriTheme(legacy, legacy).textWidth).toBe(75);
+    expect(normalizeTriTheme({ ...theme, textWidth: 10 }, theme).textWidth).toBe(40);
+    expect(normalizeTriTheme({ ...theme, textWidth: 200 }, theme).textWidth).toBe(100);
+  });
+
+  it('restores case without replacing the selected font, including older uppercase themes', () => {
+    expect(normalizeTriTheme({ ...theme, textCase: 'lowercase' }, theme)).toMatchObject({ font: 'serif', textCase: 'lowercase' });
+    const { textCase: _case, ...legacy } = theme;
+    expect(normalizeTriTheme({ ...legacy, font: 'uppercase' }, theme).textCase).toBe('uppercase');
+    expect(normalizeTriTheme(legacy, theme).textCase).toBe('none');
+  });
+
+  it('restores spacing and keeps older or malformed themes at normal spacing', () => {
+    expect(normalizeTriTheme({ ...theme, textSpacing: 'airy' }, theme)).toMatchObject({ font: 'serif', textSpacing: 'airy', refGap: 1.25 });
+    expect(normalizeTriTheme({ ...theme, textSpacing: 'tight' }, theme).textSpacing).toBe('tight');
+    const { textSpacing: _spacing, ...legacy } = theme;
+    expect(normalizeTriTheme(legacy, theme).textSpacing).toBe('normal');
+    expect(normalizeTriTheme({ ...theme, textSpacing: 'invalid' }, theme).textSpacing).toBe('normal');
+  });
+
+  it.each(['top-left', 'top-right', 'middle-left', 'middle-right'])('restores %s from a saved theme', (layout) => {
+    const saved = JSON.parse(JSON.stringify({ ...theme, layout }));
+    expect(normalizeTriTheme(saved, theme).layout).toBe(layout);
+  });
+
   it('bounds malformed imported controls without losing valid layout settings', () => {
     expect(normalizeTriTheme({ ...theme, font: 'invalid', dimness: 500, refGap: -10, safeMargin: NaN }, theme))
       .toEqual({ ...theme, dimness: 100, refGap: 0 });
@@ -40,10 +67,10 @@ describe('portable package choices', () => {
     const setSetting = vi.fn();
     vi.stubGlobal('localStorage', { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => data.set(key, value) });
     vi.stubGlobal('window', { dispatchEvent: vi.fn(), api: { setSetting } });
-    const display = { textTransition: 'fade', defaultTextColor: '#fffabc', overlayOpacity: 0.6, safeMargin: 15, verseLayout: 'center', refGap: 2.25 };
+    const display = { scriptureFontPreset: 'modern-sans', textTransition: 'fade', textCase: 'lowercase', textSpacing: 'airy', defaultTextColor: '#fffabc', overlayOpacity: 0.6, safeMargin: 15, textWidth: 62, verseLayout: 'center', refGap: 2.25 };
     applyTriSnapshot({ categories: { themes: [{ id: 'display', label: 'Appearance', data: display }] } }, false);
     expect(readTriLocal(TRI_DISPLAY_KEY, {})).toEqual(display);
-    expect(readTriLocal(TRI_THEME_KEY, {})).toMatchObject({ ...theme, dimness: 60, safeMargin: 15, layout: 'center', refGap: 2.25 });
+    expect(readTriLocal(TRI_THEME_KEY, {})).toMatchObject({ ...theme, font: 'default', textCase: 'lowercase', textSpacing: 'airy', dimness: 60, safeMargin: 15, textWidth: 62, layout: 'center', refGap: 2.25 });
     expect(setSetting).not.toHaveBeenCalled();
   });
 });

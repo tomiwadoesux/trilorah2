@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Button, PlusIcon, ProfileIcon, ChevronRightIcon, SearchField, SegmentedControl, cx, surface } from '../../../ui';
+import { Button, PlusIcon, ChevronRightIcon, SearchField, SegmentedControl, cx, surface } from '../../../ui';
 import { Panel, Pill } from '../parts';
+import { EmptyMark } from '../emptyArt';
+import { PreacherLecternArt } from '../PreacherLecternArt';
 import { FIELD } from '../settingsRows';
 import { FlightPopup } from '../songs/FlightPopup';
 
@@ -194,17 +196,18 @@ function Face({
   return (
     <Panel
       title="preachers"
-      icon={<ProfileIcon size={13} />}
-      blurb="who is preaching today, and how well the app knows them."
+      empty={preachers.length === 0}
       onOpen={onOpen}
       className="min-h-0 flex-1"
-      right={
+      right={preachers.length > 0 ? (
         <span className="text-[length:var(--tri-size-eyebrow)] lowercase tabular-nums" style={{ color: MUTED }}>
           {preachers.length} {preachers.length === 1 ? 'preacher' : 'preachers'}
         </span>
-      }
+      ) : undefined}
     >
-      <div
+      {preachers.length === 0 ? <EmptyMark w={170} h={170} plain art={<PreacherLecternArt />}
+        line="who’s bringing the message?"
+        below={<div className="mt-3"><Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} /></div>} /> : <div
         role="button"
         tabIndex={0}
         onClick={onOpen}
@@ -261,7 +264,7 @@ function Face({
             </span>
           </div>
         </div>
-      </div>
+      </div>}
     </Panel>
   );
 }
@@ -453,17 +456,16 @@ export function PreacherList({
           ))}
         </ul>
       ) : (
-        <div className="flex flex-col items-start gap-2 px-1 py-6">
-          <p className="text-[length:var(--tri-size)] lowercase" style={{ color: MUTED }}>
-            {q ? <>nobody called “{query.trim()}” yet</> : 'no preachers yet'}
-          </p>
-          {!adding && (
+        <div className="min-h-[300px] py-4">
+          <EmptyMark w={200} h={190} plain art={<PreacherLecternArt />}
+            line={q ? `nobody called “${query.trim()}” yet` : 'who’s bringing the message?'}
+            below={!adding && <div className="mt-3">
             <Button
               label={q ? `add ${cleanName(query)}` : 'add the first one'}
               icon={<PlusIcon size={11} />}
               onClick={() => setAdding(true)}
             />
-          )}
+            </div>} />
         </div>
       )}
 

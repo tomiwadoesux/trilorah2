@@ -19,7 +19,10 @@ body {
 
 .output-stage {
   position: absolute;
-  inset: var(--safe-margin, 5%);
+  top: var(--safe-margin, 10%);
+  bottom: var(--safe-margin, 10%);
+  left: var(--text-left, var(--safe-margin, 10%));
+  width: var(--text-width, 80%);
   display: flex;
   flex-direction: column;
   align-items: var(--stage-align, center);
@@ -48,6 +51,7 @@ body {
   flex-direction: column;
   align-items: inherit;
   max-width: 100%;
+  width: 100%;
   animation-duration: var(--tx-ms, 450ms);
   animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   animation-fill-mode: both;
@@ -60,20 +64,25 @@ body {
 .tx-cut .output-enter { animation: none; }
 
 @keyframes tx-fade { from { opacity: 0; } }
-@keyframes tx-rise { from { opacity: 0; transform: translateY(1.6vh); } }
-@keyframes tx-blur { from { opacity: 0; filter: blur(14px); } }
-@keyframes tx-zoom { from { opacity: 0; transform: scale(0.965); } }
+@keyframes tx-rise { from { opacity: 0; transform: translateY(.22em); } }
+@keyframes tx-blur { from { opacity: 0; filter: blur(.2em); } }
+@keyframes tx-zoom { from { opacity: 0; transform: scale(.92); } }
 
 @media (prefers-reduced-motion: reduce) {
   .output-enter { animation-name: tx-fade !important; }
 }
 
 /* Theme variables come from the Themes tab (set inline by output.tsx). */
+.output-enter {
+  text-transform: var(--text-case, none);
+}
+
 .output-verse {
   font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
   font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--verse-scale, 1));
   font-weight: var(--verse-weight, 600);
-  line-height: 1.35;
+  line-height: calc(1.35 + var(--text-line-spacing, 0));
+  letter-spacing: var(--text-letter-spacing, 0em);
   text-wrap: balance;
   color: var(--verse-color, #ffffff);
   text-shadow:
@@ -114,7 +123,7 @@ body {
    stage's own fade applies — the block is always `visible`, and it comes and
    goes by being mounted, so a song never has to wait for a verse to fade. */
 .output-song .output-verse {
-  line-height: 1.25;
+  line-height: calc(1.25 + var(--text-line-spacing, 0));
   margin: 0.15em 0;
 }
 .output-song .output-ref {
@@ -207,6 +216,7 @@ body {
    vMix can key it over the camera. Left-aligned, tighter, smaller. */
 .role-stream.layout-lower-third .output-stage {
   inset: auto 0 0 0;
+  width: auto;
   height: auto;
   align-items: flex-start;
   justify-content: flex-end;
@@ -217,7 +227,7 @@ body {
 
 .role-stream.layout-lower-third .output-verse {
   font-size: calc(clamp(1.3rem, 2.6vw, 3.2vw) * var(--verse-scale, 1));
-  line-height: 1.3;
+  line-height: calc(1.3 + var(--text-line-spacing, 0));
   max-width: 80vw;
 }
 
@@ -524,4 +534,3 @@ body {
   font-size: clamp(1rem, 2vw, 2.6vw);
   color: rgba(255, 255, 255, 0.65);
 }
-
