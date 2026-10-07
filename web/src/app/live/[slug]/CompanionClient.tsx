@@ -14,6 +14,7 @@ import GiveTab from "./components/GiveTab";
 import SegmentBadge from "./components/SegmentBadge";
 import "./companion.css";
 import ReadingOptions, { type ReadingAppearance } from './components/ReadingOptions';
+import { useCompanionFeed } from "./useCompanionFeed";
 
 type Tab = "now" | "verses" | "notes" | "give";
 
@@ -46,15 +47,20 @@ export default function CompanionClient({
 }) {
   const [tab, setTab] = useState<Tab>("now");
   const [appearance,setAppearance]=useState<ReadingAppearance>({image:'',size:21,aurora:'fern'});
-  const [service, setService] = useState<Service | null>(initialService);
-  const [transcript, setTranscript] = useState<any[]>([]);
-  const [verses, setVerses] = useState<any[]>([]);
-  const [currentSegment, setCurrentSegment] = useState<string>("unknown");
-  const [notes, setNotes] = useState<any | null>(null);
   const supabase = useMemo(() => createClient(), []);
   const fingerprint = useFingerprint();
+  // Transcript, verses, notes, the segment and the service itself — kept
+  // current through realtime, with catch-up and polling for when it is not.
+  const {
+    service,
+    isLive,
+    transcript,
+    verses,
+    notes,
+    segment: currentSegment,
+    health,
+  } = useCompanionFeed(supabase, account.id, initialService);
 
-  const isLive = service && !service.ended_at;
   /** Identity of the service, stable across row updates to it. */
   const serviceId = service?.id ?? null;
 
@@ -124,154 +130,6 @@ export default function CompanionClient({
     };
   }, [serviceId, fingerprint, account.id, supabase]);
 
-  // Initial backfill — last 30s of transcript + already-pushed verses + notes
-  useEffect(() => {
-    if (!serviceId) return;
-    let cancelled = false;
-    (async () => {
-      // Wide enough to cover the deliberate lag. The transcript shows the room
-      // as it was ~24s ago (stream delay + hold), so a 30s backfill left a
-      // phone that had just been opened with nothing it was allowed to draw
-      // yet. Three minutes gives the highlight somewhere to start and the
-      // viewer a little to scroll back through.
-      //
-      // Bounded by row count as well as by time: a recogniser that reconnects
-      // can flush a burst of chunks with near-identical timestamps, and a
-      // congregant's phone should not take a thousand rows to the face for it.
-      const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-      const [tcRes, vRes, nRes, segRes] = await Promise.all([
-        supabase
-          .from("transcript_chunks")
-          .select("*")
-          .eq("service_id", serviceId)
-          .gte("timestamp", since)
-          .order("timestamp", { ascending: false })
-          .limit(120),
-        supabase
-          .from("detected_verses")
-          .select("*")
-          .eq("service_id", serviceId)
-          .eq("pushed_to_live", true)
-          .order("pushed_at", { ascending: false }),
-        supabase
-          .from("sermon_notes")
-          .select("*")
-          .eq("service_id", serviceId)
-          .maybeSingle(),
-        supabase
-          .from("segments")
-          .select("type")
-          .eq("service_id", serviceId)
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      if (cancelled) return;
-      // Fetched newest-first so the limit keeps the RECENT rows; stored oldest
-      // first, which is the order everything downstream expects to read.
-      if (tcRes.data) setTranscript([...tcRes.data].reverse());
-      if (vRes.data) setVerses(vRes.data);
-      if (nRes.data) setNotes(nRes.data);
-      if (segRes.data) setCurrentSegment(segRes.data.type);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [serviceId, supabase]);
-
-  // Realtime subscription.
-  //
-  // Keyed on the service ID and liveness ONLY, never on the service object.
-  // The `services` UPDATE handler below calls setService with a fresh object,
-  // so depending on `service` meant every row change to the service tore the
-  // channel down and built a new one — losing whatever was published during
-  // the gap — and re-ran the backfill effect for good measure.
-  useEffect(() => {
-    if (!serviceId || !isLive) return;
-    const channel = supabase
-      .channel(`service-${serviceId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "transcript_chunks",
-          filter: `service_id=eq.${serviceId}`,
-        },
-        (payload) => {
-          setTranscript((prev) => {
-            const next = [...prev, payload.new];
-            return next.slice(-200); // cap memory
-          });
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "segments",
-          filter: `service_id=eq.${serviceId}`,
-        },
-        (payload) => setCurrentSegment(payload.new.type),
-      )
-      .on(
-        "postgres_changes",
-        {
-          // INSERT as well as UPDATE. A verse the operator pushes straight to
-          // the wall is written once, already live (pushDetectedVerse with
-          // pushedToLive true) and never updated again — listening only for
-          // UPDATE meant those verses reached the phone solely via the backfill
-          // on the next reload, which is exactly the "I have to refresh to see
-          // it" symptom. Verses staged to preview first still arrive as the
-          // UPDATE that markVersePushed sends.
-          event: "*",
-          schema: "public",
-          table: "detected_verses",
-          filter: `service_id=eq.${serviceId}`,
-        },
-        (payload) => {
-          const row = payload.new as any;
-          if (!row || !row.pushed_to_live) return;
-          setVerses((prev) => {
-            // Replace rather than bail: the UPDATE that marks a staged verse
-            // live carries pushed_at, and the row may already be here from the
-            // INSERT that created it in the un-pushed state.
-            const i = prev.findIndex((v) => v.id === row.id);
-            if (i === -1) return [row, ...prev];
-            const next = [...prev];
-            next[i] = row;
-            return next;
-          });
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "sermon_notes",
-          filter: `service_id=eq.${serviceId}`,
-        },
-        (payload) => setNotes(payload.new),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "services",
-          filter: `id=eq.${serviceId}`,
-        },
-        (payload) => setService(payload.new as Service),
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [serviceId, isLive, supabase]);
-
   if (!service) {
     return (
       <main className="companion-shell companion-waiting min-h-screen flex flex-col items-center justify-center px-6 text-center">
@@ -301,8 +159,18 @@ export default function CompanionClient({
           </div>
           <div className="flex items-center gap-2">
             {isLive && (
-              <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-brand">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+              /* A hollow dot while the page is polling instead of streaming:
+                 still live, just a few seconds slower to show new words. */
+              <span
+                role="status"
+                title={health === "live" ? "Live" : "Reconnecting — new words may take a few seconds"}
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-brand"
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
+                    health === "live" ? "bg-brand" : "bg-transparent ring-1 ring-inset ring-current"
+                  }`}
+                />
                 Live
               </span>
             )}
