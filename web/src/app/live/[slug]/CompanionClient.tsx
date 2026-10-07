@@ -15,6 +15,7 @@ import SegmentBadge from "./components/SegmentBadge";
 import "./companion.css";
 import ReadingOptions, { type ReadingAppearance } from './components/ReadingOptions';
 import { useCompanionFeed } from "./useCompanionFeed";
+import BrandMark from "./components/BrandMark";
 
 type Tab = "now" | "verses" | "notes" | "give";
 
@@ -133,10 +134,10 @@ export default function CompanionClient({
   if (!service) {
     return (
       <main className="companion-shell companion-waiting min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <span className="companion-mark" aria-hidden="true">t</span>
-        <h1 className="text-xl font-semibold mb-1">{account.name}</h1>
+        <BrandMark className="companion-mark" />
         <p className="companion-eyebrow">Your church, wherever you are</p>
-        <p className="text-gray-500 text-sm">The live transcript and scriptures will appear here when the service starts.</p>
+        <h1>{account.name}</h1>
+        <p>The live transcript and scriptures will appear here when the service starts.</p>
       </main>
     );
   }
@@ -148,7 +149,7 @@ export default function CompanionClient({
     <main data-aurora={appearance.aurora} className={`companion-shell flex flex-col overflow-hidden ${appearance.image ? 'companion-photo' : ''}`} style={{'--reading-size':`${appearance.size}px`,...(appearance.image?{backgroundImage:`linear-gradient(rgba(9,11,12,.48),rgba(9,11,12,.48)),url("${appearance.image}")`}:{})} as CSSProperties}>
       {/* Header */}
       <header className="companion-header">
-        <div className="companion-brand"><span className="companion-mark" aria-hidden="true">t</span><span>trilorah</span><span className="companion-brand-note">Follow Along</span></div>
+        <div className="companion-brand"><BrandMark className="companion-mark" /><span>trilorah</span><span className="companion-brand-note">Follow along</span></div>
         <div className="companion-church">
         <div className="flex items-center justify-between">
           <div>
@@ -159,18 +160,15 @@ export default function CompanionClient({
           </div>
           <div className="flex items-center gap-2">
             {isLive && (
-              /* A hollow dot while the page is polling instead of streaming:
-                 still live, just a few seconds slower to show new words. */
+              /* Gold, as live is everywhere in Trilorah. Hollow while the
+                 page is polling instead of streaming: still live, just a few
+                 seconds slower to show new words. */
               <span
                 role="status"
+                data-health={health}
                 title={health === "live" ? "Live" : "Reconnecting — new words may take a few seconds"}
-                className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-brand"
+                className="companion-live"
               >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                    health === "live" ? "bg-brand" : "bg-transparent ring-1 ring-inset ring-current"
-                  }`}
-                />
                 Live
               </span>
             )}

@@ -48,7 +48,7 @@ export default function ReadingOptions({churchId,onChange}:{churchId:string;onCh
       <fieldset className="reading-colours"><legend>App colour</legend>{['fern','iris','tide','ember','rose'].map(colour=><button key={colour} type="button" data-aurora={colour} aria-pressed={value.aurora===colour} onClick={()=>update({...value,aurora:colour})}>{colour}</button>)}</fieldset>
       <p>Background on this phone</p><small>Your image stays in this browser. A gentle dark overlay always keeps the words readable.</small>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e=>void choose(e.target.files?.[0])}/>
-      <div className="reading-options-actions"><button disabled={loading} onClick={()=>input.current?.click()}>{loading?'Opening image…':'Choose image'}</button><button disabled={!value.image||loading} onClick={()=>update({...value,image:''})}>Use aurora</button></div>
+      <div className="reading-options-actions"><button disabled={loading} onClick={()=>input.current?.click()}>{loading?'Opening image…':'Choose image'}</button><button disabled={!value.image||loading} onClick={()=>update({...value,image:''})}>Remove image</button></div>
       {error&&<p role="alert">{error}</p>}
     </section>}
   </div>;

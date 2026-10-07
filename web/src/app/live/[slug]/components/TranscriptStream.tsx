@@ -399,7 +399,7 @@ function TranscriptBody({
       {!following && (
         <button
           onClick={jumpToLive}
-          className="absolute left-1/2 -translate-x-1/2 bottom-3 z-10 flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-brand text-white text-xs font-semibold shadow-lg shadow-black/40 transition-opacity duration-300"
+          className="companion-go absolute left-1/2 -translate-x-1/2 bottom-3 z-10 flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px]"
         >
           <ArrowDown size={13} />
           Jump to live
@@ -504,10 +504,7 @@ function TranscriptLine({
 
 function VersePill({ verse }: { verse: Verse }) {
   return (
-    <span className="verse-glow inline-flex items-center gap-1.5 mx-1 px-2.5 py-0.5 rounded-full bg-brand/15 border border-brand/40 text-brand text-[11px] font-semibold align-middle whitespace-nowrap">
-      <span className="w-1.5 h-1.5 rounded-full bg-brand" />
-      {verse.ref}
-    </span>
+    <span className="companion-verse-pill">{verse.ref}</span>
   );
 }
 
