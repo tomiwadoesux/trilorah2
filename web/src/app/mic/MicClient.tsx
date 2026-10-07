@@ -54,6 +54,10 @@ export default function MicClient() {
   const [muted, setMuted] = useState(false);
   const [level, setLevel] = useState(0);
   const [secure, setSecure] = useState(true);
+  /* What the laptop hears, as it hears it, and the verse it caught. */
+  const [lines, setLines] = useState<string[]>([]);
+  const [partial, setPartial] = useState("");
+  const [verse, setVerse] = useState<{ ref: string; live: boolean } | null>(null);
 
   const phoneId = useRef("");
   const channel = useRef<RealtimeChannel | null>(null);
@@ -90,6 +94,9 @@ export default function MicClient() {
     stopMeter();
     local.current?.getTracks().forEach((t) => t.stop());
     local.current = null;
+    setLines([]);
+    setPartial("");
+    setVerse(null);
     if (pc.current) { pc.current.onicecandidate = null; pc.current.onconnectionstatechange = null; pc.current.close(); pc.current = null; }
     void wake.current?.release().catch(() => undefined);
     wake.current = null;
@@ -135,6 +142,20 @@ export default function MicClient() {
     const peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
     pc.current = peer;
     stream.getTracks().forEach((t) => peer.addTrack(t, stream));
+    // The words come back down the same call. Opened here so the offer
+    // carries it; the laptop only has to listen.
+    const channel = peer.createDataChannel("words", { ordered: true });
+    channel.onmessage = (e) => {
+      try {
+        const m = JSON.parse(String(e.data)) as { kind: string; text?: string; final?: boolean; ref?: string | null; live?: boolean };
+        if (m.kind === "line" && typeof m.text === "string") {
+          if (m.final) { setLines((prev) => [...prev, m.text!].slice(-4)); setPartial(""); }
+          else setPartial(m.text);
+        } else if (m.kind === "verse") {
+          setVerse(m.ref ? { ref: m.ref, live: !!m.live } : null);
+        }
+      } catch { /* not ours */ }
+    };
     peer.onicecandidate = (e) => {
       if (e.candidate) void send({ kind: "ice", from: "phone", candidate: e.candidate.toJSON() as { candidate: string; sdpMid?: string | null; sdpMLineIndex?: number | null } });
     };
@@ -274,6 +295,16 @@ export default function MicClient() {
         </div>
         <h1 className="mic-title" role="status" aria-live="polite">{title}</h1>
         <p className="mic-body">{body}</p>
+        {live && (
+          <div className="mic-heard" aria-live="off">
+            {verse && <span className={`mic-verse${verse.live ? " is-live" : ""}`}>{verse.live ? "on screen" : "caught"} · {verse.ref}</span>}
+            <div className="mic-lines">
+              {lines.length === 0 && !partial && <p className="mic-line is-empty">what you say shows here as the laptop hears it</p>}
+              {lines.slice(-3).map((l, i, all) => <p key={`${i}-${l.slice(0, 12)}`} className="mic-line" style={{ opacity: 0.35 + ((i + 1) / all.length) * 0.65 }}>{l}</p>)}
+              {partial && <p className="mic-line is-partial">{partial}</p>}
+            </div>
+          </div>
+        )}
       </section>
 
       <footer className="mic-foot">

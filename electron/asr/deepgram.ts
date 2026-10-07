@@ -31,6 +31,28 @@ export function setDeepgramKeywords(list: string[]): void {
   }
 }
 
+/*
+ * The socket's own lifecycle, apart from the microphone's.
+ *
+ * Deepgram closes a live socket on its own: after about ten seconds without
+ * audio or a KeepAlive, and on any network hiccup. The app used to log the
+ * close and carry on: the mic kept feeding a dead socket, the pill still
+ * said "listening", and the transcript simply stopped — which is exactly
+ * the mid-service silence the owner reported. Now the socket reconnects by
+ * itself while the microphone keeps running, and silence is kept alive.
+ */
+let stopping = false
+let everOpened = false
+let reconnectTimer: NodeJS.Timeout | null = null
+let keepAliveTimer: NodeJS.Timeout | null = null
+let attempt = 0
+let lastAudioAt = 0
+let currentOnText: ((text: string, isFinal: boolean, display?: string, words?: WordTiming[] | null) => void) | null = null
+let currentOnError: ((error: Error) => void) | undefined
+const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 8000]
+const MAX_ATTEMPTS = 12
+const KEEPALIVE_MS = 5000
+
 export function startDeepgram(
   onText: (text: string, isFinal: boolean, display?: string, words?: WordTiming[] | null) => void,
   onError?: (error: Error) => void,
@@ -39,6 +61,11 @@ export function startDeepgram(
 ): void {
   currentDeviceLabel = deviceLabel
   currentOnStatus = onStatus
+  currentOnText = onText
+  currentOnError = onError
+  stopping = false
+  everOpened = false
+  attempt = 0
   const apiKey = process.env.DEEPGRAM_API_KEY
   if (!apiKey) {
     console.error('❌ DEEPGRAM_API_KEY not set in environment')
@@ -46,8 +73,12 @@ export function startDeepgram(
     return
   }
   console.log('🎤 Starting Deepgram ASR...')
+  openConnection(apiKey)
+}
+
+function openConnection(apiKey: string): void {
   const deepgram = createClient(apiKey)
-  deepgramConnection = deepgram.listen.live({
+  const connection = deepgram.listen.live({
     model: 'nova-2',
     language: getSetting('asrLanguage') || 'en-US',
     smart_format: true,
@@ -71,16 +102,24 @@ export function startDeepgram(
     channels: 1,
     ...(deepgramKeywordList.length ? { keywords: deepgramKeywordList } : {})
   })
-  deepgramConnection.on(LiveTranscriptionEvents.Open, () => {
-    console.log('✅ Deepgram connection opened')
-    startMicrophoneCapture()
+  deepgramConnection = connection
+  connection.on(LiveTranscriptionEvents.Open, () => {
+    if (deepgramConnection !== connection) return
+    console.log(everOpened ? '✅ Deepgram connection reopened' : '✅ Deepgram connection opened')
+    attempt = 0
+    // The microphone is opened once; a reconnected socket just takes over
+    // the audio that is already flowing.
+    if (!everOpened) startMicrophoneCapture()
+    everOpened = true
+    startKeepAlive()
     // Only now is the app genuinely listening: the socket is up and the mic
     // has been asked for. Saying so any earlier — as the caller used to, the
     // instant start() returned — left the pill reading 'Listening...' through
     // a failed connection, with no audio behind it.
     currentOnStatus?.('Listening...')
   })
-  deepgramConnection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+  connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
+    if (deepgramConnection !== connection) return
     const alternative = data.channel?.alternatives?.[0]
     const transcript = alternative?.transcript
     if (!transcript) return
@@ -89,15 +128,59 @@ export function startDeepgram(
     // Finals only: a partial's words are re-sent, re-timed and sometimes
     // re-worded on the next packet, and a phone highlighting those would
     // stutter backwards mid-sentence.
-    onText(transcript.toLowerCase(), isFinal, transcript, isFinal ? toWordTimings(alternative?.words) : null)
+    currentOnText?.(transcript.toLowerCase(), isFinal, transcript, isFinal ? toWordTimings(alternative?.words) : null)
   })
-  deepgramConnection.on(LiveTranscriptionEvents.Error, (error: any) => {
+  connection.on(LiveTranscriptionEvents.Error, (error: any) => {
+    if (deepgramConnection !== connection) return
     console.error('❌ Deepgram error:', error)
-    onError?.(error)
+    // Before the first open an error is the real answer (a bad key, no
+    // network); after it, the close that follows is what we act on.
+    if (!everOpened) {
+      stopping = true
+      currentOnError?.(error instanceof Error ? error : new Error(String(error?.message ?? error)))
+    }
   })
-  deepgramConnection.on(LiveTranscriptionEvents.Close, () => {
+  connection.on(LiveTranscriptionEvents.Close, () => {
+    if (deepgramConnection !== connection) return
     console.log('🔌 Deepgram connection closed')
+    stopKeepAlive()
+    if (stopping || !everOpened) return
+    scheduleReconnect(apiKey)
   })
+}
+
+function scheduleReconnect(apiKey: string): void {
+  if (reconnectTimer) return
+  if (attempt >= MAX_ATTEMPTS) {
+    stopping = true
+    currentOnError?.(new Error('lost the connection to Deepgram and could not get it back — check the internet, then press start listening'))
+    return
+  }
+  const delay = RECONNECT_DELAYS_MS[Math.min(attempt, RECONNECT_DELAYS_MS.length - 1)]
+  attempt++
+  console.log(`🔁 Deepgram reconnect ${attempt}/${MAX_ATTEMPTS} in ${delay}ms`)
+  currentOnStatus?.('Connecting...')
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null
+    if (stopping) return
+    openConnection(apiKey)
+  }, delay)
+}
+
+/* Deepgram drops a socket that hears nothing for ~10s. A church is quiet
+   between songs and during prayer, so the socket is told we are still here. */
+function startKeepAlive(): void {
+  stopKeepAlive()
+  keepAliveTimer = setInterval(() => {
+    const c = deepgramConnection
+    if (!c || c.getReadyState() !== 1) return
+    if (Date.now() - lastAudioAt < KEEPALIVE_MS) return
+    try { c.keepAlive() } catch { /* the close handler takes it from here */ }
+  }, KEEPALIVE_MS)
+}
+function stopKeepAlive(): void {
+  if (keepAliveTimer) clearInterval(keepAliveTimer)
+  keepAliveTimer = null
 }
 
 function startMicrophoneCapture(): void {
@@ -111,6 +194,7 @@ function startMicrophoneCapture(): void {
     setAudioSink((chunk) => {
       if (deepgramConnection?.getReadyState() === 1) {
         deepgramConnection.send(chunk)
+        lastAudioAt = Date.now()
       }
     })
     emitMicRequest({ sampleRate: SAMPLE_RATE, deviceLabel: currentDeviceLabel })
@@ -146,6 +230,7 @@ function startMicrophoneCapture(): void {
   micProcess.stdout?.on('data', (chunk: Buffer) => {
     if (deepgramConnection?.getReadyState() === 1) {
       deepgramConnection.send(chunk)
+      lastAudioAt = Date.now()
       bytesSent += chunk.length
       if (bytesSent % (SAMPLE_RATE * 2) < chunk.length) {
         console.log(
@@ -170,6 +255,10 @@ function startMicrophoneCapture(): void {
 }
 
 export function stopDeepgram(): void {
+  stopping = true
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  reconnectTimer = null
+  stopKeepAlive()
   if (micProcess) {
     micProcess.kill()
     micProcess = null

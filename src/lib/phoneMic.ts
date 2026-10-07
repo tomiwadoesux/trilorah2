@@ -21,6 +21,32 @@ let stream: MediaStream | null = null;
 let sink: HTMLAudioElement | null = null;
 let meter: { ctx: AudioContext; timer: number } | null = null;
 let queued: RTCIceCandidateInit[] = [];
+/* The phone opens a "words" channel on the same call; the laptop sends what
+   it hears and what it caught down it — no cloud, so it lands as it is said. */
+let words: RTCDataChannel | null = null;
+let offWords: (() => void)[] = [];
+
+const refOf = (d: { book: string; chapter: number; verse: number | null; endVerse?: number | null }) =>
+  `${d.book} ${d.chapter}${d.verse ? `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `–${d.endVerse}` : ''}` : ''}`;
+
+function sendWords(message: unknown): void {
+  if (words?.readyState === 'open') {
+    try { words.send(JSON.stringify(message)); } catch { /* the channel is closing */ }
+  }
+}
+
+function watchWords(channel: RTCDataChannel): void {
+  const api = window.api;
+  words = channel;
+  offWords.forEach((off) => off());
+  offWords = [
+    api?.onTranscriptLine?.((line) => sendWords({ kind: 'line', text: line.text, final: line.isFinal })) ?? (() => undefined),
+    api?.onVersePreview?.((d) => sendWords({ kind: 'verse', ref: refOf(d), live: false })) ?? (() => undefined),
+    api?.onVerseDetected?.((d) => sendWords({ kind: 'verse', ref: refOf(d), live: true })) ?? (() => undefined),
+    api?.onShowCleanBackground?.(() => sendWords({ kind: 'verse', ref: null, live: true })) ?? (() => undefined),
+  ];
+  channel.onclose = () => { if (words === channel) { words = null; offWords.forEach((off) => off()); offWords = []; } };
+}
 
 /** The phone's audio, for micCapture. Null until the call is up. */
 export function phoneMicStream(): MediaStream | null {
@@ -33,7 +59,10 @@ function closePeer(): void {
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
   queued = [];
-  if (pc) { pc.onicecandidate = null; pc.ontrack = null; pc.onconnectionstatechange = null; pc.close(); pc = null; }
+  offWords.forEach((off) => off());
+  offWords = [];
+  words = null;
+  if (pc) { pc.onicecandidate = null; pc.ontrack = null; pc.ondatachannel = null; pc.onconnectionstatechange = null; pc.close(); pc = null; }
   usePhoneMicStore.setState({ level: 0 });
 }
 
@@ -77,6 +106,7 @@ async function answer(offer: Extract<PhoneMicMessage, { kind: 'offer' }>): Promi
     void sink.play().catch(() => undefined);
     startMeter(stream);
   };
+  peer.ondatachannel = (e) => { if (pc === peer && e.channel.label === 'words') watchWords(e.channel); };
   peer.onconnectionstatechange = () => {
     if (pc !== peer) return;
     if (peer.connectionState === 'connected') api.phoneMicPeerState('connected');
