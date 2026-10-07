@@ -83,13 +83,26 @@ describe.skipIf(!installed)('AllusionFinder with the bundled models', () => {
     finder.install(semantic, await loadJudge(path.join(data, 'ms-marco-MiniLM-L-6-v2')))
   })
 
-  it('uses the remembered name for a later "she" sentence', async () => {
-    const said = 'she said do not call me pleasant anymore call me bitter because I went out full and came back empty'
+  it('uses the remembered name for a later "he" sentence', async () => {
+    /* Without the name the judge rules the guesses out and the button finds
+       nothing; with it, the flood. (Ruth used to be the example here, but
+       since the judge gates the button it finds Ruth 1 even unnamed.) */
+    const said = 'he kept building for years while people laughed and then the rain came'
     finder.names.reset()
-    expect((await finder.find(words(said)))[0]).not.toMatchObject({ book: 'Ruth' })
-    finder.names.note('look at Naomi')
-    expect((await finder.find(words(said)))[0]).toMatchObject({ book: 'Ruth', chapter: 1 })
+    expect((await finder.find(words(said))).some(hit => hit.book === 'Genesis' && (hit.chapter === 6 || hit.chapter === 7))).toBe(false)
+    finder.names.note('Think about Noah')
+    expect((await finder.find(words(said)))[0]).toMatchObject({ book: 'Genesis', chapter: 7 })
     finder.names.reset()
+  })
+
+  it('answers the button with four at most, and with nothing for ordinary talk', async () => {
+    finder.names.reset()
+    finder.sermon.reset()
+    const found = await finder.find(words('Abraham took his only son up the mountain to offer him and God provided a ram'))
+    expect(found.length).toBeGreaterThan(0)
+    expect(found.length).toBeLessThanOrEqual(4)
+    expect(found[0]).toMatchObject({ book: 'Genesis', chapter: 22 })
+    expect(await finder.find(words('the car park behind the church will be closed next sunday for repairs'))).toEqual([])
   })
 
   it('reads an unclear sentence in the light of the passage on the wall', async () => {
@@ -108,6 +121,8 @@ describe.skipIf(!installed)('AllusionFinder with the bundled models', () => {
       'every giant in your life is coming down this year',
       'he called me last night and said pastor I do not know what to do',
       'the car park behind the church will be closed next sunday for repairs',
+      'Let us pray. Father, thank you for your word. In Jesus name, amen.',
+      'Father we thank you for this morning and for every family here',
     ]) expect(await finder.suggest(said)).toBeNull()
   })
 })

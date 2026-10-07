@@ -11,8 +11,9 @@
 
 import { startDeepgram, stopDeepgram } from './deepgram'
 import { startWhisperLocal, stopWhisperLocal, findWhisperModel } from './whisperLocal'
+import { startPracticeSermon, stopPracticeSermon } from './practiceSermon'
 
-export type ASRProviderId = 'deepgram' | 'whisper-local'
+export type ASRProviderId = 'deepgram' | 'whisper-local' | 'practice'
 
 import type { WordTiming } from '../../shared/wordTimings'
 
@@ -43,6 +44,14 @@ const whisperProvider: ASRProvider = {
   id: 'whisper-local',
   start: startWhisperLocal,
   stop: stopWhisperLocal
+}
+
+/** Not a recogniser: the scripted practice sermon (see practiceSermon.ts),
+    chosen by picking PRACTICE_SERMON_DEVICE as the audio input. */
+export const practiceSermonProvider: ASRProvider = {
+  id: 'practice',
+  start: startPracticeSermon,
+  stop: stopPracticeSermon
 }
 
 export function resolveASRProvider(requested: string | undefined): ASRProvider {

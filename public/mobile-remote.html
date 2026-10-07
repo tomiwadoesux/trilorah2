@@ -1,121 +1,1705 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#090b0c"><title>Trilorah · Mobile remote</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#020608">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trilorah">
+<title>Trilorah · Remote</title>
 <style>
-:root{color-scheme:dark;--bg:#090b0c;--ink:#e5f3f2;--muted:#99acaa;--line:rgba(229,243,242,.12);--mint:#8fd3c0;--aurora-a:24 70 55;--aurora-b:44 55 71;--surface:radial-gradient(ellipse at 8% 110%,rgb(var(--aurora-a)/.7),transparent 70%),radial-gradient(ellipse at 95% -10%,rgb(var(--aurora-b)/.7),#101819 85%);--go:radial-gradient(ellipse at 0 100%,#b3e2c8,transparent 80%),radial-gradient(ellipse at 100% 0,#77bbc9,#8fd3c0);--ease:cubic-bezier(.23,1,.32,1);--press:100ms;--release:160ms;--keyboard-inset:0px;background:var(--bg);color:var(--ink);font-family:'Segoe UI',Arial,sans-serif;font-size:15px}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:'Segoe UI',Arial,sans-serif;-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:46px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(48deg,#161a1b,#202728);color:var(--ink);padding:12px 16px;transition:transform var(--release) var(--ease),opacity 120ms var(--ease)}button:active:not(:disabled){transform:scale(.97);transition-duration:var(--press)}button:disabled{opacity:.38;cursor:default}button.primary{background:var(--go);color:#06201a;border-color:rgba(156,222,201,.45);font-weight:650;box-shadow:inset 0 1px 0 #ffffff30,0 4px 16px #0004}button.danger{color:#eac7c6}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--mint);outline-offset:3px}button svg{width:18px;height:18px;flex:none;vertical-align:middle}input,select{color:var(--ink);background:#101416;border:1px solid var(--line);border-radius:14px;padding:13px;width:100%;min-height:48px;font-size:16px}input::placeholder{color:#849795}input[type=range]{accent-color:var(--mint)}label{display:block;font-size:12px;color:var(--muted);margin:18px 0 7px}h1,h2,h3,p{margin:0}h2{font-size:18px;letter-spacing:-.4px}h3{font-size:14px;margin:20px 0 10px}p{line-height:1.6}small,.muted{color:var(--muted)}small{font-size:12px}hr{border:0;border-top:1px solid var(--line);margin:22px 0}.hidden{display:none!important}
-header{max-width:720px;margin:auto;padding:22px 22px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}header h1{font-size:21px;letter-spacing:-1px;font-weight:650;display:flex;align-items:center;gap:10px}.brand-mark{width:29px;height:29px;display:grid;place-items:center;background:var(--surface);border:1px solid #8fd3c036;border-radius:10px;color:var(--mint);font-size:19px}.status{color:var(--mint);font-size:11px;display:flex;align-items:center;gap:6px}.status:before{content:'';width:5px;height:5px;flex:none;border-radius:50%;background:currentColor}.status.off{color:#d5b0a5}.wrap{max-width:720px;margin:auto;padding:0 20px 160px}.eyebrow{text-transform:uppercase;letter-spacing:1.6px;font-size:10px;font-weight:600;color:var(--mint)}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.row>*{flex:1;min-width:60px}.toolbar{display:flex;align-items:center;gap:8px;margin:0 0 20px}.badge{font-size:11px;color:var(--muted);margin-right:auto}.toolbar button{min-height:38px;padding:8px 10px;background:none;border-color:transparent;color:var(--muted);font-size:11px}.toolbar button svg{width:15px;height:15px;margin-right:5px}
-.card{border:1px solid var(--line);border-radius:24px;background:#121617;padding:20px;margin:14px 0}#heardCard{position:relative;background:var(--surface);border-color:#8fd3c024;padding:24px;box-shadow:inset 0 1px 0 #ffffff08,0 12px 32px #0003;min-height:250px;overflow:hidden}#heardStatus{display:flex;align-items:center;gap:8px}#heardStatus:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--mint)}#heardLabel{font-size:27px;line-height:1.2;font-weight:600;letter-spacing:-1px;margin:22px 0 18px!important}#heardText{font-size:18px;line-height:1.65;font-weight:400;color:#d3e3df;white-space:pre-wrap;max-height:38vh;overflow:auto}#heardImage{border-radius:12px;margin-bottom:10px}.transport{margin:12px 0 0;flex-wrap:nowrap}.transport button{min-height:54px}.transport button:first-child{flex:0 0 54px;padding:12px}.transport .primary{font-size:15px}.success{min-height:25px;padding-top:7px;font-size:11px;color:var(--mint);text-align:right}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;background:#111516;border:1px solid #ffffff09;border-radius:18px;padding:5px;margin:13px 0 22px}.tabs button{border-color:transparent;background:none;color:var(--muted);font-size:12px;border-radius:13px;min-height:44px;padding:10px 6px;display:flex;gap:8px;align-items:center;justify-content:center;transition:none}.tabs button.active{color:var(--ink);background:var(--surface);border-color:#8fd3c02b;box-shadow:0 2px 5px #0004}.panel>h2{margin-bottom:14px}.panel>p{font-size:12px;margin-bottom:16px}.item{display:block;width:100%;text-align:left;margin-top:8px;background:#141a1b;border-color:#ffffff0b;font-size:14px}.item small{display:block;margin-top:5px;line-height:1.5}#proposals>.muted{font-size:12px;color:#829794;text-align:center;padding:12px 0 20px}#proposals .card{padding:10px;background:#111718;margin:8px 0}#proposals .item small{display:none}#proposals .card .item:last-child{color:var(--muted);font-size:11px;border:0;background:none;min-height:36px;padding:8px 14px}details.card{border-radius:18px;background:#111516;padding:0;margin:16px 0;overflow:hidden}details>summary{padding:18px;font-size:12px;font-weight:500;cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;color:#b4c6c3}details>summary:after{content:'+';font-size:20px;font-weight:300;color:var(--mint)}details[open]>summary:after{content:'−'}details>summary::-webkit-details-marker{display:none}details[open]{padding:0 18px 18px}details[open]>summary{margin:0 -18px 12px;border-bottom:1px solid var(--line)}details h2{font-size:14px;margin:14px 0}#global{margin:18px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}#global button{font-size:11px;padding:10px 4px;background:#111718;color:#aebfbc;border-color:#ffffff09;border-radius:13px;min-width:0}.error{background:#2b1b1b;border:1px solid #c1858540;border-radius:16px;color:#efc6c3;font-size:13px;padding:14px;margin:12px 0;line-height:1.6}
-#searchDock{position:fixed;bottom:var(--keyboard-inset);left:0;right:0;z-index:5;padding:14px max(16px,calc((100vw - 680px)/2)) calc(12px + env(safe-area-inset-bottom));background:#0c1011;border-top:1px solid #ffffff0b;box-shadow:0 -12px 30px #0005}#searchDock>.row{display:flex;gap:5px;flex-wrap:nowrap;background:var(--surface);border:1px solid #8fd3c038;border-radius:19px;padding:5px;box-shadow:inset 0 1px 0 #ffffff06}#reference{flex:1;min-width:0;border:0;background:none;padding:10px;font-size:16px;outline-offset:0}#version{flex:0 0 67px;min-width:0;border:0;border-left:1px solid #ffffff12;border-radius:0;background:transparent;font-size:11px;padding:10px 2px;color:var(--muted)}#version option{background:#141a1b}#loadVerse{flex:0 0 40px;min-width:0;min-height:40px;border-radius:13px;padding:8px;background:var(--go);color:#06201a;border:0;font-size:20px}#searchDock>small{display:block;text-align:center;margin-top:9px;font-size:10px;letter-spacing:.1px;color:#809592}#suggestions{position:absolute;bottom:calc(100% + 6px);left:max(16px,calc((100vw - 680px)/2));right:max(16px,calc((100vw - 680px)/2));max-height:38vh;overflow:auto;background:#151b1c;border:1px solid #8fd3c033;border-radius:20px;padding:8px;box-shadow:0 -10px 35px #0006;overscroll-behavior:contain}#suggestions .item{margin:0;border-color:transparent;background:transparent;border-radius:13px;padding:12px}#suggestions .item.active{background:var(--surface);border-color:#8fd3c050}#suggestions small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}#suggestions>.muted{padding:12px;font-size:12px}
-#pair{max-width:420px;margin:7vh auto;background:var(--surface);padding:26px}#pair h1{font-size:30px;letter-spacing:-1px;line-height:1.12;margin:20px 0 14px}#pair p{font-size:13px}#pair small{display:block;line-height:1.6;margin-top:15px}#code{font-size:24px;letter-spacing:8px;font-variant-numeric:tabular-nums}#pairNote{margin-top:12px}@media(hover:hover){button:not(:disabled):hover{border-color:#8fd3c055}.toolbar button:hover{color:var(--ink)}}@media(max-width:360px){.wrap{padding-left:14px;padding-right:14px}header{padding-left:16px;padding-right:16px}#heardCard{padding:20px}#heardText{font-size:16px}#reference{font-size:16px;padding-left:7px}}@media(prefers-reduced-motion:reduce){button{transition:opacity 100ms var(--ease)}button:active:not(:disabled){transform:none}}
-@supports(-webkit-touch-callout:none){#version{font-size:16px;flex-basis:76px}}.reference-wrap{position:relative;flex:1;min-width:0}.reference-wrap #reference{width:100%;position:relative;z-index:1;caret-color:var(--ink)}#reference.tokenized{color:transparent}#referenceTokens{position:absolute;inset:0;display:flex;align-items:center;padding:10px;pointer-events:none;white-space:pre;font-size:16px;overflow:hidden}.reference-token{background:#ffffff0d;border-radius:5px}#referenceTokens span{flex-shrink:0}
-
-:root[data-aurora=iris]{--aurora-a:61 44 94;--aurora-b:66 40 77;--mint:#c2b0df}
-:root[data-aurora=tide]{--aurora-a:22 65 83;--aurora-b:38 60 99;--mint:#97cdde}
-:root[data-aurora=ember]{--aurora-a:87 44 34;--aurora-b:84 56 40;--mint:#e2b899}
-:root[data-aurora=rose]{--aurora-a:80 39 66;--aurora-b:71 48 80;--mint:#deadc7}
-:root:not([data-aurora=fern]){--go:radial-gradient(ellipse at 0 100%,#ffffff55,transparent 75%),radial-gradient(ellipse at 100% 0%,#ffffff33,transparent 75%),var(--mint)}
-body{background:radial-gradient(ellipse at 0 15%,rgb(var(--aurora-a)/.12),transparent 55%),var(--bg)}
-#songList .item,#songSections .item,#songMatches .item{background:var(--surface)}
-#songSections small,#songMatches small{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;white-space:pre-line}
-#runList .item{background:radial-gradient(ellipse at 0 100%,#75612f44,transparent 75%),radial-gradient(ellipse at 100% 0,#80704133,#171710);border-color:#e4d87a35}
-#proposals .item{padding:12px;margin:6px 0}#heardCard{min-height:210px}.card{margin:10px 0}
-.lyric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.lyric-card{min-width:0;border:1px solid var(--line);border-radius:18px;padding:14px;background:#141718}.lyric-card:nth-child(even){background:#1b1b18}.lyric-card[data-live=true]{border-color:#e4d87a80}.lyric-card[data-live=true]>small{color:#e4d87a}.lyric-card[data-live=true]>small:after{content:" · live"}.lyric-card[data-preview=true]:not([data-live=true]){border-color:#e5f3f270}.lyric-card small{font-size:10px;text-transform:uppercase;letter-spacing:1px}.lyric-words{display:block;text-align:left;white-space:pre-line;line-height:1.6;min-height:130px;width:100%;background:none;border:0;padding:12px 0;font-size:13px}.lyric-card .row button{min-width:0;font-size:12px;padding:10px 6px;border-radius:12px}.lyric-card textarea{width:100%;min-height:130px;margin:12px 0;resize:vertical;color:var(--ink);border:1px solid var(--line);background:#090b0c;border-radius:10px;padding:10px;font:inherit;font-size:16px}.lyric-card textarea:focus-visible{outline:2px solid var(--mint);outline-offset:2px}@media(max-width:360px){.lyric-grid{grid-template-columns:1fr}}
-</style></head><body>
-<header><h1><span class="brand-mark" aria-hidden="true">t</span>trilorah</h1><span id="connection" class="status off">Not paired</span></header>
-<main class="wrap">
-<section id="pair" class="card"><div class="eyebrow">Private operator access</div><h1>Your phone. The whole service.</h1><p class="muted">Enter the code from <b>Mobile remote</b> on the desktop, then approve this phone there.</p><label for="name">Device name</label><input id="name" value="My phone" maxlength="80" autocomplete="off"><label for="code">Six-digit pairing code</label><input id="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000"><button id="pairButton" class="primary" style="width:100%;margin-top:18px">Request access</button><p id="pairNote" class="muted"></p><small>Use the same trusted Wi-Fi as the desktop. This private link is separate from the congregation’s service page.</small></section>
-<div id="error" class="error hidden" role="alert"></div>
-<div id="app" class="hidden">
-<section class="card" aria-label="Sermon controls"><div class="row"><strong id="sermonStatus" role="status">Watching for the sermon</strong><button id="sermonManual">Start sermon</button></div><div id="sermonPrompt" class="hidden"><h2>Has your sermon started?</h2><p id="sermonEvidence" class="muted"></p><div class="row"><button id="sermonYes" class="primary">Yes, started</button><button id="sermonNo">Not yet</button></div></div></section>
-<div class="toolbar"><span id="serviceStatus" class="badge">Desktop connected</span><button id="refresh" aria-label="Refresh library"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 6a8 8 0 0 1 13 3M5 15a8 8 0 0 0 13 3"/></svg>Refresh</button><button id="logout">Disconnect</button></div>
-<section class="card" id="heardCard"><div class="eyebrow" id="heardStatus">Heard scripture</div><h2 id="heardLabel" style="margin-top:12px">Waiting for scripture…</h2><img id="heardImage" alt="Selected slide" class="hidden" style="width:100%;max-height:200px;object-fit:contain"><div id="heardText" class="preview">Detected scripture will appear here.</div></section>
-<div class="row transport"><button aria-label="Previous verse or slide" title="Previous" data-cmd="step" data-args='{"delta":-1}'><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg></button><button id="goLive" class="primary">Go live</button></div><div id="notice" class="success" aria-live="polite"></div>
-<nav class="tabs" aria-label="Remote controls"><button data-tab="verses" class="active"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v15M3 4l9 2 9-2v14l-9 2-9-2z"/></svg>Verses</button><button data-tab="songs"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/></svg>Songs</button><button data-tab="slides"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Slides</button></nav>
-<section id="verses" class="panel"><div id="proposals"></div></section>
-<section id="songs" class="panel hidden"><div id="songLibraryHeader" class="row"><h2>Song library</h2><button id="songSearch" aria-pressed="false">Search song</button></div><div id="songMatches" aria-live="polite"></div><input id="songFilter" placeholder="Find a song" aria-label="Find a song"><div id="songList"></div><div id="songSections"></div></section>
-<section id="slides" class="panel hidden"><h2>Presentations</h2><p class="muted">Imported presentations and your saved quick slides.</p><div id="deckList"></div><div id="deckSlides"></div></section>
-<details class="card"><summary>Service controls <small>Run · timers · messages</small></summary><h2 style="margin-top:18px">Run of service</h2><div id="runList"></div><h2 style="margin-top:20px">Timers</h2><div id="timers"></div><div class="row"><input id="timerName" placeholder="Timer name" aria-label="Timer name"><input id="timerMinutes" type="number" value="5" min="1" max="1440" aria-label="Timer minutes"><button id="createTimer">Add timer</button></div><hr><button data-cmd="openOutput" class="item">Open projector output</button><hr><h2>Screen message</h2><input id="message" maxlength="500" placeholder="Message to show for 15 seconds" aria-label="Screen message"><div class="row" style="margin-top:8px"><button id="sendMessage">Show message</button><button data-cmd="alert" data-args='{"dismiss":true}'>Dismiss</button></div><hr><h2>App colour</h2><label for="appColour">Aurora on this phone</label><select id="appColour"><option value="desktop">Follow desktop</option><option>fern</option><option>iris</option><option>tide</option><option>ember</option><option>rose</option></select><hr><h2>Scripture listening</h2><p id="asrState" class="muted"></p><div class="row"><button data-cmd="listen" data-args='{"enabled":true}'>Start listening</button><button data-cmd="listen" data-args='{"enabled":false}'>Stop listening</button></div></details>
-<div id="global" class="row"><button data-cmd="screen" data-args='{"value":"clear"}'>Clear</button><button data-cmd="screen" data-args='{"value":"black"}'>Black</button><button data-cmd="screen" data-args='{"value":"logo"}'>Logo</button><button data-cmd="screen" data-args='{"value":"live"}'>Restore</button></div>
-<footer id="searchDock"><div id="suggestions" class="hidden" role="listbox" aria-label="Scripture suggestions"></div><div class="row"><div class="reference-wrap"><div id="referenceTokens" aria-hidden="true"></div><input id="reference" role="combobox" aria-autocomplete="list" aria-controls="suggestions" aria-expanded="false" placeholder="Find scripture…" aria-label="Scripture reference or words" autocomplete="off" autocapitalize="off" spellcheck="false"></div><select id="version" aria-label="Translation"></select><button id="loadVerse" aria-label="Send scripture live">↵</button></div><small>Type a reference or words · Enter to go live</small></footer></div></main>
-<script>
-const $=id=>document.getElementById(id);let token='',paired=false,connected=false,busy=false,library=null,pairId='',lastProposals='',lastTimers='';let openSongId=null;let currentState=null,heardKey='',suggestions=[],suggestAt=-1,suggestTimer,suggestSequence=0;
-try{token=localStorage.getItem('trilorah.remote.token')||''}catch{}
-function error(message){$('error').textContent=message||'';$('error').classList.toggle('hidden',!message)}
-function status(ok){connected=ok;$('connection').textContent=ok?'Connected':paired?'Desktop disconnected':'Not paired';$('connection').classList.toggle('off',!ok);document.querySelectorAll('#app button').forEach(b=>{b.disabled=!ok && !['logout','refresh'].includes(b.id)})}
-async function request(path,body){const res=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(6500)});const data=await res.json();if(!res.ok){if(res.status===401&&path==='/api/command'){token='';try{localStorage.removeItem('trilorah.remote.token')}catch{}showPaired(false)}throw Error(data.error||'Request failed')}return data}
-async function rpc(command,args={}){return (await request('/api/command',{command,args})).result}
-function showPaired(on){paired=on;$('pair').classList.toggle('hidden',on);$('app').classList.toggle('hidden',!on);if(!on)status(false)}
-async function act(command,args={}){if(busy||!connected)return;busy=true;error('');$('notice').textContent='Sending…';try{await rpc(command,args);$('notice').textContent=command==='live'?'Presented.':'Done.';await poll()}catch(e){error(e.message);$('notice').textContent=''}finally{busy=false}}
-function sameItem(a,b){return !!a&&!!b&&(a.id===b.id||(a.source==="scripture"&&b.source==="scripture"&&a.reference===b.reference&&a.version===b.version))}function button(label,fn,description){const b=document.createElement('button');b.className='item';b.textContent=label;b.onclick=fn;if(description){const s=document.createElement('small');s.textContent=description;b.append(s)}return b}
-function empty(el,message){el.replaceChildren();const p=document.createElement('p');p.className='muted';p.textContent=message;el.append(p)}
-async function loadLibrary(){try{library=await rpc('library');const select=$('version'),old=select.value;select.replaceChildren();for(const v of library.versions){const o=document.createElement('option');o.value=v;o.textContent=v;select.append(o)}if(library.versions.includes(old))select.value=old;else if(library.versions.includes('KJV'))select.value='KJV';renderSongs();renderDecks();const r=$('runList');empty(r,library.run.length?'Select a queued item to preview.':'No items queued.');for(const segment of library.run){const h=document.createElement('h3');h.textContent=segment.label;r.append(h);for(const item of segment.items)r.append(button(item.label,()=>act('run',{id:item.key}),item.source))}}catch(e){error(e.message)}}
-function renderSongs(){
-  const song=(library?.songs||[]).find(s=>s.id===openSongId);
-  ['songFilter','songList','songMatches','songLibraryHeader'].forEach(id=>$(id).classList.toggle('hidden',!!song));
-  if(song){renderSongCards(song);return}
-  openSongId=null;$('songSections').replaceChildren();
-  const list=$('songList');const songs=(library?.songs||[]).filter(s=>(s.title+' '+s.sections.flatMap(section=>section.lines).join(' ')).toLowerCase().includes($('songFilter').value.toLowerCase()));
-  empty(list,songs.length?'Choose a song to see its lyric cards.':'No matching songs.');
-  for(const song of songs)list.append(button(song.title,()=>{openSongId=song.id;renderSongs()}));
+/*
+ * The phone remote, in the operator's own material.
+ *
+ * Same system as the desktop (src/ui/tokens.css): one plain ground — near
+ * black, carrying only a whisper of the App colour (owner, 2026-10-07: "dark
+ * like black, but with the accent colours") — panels that are barely-there
+ * white over it, and controls built from the four-stop gradient whose ALPHA
+ * carries state.
+ * Mint (go) and gold (caution) are the only bright surfaces, kept for the
+ * acts that reach the room. Labels are lowercase, like the desktop's.
+ *
+ * Phone-specific: the system font (it is Roboto on Android, San Francisco
+ * on iPhone — the desktop's face or its nearest relative), 48px+ targets,
+ * a translucent dock that holds everything a thumb needs during a service,
+ * and motion that only happens when it explains something.
+ */
+:root {
+  color-scheme: dark;
+  /* App colour — the desktop's teal ramp; data-aurora swaps the four stops.
+     --g0 is the ground: the darkest stop taken most of the way to black. */
+  --g0: 2 6 8;
+  --t1: 7 21 26; --t2: 24 70 55; --t3: 18 34 37; --t4: 44 55 71;
+  --g1: 72 178 152; --g2: 143 211 192; --g3: 156 222 201; --g4: 104 196 168;
+  --ink: #e5f3f2;
+  --ink-2: rgb(229 243 242 / .64);
+  --ink-3: rgb(229 243 242 / .44);
+  --ink-4: rgb(229 243 242 / .22);
+  --stroke: rgb(229 243 242 / .12);
+  --hair: rgb(255 255 255 / .055);
+  --panel: rgb(255 255 255 / .026);
+  --gold: #e4d87a;
+  --danger: #eac7c6;
+  --on-bright: #06201a;
+  --mint: rgb(var(--g2));
+  --ground: rgb(var(--g0));
+  --r-control: 18px;
+  --r-card: 22px;
+  --r-surface: 28px;
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-io: cubic-bezier(.77, 0, .175, 1);
+  --ease-soft: cubic-bezier(.16, 1, .3, 1);
+  --press: 140ms;
+  --font: -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Segoe UI", sans-serif;
+  --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --gutter: 16px;
+  --dock-h: 96px;
+  --kb: 0px;
+  background: var(--ground);
+  color: var(--ink);
+  font: 500 15px/1.45 var(--font);
+  letter-spacing: .1px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  transition: background-color 400ms ease;
 }
-function renderSongCards(song){
-  const sections=$('songSections');sections.replaceChildren();
-  sections.append(button('‹ '+song.title,()=>{openSongId=null;renderSongs()},'Back to songs'));
-  const grid=document.createElement('div');grid.className='lyric-grid';sections.append(grid);
-  for(const [index,section] of song.sections.entries()){
-    const pages=Math.max(1,Math.ceil(section.lines.length/4));
-    for(let page=0;page<pages;page++){
-      const offset=page*4,lines=section.lines.slice(offset,offset+4),label=section.label+(pages>1?' · '+(page+1):'');
-      const card=document.createElement('article');card.className='lyric-card';card.dataset.songCard= `${song.id}/${song.id}:${index}/page-${page}`;
-      const heading=document.createElement('small');heading.textContent=label;card.append(heading);
-      const preview=button(lines.join('\n')||'Empty lyric card',()=>act('song',{id:song.id,index,offset}));preview.className='lyric-words';preview.setAttribute('aria-label','Preview '+label);card.append(preview);
-      const actions=document.createElement('div');actions.className='row';card.append(actions);
-      const edit=button('Edit',()=>{
-        const editor=document.createElement('textarea');editor.value=lines.join('\n');editor.setAttribute('aria-label','Edit '+label+' lyrics');preview.replaceWith(editor);actions.replaceChildren();
-        actions.append(button('Cancel',()=>renderSongCards(song)),button('Save lyrics',async()=>{
-          if(busy||!connected)return;busy=true;error('');
-          try{const saved=await rpc('song-edit',{id:song.id,index,offset,count:lines.length,lines:editor.value.split(/\r?\n/)});const at=library.songs.findIndex(s=>s.id===saved.id);library.songs[at]=saved;renderSongs();$('notice').textContent='Lyrics saved.'}
-          catch(e){error(e.message)}finally{busy=false}
-        }));editor.focus();
-      });
-      const live=button('Go live',()=>act('song',{id:song.id,index,offset,live:true}));live.className='primary';actions.append(edit,live);grid.append(card);updateSongCards(currentState);
+:root[data-aurora=iris]  { --g0: 6 5 11;  --t1: 19 16 38; --t2: 61 44 94; --t3: 32 35 64; --t4: 66 40 77;  --g1: 151 129 190; --g2: 191 177 225; --g3: 214 193 225; --g4: 163 157 207; }
+:root[data-aurora=tide]  { --g0: 3 7 11;  --t1: 9 23 36;  --t2: 22 65 83; --t3: 24 37 61; --t4: 38 60 99;  --g1: 101 164 192; --g2: 151 205 222; --g3: 180 213 235; --g4: 132 174 214; }
+:root[data-aurora=ember] { --g0: 10 5 7;  --t1: 32 18 23; --t2: 87 44 34; --t3: 57 31 48; --t4: 84 56 40;  --g1: 185 133 112; --g2: 226 184 153; --g3: 236 197 166; --g4: 201 148 149; }
+:root[data-aurora=rose]  { --g0: 9 5 9;   --t1: 29 17 30; --t2: 80 39 66; --t3: 46 30 56; --t4: 71 48 80;  --g1: 187 123 157; --g2: 222 173 199; --g3: 234 191 210; --g4: 190 159 205; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--ground); }
+body { -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
+body.sheet-open { overflow: hidden; }
+[hidden] { display: none !important; }
+h1, h2, h3, p { margin: 0; }
+b { font-weight: 600; }
+small { font-size: 12.5px; color: var(--ink-2); }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+button {
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.grow { flex: 1; min-width: 0; }
+.ic { display: block; flex: none; }
+
+/* ── The gradient surface: four stops, alpha = state, edges trail the middle. ── */
+@property --a-mid { syntax: '<number>'; inherits: false; initial-value: .3; }
+@property --a-edge { syntax: '<number>'; inherits: false; initial-value: .3; }
+.s {
+  --a: .3; --a-mid: var(--a); --a-edge: var(--a);
+  --c1: var(--t1); --c2: var(--t2); --c3: var(--t3); --c4: var(--t4);
+  background-image:
+    radial-gradient(ellipse at 12% 115%, rgb(var(--c2) / var(--a-mid)), transparent 62%),
+    radial-gradient(ellipse at 88% -25%, rgb(var(--c4) / var(--a-mid)), transparent 64%),
+    radial-gradient(ellipse at 48% 48%, rgb(var(--c3) / var(--a-edge)), rgb(var(--c1) / var(--a-edge)) 82%);
+  box-shadow: inset 0 0 0 1.2px var(--stroke);
+  transition:
+    --a-mid 110ms var(--ease-out),
+    --a-edge 240ms var(--ease-soft) 40ms,
+    transform var(--press) var(--ease-out),
+    color 110ms var(--ease-out),
+    opacity 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
+}
+.s.ash { --c1: 22 24 26; --c2: 40 43 45; --c3: 43 45 47; --c4: 40 44 48; }
+.s.danger { --c1: 92 16 16; --c2: 118 26 26; --c3: 120 34 34; --c4: 75 18 18; color: var(--danger); }
+.s.go, .s.caution { --a: .86; color: var(--on-bright); font-weight: 650; box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 8px 22px -12px rgb(var(--c2) / .8); }
+.s.go { --c1: var(--g1); --c2: var(--g2); --c3: var(--g3); --c4: var(--g4); }
+.s.caution { --c1: 201 178 78; --c2: 228 216 122; --c3: 236 225 142; --c4: 212 192 96; }
+/* Only buttons press. A field built from the same material must not shrink under a finger. */
+button.s:active:not([aria-disabled=true]) { --a: .65; transform: scale(.97); }
+button.s.go:active:not([aria-disabled=true]), button.s.caution:active:not([aria-disabled=true]) { --a: 1; }
+.search-field:focus-within { --a: .55; box-shadow: inset 0 0 0 1.2px rgb(var(--g2) / .45); }
+/* Text fields mark focus with a mint inner ring; the gold outline is for buttons and switches. */
+#reference:focus-visible, .field:focus-visible, .code:focus-visible, .lyric-edit:focus-visible, .group-row select:focus-visible { outline: none; }
+.field:focus, .code:focus, .lyric-edit:focus { box-shadow: inset 0 0 0 1.5px rgb(var(--g2) / .55); }
+@media (hover: hover) and (pointer: fine) {
+  button.s:hover:not([aria-disabled=true]) { --a: .7; }
+  button.s.go:hover:not([aria-disabled=true]), button.s.caution:hover:not([aria-disabled=true]) { --a: 1; }
+}
+[aria-disabled=true] { opacity: .38; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 16px; border-radius: var(--r-control);
+  font-size: 15px; font-weight: 550; white-space: nowrap;
+}
+.btn.small { min-height: 38px; padding: 0 13px; border-radius: 14px; font-size: 13.5px; }
+.btn.icon { padding: 0; width: 40px; }
+.btn.wide { width: 100%; }
+@supports (corner-shape: superellipse(1.6)) {
+  .btn, .card, .row, .catch, .lyric, .monitor, .slide, .seg, .up-next, .search-field, .group-card, .sheet, .banner, .field, .code {
+    corner-shape: superellipse(1.6);
+  }
+}
+
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ── Top bar: a translucent layer the page scrolls under. ── */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) var(--gutter) 10px;
+  background: rgb(var(--g0) / .76);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(18px) saturate(120%);
+}
+.top::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 14px; pointer-events: none;
+  background: linear-gradient(rgb(var(--g0) / .6), transparent); opacity: 0; transition: opacity 200ms ease;
+}
+.top.scrolled::after { opacity: 1; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; min-width: 0; }
+.mark { width: 28px; height: 28px; color: var(--ink); flex: none; }
+.brand-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
+.brand-name { font-size: 17px; font-weight: 650; letter-spacing: -.35px; }
+.conn { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.conn::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.conn.ok { color: var(--mint); }
+.conn.bad { color: var(--danger); }
+.pill { min-height: 38px; padding: 0 14px; border-radius: 999px; font-size: 13.5px; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); flex: none; }
+.pill[data-asr=listening] .dot { background: var(--mint); box-shadow: 0 0 0 3px rgb(var(--g2) / .18); }
+.pill[data-asr=connecting] .dot { background: var(--gold); }
+.pill[data-asr=error] { color: var(--danger); }
+.pill[data-asr=error] .dot { background: var(--danger); }
+.round { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; }
+
+/* ── Banners: the sermon question and a lost desktop. ── */
+.banner { margin: 10px var(--gutter) 0; padding: 14px 16px; border-radius: var(--r-card); }
+.banner.error { background: rgb(234 199 198 / .07); box-shadow: inset 0 0 0 1.2px rgb(234 199 198 / .24); color: var(--danger); font-size: 14px; }
+.banner.prompt { background: rgb(228 216 122 / .06); box-shadow: inset 0 0 0 1.2px rgb(228 216 122 / .3); }
+.banner.prompt h2 { font-size: 16px; font-weight: 650; letter-spacing: -.2px; }
+.banner.prompt p { margin-top: 4px; font-size: 13px; color: var(--ink-2); }
+.banner .actions { display: flex; gap: 8px; margin-top: 12px; }
+.banner .actions .btn { flex: 1; }
+
+/* ── The monitor: what the room sees, drawn like the projector. ── */
+.monitor {
+  margin: 6px var(--gutter) 0; padding: 6px; border-radius: var(--r-surface);
+  background: var(--panel); box-shadow: inset 0 0 0 1.2px var(--hair);
+}
+.slide {
+  position: relative; overflow: hidden; display: flex; flex-direction: column;
+  min-height: 138px; padding: 16px 16px 14px; border-radius: calc(var(--r-surface) - 6px);
+  background: radial-gradient(120% 100% at 50% 0%, rgb(var(--t2) / .16), transparent 72%), #000;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .045);
+}
+.slide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .92; }
+.slide-foot { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 8px 2px 10px; }
+.on-air { display: flex; align-items: center; gap: 7px; margin-right: auto; }
+.on-air::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-4); }
+.monitor[data-state=live][data-screen=live] .on-air { color: var(--gold); }
+.monitor[data-state=live][data-screen=live] .on-air::before { background: var(--gold); box-shadow: 0 0 0 3px rgb(228 216 122 / .16); }
+.chip { font-size: 11.5px; font-weight: 650; letter-spacing: .02em; padding: 3px 9px; border-radius: 999px; color: var(--gold); background: rgb(228 216 122 / .12); }
+.slide-body { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2px 2px 0; transition: opacity 200ms var(--ease-out); }
+.monitor:not([data-screen=live]) .slide-body { opacity: .24; }
+.monitor[data-screen=black] .slide { background: #000; }
+.slide-text {
+  font-family: var(--serif); font-weight: 500; color: #fff; white-space: pre-line;
+  text-shadow: 0 1px 3px rgb(0 0 0 / .5); letter-spacing: 0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+}
+.slide-text.lyric { font-family: var(--font); font-weight: 650; letter-spacing: -.1px; }
+.fit-1 { font-size: 21px; line-height: 1.3; }
+.fit-2 { font-size: 18px; line-height: 1.36; }
+.fit-3 { font-size: 16px; line-height: 1.42; }
+.fit-4 { font-size: 14.5px; line-height: 1.44; }
+.slide-caption { margin-top: 9px; font-size: 12px; font-weight: 600; letter-spacing: .03em; color: rgb(255 255 255 / .62); }
+.slide-empty { font-size: 14px; color: var(--ink-3); }
+/* A picture keeps the projector's own shape; words take only the room they need. */
+.monitor[data-visual=true] .slide { aspect-ratio: 16 / 9; min-height: 0; }
+.monitor[data-visual=true] .slide-img { object-fit: contain; background: #000; }
+.monitor[data-visual=true] .slide-body { justify-content: flex-end; }
+.monitor[data-visual=true] .slide-caption { padding: 4px 10px; border-radius: 999px; background: rgb(0 0 0 / .55); color: #fff; }
+
+/* ── Tabs. A segmented control whose thumb slides; the panels do not. ── */
+.seg {
+  position: relative; display: grid; grid-template-columns: repeat(var(--n, 3), 1fr);
+  margin: 16px var(--gutter) 4px; padding: 4px; border-radius: 17px;
+  background: rgb(255 255 255 / .025); box-shadow: inset 0 0 0 1.2px var(--hair);
+}
+.seg-thumb {
+  --a: .62; position: absolute; top: 4px; bottom: 4px; left: 4px;
+  width: calc((100% - 8px) / var(--n, 3)); border-radius: 13px;
+  transform: translateX(calc(var(--i, 0) * 100%));
+  transition: transform 260ms var(--ease-out), --a-mid 110ms var(--ease-out), --a-edge 240ms var(--ease-soft);
+}
+.seg button { position: relative; z-index: 1; min-height: 42px; display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 14.5px; color: var(--ink-3); transition: color 160ms ease; }
+.seg button[aria-selected=true], .seg button[aria-checked=true] { color: var(--ink); }
+.badge { min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--mint); color: var(--on-bright); font-size: 11.5px; font-weight: 700; letter-spacing: 0; }
+
+/* ── Panels and rows. ── */
+.panel { padding: 0 var(--gutter) calc(var(--dock-h) + var(--kb) + 32px); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 4px 9px; min-height: 22px; }
+.section-head small { font-size: 12.5px; }
+.list { display: grid; gap: 8px; }
+.row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 13px 14px 13px 16px; border-radius: var(--r-card);
+  background: var(--panel); box-shadow: inset 0 0 0 1.2px var(--hair);
+  transition: transform var(--press) var(--ease-out), background-color 160ms var(--ease-out);
+}
+.row:active { transform: scale(.98); background: rgb(255 255 255 / .05); }
+.row .ic { color: var(--ink-3); }
+.row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-title { font-size: 15.5px; font-weight: 600; letter-spacing: -.15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-sub { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.compact { padding-top: 11px; padding-bottom: 11px; }
+.empty { padding: 28px 16px; text-align: center; color: var(--ink-3); font-size: 14px; line-height: 1.5; }
+.empty .btn { margin-top: 14px; }
+
+/* A catch: the engine heard a verse and is waiting for a press. */
+.catch {
+  position: relative; display: flex; align-items: stretch; border-radius: var(--r-card);
+  background: var(--panel); box-shadow: inset 0 0 0 1.2px var(--hair);
+  transition: box-shadow 200ms var(--ease-out), opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+}
+@starting-style { .catch { opacity: 0; transform: translateY(8px); } }
+.catch.is-ready { box-shadow: inset 0 0 0 1.2px rgb(var(--g2) / .5); }
+.catch.is-live { box-shadow: inset 0 0 0 1.2px rgb(228 216 122 / .45); }
+.catch-main { flex: 1; min-width: 0; text-align: left; padding: 14px 4px 14px 16px; border-radius: var(--r-card) 0 0 var(--r-card); transition: transform var(--press) var(--ease-out); }
+.catch-main:active:not([aria-disabled=true]) { transform: scale(.985); }
+.catch-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.catch-ref { font-size: 16.5px; font-weight: 650; letter-spacing: -.25px; }
+.tag { font-size: 11px; font-weight: 650; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; background: rgb(255 255 255 / .06); color: var(--ink-2); }
+.tag.is-ready { color: var(--mint); background: rgb(var(--g2) / .12); }
+.tag.is-live { color: var(--gold); background: rgb(228 216 122 / .12); }
+.catch-text { margin-top: 5px; font-family: var(--serif); font-size: 14.5px; line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.catch-hint { margin-top: 7px; font-size: 12.5px; color: var(--gold); }
+.catch-x { flex: 0 0 50px; display: grid; place-items: center; color: var(--ink-3); border-radius: 0 var(--r-card) var(--r-card) 0; transition: color 120ms ease, transform var(--press) var(--ease-out); }
+.catch-x:active { color: var(--ink); transform: scale(.9); }
+
+/* Pushed views: a song's cards, a deck's slides. */
+.view-head { margin: 10px 0 12px; }
+.back { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 10px 0 2px; margin-left: -6px; color: var(--mint); font-size: 15px; font-weight: 550; border-radius: 12px; transition: opacity 120ms ease; }
+.back:active { opacity: .55; }
+.view-title { margin: 2px 2px 0; font-size: 24px; line-height: 1.15; font-weight: 750; letter-spacing: -.6px; overflow-wrap: anywhere; }
+/* One card per row: a lyric line broken in half is a line nobody can sing from. */
+.lyrics { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.lyric { display: flex; flex-direction: column; min-width: 0; border-radius: var(--r-card); background: var(--panel); box-shadow: inset 0 0 0 1.2px var(--hair); transition: box-shadow 200ms var(--ease-out); }
+.lyric.is-ready { box-shadow: inset 0 0 0 1.2px rgb(var(--g2) / .55); }
+.lyric.is-live { box-shadow: inset 0 0 0 1.2px rgb(228 216 122 / .55); }
+.lyric-head { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0 16px; }
+.lyric-head .lyric-label { margin-right: auto; }
+.lyric-main { display: block; text-align: left; padding: 4px 16px 14px; border-radius: 0 0 var(--r-card) var(--r-card); transition: transform var(--press) var(--ease-out); }
+.lyric-main:active { transform: scale(.985); }
+.lyric-label { font-size: 10.5px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.lyric.is-ready .lyric-label { color: var(--mint); }
+.lyric.is-live .lyric-label { color: var(--gold); }
+.lyric-words { display: block; font-size: 15px; line-height: 1.55; font-weight: 500; white-space: pre-line; overflow-wrap: anywhere; }
+.lyric-actions { display: flex; gap: 6px; }
+.lyric-actions .card-live { min-width: 64px; }
+.lyric-edit-box { padding: 4px 12px 12px; }
+.lyric-edit-box .lyric-actions { justify-content: flex-end; margin-top: 4px; }
+.lyric-edit { width: 100%; min-height: 130px; margin: 6px 0 2px; padding: 10px; resize: vertical; border: 0; border-radius: 12px; background: rgb(0 0 0 / .35); box-shadow: inset 0 0 0 1.2px var(--stroke); color: var(--ink); font-size: 16px; line-height: 1.45; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tile { aspect-ratio: 16 / 9; display: grid; place-items: center; border-radius: 14px; background: #050a0a; box-shadow: inset 0 0 0 1.2px var(--hair); font-size: 16px; font-weight: 650; color: var(--ink-2); transition: transform var(--press) var(--ease-out), box-shadow 200ms var(--ease-out); }
+.tile:active { transform: scale(.96); }
+.tile.is-ready { box-shadow: inset 0 0 0 1.5px rgb(var(--g2) / .6); color: var(--mint); }
+.tile.is-live { box-shadow: inset 0 0 0 1.5px rgb(228 216 122 / .6); color: var(--gold); }
+.field {
+  width: 100%; min-height: 48px; padding: 0 14px; border: 0; border-radius: 16px;
+  background: rgb(255 255 255 / .035); box-shadow: inset 0 0 0 1.2px var(--hair);
+  color: var(--ink); font-size: 16px;
+}
+.field::placeholder, #reference::placeholder { color: var(--ink-3); }
+.switch-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 16px; border-radius: var(--r-card); background: var(--panel); box-shadow: inset 0 0 0 1.2px var(--hair); margin-bottom: 8px; }
+.switch-row b { display: block; font-size: 15px; }
+
+/* An iOS switch — a phone control people already know. */
+.switch { position: relative; flex: none; width: 51px; height: 31px; border-radius: 16px; background: rgb(255 255 255 / .14); transition: background-color 220ms var(--ease-out); }
+.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .3); transition: transform 260ms var(--ease-out); }
+.switch[aria-checked=true] { background: var(--mint); }
+.switch[aria-checked=true]::after { transform: translateX(20px); }
+
+/* ── The dock: what is about to go up, and the hands to send it. ── */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: var(--kb); z-index: 20;
+  padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom));
+  background: rgb(var(--g0) / .82);
+  -webkit-backdrop-filter: blur(22px) saturate(120%);
+  backdrop-filter: blur(22px) saturate(120%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .05);
+}
+.dock::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 22px; pointer-events: none; background: linear-gradient(to top, rgb(var(--g0) / .6), transparent); }
+.dock-inner { position: relative; max-width: 560px; margin: 0 auto; }
+.up-next {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px; padding: 9px 14px 10px;
+  border-radius: 18px; background: rgb(var(--g2) / .07); box-shadow: inset 0 0 0 1.2px rgb(var(--g2) / .3);
+}
+.up-next .eyebrow { color: var(--mint); font-size: 10.5px; }
+.ready-label { font-size: 15px; font-weight: 650; letter-spacing: -.15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ready-text { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ready-img { width: 54px; height: 31px; border-radius: 8px; object-fit: cover; flex: none; box-shadow: inset 0 0 0 1px var(--hair); }
+.transport { display: flex; gap: 6px; }
+.transport .btn { min-height: 54px; }
+.transport .step { flex: 0 0 50px; padding: 0; }
+#searchOpen { flex: 0 0 46px; padding: 0; }
+#goLive { flex: 1; min-width: 0; font-size: 16px; }
+#clearScreen { flex: 0 0 auto; min-width: 78px; padding: 0 12px; }
+.search { display: none; align-items: center; gap: 8px; }
+.dock.searching .search { display: flex; }
+.dock.searching .transport, .dock.searching .up-next { display: none; }
+.search-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; min-height: 52px; padding: 0 5px 0 14px; border-radius: var(--r-control); }
+.search-field > .ic { color: var(--ink-3); margin-right: 4px; }
+.reference-wrap { position: relative; flex: 1; min-width: 0; }
+#reference { position: relative; z-index: 1; width: 100%; padding: 13px 0; border: 0; background: none; color: var(--ink); caret-color: var(--mint); font-size: 16px; font-weight: 500; }
+#reference.tokenized { color: transparent; }
+#referenceTokens { position: absolute; inset: 0; display: flex; align-items: center; pointer-events: none; white-space: pre; overflow: hidden; font-size: 16px; font-weight: 500; }
+#referenceTokens span { flex-shrink: 0; }
+.reference-token { background: rgb(var(--g2) / .14); border-radius: 6px; }
+#version { -webkit-appearance: none; appearance: none; flex: none; max-width: 76px; padding: 8px 8px; border: 0; border-radius: 10px; background: rgb(255 255 255 / .05); color: var(--ink-2); font-size: 12.5px; font-weight: 650; letter-spacing: .03em; text-align: center; }
+#version option { background: #141a1b; color: var(--ink); }
+@supports (-webkit-touch-callout: none) { #version { font-size: 16px; max-width: 84px; } }
+#loadVerse { width: 42px; min-height: 42px; padding: 0; border-radius: 14px; flex: none; }
+#searchClose { flex: none; min-height: 48px; padding: 0 4px; color: var(--mint); font-size: 15px; font-weight: 550; }
+#suggestions {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 10px); max-height: min(46vh, 360px); overflow: auto;
+  padding: 6px; border-radius: var(--r-card); background: rgb(17 19 20 / .97);
+  box-shadow: inset 0 0 0 1.2px var(--stroke), 0 -18px 44px rgb(0 0 0 / .5);
+  overscroll-behavior: contain; transform-origin: 50% 100%;
+}
+.sugg { display: block; width: 100%; text-align: left; padding: 11px 12px; border-radius: 14px; transition: background-color 120ms ease; }
+.sugg.active, .sugg:active { background: rgb(255 255 255 / .07); }
+.sugg-label { display: block; font-size: 15.5px; font-weight: 600; }
+.sugg-detail { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--serif); }
+#suggestions > .empty { padding: 14px; }
+
+/* ── Toast: one line above the dock, never over it. ── */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--kb) + var(--dock-h) + 12px); z-index: 30;
+  max-width: calc(100% - 2 * var(--gutter)); display: flex; align-items: center; gap: 8px;
+  padding: 10px 15px; border-radius: 999px; pointer-events: none;
+  background: rgb(21 23 24 / .96); box-shadow: inset 0 0 0 1.2px var(--stroke), 0 12px 32px rgb(0 0 0 / .45);
+  font-size: 14px; font-weight: 550; opacity: 0; transform: translate(-50%, 8px) scale(.98);
+  transition: opacity 160ms var(--ease-out), transform 220ms var(--ease-out);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); transition-duration: 200ms, 260ms; }
+.toast::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); flex: none; }
+.toast.err { color: var(--danger); }
+.toast.err::before { background: var(--danger); }
+.toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── The service sheet. ── */
+.sheet-root { position: fixed; inset: 0; z-index: 40; }
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .55); }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column;
+  max-height: calc(100% - 36px - env(safe-area-inset-top)); max-width: 640px; margin: 0 auto;
+  border-radius: 28px 28px 0 0; background: rgb(16 18 19);
+  background: color-mix(in srgb, rgb(var(--g0)) 93%, white);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .06), 0 -24px 60px rgb(0 0 0 / .5);
+  will-change: transform;
+}
+.sheet-head { flex: none; padding: 8px var(--gutter) 8px; touch-action: none; cursor: grab; }
+.grabber { width: 38px; height: 5px; margin: 0 auto 10px; border-radius: 3px; background: rgb(255 255 255 / .2); }
+.sheet-title { display: flex; align-items: center; justify-content: space-between; }
+.sheet-title h2 { font-size: 21px; font-weight: 700; letter-spacing: -.45px; }
+.sheet-body { overflow: auto; overscroll-behavior: contain; padding: 4px var(--gutter) calc(24px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+.group { margin-top: 20px; }
+.group:first-child { margin-top: 6px; }
+.group > .eyebrow { display: block; margin: 0 4px 8px; }
+.group .seg { margin: 0 0 8px; --n: 4; }
+.group-card { border-radius: var(--r-card); background: rgb(255 255 255 / .03); box-shadow: inset 0 0 0 1.2px var(--hair); overflow: hidden; }
+.group-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 9px 12px 9px 16px; }
+.group-row + .group-row { box-shadow: inset 0 1px 0 var(--hair); }
+.group-row b { display: block; font-size: 15px; }
+.group-row small { display: block; margin-top: 1px; font-size: 12.5px; }
+.group-row select { -webkit-appearance: none; appearance: none; padding: 8px 12px; border: 0; border-radius: 12px; background: rgb(255 255 255 / .06); color: var(--ink); font-size: 16px; }
+.inline-form { display: flex; gap: 8px; margin-top: 8px; }
+.inline-form .field { flex: 1; min-width: 0; }
+.inline-form .minutes { flex: 0 0 74px; text-align: center; }
+.link { margin-top: 6px; min-height: 40px; padding: 0 4px; color: var(--ink-2); font-size: 13.5px; }
+.run-seg { margin: 12px 4px 6px; font-size: 12px; font-weight: 650; color: var(--ink-3); }
+.run-seg:first-child { margin-top: 0; }
+.timer { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 16px; border-radius: var(--r-card); background: var(--panel); box-shadow: inset 0 0 0 1.2px var(--hair); }
+.timer b { display: block; font-size: 15px; }
+.timer-time { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.3px; margin-right: 4px; }
+.timer.is-running .timer-time { color: var(--mint); }
+
+/* ── Pairing. ── */
+.pair { min-height: 100vh; min-height: 100dvh; max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; justify-content: center; padding: calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom)); }
+.pair .mark { width: 50px; height: 50px; margin-bottom: 26px; }
+.pair h1 { margin: 10px 0 12px; font-size: 31px; line-height: 1.08; font-weight: 750; letter-spacing: -.9px; }
+.pair > p { font-size: 15px; line-height: 1.5; color: var(--ink-2); }
+.pair label { display: block; margin: 22px 4px 8px; font-size: 13px; color: var(--ink-2); }
+.code { width: 100%; min-height: 64px; border: 0; border-radius: 20px; text-align: center; background: rgb(255 255 255 / .035); box-shadow: inset 0 0 0 1.2px var(--stroke); color: var(--ink); font-size: 30px; font-weight: 650; letter-spacing: .38em; text-indent: .38em; font-variant-numeric: tabular-nums; }
+.code::placeholder { color: var(--ink-4); }
+.pair .btn.wide { margin-top: 22px; min-height: 54px; font-size: 16px; }
+.pair-note { min-height: 22px; margin-top: 14px; font-size: 14px; color: var(--ink-2); display: flex; align-items: center; gap: 9px; }
+.pair-note.err { color: var(--danger); }
+.spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgb(255 255 255 / .16); border-top-color: var(--mint); animation: spin .7s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.fine { margin-top: 24px; font-size: 12.5px; line-height: 1.55; color: var(--ink-3); }
+
+/* While the desktop is unreachable nothing pretends to work. */
+body[data-connected=false] .needs-desktop { opacity: .38; pointer-events: none; }
+
+@media (max-width: 360px) {
+  :root { --gutter: 12px; }
+  .transport .step { flex-basis: 44px; }
+  #clearScreen { min-width: 68px; }
+  .fit-1 { font-size: 19px; }
+}
+@media (min-width: 600px) {
+  .monitor, .seg, .banner { max-width: 560px; margin-left: auto; margin-right: auto; }
+  .panel { max-width: 592px; margin: 0 auto; }
+  .lyrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; transition-delay: 0s !important; animation-duration: 1ms !important; }
+  button.s:active, .row:active, .tile:active, .catch-main:active, .lyric-main:active { transform: none !important; }
+  .spin { animation: none; border-top-color: var(--mint); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .top, .dock { background: var(--ground); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  :root { --hair: rgb(255 255 255 / .2); --stroke: rgb(229 243 242 / .35); --ink-3: rgb(229 243 242 / .7); }
+}
+</style>
+</head>
+<body data-connected="false">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2C19.4 2 22 4.6 22 12S19.4 22 12 22 2 19.4 2 12 4.6 2 12 2ZM7.15 7.58H16.85V10.37H13.41V17.29H10.59V10.37H7.15Z"/></symbol>
+</svg>
+
+<!-- ─────────────────────────── pairing ─────────────────────────── -->
+<section id="pair" class="pair" aria-labelledby="pairTitle">
+  <svg class="mark" aria-hidden="true"><use href="#mark"/></svg>
+  <p class="eyebrow">private operator access</p>
+  <h1 id="pairTitle">Your phone.<br>The whole service.</h1>
+  <p>Open <b>mobile remote</b> on the desktop, type its code here, then approve this phone there.</p>
+  <label for="code">pairing code</label>
+  <input id="code" class="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" aria-describedby="pairNote">
+  <label for="name">this phone’s name</label>
+  <input id="name" class="field" value="My phone" maxlength="80" autocomplete="off" enterkeyhint="go">
+  <button id="pairButton" type="button" class="btn s go wide">request access</button>
+  <p id="pairNote" class="pair-note" role="status" aria-live="polite"></p>
+  <p class="fine">Use the same trusted Wi‑Fi as the desktop. This private link is separate from the congregation’s page.</p>
+</section>
+
+<!-- ─────────────────────────── the remote ─────────────────────────── -->
+<div id="app" hidden>
+  <header class="top" id="top">
+    <div class="brand">
+      <svg class="mark" aria-hidden="true"><use href="#mark"/></svg>
+      <div class="brand-words">
+        <span class="brand-name">trilorah</span>
+        <span id="connection" class="conn" role="status">not paired</span>
+      </div>
+    </div>
+    <button id="listenPill" type="button" class="btn s ash pill needs-desktop" data-asr="idle"><span class="dot" aria-hidden="true"></span><span id="listenLabel">start listening</span></button>
+    <button id="moreButton" type="button" class="btn s ash round" aria-label="Service controls" aria-haspopup="dialog">
+      <svg class="ic" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="18" cy="12" r="1.6" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <div id="error" class="banner error" role="alert" hidden></div>
+
+    <section id="sermonPrompt" class="banner prompt" hidden aria-live="polite">
+      <h2>Has the sermon started?</h2>
+      <p id="sermonEvidence"></p>
+      <div class="actions">
+        <button id="sermonYes" type="button" class="btn s caution small">yes, it started</button>
+        <button id="sermonNo" type="button" class="btn s ash small">not yet</button>
+      </div>
+    </section>
+
+    <section id="monitor" class="monitor" data-state="empty" data-screen="live" aria-label="On the screen now">
+      <div class="slide">
+        <img id="liveImage" class="slide-img" alt="" hidden>
+        <div id="slideBody" class="slide-body">
+          <p id="liveText" class="slide-text fit-2"></p>
+          <p id="liveLabel" class="slide-caption"></p>
+        </div>
+      </div>
+      <!-- Under the picture, as on the desktop's live pane: what it is, then the state. -->
+      <div class="slide-foot">
+        <span id="liveStatus" class="eyebrow on-air">nothing on screen</span>
+        <span id="screenChip" class="chip" hidden></span>
+      </div>
+    </section>
+
+    <nav class="seg" role="tablist" aria-label="Remote sections" style="--n:3">
+      <span id="segThumb" class="seg-thumb s" aria-hidden="true"></span>
+      <button type="button" role="tab" data-tab="verses" aria-selected="true" aria-controls="verses">verses <span id="catchCount" class="badge" hidden></span></button>
+      <button type="button" role="tab" data-tab="songs" aria-selected="false" aria-controls="songs" tabindex="-1">songs</button>
+      <button type="button" role="tab" data-tab="slides" aria-selected="false" aria-controls="slides" tabindex="-1">slides</button>
+    </nav>
+
+    <section id="verses" class="panel" role="tabpanel" aria-label="Verses">
+      <div class="section-head"><span class="eyebrow">caught</span><small id="catchNote"></small></div>
+      <div id="proposals" class="list needs-desktop"></div>
+    </section>
+
+    <section id="songs" class="panel" role="tabpanel" aria-label="Songs" hidden>
+      <div id="songHome">
+        <div class="switch-row needs-desktop" style="margin-top:14px">
+          <div class="grow"><b>listen for songs</b><small>match what the room is singing to your library</small></div>
+          <button id="songSearch" type="button" class="switch" role="switch" aria-checked="false" aria-label="Listen for songs"></button>
+        </div>
+        <div id="songMatches" class="list" aria-live="polite"></div>
+        <div class="section-head"><span class="eyebrow">library</span></div>
+        <input id="songFilter" class="field" type="search" placeholder="find a song" aria-label="Find a song" autocomplete="off" enterkeyhint="search">
+        <div id="songList" class="list needs-desktop" style="margin-top:8px"></div>
+      </div>
+      <div id="songSections" class="needs-desktop" hidden></div>
+    </section>
+
+    <section id="slides" class="panel" role="tabpanel" aria-label="Slides" hidden>
+      <div id="deckHome">
+        <div class="section-head"><span class="eyebrow">presentations</span></div>
+        <div id="deckList" class="list needs-desktop"></div>
+      </div>
+      <div id="deckSlides" class="needs-desktop" hidden></div>
+    </section>
+  </main>
+
+  <footer id="searchDock" class="dock">
+    <div class="dock-inner">
+      <div id="suggestions" role="listbox" aria-label="Scripture suggestions" hidden></div>
+
+      <div id="ready" class="up-next" hidden>
+        <img id="readyImage" class="ready-img" alt="" hidden>
+        <div class="grow">
+          <span id="readyKind" class="eyebrow">ready</span>
+          <div id="readyLabel" class="ready-label"></div>
+          <div id="readyText" class="ready-text"></div>
+        </div>
+      </div>
+
+      <div class="transport needs-desktop">
+        <button id="searchOpen" type="button" class="btn s ash" aria-label="Find scripture">
+          <svg class="ic" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.25"/><path d="m15.75 15.75 4.25 4.25"/></svg>
+        </button>
+        <button id="prev" type="button" class="btn s ash step" aria-label="Previous verse, lyric or slide">
+          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg>
+        </button>
+        <button id="goLive" type="button" class="btn s ash" aria-disabled="true">go live</button>
+        <button id="next" type="button" class="btn s ash step" aria-label="Next verse, lyric or slide">
+          <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9.5 5.5 6.5 6.5-6.5 6.5"/></svg>
+        </button>
+        <button id="clearScreen" type="button" class="btn s ash">clear</button>
+      </div>
+
+      <div class="search">
+        <div class="search-field s ash">
+          <svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.25"/><path d="m15.75 15.75 4.25 4.25"/></svg>
+          <div class="reference-wrap">
+            <div id="referenceTokens" aria-hidden="true"></div>
+            <input id="reference" role="combobox" aria-autocomplete="list" aria-controls="suggestions" aria-expanded="false" placeholder="john 3:16 or words…" aria-label="Scripture reference or words" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+          </div>
+          <select id="version" aria-label="Translation"></select>
+          <button id="loadVerse" type="button" class="btn s go" aria-label="Send scripture live">
+            <svg class="ic" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+        </div>
+        <button id="searchClose" type="button">cancel</button>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastText"></span></div>
+
+  <!-- ─────────────────────── service sheet ─────────────────────── -->
+  <div id="sheetRoot" class="sheet-root" hidden>
+    <div id="scrim" class="scrim"></div>
+    <section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <header class="sheet-head" id="sheetHead">
+        <div class="grabber" aria-hidden="true"></div>
+        <div class="sheet-title"><h2 id="sheetTitle">service</h2><button id="sheetClose" type="button" class="btn s ash small">done</button></div>
+      </header>
+      <div id="sheetBody" class="sheet-body">
+        <div class="group">
+          <span class="eyebrow">the screen</span>
+          <div id="screenSeg" class="seg needs-desktop" role="radiogroup" aria-label="Screen" style="--n:4">
+            <span id="screenThumb" class="seg-thumb s" aria-hidden="true"></span>
+            <button type="button" role="radio" data-screen="live" aria-checked="true">live</button>
+            <button type="button" role="radio" data-screen="clear" aria-checked="false">clear</button>
+            <button type="button" role="radio" data-screen="black" aria-checked="false">black</button>
+            <button type="button" role="radio" data-screen="logo" aria-checked="false">logo</button>
+          </div>
+          <div class="group-card needs-desktop">
+            <div class="group-row"><div class="grow"><b>projector output</b><small>open the output window on the desktop</small></div><button type="button" class="btn s ash small" data-cmd="openOutput">open</button></div>
+            <div class="group-row"><div class="grow"><b>congregation QR</b><small id="shareState">the code people scan to follow along</small></div><button id="showQr" type="button" class="btn s ash small">show</button></div>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="eyebrow">listening</span>
+          <div class="group-card needs-desktop">
+            <div class="group-row"><div class="grow"><b>scripture listening</b><small id="asrState">not listening</small></div><button id="listenSwitch" type="button" class="switch" role="switch" aria-checked="false" aria-label="Scripture listening"></button></div>
+            <div class="group-row"><div class="grow"><b id="sermonStatus">watching for the sermon</b><small>the sermon clock and catches follow this</small></div><button id="sermonManual" type="button" class="btn s ash small">start sermon</button></div>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="eyebrow">run of service</span>
+          <div id="runList" class="list needs-desktop"></div>
+        </div>
+
+        <div class="group">
+          <span class="eyebrow">timers</span>
+          <div id="timers" class="list needs-desktop"></div>
+          <div class="inline-form needs-desktop">
+            <input id="timerName" class="field" placeholder="timer name" aria-label="Timer name" maxlength="80" autocomplete="off">
+            <input id="timerMinutes" class="field minutes" type="number" value="5" min="1" max="1440" inputmode="numeric" aria-label="Minutes">
+            <button id="createTimer" type="button" class="btn s ash">add</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <span class="eyebrow">screen message</span>
+          <div class="inline-form needs-desktop">
+            <input id="message" class="field" maxlength="500" placeholder="shows for 15 seconds" aria-label="Screen message" autocomplete="off" enterkeyhint="send">
+            <button id="sendMessage" type="button" class="btn s ash">show</button>
+          </div>
+          <button type="button" class="link needs-desktop" data-cmd="alert" data-args='{"dismiss":true}'>take the message down</button>
+        </div>
+
+        <div class="group">
+          <span class="eyebrow">this phone</span>
+          <div class="group-card">
+            <label class="group-row"><span class="grow"><b>app colour</b><small>follows the desktop unless you choose</small></span>
+              <select id="appColour" aria-label="App colour"><option value="desktop">desktop</option><option>fern</option><option>iris</option><option>tide</option><option>ember</option><option>rose</option></select></label>
+            <div class="group-row"><div class="grow"><b>refresh library</b><small>songs, slides and translations</small></div><button id="refresh" type="button" class="btn s ash small">refresh</button></div>
+            <div class="group-row"><div class="grow"><b>disconnect</b><small>revoke it on the desktop to remove access</small></div><button id="logout" type="button" class="btn s danger small">disconnect</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ═══════════════════════════ foundations ═══════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { value == null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch { /* private window */ } },
+};
+const TOKEN_KEY = 'trilorah.remote.token';
+const AURORA_KEY = 'trilorah.remote.aurora';
+const NAME_KEY = 'trilorah.remote.name';
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const EASE_OUT = 'cubic-bezier(.23,1,.32,1)';
+const EASE_IO = 'cubic-bezier(.77,0,.175,1)';
+const TABS = ['verses', 'songs', 'slides'];
+
+let token = store.get(TOKEN_KEY) || '';
+let paired = false, connected = false, busy = false, polling = false;
+let library = null, state = null, pairId = '';
+let tab = 'verses', openSongId = null, openDeckId = null;
+/** The last thing each region drew, so a 4 Hz poll only touches what changed. */
+const seen = {};
+const thumbs = new Map();
+
+/** Small DOM builder. Text always goes through textContent — lyrics are data, never markup. */
+function h(tag, props, ...kids) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value == null || value === false) continue;
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else if (key === 'dataset') Object.assign(node.dataset, value);
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? '' : value);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) node.append(kid);
+  return node;
+}
+
+/* Constant strings only — never data — so innerHTML is safe here. */
+const ICONS = {
+  x: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  right: '<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>',
+  left: '<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>',
+  edit: '<path d="M4.5 19.5h3.8L19 8.8a2.2 2.2 0 0 0-3.1-3.1L5.2 16.4z"/><path d="m14.3 7.3 3.1 3.1"/>',
+  play: '<path d="M8 6.2v11.6a.8.8 0 0 0 1.2.7l9-5.8a.8.8 0 0 0 0-1.4l-9-5.8A.8.8 0 0 0 8 6.2z"/>',
+  pause: '<path d="M9 6v12M15 6v12"/>',
+  reset: '<path d="M5.5 12a6.5 6.5 0 1 0 2-4.7"/><path d="M5.5 4.5v3.5H9"/>',
+  mic: '<rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5"/>',
+};
+function icon(name, size = 20) {
+  const box = document.createElement('span');
+  box.innerHTML = `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+  return box.firstChild;
+}
+const empty = (text, ...extra) => h('div', { class: 'empty' }, h('p', { text }), ...extra);
+
+/** aria-disabled, not disabled: a refused press still gets an answer. */
+const setDisabled = (node, off) => node.setAttribute('aria-disabled', String(!!off));
+const isDisabled = (node) => node.getAttribute('aria-disabled') === 'true';
+
+/* ═══════════════════════════ feedback ═══════════════════════════ */
+let toastTimer;
+function toast(message, tone = 'ok') {
+  const el = $('toast');
+  $('toastText').textContent = message;
+  el.classList.toggle('err', tone === 'err');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), tone === 'err' ? 4200 : 1600);
+}
+/** Android only — iOS gives the web no haptics. Kept to the moments that reach the room,
+    and only after a real touch: the browser refuses (and logs) a buzz nobody asked for. */
+const tap = () => {
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+  try { navigator.vibrate?.(8); } catch { /* unsupported */ }
+};
+
+function animate(node, frames, options) {
+  if (!node || reduced.matches || !node.animate) return null;
+  return node.animate(frames, options);
+}
+/** A swap blurs across rather than cutting, so the eye reads one thing changing. */
+const crossfade = (node) => animate(node, [{ opacity: 0, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 240, easing: EASE_OUT });
+/** Pushed views enter from the side they belong to and leave the same way. */
+const slideIn = (node, dir) => animate(node, [{ transform: `translateX(${dir * 28}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: EASE_OUT });
+
+/* ═══════════════════════════ network ═══════════════════════════ */
+function timeout(ms) {
+  if (AbortSignal.timeout) return AbortSignal.timeout(ms);
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+async function request(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+    body: JSON.stringify(body),
+    signal: timeout(6500),
+  });
+  let data = {};
+  try { data = await res.json(); } catch { /* empty body */ }
+  if (!res.ok) {
+    if (res.status === 401 && path === '/api/command') { token = ''; store.set(TOKEN_KEY, null); showPaired(false); }
+    throw new Error(data.error || 'Request failed');
+  }
+  return data;
+}
+const rpc = async (command, args = {}) => (await request('/api/command', { command, args })).result;
+
+/** One command at a time; the desktop rejects overlapping changes anyway. */
+async function act(command, args = {}, { ok } = {}) {
+  if (busy || !connected) return false;
+  busy = true;
+  document.body.dataset.busy = 'true';
+  try {
+    await rpc(command, args);
+    if (ok) toast(ok);
+    await poll();
+    return true;
+  } catch (e) {
+    toast(e.message || 'That did not work', 'err');
+    return false;
+  } finally {
+    busy = false;
+    delete document.body.dataset.busy;
+  }
+}
+
+/* ═══════════════════════════ items ═══════════════════════════ */
+const sameItem = (a, b) => !!a && !!b && (a.id === b.id || (a.source === 'scripture' && b.source === 'scripture' && a.reference === b.reference && a.version === b.version));
+const itemText = (item) => item?.text || (item?.lines || []).join('\n') || '';
+const isVisual = (item) => !!item && (item.source === 'media' || item.source === 'presentation');
+const kindName = (item) => ({ scripture: 'scripture', song: 'song', presentation: 'slide', media: 'media' })[item?.source] || 'item';
+function caption(item) {
+  if (!item) return '';
+  if (item.source === 'scripture') return [item.reference || item.label, item.version].filter(Boolean).join(' · ');
+  return item.label || item.title || '';
+}
+function fit(text) {
+  const n = text.length;
+  return n <= 70 ? 'fit-1' : n <= 150 ? 'fit-2' : n <= 280 ? 'fit-3' : 'fit-4';
+}
+/** What Go live would send: the preview, unless it is already what the room sees. */
+const pendingItem = (s) => (s?.preview && !sameItem(s.preview, s.live) ? s.preview : null);
+
+function loadThumb(target, item, img) {
+  const cached = thumbs.get(item.id);
+  if (cached) { img.src = cached; img.hidden = false; return; }
+  img.hidden = true;
+  rpc('thumbnail', { target }).then((data) => {
+    if (!data) return;
+    if (thumbs.size > 24) thumbs.delete(thumbs.keys().next().value);
+    thumbs.set(item.id, data);
+    const still = target === 'live' ? state?.live : state?.preview;
+    if (still?.id === item.id) { img.src = data; img.hidden = false; }
+  }).catch(() => { /* a slide without a picture is still a slide */ });
+}
+
+/* ═══════════════════════════ render ═══════════════════════════ */
+function render(s) {
+  renderListening(s);
+  renderPrompt(s);
+  renderMonitor(s);
+  renderReady(s);
+  renderTransport(s);
+  renderProposals(s);
+  renderSongMatches(s);
+  markSongCards(s);
+  markDeckSlides(s);
+  if (!$('sheetRoot').hidden) renderSheet(s);
+  applyAurora(s.aurora);
+}
+
+function renderListening(s) {
+  const pill = $('listenPill');
+  if (pill.dataset.asr !== s.asr) {
+    pill.dataset.asr = s.asr;
+    $('listenLabel').textContent = s.asr === 'listening' ? 'listening' : s.asr === 'connecting' ? 'starting…' : s.asr === 'error' ? 'mic problem' : 'start listening';
+  }
+}
+
+function renderPrompt(s) {
+  const asking = s.sermon?.status === 'confirmation';
+  const box = $('sermonPrompt');
+  const evidence = (s.sermon?.evidence || []).join(' · ');
+  if ($('sermonEvidence').textContent !== evidence) $('sermonEvidence').textContent = evidence;
+  if (box.hidden === !asking) return;
+  box.hidden = !asking;
+  if (asking) animate(box, [{ opacity: 0, transform: 'translateY(-6px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE_OUT });
+}
+
+function renderMonitor(s) {
+  const live = s.live;
+  const screen = s.screen || 'live';
+  const key = JSON.stringify([screen, live && [live.id, live.label, itemText(live)]]);
+  if (key === seen.monitor) return;
+  const swapped = seen.monitor !== undefined && JSON.parse(seen.monitor)[1]?.[0] !== live?.id;
+  seen.monitor = key;
+
+  const mon = $('monitor');
+  mon.dataset.screen = screen;
+  mon.dataset.state = live ? 'live' : 'empty';
+  mon.dataset.visual = String(isVisual(live));
+  $('liveStatus').textContent = !live ? 'nothing on screen' : screen === 'live' ? 'on screen' : 'hidden from the room';
+  const chip = $('screenChip');
+  chip.hidden = screen === 'live';
+  chip.textContent = ({ clear: 'cleared', black: 'black', logo: 'logo' })[screen] || '';
+
+  const text = live && !isVisual(live) ? itemText(live) : '';
+  const body = $('liveText');
+  body.textContent = text;
+  body.hidden = !text;
+  body.className = 'slide-text ' + fit(text) + (live?.source === 'song' ? ' lyric' : '');
+  const label = $('liveLabel');
+  label.textContent = live ? caption(live) : screen === 'live' ? 'tap a catch, a lyric or search' : '';
+  label.className = live ? 'slide-caption' : 'slide-empty';
+
+  const img = $('liveImage');
+  if (isVisual(live)) loadThumb('live', live, img);
+  else { img.hidden = true; img.removeAttribute('src'); }
+  if (swapped) crossfade($('slideBody'));
+}
+
+function renderReady(s) {
+  const pending = pendingItem(s);
+  const key = JSON.stringify(pending && [pending.id, pending.label, itemText(pending)]);
+  if (key === seen.ready) return;
+  const leaving = seen.readyId;
+  seen.ready = key;
+  seen.readyId = pending?.id ?? null;
+  const card = $('ready');
+
+  if (!pending) {
+    // It went up to the room: carry it toward the monitor rather than blinking it out.
+    const promoted = leaving && s.live?.id === leaving && !card.hidden;
+    const run = promoted && animate(card, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-14px) scale(.98)' }], { duration: 200, easing: EASE_IO });
+    const done = () => { if (!seen.readyId) { card.hidden = true; measureDock(); } };
+    if (run) run.finished.then(done, done); else done();
+    return;
+  }
+  $('readyKind').textContent = 'ready · ' + kindName(pending);
+  $('readyLabel').textContent = caption(pending);
+  $('readyText').textContent = isVisual(pending) ? 'press go live to put it up' : itemText(pending).split('\n')[0];
+  const img = $('readyImage');
+  if (isVisual(pending)) loadThumb('preview', pending, img);
+  else img.hidden = true;
+  if (card.hidden) {
+    card.hidden = false;
+    animate(card, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE_OUT });
+  }
+  measureDock();
+}
+
+function renderTransport(s) {
+  const pending = pendingItem(s);
+  const go = $('goLive');
+  go.classList.toggle('go', !!pending);
+  go.classList.toggle('ash', !pending);
+  setDisabled(go, !pending);
+  setDisabled($('prev'), !s.live);
+  setDisabled($('next'), !s.live);
+  const cleared = !!s.screen && s.screen !== 'live';
+  const clear = $('clearScreen');
+  if (clear.dataset.cleared !== String(cleared)) {
+    clear.dataset.cleared = String(cleared);
+    clear.textContent = cleared ? 'restore' : 'clear';
+    clear.classList.toggle('caution', cleared);
+    clear.classList.toggle('ash', !cleared);
+  }
+}
+
+/** Keyed in place: rows that stay keep their node, so only NEW catches animate in. */
+function reconcile(container, items, keyOf, create, update) {
+  for (const node of [...container.children]) if (!node.dataset.key) node.remove();
+  const existing = new Map([...container.children].map((node) => [node.dataset.key, node]));
+  let previous = null;
+  for (const item of items) {
+    const key = keyOf(item);
+    let node = existing.get(key);
+    if (node) { existing.delete(key); update?.(node, item); }
+    else { node = create(item); node.dataset.key = key; }
+    const want = previous ? previous.nextSibling : container.firstChild;
+    if (node !== want) container.insertBefore(node, want);
+    previous = node;
+  }
+  for (const node of existing.values()) node.remove();
+}
+
+function hintFor(p) {
+  if (p.missing) return 'not in this translation';
+  if (p.recognition?.source === 'quote') return 'the words match this verse';
+  if (p.recognition) return 'from the story — check it first';
+  return '';
+}
+function catchState(p, s) {
+  const match = (item) => item?.source === 'scripture' && item.reference === p.reference && item.version === p.version;
+  return match(s.live) ? 'live' : match(s.preview) ? 'ready' : '';
+}
+function paintCatch(node, p, s) {
+  const st = catchState(p, s);
+  node.className = 'catch' + (st ? ' is-' + st : '');
+  const tag = node.querySelector('.tag.state');
+  tag.hidden = !st;
+  tag.className = 'tag state' + (st ? ' is-' + st : '');
+  tag.textContent = st === 'live' ? 'on screen' : st === 'ready' ? 'ready' : '';
+}
+function renderProposals(s) {
+  const key = JSON.stringify([s.proposals, s.live?.id, s.preview?.id, s.asr]);
+  if (key === seen.proposals) return;
+  seen.proposals = key;
+  const count = s.proposals.length;
+  $('catchCount').hidden = !count;
+  $('catchCount').textContent = String(count);
+  $('catchNote').textContent = s.asr === 'listening' ? 'listening' : 'not listening';
+  const list = $('proposals');
+  if (!count) {
+    list.replaceChildren(s.asr === 'listening'
+      ? empty('Catches land here as the preacher reads.')
+      : empty('Start listening and the verses the preacher reads will land here.', h('button', { type: 'button', class: 'btn s ash small', onclick: () => act('listen', { enabled: true }, { ok: 'listening' }) }, 'start listening')));
+    return;
+  }
+  reconcile(list, s.proposals, (p) => p.id, (p) => {
+    const main = h('button', { type: 'button', class: 'catch-main', onclick: () => !isDisabled(main) && act('proposal', { id: p.id }) },
+      h('span', { class: 'catch-top' },
+        h('span', { class: 'catch-ref', text: p.reference }),
+        h('span', { class: 'tag', text: p.version }),
+        h('span', { class: 'tag state', hidden: true })),
+      p.text ? h('span', { class: 'catch-text', text: p.text }) : null,
+      hintFor(p) ? h('span', { class: 'catch-hint', text: hintFor(p) }) : null);
+    setDisabled(main, p.missing);
+    const node = h('div', { class: 'catch' }, main,
+      h('button', { type: 'button', class: 'catch-x', 'aria-label': 'Dismiss ' + p.reference, onclick: () => act('proposal', { id: p.id, dismiss: true }) }, icon('x', 20)));
+    paintCatch(node, p, s);
+    return node;
+  }, (node, p) => paintCatch(node, p, s));
+}
+
+/* ── songs ── */
+function renderSongMatches(s) {
+  $('songSearch').setAttribute('aria-checked', String(!!s.songSearchActive));
+  const key = JSON.stringify([s.songSearchActive, s.songMatches]);
+  if (key === seen.songMatches) return;
+  seen.songMatches = key;
+  const list = $('songMatches');
+  list.replaceChildren();
+  if (!s.songSearchActive) return;
+  if (!s.songMatches?.length) { list.append(empty('Listening for a song from your library…')); return; }
+  list.append(h('div', { class: 'section-head' }, h('span', { class: 'eyebrow', text: 'heard in the room' })));
+  for (const m of s.songMatches) {
+    list.append(h('button', { type: 'button', class: 'row', onclick: () => act('song', { id: m.id, index: m.index }) },
+      h('span', { class: 'row-text' }, h('span', { class: 'row-title', text: m.title }), h('span', { class: 'row-sub', text: m.lines.slice(0, 2).join(' / ') })),
+      icon('right', 18)));
+  }
+}
+
+function renderSongList() {
+  const list = $('songList');
+  const query = $('songFilter').value.trim().toLowerCase();
+  const songs = (library?.songs || []).filter((song) => !query || (song.title + ' ' + song.sections.flatMap((x) => x.lines).join(' ')).toLowerCase().includes(query));
+  const key = JSON.stringify([!!library, query, songs.map((song) => [song.id, song.title, song.sections.length])]);
+  if (key === seen.songList) return;
+  seen.songList = key;
+  list.replaceChildren();
+  if (!library) { list.append(empty('Loading your songs…')); return; }
+  if (!songs.length) { list.append(empty(query ? 'No song matches that.' : 'Add songs on the desktop and they appear here.')); return; }
+  for (const song of songs) {
+    const first = song.sections.find((x) => x.lines.length)?.lines[0] || '';
+    list.append(h('button', { type: 'button', class: 'row', onclick: () => openSong(song.id) },
+      h('span', { class: 'row-text' }, h('span', { class: 'row-title', text: song.title }), h('span', { class: 'row-sub', text: first })),
+      icon('right', 18)));
+  }
+}
+
+function openSong(id) {
+  const song = library?.songs.find((x) => x.id === id);
+  if (!song) return;
+  openSongId = id;
+  $('songHome').hidden = true;
+  $('songSections').hidden = false;
+  drawSongCards(song);
+  window.scrollTo({ top: 0 });
+  slideIn($('songSections'), 1);
+}
+function closeSong() {
+  openSongId = null;
+  $('songSections').hidden = true;
+  $('songHome').hidden = false;
+  renderSongList();
+  slideIn($('songHome'), -1);
+}
+
+function viewHead(label, onBack, title) {
+  return h('div', { class: 'view-head' },
+    h('button', { type: 'button', class: 'back', onclick: onBack }, icon('left', 22), label),
+    h('h2', { class: 'view-title', text: title }));
+}
+
+function drawSongCards(song) {
+  const wrap = $('songSections');
+  wrap.replaceChildren(viewHead('songs', closeSong, song.title));
+  const grid = h('div', { class: 'lyrics' });
+  song.sections.forEach((section, index) => {
+    const pages = Math.max(1, Math.ceil(section.lines.length / 4));
+    for (let page = 0; page < pages; page++) {
+      const offset = page * 4;
+      const lines = section.lines.slice(offset, offset + 4);
+      const label = section.label + (pages > 1 ? ' · ' + (page + 1) : '');
+      // The same id the desktop gives this card (shared/songCards.ts), so live and ready line up.
+      const id = `${song.id}/${song.id}:${index}/page-${page}`;
+      const card = h('article', { class: 'lyric', dataset: { card: id } },
+        h('div', { class: 'lyric-head' },
+          h('span', { class: 'lyric-label', text: label }),
+          h('div', { class: 'lyric-actions' },
+            h('button', { type: 'button', class: 'btn s ash small icon', 'aria-label': 'Edit ' + label, onclick: () => editCard(song, card, index, offset, lines, label) }, icon('edit', 17)),
+            h('button', { type: 'button', class: 'btn s ash small card-live', onclick: () => act('song', { id: song.id, index, offset, live: true }, { ok: 'on screen' }).then((ok) => ok && tap()) }, 'live'))),
+        h('button', { type: 'button', class: 'lyric-main', 'aria-label': 'Ready ' + label, onclick: () => act('song', { id: song.id, index, offset }) },
+          h('span', { class: 'lyric-words', text: lines.join('\n') || 'empty card' })));
+      grid.append(card);
+    }
+  });
+  wrap.append(grid);
+  seen.songCards = null;
+  markSongCards(state);
+}
+
+function editCard(song, card, index, offset, lines, label) {
+  const editor = h('textarea', { class: 'lyric-edit', 'aria-label': 'Edit ' + label + ' lyrics' });
+  editor.value = lines.join('\n');
+  card.replaceChildren(h('div', { class: 'lyric-edit-box' },
+    h('span', { class: 'lyric-label', text: label }),
+    editor,
+    h('div', { class: 'lyric-actions' },
+      h('button', { type: 'button', class: 'btn s ash small', onclick: () => drawSongCards(song) }, 'cancel'),
+      h('button', { type: 'button', class: 'btn s go small', onclick: async () => {
+        if (busy || !connected) return;
+        busy = true;
+        try {
+          const saved = await rpc('song-edit', { id: song.id, index, offset, count: lines.length, lines: editor.value.split(/\r?\n/) });
+          const at = library.songs.findIndex((x) => x.id === saved.id);
+          if (at >= 0) library.songs[at] = saved;
+          seen.songList = null;
+          toast('lyrics saved');
+          drawSongCards(saved);
+        } catch (e) { toast(e.message, 'err'); } finally { busy = false; }
+      } }, 'save lyrics'))));
+  editor.focus();
+}
+
+function markSongCards(s) {
+  const key = JSON.stringify([openSongId, s?.live?.id, s?.preview?.id]);
+  if (key === seen.songCards) return;
+  seen.songCards = key;
+  for (const card of document.querySelectorAll('[data-card]')) {
+    const live = card.dataset.card === s?.live?.id;
+    const ready = !live && card.dataset.card === s?.preview?.id;
+    card.classList.toggle('is-live', live);
+    card.classList.toggle('is-ready', ready);
+    const button = card.querySelector('.card-live');
+    if (button) { button.textContent = live ? 'on screen' : 'live'; setDisabled(button, live); }
+  }
+}
+
+/* ── slides ── */
+function renderDecks() {
+  const list = $('deckList');
+  const decks = library?.decks || [];
+  const key = JSON.stringify([!!library, decks]);
+  if (key === seen.decks) return;
+  seen.decks = key;
+  list.replaceChildren();
+  if (!library) { list.append(empty('Loading presentations…')); return; }
+  if (!decks.length) { list.append(empty('Import a presentation on the desktop and it appears here.')); return; }
+  for (const deck of decks) {
+    list.append(h('button', { type: 'button', class: 'row', onclick: () => openDeck(deck.id) },
+      h('span', { class: 'row-text' }, h('span', { class: 'row-title', text: deck.title }), h('span', { class: 'row-sub', text: deck.count + (deck.count === 1 ? ' slide' : ' slides') })),
+      icon('right', 18)));
+  }
+}
+function openDeck(id) {
+  const deck = library?.decks.find((x) => x.id === id);
+  if (!deck) return;
+  openDeckId = id;
+  const wrap = $('deckSlides');
+  const tiles = h('div', { class: 'tiles' });
+  for (let i = 0; i < deck.count; i++) {
+    tiles.append(h('button', { type: 'button', class: 'tile', dataset: { slide: `${deck.id}:${i}` }, 'aria-label': `Ready slide ${i + 1}`, onclick: () => act('deck', { id: deck.id, index: i }), text: String(i + 1) }));
+  }
+  wrap.replaceChildren(viewHead('slides', closeDeck, deck.title), tiles);
+  $('deckHome').hidden = true;
+  wrap.hidden = false;
+  seen.deckSlides = null;
+  markDeckSlides(state);
+  window.scrollTo({ top: 0 });
+  slideIn(wrap, 1);
+}
+function closeDeck() {
+  openDeckId = null;
+  $('deckSlides').hidden = true;
+  $('deckHome').hidden = false;
+  slideIn($('deckHome'), -1);
+}
+function markDeckSlides(s) {
+  const key = JSON.stringify([openDeckId, s?.live?.id, s?.preview?.id]);
+  if (key === seen.deckSlides) return;
+  seen.deckSlides = key;
+  for (const tile of document.querySelectorAll('[data-slide]')) {
+    const live = tile.dataset.slide === s?.live?.id;
+    tile.classList.toggle('is-live', live);
+    tile.classList.toggle('is-ready', !live && tile.dataset.slide === s?.preview?.id);
+  }
+}
+
+/* ── the sheet's contents ── */
+function renderSheet(s) {
+  if (!s) return;
+  const screen = s.screen || 'live';
+  const order = ['live', 'clear', 'black', 'logo'];
+  $('screenThumb').style.setProperty('--i', String(Math.max(0, order.indexOf(screen))));
+  for (const b of document.querySelectorAll('[data-screen]')) b.setAttribute('aria-checked', String(b.dataset.screen === screen));
+
+  const listening = s.asr === 'listening';
+  $('listenSwitch').setAttribute('aria-checked', String(listening));
+  $('asrState').textContent = s.asrMessage || (listening ? 'listening for scripture' : 'not listening');
+
+  const sermon = s.sermon;
+  const active = sermon?.status === 'active';
+  $('sermonStatus').textContent = active ? 'sermon started' : sermon?.status === 'confirmation' ? 'waiting for you to confirm' : sermon?.status === 'approaching' ? 'sermon approaching' : 'watching for the sermon';
+  $('sermonManual').textContent = active ? 'end sermon' : 'start sermon';
+  setDisabled($('sermonManual'), !sermon);
+
+  $('shareState').textContent = s.sharing ? 'the congregation page is live' : s.cloudReady ? 'goes live when listening starts' : 'sign the desktop in to share the page';
+  renderRun(s);
+  renderTimers(s);
+}
+function renderRun(s) {
+  const run = s.run || [];
+  const key = JSON.stringify(run);
+  if (key === seen.run) return;
+  seen.run = key;
+  const list = $('runList');
+  list.replaceChildren();
+  if (!run.length) { list.append(empty('Build today’s run on the desktop with +.')); return; }
+  for (const segment of run) {
+    list.append(h('p', { class: 'run-seg', text: segment.label }));
+    for (const item of segment.items) {
+      list.append(h('button', { type: 'button', class: 'row compact', onclick: () => act('run', { id: item.key }) },
+        h('span', { class: 'row-text' }, h('span', { class: 'row-title', text: item.label }), h('span', { class: 'row-sub', text: item.source })),
+        icon('right', 18)));
     }
   }
 }
-function updateSongCards(state){for(const card of document.querySelectorAll('[data-song-card]')){card.dataset.live=String(card.dataset.songCard===state?.live?.id);card.dataset.preview=String(card.dataset.songCard===state?.preview?.id)}}
-function renderDecks(){const list=$('deckList');empty(list,library.decks.length?'Choose a presentation.':'Import a presentation on the desktop first.');for(const deck of library.decks)list.append(button(deck.title,()=>{const slides=$('deckSlides');slides.replaceChildren();for(let i=0;i<deck.count;i++)slides.append(button('Slide '+(i+1),()=>act('deck',{id:deck.id,index:i})))},deck.count+' slides'))}
-function renderSermon(s){const active=s?.status==='active',pending=s?.status==='confirmation';$('sermonStatus').textContent=active?'Sermon started':pending?'Please confirm':s?.status==='approaching'?'Sermon approaching':'Watching for the sermon';$('sermonManual').textContent=active?'End sermon':'Start sermon';$('sermonManual').disabled=!s;$('sermonPrompt').classList.toggle('hidden',!pending);$('sermonEvidence').textContent=(s?.evidence||[]).join(' · ')}
-$('sermonManual').onclick=()=>{if(currentState?.sermon?.status==='active'){if(confirm('End this sermon session?'))act('sermon',{action:'end'})}else act('sermon',{action:'start'})};
-$('sermonYes').onclick=()=>act('sermon',{action:'confirm',requestId:currentState?.sermon?.requestId});
-$('sermonNo').onclick=()=>act('sermon',{action:'not-yet',requestId:currentState?.sermon?.requestId});
-let polling=false;
-async function poll(){if(!token||polling)return;polling=true;try{const s=await rpc('state');showPaired(true);status(true);currentState=s;renderSermon(s.sermon);updateSongCards(s);applyAurora(s.aurora);renderSongMatches(s);renderRun(s.run||[]);const item=s.preview||s.live;const alreadyLive=sameItem(item,s.live);const target=s.preview?'preview':'live';$('heardLabel').textContent=item?.label||'Waiting for scripture…';$('heardText').textContent=item?.text||item?.lines?.join('\n')||(item?'':'Detected scripture will appear here.');$('heardStatus').textContent=alreadyLive?'Live':item?.source==='scripture'?'Heard scripture':'Selected '+(item?.source||'scripture');$('goLive').textContent=alreadyLive?'Next →':'Go live';$('goLive').disabled=!item;const key=item?.id||'';if(heardKey!==key){heardKey=key;$('heardImage').classList.add('hidden');if(item&&['media','presentation'].includes(item.source))rpc('thumbnail',{target}).then(data=>{if(heardKey===key&&data){$('heardImage').src=data;$('heardImage').classList.remove('hidden')}}).catch(()=>{})}$('serviceStatus').textContent='Screen: '+s.screen;$('asrState').textContent=s.asrMessage||s.asr;const proposals=JSON.stringify(s.proposals);if(proposals!==lastProposals){lastProposals=proposals;const list=$('proposals');empty(list,s.proposals.length?'':'No pending scriptures.');for(const p of s.proposals){const card=document.createElement('div');card.className='card';const b=button(p.reference+' · '+p.version,()=>act('proposal',{id:p.id}),p.text);b.disabled=p.missing;if(p.recognition){b.title=p.recognition.source==='quote'?'Spoken words match part of this verse.':'Story details suggest this passage. Check it before presenting.';}card.append(b,button('Dismiss',()=>act('proposal',{id:p.id,dismiss:true})));list.append(card)}}const timers=JSON.stringify(s.timers.map(t=>[t.id,t.name,t.state]));if(timers!==lastTimers){lastTimers=timers;$('timers').replaceChildren();for(const t of s.timers){const box=document.createElement('div');box.className='card';const label=document.createElement('p');label.id='timer-'+t.id;label.textContent=t.name+' · '+t.state+' · '+t.display;box.append(label);for(const action of ['start','pause','reset'])box.append(button(action,()=>act('timer',{id:t.id,action})));$('timers').append(box)}}for(const t of s.timers){const label=$('timer-'+t.id);if(label)label.textContent=t.name+' · '+t.state+' · '+t.display}}catch(e){status(false);error(e.message)}finally{polling=false}}
-$('pairButton').onclick=async()=>{error('');$('pairButton').disabled=true;try{const data=await request('/api/pair',{name:$('name').value,code:$('code').value});pairId=data.id;$('pairNote').textContent='Waiting for desktop approval…'}catch(e){error(e.message);$('pairButton').disabled=false}};
-async function tick(){if(pairId){try{const d=await request('/api/pair-status',{id:pairId});if(d.token){token=d.token;pairId='';try{localStorage.setItem('trilorah.remote.token',token)}catch{}$('pairButton').disabled=false;$('pairNote').textContent='';await poll();await loadLibrary()}}catch(e){pairId='';$('pairButton').disabled=false;$('pairNote').textContent='';error(e.message)}}else if(token&&!busy){await poll();if(connected&&!library)await loadLibrary()}setTimeout(tick,token&&!document.hidden?250:1000)}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-cmd]');if(b)void act(b.dataset.cmd,JSON.parse(b.dataset.args||'{}'));const tab=e.target.closest('[data-tab]');if(tab){document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('hidden',p.id!==tab.dataset.tab));document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b===tab))}});
-let songMatchKey='',runKey='';
-function renderSongMatches(state){$('songSearch').textContent=state.songSearchActive?'Stop song search':'Search song';$('songSearch').setAttribute('aria-pressed',String(state.songSearchActive));const key=JSON.stringify([state.songSearchActive,state.songMatches]);if(key===songMatchKey)return;songMatchKey=key;const list=$('songMatches');list.replaceChildren();if(!state.songSearchActive)return;if(!state.songMatches?.length){empty(list,'Listening for songs in your library');return}for(const match of state.songMatches)list.append(button(match.title+' ↗',()=>act('song',{id:match.id,index:match.index}),match.lines.slice(0,4).join('\n')))}
-function renderRun(run){const key=JSON.stringify(run);if(key===runKey)return;runKey=key;const list=$('runList');list.replaceChildren();if(!run.length){empty(list,'Use + on the desktop to build today’s run');return}for(const segment of run){const h=document.createElement('h3');h.textContent=segment.label;list.append(h);for(const item of segment.items)list.append(button(item.label,()=>act('run',{id:item.key}),item.source))}}
-function applyAurora(desktop){let chosen='desktop';try{chosen=localStorage.getItem('trilorah.remote.aurora')||'desktop'}catch{}$('appColour').value=chosen;document.documentElement.dataset.aurora=chosen==='desktop'?(desktop||'fern'):chosen}
-$('appColour').onchange=()=>{try{localStorage.setItem('trilorah.remote.aurora',$('appColour').value)}catch{}applyAurora(currentState?.aurora)};
-$('songSearch').onclick=()=>act('song-search',{enabled:!currentState?.songSearchActive});
+function renderTimers(s) {
+  const timers = s.timers || [];
+  const key = JSON.stringify(timers.map((t) => [t.id, t.name, t.state]));
+  const list = $('timers');
+  if (key !== seen.timers) {
+    seen.timers = key;
+    list.replaceChildren();
+    if (!timers.length) list.append(empty('No timers yet.'));
+    for (const t of timers) {
+      const running = t.state === 'running';
+      list.append(h('div', { class: 'timer' + (running ? ' is-running' : '') },
+        h('div', { class: 'grow' }, h('b', { text: t.name }), h('small', { text: t.state })),
+        h('span', { class: 'timer-time', id: 'timer-' + t.id, text: t.display }),
+        h('button', { type: 'button', class: 'btn s ash small icon', 'aria-label': (running ? 'Pause ' : 'Start ') + t.name, onclick: () => act('timer', { id: t.id, action: running ? 'pause' : 'start' }) }, icon(running ? 'pause' : 'play', 17)),
+        h('button', { type: 'button', class: 'btn s ash small icon', 'aria-label': 'Reset ' + t.name, onclick: () => act('timer', { id: t.id, action: 'reset' }) }, icon('reset', 17))));
+    }
+  }
+  for (const t of timers) {
+    const node = $('timer-' + t.id);
+    if (node && node.textContent !== t.display) node.textContent = t.display;
+  }
+}
+
+function applyAurora(desktop) {
+  const chosen = store.get(AURORA_KEY) || 'desktop';
+  if ($('appColour').value !== chosen) $('appColour').value = chosen;
+  const next = chosen === 'desktop' ? desktop || 'fern' : chosen;
+  const root = document.documentElement;
+  if (root.dataset.aurora === next) return;
+  root.dataset.aurora = next;
+  const stop = getComputedStyle(root).getPropertyValue('--g0').trim().split(/\s+/).join(',');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', `rgb(${stop})`);
+}
+
+/* ═══════════════════════════ state loop ═══════════════════════════ */
+function showPaired(on) {
+  if (paired === on && $('app').hidden === !on) return;
+  paired = on;
+  $('pair').hidden = on;
+  $('app').hidden = !on;
+  if (on && !connected) $('connection').textContent = 'connecting…';
+  if (!on) { setConnected(false); closeSheet(); }
+}
+function setConnected(ok, message) {
+  connected = ok;
+  document.body.dataset.connected = String(ok);
+  const conn = $('connection');
+  conn.textContent = ok ? 'connected' : paired ? 'reconnecting…' : 'not paired';
+  conn.className = 'conn' + (ok ? ' ok' : paired ? ' bad' : '');
+  const banner = $('error');
+  banner.hidden = ok || !paired;
+  if (!ok && paired) banner.textContent = message && !/abort|timed? ?out|fetch/i.test(message) ? message : 'Can’t reach the desktop. Check this phone is on the same Wi‑Fi — it reconnects by itself.';
+}
+
+async function poll() {
+  if (!token || polling) return;
+  polling = true;
+  try {
+    const s = await rpc('state');
+    showPaired(true);
+    setConnected(true);
+    state = s;
+    render(s);
+  } catch (e) {
+    setConnected(false, e.message);
+  } finally {
+    polling = false;
+  }
+}
+
+async function loadLibrary() {
+  try {
+    library = await rpc('library');
+    const select = $('version');
+    const old = select.value;
+    select.replaceChildren(...library.versions.map((v) => h('option', { value: v, text: v })));
+    select.value = library.versions.includes(old) ? old : library.versions.includes('KJV') ? 'KJV' : library.versions[0] || '';
+    seen.songList = seen.decks = null;
+    renderSongList();
+    renderDecks();
+    if (openSongId) { const song = library.songs.find((x) => x.id === openSongId); if (song) drawSongCards(song); else closeSong(); }
+  } catch (e) {
+    toast(e.message, 'err');
+  }
+}
+
+async function tick() {
+  if (pairId) {
+    try {
+      const d = await request('/api/pair-status', { id: pairId });
+      if (d.token) {
+        token = d.token;
+        pairId = '';
+        store.set(TOKEN_KEY, token);
+        pairNote('');
+        setDisabled($('pairButton'), false);
+        await poll();
+        await loadLibrary();
+      }
+    } catch (e) {
+      pairId = '';
+      setDisabled($('pairButton'), false);
+      pairNote(e.message, true);
+    }
+  } else if (token && !busy) {
+    await poll();
+    if (connected && !library) await loadLibrary();
+  }
+  setTimeout(tick, token && !document.hidden ? 250 : 1000);
+}
+
+/* ═══════════════════════════ pairing ═══════════════════════════ */
+function pairNote(text, error = false, waiting = false) {
+  const note = $('pairNote');
+  note.className = 'pair-note' + (error ? ' err' : '');
+  note.replaceChildren(...(waiting ? [h('span', { class: 'spin', 'aria-hidden': 'true' })] : []), text);
+}
+async function requestPairing() {
+  if (isDisabled($('pairButton'))) return;
+  const code = $('code').value.replace(/\D/g, '');
+  if (code.length !== 6) { pairNote('Enter the six-digit code from the desktop.', true); $('code').focus(); return; }
+  store.set(NAME_KEY, $('name').value);
+  setDisabled($('pairButton'), true);
+  try {
+    const data = await request('/api/pair', { name: $('name').value, code });
+    pairId = data.id;
+    pairNote('Waiting for the desktop to approve this phone…', false, true);
+  } catch (e) {
+    setDisabled($('pairButton'), false);
+    pairNote(e.message, true);
+  }
+}
+$('name').value = store.get(NAME_KEY) || $('name').value;
+$('pairButton').onclick = requestPairing;
+$('code').addEventListener('input', () => {
+  const digits = $('code').value.replace(/\D/g, '').slice(0, 6);
+  if ($('code').value !== digits) $('code').value = digits;
+  if (digits.length === 6 && !pairId) requestPairing();
+});
+$('name').addEventListener('keydown', (e) => { if (e.key === 'Enter') requestPairing(); });
+
+/* ═══════════════════════════ controls ═══════════════════════════ */
+function selectTab(next) {
+  tab = next;
+  $('segThumb').style.setProperty('--i', String(TABS.indexOf(next)));
+  for (const b of document.querySelectorAll('[data-tab]')) {
+    const on = b.dataset.tab === next;
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+  }
+  for (const id of TABS) $(id).hidden = id !== next;
+  if (next === 'songs') renderSongList();
+  if (next === 'slides') renderDecks();
+}
+
+document.addEventListener('click', (e) => {
+  const cmd = e.target.closest('[data-cmd]');
+  if (cmd && !isDisabled(cmd)) void act(cmd.dataset.cmd, JSON.parse(cmd.dataset.args || '{}'));
+  const tabButton = e.target.closest('[data-tab]');
+  if (tabButton) selectTab(tabButton.dataset.tab);
+  const screenButton = e.target.closest('[data-screen]');
+  if (screenButton && state && screenButton.dataset.screen !== state.screen) {
+    void act('screen', { value: screenButton.dataset.screen }, { ok: screenButton.dataset.screen === 'live' ? 'back on screen' : 'screen ' + screenButton.dataset.screen });
+  }
+});
+document.querySelector('.seg[role=tablist]').addEventListener('keydown', (e) => {
+  const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+  if (!step) return;
+  const next = TABS[(TABS.indexOf(tab) + step + TABS.length) % TABS.length];
+  selectTab(next);
+  document.querySelector(`[data-tab=${next}]`).focus();
+});
+
+$('goLive').onclick = async () => {
+  const pending = pendingItem(state);
+  if (!pending) { toast('Nothing is ready — tap a catch, a lyric or a slide first.'); return; }
+  if (await act('live', { id: pending.id }, { ok: 'on screen' })) tap();
+};
+$('next').onclick = () => (state?.live ? act('step', { delta: 1 }) : toast('Nothing is on the screen yet.'));
+$('prev').onclick = () => (state?.live ? act('step', { delta: -1 }) : toast('Nothing is on the screen yet.'));
+$('clearScreen').onclick = async () => {
+  const cleared = state?.screen && state.screen !== 'live';
+  if (await act('screen', { value: cleared ? 'live' : 'clear' }, { ok: cleared ? 'back on screen' : 'screen cleared' })) tap();
+};
+$('listenPill').onclick = () => act('listen', { enabled: state?.asr !== 'listening' }, { ok: state?.asr === 'listening' ? 'stopped listening' : 'listening' });
+$('listenSwitch').onclick = () => $('listenPill').click();
+$('songSearch').onclick = () => act('song-search', { enabled: !state?.songSearchActive });
+$('songFilter').oninput = renderSongList;
+$('sermonYes').onclick = () => act('sermon', { action: 'confirm', requestId: state?.sermon?.requestId });
+$('sermonNo').onclick = () => act('sermon', { action: 'not-yet', requestId: state?.sermon?.requestId });
+$('sermonManual').onclick = () => {
+  if (state?.sermon?.status === 'active') { if (confirm('End this sermon?')) act('sermon', { action: 'end' }); }
+  else act('sermon', { action: 'start' }, { ok: 'sermon started' });
+};
+$('showQr').onclick = () => act('qr', {}, { ok: 'QR code on screen' });
+$('createTimer').onclick = () => act('timer', { action: 'create', name: $('timerName').value, seconds: Number($('timerMinutes').value) * 60 }, { ok: 'timer added' }).then((ok) => { if (ok) $('timerName').value = ''; });
+$('sendMessage').onclick = () => act('alert', { text: $('message').value }, { ok: 'message on screen' }).then((ok) => { if (ok) $('message').value = ''; });
+$('message').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('sendMessage').click(); });
+$('refresh').onclick = async () => { await loadLibrary(); toast('library refreshed'); };
+$('appColour').onchange = () => { store.set(AURORA_KEY, $('appColour').value); applyAurora(state?.aurora); };
+$('logout').onclick = () => {
+  token = '';
+  library = null;
+  store.set(TOKEN_KEY, null);
+  showPaired(false);
+  pairNote('Disconnected. Revoke this phone on the desktop to remove its access.');
+};
+
+/* ═══════════════════════════ the sheet ═══════════════════════════
+ * A drawer you can throw. It follows the finger 1:1 from the grabber,
+ * resists past the top, and on release lands where the flick was going
+ * (Apple's projection), carrying the finger's speed into a critically
+ * damped spring so there is no seam between dragging and settling.
+ */
+const sheetRoot = $('sheetRoot'), sheet = $('sheet'), scrim = $('scrim');
+let sheetY = 0, springFrame = 0, lastFocus = null, drag = null;
+
+function setSheetY(y) {
+  sheetY = y;
+  sheet.style.transform = `translateY(${y}px)`;
+  const height = sheet.offsetHeight || 1;
+  scrim.style.opacity = String(Math.max(0, Math.min(1, 1 - y / height)));
+}
+function stopSpring() { cancelAnimationFrame(springFrame); springFrame = 0; }
+/**
+ * Apple's response/damping spring, solved in closed form rather than stepped:
+ * an integrator goes unstable on a dropped frame or a hard flick (the sheet
+ * flew off the wrong way in testing), the exact solution cannot. Velocity in
+ * px/ms, positive = down; it starts the spring at the finger's own speed.
+ */
+function springTo(target, velocity = 0, { response = 0.42, damping = 1 } = {}) {
+  stopSpring();
+  return new Promise((resolve) => {
+    if (reduced.matches) { setSheetY(target); resolve(); return; }
+    const omega = (2 * Math.PI) / response;
+    const zeta = Math.min(1, Math.max(0.1, damping));
+    const x0 = sheetY - target;
+    const v0 = Math.max(-8, Math.min(8, velocity)) * 1000;
+    const wd = omega * Math.sqrt(Math.max(0, 1 - zeta * zeta));
+    const at = (t) => zeta >= 1
+      ? (x0 + (v0 + omega * x0) * t) * Math.exp(-omega * t)
+      : Math.exp(-zeta * omega * t) * (x0 * Math.cos(wd * t) + ((v0 + zeta * omega * x0) / wd) * Math.sin(wd * t));
+    const start = performance.now();
+    const finish = () => { setSheetY(target); springFrame = 0; resolve(); };
+    const step = (now) => {
+      const t = (now - start) / 1000;
+      const x = at(t);
+      if (t > 2.5 || (t > 0.05 && Math.abs(x) < 0.5 && Math.abs(at(t + 1 / 60) - x) < 0.25)) { finish(); return; }
+      setSheetY(target + x);
+      springFrame = requestAnimationFrame(step);
+    };
+    springFrame = requestAnimationFrame(step);
+  });
+}
+function rubberband(over, dimension, constant = 0.55) {
+  return (over * dimension * constant) / (dimension + constant * Math.abs(over));
+}
+const project = (velocity, rate = 0.998) => velocity * rate / (1 - rate);
+
+function openSheet() {
+  if (!sheetRoot.hidden) return;
+  lastFocus = document.activeElement;
+  closeSearch();
+  sheetRoot.hidden = false;
+  document.body.classList.add('sheet-open');
+  for (const id of ['top', 'searchDock']) $(id).inert = true;
+  document.querySelector('main').inert = true;
+  renderSheet(state);
+  setSheetY(sheet.offsetHeight);
+  springTo(0, 0, { response: 0.44 });
+  $('sheetClose').focus({ preventScroll: true });
+}
+function closeSheet(velocity = 0) {
+  if (sheetRoot.hidden) return;
+  springTo(sheet.offsetHeight + 24, velocity, { response: 0.36 }).then(() => {
+    if (springFrame) return;
+    sheetRoot.hidden = true;
+    sheet.style.transform = '';
+    document.body.classList.remove('sheet-open');
+    for (const id of ['top', 'searchDock']) $(id).inert = false;
+    document.querySelector('main').inert = false;
+    lastFocus?.focus?.({ preventScroll: true });
+  });
+}
+$('moreButton').onclick = openSheet;
+$('sheetClose').onclick = () => closeSheet();
+scrim.onclick = () => closeSheet();
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheetRoot.hidden) closeSheet(); });
+
+$('sheetHead').addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.target.closest('button')) return;
+  stopSpring();
+  drag = { id: e.pointerId, startY: e.clientY, fromY: sheetY, samples: [{ t: e.timeStamp, y: e.clientY }] };
+  $('sheetHead').setPointerCapture(e.pointerId);
+});
+$('sheetHead').addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  drag.samples.push({ t: e.timeStamp, y: e.clientY });
+  if (drag.samples.length > 6) drag.samples.shift();
+  const y = drag.fromY + (e.clientY - drag.startY);
+  setSheetY(y < 0 ? -rubberband(-y, sheet.offsetHeight) : y);
+});
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  const { samples } = drag;
+  drag = null;
+  // Speed over the last ~80ms only: what the finger was doing as it let go.
+  const last = samples[samples.length - 1];
+  const recent = samples.filter((p) => last.t - p.t <= 80);
+  const first = recent[0];
+  const span = last.t - first.t;
+  const velocity = span >= 8 ? (last.y - first.y) / span : 0;
+  if (sheetY + project(velocity) > sheet.offsetHeight * 0.5) closeSheet(velocity);
+  else springTo(0, velocity, { response: 0.36, damping: 0.86 });
+}
+$('sheetHead').addEventListener('pointerup', endDrag);
+$('sheetHead').addEventListener('pointercancel', endDrag);
+
+/* ═══════════════════════════ scripture search ═══════════════════════════ */
+let suggestions = [], suggestAt = -1, suggestTimer, suggestSequence = 0;
+const dock = $('searchDock');
+
+function openSearch() {
+  dock.classList.add('searching');
+  measureDock();
+  $('reference').focus();
+  if ($('reference').value) void suggest();
+}
+function closeSearch() {
+  closeSuggestions();
+  dock.classList.remove('searching');
+  $('reference').blur();
+  measureDock();
+}
+$('searchOpen').onclick = openSearch;
+$('searchClose').onclick = closeSearch;
+
+function closeSuggestions() {
+  suggestSequence++;
+  $('suggestions').hidden = true;
+  $('reference').setAttribute('aria-expanded', 'false');
+}
+function highlight(n) {
+  suggestAt = n;
+  [...$('suggestions').querySelectorAll('.sugg')].forEach((b, i) => {
+    b.classList.toggle('active', i === n);
+    b.setAttribute('aria-selected', String(i === n));
+    if (i === n) b.scrollIntoView({ block: 'nearest' });
+  });
+}
+async function chooseSuggestion(n, live = false) {
+  const item = suggestions[n];
+  if (!item) return;
+  $('reference').value = item.value;
+  renderReferenceTokens();
+  if (item.complete) {
+    closeSuggestions();
+    if (await act('verse', { reference: item.value, version: $('version').value, live }, { ok: live ? 'on screen' : 'ready' })) {
+      if (live) tap();
+      closeSearch();
+    }
+  } else {
+    await suggest();
+    $('reference').focus();
+  }
+}
+async function suggest() {
+  const sequence = ++suggestSequence;
+  const query = $('reference').value;
+  if (!query.trim()) { closeSuggestions(); return; }
+  try {
+    const values = await rpc('suggest', { query, version: $('version').value });
+    if (sequence !== suggestSequence) return;
+    suggestions = values;
+    suggestAt = -1;
+    const list = $('suggestions');
+    list.replaceChildren(...values.map((item, n) => h('button', { type: 'button', class: 'sugg', role: 'option', onclick: () => chooseSuggestion(n) },
+      h('span', { class: 'sugg-label', text: item.label }),
+      item.detail ? h('span', { class: 'sugg-detail', text: item.detail }) : null)));
+    if (!values.length) list.append(empty('No matching scripture. Check the reference or try other words.'));
+    if (list.hidden) {
+      list.hidden = false;
+      animate(list, [{ opacity: 0, transform: 'translateY(6px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 180, easing: EASE_OUT });
+    }
+    $('reference').setAttribute('aria-expanded', 'true');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+/* The book and chapter you have typed sit in soft tokens; backspace removes a whole token. */
+function splitReference(value) {
+  const m = value.match(/^((?:[1-3]\s*)?[a-z]+(?:\s+[a-z]+)*)\s+(\d*)(?::(.*))?\s*$/i);
+  if (!m) return null;
+  const name = m[1].trim().toLowerCase();
+  return library?.books?.some((b) => b.toLowerCase() === name || (name === 'psalm' && b === 'Psalms')) ? m : null;
+}
+function renderReferenceTokens() {
+  const input = $('reference'), layer = $('referenceTokens'), m = splitReference(input.value);
+  layer.replaceChildren();
+  input.classList.toggle('tokenized', !!m);
+  if (!m) return;
+  [m[1] + ' ', m[2] + (m[3] !== undefined ? ':' : ''), m[3] || ''].forEach((part, i) => layer.append(h('span', { class: i < 2 ? 'reference-token' : null, text: part })));
+}
+function eraseReferenceToken() {
+  const input = $('reference');
+  if (input.selectionStart !== input.selectionEnd || input.selectionEnd !== input.value.length) return false;
+  const m = splitReference(input.value);
+  let next;
+  if (m) { if (m[3]) return false; next = m[2] ? m[1] + ' ' : ''; }
+  else if (library?.books?.some((b) => b.toLowerCase() === input.value.trim().toLowerCase())) next = '';
+  else return false;
+  input.value = next;
+  input.oninput();
+  return true;
+}
+$('reference').addEventListener('beforeinput', (e) => { if (e.inputType === 'deleteContentBackward' && e.cancelable && eraseReferenceToken()) e.preventDefault(); });
+$('reference').oninput = () => { renderReferenceTokens(); clearTimeout(suggestTimer); suggestSequence++; suggestTimer = setTimeout(suggest, 160); };
+$('version').onchange = () => void suggest();
+$('reference').onkeydown = (e) => {
+  if (e.key === 'Backspace' && eraseReferenceToken()) { e.preventDefault(); return; }
+  if (e.key === 'Escape') { $('suggestions').hidden ? closeSearch() : closeSuggestions(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    highlight(Math.max(0, Math.min(suggestions.length - 1, suggestAt + (e.key === 'ArrowDown' ? 1 : -1))));
+  }
+  if (e.key === 'Enter' || e.key === 'Tab') {
+    if (suggestAt >= 0 || (e.key === 'Tab' && suggestions.length)) { e.preventDefault(); void chooseSuggestion(Math.max(0, suggestAt), e.key === 'Enter'); }
+    else if (e.key === 'Enter') { e.preventDefault(); $('loadVerse').click(); }
+  }
+};
+$('loadVerse').onclick = async () => {
+  closeSuggestions();
+  if (await act('verse', { reference: $('reference').value, version: $('version').value, live: true }, { ok: 'on screen' })) {
+    tap();
+    closeSearch();
+  }
+};
+document.addEventListener('pointerdown', (e) => {
+  if (dock.contains(e.target)) return;
+  closeSuggestions();
+  if (dock.classList.contains('searching') && !$('reference').value) closeSearch();
+});
+
+/* ═══════════════════════════ layout plumbing ═══════════════════════════ */
+function measureDock() {
+  document.documentElement.style.setProperty('--dock-h', dock.offsetHeight + 'px');
+}
+if (window.ResizeObserver) new ResizeObserver(measureDock).observe(dock);
+const viewport = window.visualViewport;
+if (viewport) {
+  // The dock rides the keyboard: the layout viewport does not shrink on iOS, the visual one does.
+  const ride = () => document.documentElement.style.setProperty('--kb', Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) + 'px');
+  viewport.addEventListener('resize', ride);
+  viewport.addEventListener('scroll', ride);
+  ride();
+}
+window.addEventListener('scroll', () => $('top').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && token) void poll(); });
+
 applyAurora('fern');
-function closeSuggestions(){suggestSequence++;$('suggestions').classList.add('hidden');$('reference').setAttribute('aria-expanded','false');}
-async function chooseSuggestion(n,live=false){const item=suggestions[n];if(!item)return;$('reference').value=item.value;renderReferenceTokens();if(item.complete){closeSuggestions();await act('verse',{reference:item.value,version:$('version').value,live});$('reference').blur()}else{await suggest();$('reference').focus()}}
-async function suggest(){const sequence=++suggestSequence;const query=$('reference').value;if(!query.trim()){closeSuggestions();return}try{const values=await rpc('suggest',{query,version:$('version').value});if(sequence!==suggestSequence)return;suggestions=values;suggestAt=-1;const list=$('suggestions');list.replaceChildren();for(const [n,item] of suggestions.entries()){const b=button(item.label,()=>chooseSuggestion(n),item.detail);b.setAttribute('role','option');list.append(b)}if(!values.length)empty(list,'No matching scripture. Check the reference or try other words.');list.classList.remove('hidden');$('reference').setAttribute('aria-expanded','true')}catch(e){error(e.message)}}
-function splitReference(value){const m=value.match(/^((?:[1-3]\s*)?[a-z]+(?:\s+[a-z]+)*)\s+(\d*)(?::(.*))?\s*$/i);if(!m)return null;const name=m[1].trim().toLowerCase();return library?.books?.some(b=>b.toLowerCase()===name||(name==='psalm'&&b==='Psalms'))?m:null}
-function renderReferenceTokens(){const input=$('reference'),layer=$('referenceTokens'),m=splitReference(input.value);layer.replaceChildren();input.classList.toggle('tokenized',!!m);if(!m)return;for(const [i,part] of [m[1]+' ',m[2]+(m[3]!==undefined?':':''),m[3]||''].entries()){const span=document.createElement('span');span.textContent=part;if(i<2)span.className='reference-token';layer.append(span)}}
-function eraseReferenceToken(){const input=$('reference');if(input.selectionStart!==input.selectionEnd||input.selectionEnd!==input.value.length)return false;const m=splitReference(input.value);let next;if(m){if(m[3])return false;next=m[2]?m[1]+' ':''}else if(library?.books?.some(b=>b.toLowerCase()===input.value.trim().toLowerCase()))next='';else return false;input.value=next;input.oninput();return true}
-$('reference').addEventListener('beforeinput',e=>{if(e.inputType==='deleteContentBackward'&&e.cancelable&&eraseReferenceToken())e.preventDefault()});
-$('reference').oninput=()=>{renderReferenceTokens();clearTimeout(suggestTimer);suggestSequence++;suggestTimer=setTimeout(suggest,180)};
-$('reference').onfocus=()=>{if($('reference').value)void suggest()};
-$('version').onchange=()=>void suggest();
-$('reference').onkeydown=e=>{if(e.key==='Backspace'&&eraseReferenceToken()){e.preventDefault();return}if(e.key==='Escape'){closeSuggestions();return}if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();suggestAt=Math.max(0,Math.min(suggestions.length-1,suggestAt+(e.key==='ArrowDown'?1:-1)));[...$('suggestions').querySelectorAll('button')].forEach((b,i)=>{b.classList.toggle('active',i===suggestAt);b.setAttribute('aria-selected',String(i===suggestAt));if(i===suggestAt)b.scrollIntoView({block:'nearest'})})}if(e.key==='Enter'||e.key==='Tab'){if(suggestAt>=0||(e.key==='Tab'&&suggestions.length)){e.preventDefault();void chooseSuggestion(Math.max(0,suggestAt),e.key==='Enter')}else if(e.key==='Enter'){e.preventDefault();$('loadVerse').click()}}};
-$('loadVerse').onclick=async()=>{closeSuggestions();await act('verse',{reference:$('reference').value,version:$('version').value,live:true});$('reference').blur()};
-$('goLive').onclick=()=>{const item=currentState?.preview||currentState?.live;if(!item)return;void act(sameItem(item,currentState.live)?'step':'live',sameItem(item,currentState.live)?{delta:1}:{id:item.id})};
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('#searchDock'))closeSuggestions()});
-$('songFilter').oninput=renderSongs;$('refresh').onclick=()=>loadLibrary();
-$('createTimer').onclick=()=>act('timer',{action:'create',name:$('timerName').value,seconds:Number($('timerMinutes').value)*60});$('sendMessage').onclick=()=>act('alert',{text:$('message').value});
-$('logout').onclick=()=>{token='';library=null;try{localStorage.removeItem('trilorah.remote.token')}catch{}showPaired(false);error('');$('pairNote').textContent='Disconnected. Revoke this phone on the desktop to remove its access.'};
-const viewport=window.visualViewport;if(viewport){const dock=()=>document.documentElement.style.setProperty('--keyboard-inset',Math.max(0,window.innerHeight-viewport.height-viewport.offsetTop)+'px');viewport.addEventListener('resize',dock);viewport.addEventListener('scroll',dock);dock()}void tick();
-</script></body></html>
+selectTab('verses');
+measureDock();
+if (token) showPaired(true);
+void tick();
+</script>
+</body>
+</html>

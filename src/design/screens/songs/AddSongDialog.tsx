@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, SearchField, SearchIcon, GlobeIcon, ResetIcon, MusicIcon, SparkleIcon, cx } from '../../../ui';
+import { Button, SearchField, SearchIcon, GlobeIcon, ResetIcon, MusicIcon, SparkleIcon, CheckIcon, SegmentedControl, cx } from '../../../ui';
 import { splitLyrics } from '../../../../shared/lyricSplit';
 import type { SongBase } from '../../../../shared/songDraft';
 import { FlightPopup } from './FlightPopup';
@@ -7,14 +7,19 @@ import { shuffleChristianSongs, matchesChristianSong, type ChristianSong } from 
 import './songDiscovery.css';
 
 /*
- * Add a song — three ways in, one way out.
+ * Add a song from online — two ways in, one way out.
  *
  *   search   LRCLIB, by title or artist
  *   youtube  a video's own subtitles, or its auto-captions
- *   paste    whatever is on the clipboard
  *
- * Every one of them ends the same way: words → splitLyrics → this dialog
- * closes and the SONG EDITOR opens on the result, unsaved. The dialog never
+ * Pasting words is not here: that is "add song", whose editor takes a paste
+ * directly. The two online routes share one box and a switch at the top.
+ *
+ * Every one of them ends the same way: words → splitLyrics → the SONG
+ * EDITOR opens on the result, unsaved. From search the editor opens OVER
+ * this dialog, which waits underneath: a church adds songs in runs, and
+ * saving one should land back on the results for the next, not on the
+ * library. Youtube and paste close as they hand over. The dialog never
  * writes to the library. Splitting is a guess about somebody else's text,
  * and the editor is where a guess gets checked — so there is no "add" button
  * in here at all, only "open in the editor".
@@ -24,15 +29,23 @@ import './songDiscovery.css';
  * wrote itself, not an error.
  */
 
-export type SongSource = 'search' | 'youtube' | 'paste';
+export type SongSource = 'search' | 'youtube';
 type Route = SongSource;
 
-const TITLES: Record<Route, string> = { search: 'search online', youtube: 'youtube lyrics', paste: 'paste lyrics' };
+const TITLES: Record<Route, string> = { search: 'search online', youtube: 'youtube transcripts' };
+const ROUTES: { id: Route; label: string }[] = [{ id: 'search', label: 'search' }, { id: 'youtube', label: 'youtube transcripts' }];
 
 export interface NewSong {
   base: SongBase;
   /** Where the words came from, for the line under the editor's title. */
   note: string;
+  /** Which way in. A song found by search opens over the search, which
+      stays up for the next one. */
+  route: SongSource;
+  /** The search result it came from, so the search can mark it added. */
+  discoveryId?: string;
+  /** The result's card, for the editor to lift off and land back on. */
+  origin?: HTMLElement | null;
 }
 
 export interface AddSongDialogProps {
@@ -42,14 +55,16 @@ export interface AddSongDialogProps {
   onClosed?: () => void;
   /** Words found and split — hand over to the editor. */
   onReady: (song: NewSong) => void;
+  /** Search results already saved to the library while this was open. */
+  added?: ReadonlySet<string>;
 }
 
-const NO_ENGINE = 'this needs the desktop app — paste the words instead';
+const NO_ENGINE = 'this needs the desktop app';
 
 const INPUT =
   'tri-rounded-control w-full border-0 bg-[rgb(0_0_0_/_0.20)] px-3.5 text-[length:var(--tri-control-size)] text-[var(--tri-ink)] placeholder:text-[rgb(229_243_242_/_0.34)] focus:outline-none focus:shadow-[inset_0_0_0_var(--tri-border)_rgb(var(--tri-go-2)_/_0.45)]';
 
-export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, onClosed, onReady }: AddSongDialogProps) {
+export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, onClosed, onReady, added }: AddSongDialogProps) {
   const api = typeof window === 'undefined' ? undefined : window.api?.songs;
   const [route, setRoute] = useState<Route>(initialRoute);
   const [busy, setBusy] = useState<string | null>(null);
@@ -65,9 +80,6 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
   const searchTicket = useRef(0);
   const visibleSongs = onlineSongs ?? songs;
   const [url, setUrl] = useState('');
-  const [pasteTitle, setPasteTitle] = useState('');
-  const [pasteAuthor, setPasteAuthor] = useState('');
-  const [pasteText, setPasteText] = useState('');
 
   const body = useRef<HTMLDivElement>(null);
   /* A reply that arrives after the dialog was closed, or after a newer
@@ -90,9 +102,6 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
     searchTicket.current += 1;
     setSongs(shuffleChristianSongs());
     setUrl('');
-    setPasteTitle('');
-    setPasteAuthor('');
-    setPasteText('');
   }, [open, initialRoute]);
 
   useEffect(() => {
@@ -131,7 +140,8 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
   };
 
   /** The one exit. False when the text had no words in it. */
-  const finish = (text: string, title: string, author: string, from: string, flat = false): boolean => {
+  const finish = (text: string, title: string, author: string, from: string, flat = false,
+    found?: { discoveryId: string; origin: HTMLElement | null }): boolean => {
     let sections = splitLyrics(text);
     /* Captions arrive as one unbroken run, so the splitter — rightly — calls
        it all one verse and numbers the parts: "Verse 1 (17)". Nobody knows
@@ -147,12 +157,14 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
     onReady({
       base: { title: title.trim() || 'Untitled song', author: author.trim(), sections },
       note: `${from} · split into ${sections.length} slide${sections.length === 1 ? '' : 's'} — check each one, then save`,
+      route,
+      ...found,
     });
     return true;
   };
 
   /* ---- search -------------------------------------------------------- */
-  const choose = async (song: ChristianSong) => {
+  const choose = async (song: ChristianSong, card: HTMLElement | null) => {
     if (busy) return;
     if (!api?.searchLyrics || !api?.getLyrics) return setNote({ text: NO_ENGINE, nudge: true });
     const mine = (ticket.current += 1);
@@ -173,7 +185,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
     if (mine !== ticket.current) return;
     setBusy(null);
     if (res?.ok) {
-      finish(res.lyrics, song.title, song.artist, 'from online lyrics');
+      finish(res.lyrics, song.title, song.artist, 'from online lyrics', false, { discoveryId: song.id, origin: card });
       return;
     }
     setNote({ text: res?.reason === 'offline'
@@ -204,28 +216,32 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
     }
     setNote(
       res?.reason === 'no-captions'
-        ? { text: 'that video has no captions to read — search for the song, or paste the words', nudge: true }
+        ? { text: 'that video has no captions to read — search for the song instead', nudge: true }
         : res?.reason === 'unavailable'
           ? { text: 'that video cannot be opened — private, removed, or not a youtube link', nudge: true }
           : res?.reason === 'offline'
             ? { text: 'no internet connection right now', nudge: true }
-            : { text: 'youtube did not answer the way it usually does — paste the words instead', nudge: true },
+            : { text: 'youtube did not answer the way it usually does — try again, or search for the song', nudge: true },
     );
   };
 
   return (
     <FlightPopup
       open={open}
-      size={route === 'search' ? { w: 820, h: 700 } : { w: 640, h: 560 }}
+      size={{ w: 820, h: 700 }}
       label={TITLES[route]}
       onRequestClose={onRequestClose}
       onClosed={onClosed}
       header={
-        <div>
-          <h2 className="flex items-center gap-2 text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">{route === 'search' && <GlobeIcon size={20} />}{TITLES[route]}</h2>
-          <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">
-            {route === 'search' ? 'discover Christian songs. choose a song to find its lyrics and prepare your slides.' : 'find the words, and they open in the editor already cut into slides. nothing is added until you save.'}
-          </p>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]"><GlobeIcon size={20} />{TITLES[route]}</h2>
+            <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">
+              {route === 'search' ? 'discover Christian songs. choose a song to find its lyrics and prepare your slides.' : 'paste a lyric video\u2019s link and its captions open in the editor, already cut into slides. nothing is added until you save.'}
+            </p>
+          </div>
+          {/* The two online routes are one choice, so they are one control. */}
+          <SegmentedControl options={ROUTES} value={route} onChange={go} size="sm" label="where the words come from" />
         </div>
       }
     >
@@ -251,31 +267,33 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
             <div className="song-discovery-scroll" aria-busy={!!busy || searching}>
               <p role="status" className="song-discovery-status">{searching ? 'searching Christian music…' : searchNote}</p>
               <div className="song-discovery-grid">
-                {visibleSongs.map(song => (
+                {visibleSongs.map(song => {
+                  const inLibrary = added?.has(song.id) ?? false;
+                  return (
                   <article key={song.id} className="song-discovery-card">
                   <button type="button" className="song-discovery-select" disabled={!!busy}
-                    onClick={() => void choose(song)} aria-label={`Find lyrics for ${song.title} by ${song.artist}`}>
+                    onClick={(e) => void choose(song, e.currentTarget.closest('article'))}
+                    aria-label={`${inLibrary ? 'Added to the library. Find lyrics again' : 'Find lyrics'} for ${song.title} by ${song.artist}`}>
                     <div className="song-discovery-art">
                       <SongArtwork song={song} />
                       <span className="song-discovery-category">{song.category}</span>
-                      <span className="song-discovery-action"><SearchIcon size={13} /> find lyrics</span>
+                      {/* Adding a run of songs means coming back here after
+                          each one; the mark says which are done already. */}
+                      {inLibrary
+                        ? <span className="song-discovery-action song-discovery-action--added"><CheckIcon size={12} /> added</span>
+                        : <span className="song-discovery-action"><SearchIcon size={13} /> find lyrics</span>}
                     </div>
                     <span className="song-discovery-title">{song.title}</span>
                     <span className="song-discovery-artist">{song.artist}</span>
                   </button>
                   {song.storeUrl && <a className="song-discovery-store" href={song.storeUrl} target="_blank" rel="noopener noreferrer">Download on iTunes ↗</a>}
                   </article>
-                ))}
+                  );
+                })}
               </div>
-              {visibleSongs.length === 0 && <Hint>try another title or artist, or use youtube or paste for a song you already know.</Hint>}
+              {visibleSongs.length === 0 && <Hint>try another title or artist, or a youtube lyric video for a song you already know.</Hint>}
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] text-[var(--tri-ink-muted)]">worship, gospel &amp; hymns</span>
-              <div className="flex gap-2">
-                <Button label="youtube lyrics" tone="ash" onClick={() => go('youtube')} />
-                <Button label="paste lyrics" tone="ash" onClick={() => go('paste')} />
-              </div>
-            </div>
+            <span className="text-[11px] text-[var(--tri-ink-muted)]">worship, gospel &amp; hymns</span>
           </div>
         ) : null}
 
@@ -302,32 +320,6 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
           </div>
         ) : null}
 
-        {route === 'paste' ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
-            <div className="flex gap-2">
-              <input value={pasteTitle} onChange={(e) => setPasteTitle(e.target.value)} placeholder="song title" aria-label="song title" spellCheck={false} className={cx(INPUT, 'h-[var(--tri-field-h)] flex-[3]')} />
-              <input value={pasteAuthor} onChange={(e) => setPasteAuthor(e.target.value)} placeholder="artist (optional)" aria-label="artist" spellCheck={false} className={cx(INPUT, 'h-[var(--tri-field-h)] flex-[2]')} />
-            </div>
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              placeholder="paste the words here. chords, [tags] and blank lines are fine — they are cleaned up on the way in."
-              aria-label="lyrics"
-              spellCheck={false}
-              className={cx(INPUT, 'min-h-0 flex-1 resize-none py-3 leading-[1.55]')}
-            />
-            <div className="flex justify-end">
-              <Button
-                label="split into slides"
-                tone="go"
-                icon={<SparkleIcon size={12} />}
-                disabled={!pasteText.trim()}
-                onClick={() => finish(pasteText, pasteTitle, pasteAuthor, 'pasted')}
-              />
-            </div>
-          </div>
-        ) : null}
-
         {/* One line at the foot, always in the same place: working, or what
             went wrong and where to go next. Never red for "not found". */}
         <div className="flex min-h-[var(--tri-control-h)] shrink-0 items-center gap-3" aria-live="polite">
@@ -339,17 +331,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
                 {note.text}
               </span>
               {note.nudge
-                ? (['search', 'youtube', 'paste'] as const)
-                    .filter((r) => r !== route)
-                    .slice(-2)
-                    .map((r) => (
-                      <Button
-                        key={r}
-                        label={r === 'paste' ? 'paste instead' : r === 'youtube' ? 'try youtube' : 'search instead'}
-                        tone="ash"
-                        onClick={() => go(r)}
-                      />
-                    ))
+                ? <Button label={route === 'youtube' ? 'search instead' : 'try youtube'} tone="ash" onClick={() => go(route === 'youtube' ? 'search' : 'youtube')} />
                 : null}
             </>
           ) : null}

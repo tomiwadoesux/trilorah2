@@ -1,5 +1,5 @@
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk'
-import { usesDeviceAudio } from '../../shared/audioInput'
+import { usesWindowCapture } from '../../shared/audioInput'
 import { spawn, type ChildProcess } from 'node:child_process'
 // post-recovery: ASR language is a setting (multilingual support)
 import { getSetting } from '../data/settings'
@@ -105,7 +105,7 @@ function startMicrophoneCapture(): void {
   console.log(`🎙️ Starting microphone at ${SAMPLE_RATE}Hz...`)
   // No SoX on this machine → capture the mic in the app window instead
   // (getUserMedia → PCM chunks over IPC → audio bus → Deepgram).
-  if (usesDeviceAudio(currentDeviceLabel) || !soxAvailable()) {
+  if (usesWindowCapture(currentDeviceLabel) || !soxAvailable()) {
     console.log('🎙️ SoX not found — capturing microphone via the app window')
     usingWindowMic = true
     setAudioSink((chunk) => {

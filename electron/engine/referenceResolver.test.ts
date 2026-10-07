@@ -386,4 +386,24 @@ describe('SpokenReferenceResolver — a growing utterance emits once, complete',
     c.feed('chapter four verse two')
     expect(c.detections.map((d) => d.explicitBook)).toEqual([true, false])
   })
+
+  describe('numbers the transcriber mangles', () => {
+    it('splits a run-together chapter and verse', () => {
+      const { feed, detections } = collect()
+      feed('exodus 165')
+      expect(detections.at(-1)).toMatchObject({ book: 'Exodus', chapter: 16, verse: 5 })
+      feed('john 3016')
+      expect(detections.at(-1)).toMatchObject({ book: 'John', chapter: 3, verse: 16 })
+    })
+    it('leaves a real three-digit chapter alone', () => {
+      const { feed, detections } = collect()
+      feed('psalm 119')
+      expect(detections.at(-1)).toMatchObject({ book: 'Psalms', chapter: 119 })
+    })
+    it('hears "six teen" as sixteen', () => {
+      const { feed, detections } = collect()
+      feed('exodus six teen five')
+      expect(detections.at(-1)).toMatchObject({ book: 'Exodus', chapter: 16, verse: 5 })
+    })
+  })
 })

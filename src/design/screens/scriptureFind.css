@@ -78,3 +78,16 @@
   .find-veil, .find-card { animation-duration: 1ms; animation-delay: 0ms; }
   .find-card:active, .find-round:active:not(:disabled) { transform: none; }
 }
+
+/* The typed story field in the verses card's search row. */
+.story-search { position: relative; display: flex; align-items: center; width: 100%; min-width: 0; }
+.story-search__note {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: var(--tri-size-xs);
+  color: rgb(229 243 242 / 0.5);
+  white-space: nowrap;
+}

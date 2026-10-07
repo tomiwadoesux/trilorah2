@@ -18,12 +18,51 @@ export interface FoundPassage {
 export const JUDGE_LINE = 4.6
 
 /**
+ * The judge's line for the button, which answers someone who asked and will
+ * choose — far lower than JUDGE_LINE, which has to be sure enough to speak
+ * unasked. Measured 2026-10-07 on evals/recognition/allusions.json (typed
+ * sentences, not sermons): the right chapter is among the cards as often as
+ * with no line at all (27 of 30, 24 of 24 fresh), while wrong cards fall from
+ * about 2.6 to 0.9 a search and ordinary talk mostly finds nothing (plain
+ * talk 20 of 20 empty, other non-Scripture 35 of 47).
+ */
+export const ASKED_LINE = 0
+
+/** The most the button shows — one page of four, each worth reading (owner, 2026-10-07). */
+export const FIND_LIMIT = 4
+
+/**
+ * The line for a meaning match inside the passage on the wall
+ * (SermonContext): lower, because being in the chapter being preached is
+ * evidence the judge cannot see. Measured 2026-10-07: with the passage on the
+ * wall, no line at all found 30 of 32 allusions inside it but showed cards
+ * for 18 of 67 non-Scripture sentences; -6 finds 28 of 32 and shows cards
+ * for 12 of 67, the same as with the strict line.
+ */
+export const SERMON_LINE = -6
+
+/**
+ * A prayer said aloud. Prayers borrow the Bible's own words — Paul's
+ * thanksgivings above all — and the judge read "Father, thank you for your
+ * word" as Colossians 1 in the practice sermon (2026-10-07). A prayer is not
+ * an allusion, so nothing is suggested unasked from one.
+ */
+export function isPrayerTalk(speech: string): boolean {
+  const s = speech.toLowerCase()
+  return /\b(?:let us pray|let's pray|in jesus'? name|in the name of jesus|amen)\b/.test(s)
+    || /\b(?:father|lord|god),? (?:we|i) (?:thank|praise|ask|come|bless)\b/.test(s)
+    || /^(?:father|lord|dear (?:god|lord|father))\b/.test(s.trim())
+}
+
+/**
  * Finds the passage a sentence points to, with what the sentence alone does
  * not say: who "he" is (NameMemory) and what is being preached (SermonContext).
  *
  * Two callers with opposite duties. `find` answers a person who pressed the
- * button and will choose, so it never abstains and returns up to eight.
- * `suggest` speaks unasked, so it returns one passage or nothing.
+ * button (or typed a story) and will choose: up to four, each one the judge
+ * does not rule out — so it may answer with one, or with none when nothing
+ * was really alluded to. `suggest` speaks unasked, so it returns one passage
+ * or nothing, on a much stricter line.
  */
 export class AllusionFinder {
   readonly names = new NameMemory()
@@ -53,7 +92,8 @@ export class AllusionFinder {
     const words = heardWords.slice(-25)
     if (!words.length) return []
     const found: FoundPassage[] = []
-    const byMeaning: SemanticCandidate[] = []
+    /* Each meaning match keeps the words that found it, for the judge. */
+    const byMeaning: { hit: SemanticCandidate; query: string }[] = []
     const boost = (book: string, chapter: number) => this.sermon.boost(book, chapter, now)
     for (const heard of this.readings(words.join(' '), now)) {
       const named = findNamedPassage(heard)
@@ -65,16 +105,30 @@ export class AllusionFinder {
       // is usually one sentence, but its subject is often named in the one before.
       const lead = heard.split(/\s+/).length - words.length
       const windows = words.length > 14 ? [heard.split(/\s+/).filter((_, i, all) => i < lead || i >= all.length - 14).join(' '), heard] : [heard]
-      for (const window of windows) byMeaning.push(...await this.parts.semantic.search(window, 8, boost))
+      for (const window of windows) for (const hit of await this.parts.semantic.search(window, 8, boost)) byMeaning.push({ hit, query: window })
     }
-    for (const hit of byMeaning.sort((a, b) => b.score - a.score)) found.push({ ...hit, kind: 'meaning' })
+    const meaning = byMeaning.sort((a, b) => b.hit.score - a.hit.score)
+    const queryOf = new Map<FoundPassage, { query: string; text: string }>()
+    for (const { hit, query } of meaning) {
+      const passage: FoundPassage = { ...hit, kind: 'meaning' }
+      queryOf.set(passage, { query, text: hit.text })
+      found.push(passage)
+    }
     const kept: FoundPassage[] = []
     for (const hit of found) {
       if (kept.some(k => k.book === hit.book && k.chapter === hit.chapter && hit.verse <= k.endVerse && hit.endVerse >= k.verse)) continue
       // Two places in one chapter at most, so a long story cannot fill a page.
       if (kept.filter(k => k.book === hit.book && k.chapter === hit.chapter).length >= 2) continue
+      // A named passage or a known story is matched on its own words and
+      // stands. A meaning match must get past the judge — on a lower line in
+      // the passage being preached, which is evidence the judge cannot see.
+      const asked = queryOf.get(hit)
+      if (asked && this.parts.judge) {
+        const line = this.sermon.boost(hit.book, hit.chapter, now) ? SERMON_LINE : ASKED_LINE
+        if (await this.parts.judge(asked.query, asked.text) < line) continue
+      }
       kept.push(hit)
-      if (kept.length === 8) break
+      if (kept.length === FIND_LIMIT) break
     }
     return kept
   }
@@ -82,7 +136,7 @@ export class AllusionFinder {
   /** One passage worth suggesting unasked for this finished sentence, or null. */
   async suggest(heard: string, now = Date.now()): Promise<SemanticCandidate | null> {
     const { semantic, judge } = this.parts
-    if (!semantic?.ready || isContemporaryTalk(heard.toLowerCase())) return null
+    if (!semantic?.ready || isContemporaryTalk(heard.toLowerCase()) || isPrayerTalk(heard)) return null
     let best: { hit: SemanticCandidate; score: number } | null = null
     for (const reading of this.readings(heard, now)) {
       const [hit] = await semantic.search(reading, 1)

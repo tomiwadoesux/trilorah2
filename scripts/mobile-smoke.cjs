@@ -25,7 +25,7 @@ async function run(){
  await app.whenReady();
  const desktop=await until(()=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().endsWith('/index.html')));
  const js=code=>desktop.webContents.executeJavaScript(code);
- await until(()=>js('!!window.api && !!document.querySelector("header")').catch(()=>false));
+ await until(()=>js('!!window.api && !!document.getElementById("root")?.firstElementChild').catch(()=>false));
  await js('window.api.mobileEnable(true)');
  const mobileStatus=await js('window.api.mobileStatus()');
  const base=`http://127.0.0.1:${mobileStatus.port}`;
@@ -38,26 +38,37 @@ async function run(){
  await phone(`document.getElementById('code').value=${JSON.stringify(code.code)};document.getElementById('pairButton').click()`);
  const pending=await until(async()=>{const s=await js('window.api.mobileStatus()');return s.pending[0]});
  await js(`window.api.mobileApprove(${JSON.stringify(pending.id)},true)`);
- await until(()=>phone('document.getElementById("connection").textContent === "Connected"'));
+ await until(()=>phone('document.getElementById("connection").textContent === "connected"'));
  await until(()=>phone('document.getElementById("version").options.length > 0'));
+ // Scripture search lives behind the search key in the dock; Enter sends it straight up.
+ await phone('document.getElementById("searchOpen").click()');
+ assert.equal(await phone('document.getElementById("searchDock").classList.contains("searching")'),true);
  await phone('document.getElementById("reference").value="John 3:16";document.getElementById("loadVerse").click()');
- await until(()=>phone('document.getElementById("heardLabel").textContent.includes("John 3:16")'));
- await phone('document.getElementById("goLive").click()');
- await until(()=>phone('document.getElementById("heardStatus").textContent === "Live"'));
- assert.equal(await phone('document.getElementById("goLive").textContent'),'Next →');
+ await until(()=>phone('document.getElementById("liveLabel").textContent.includes("John 3:16")'));
+ await until(()=>phone('document.getElementById("liveStatus").textContent === "on screen"'));
+ assert.equal(await phone('document.getElementById("searchDock").classList.contains("searching")'),false,'search closes once the verse is up');
+ // Nothing is waiting, so go live is refused rather than silently doing something else.
+ assert.equal(await phone('document.getElementById("goLive").getAttribute("aria-disabled")'),'true');
+ await phone('document.getElementById("next").click()');
+ await until(()=>phone('document.getElementById("liveLabel").textContent.includes("John 3:17")'));
  assert.equal(await phone('document.querySelectorAll("[data-tab]").length'),3);
+ await phone('document.getElementById("searchOpen").click()');
  await phone('document.getElementById("reference").value="John 3:";document.getElementById("reference").dispatchEvent(new Event("input"))');
- await until(()=>phone('document.querySelectorAll("#suggestions button").length>0'));
+ await until(()=>phone('document.querySelectorAll("#suggestions .sugg").length>0'));
  assert.ok((await phone('document.getElementById("suggestions").innerText')).includes('John 3:1'));
  await phone('document.getElementById("reference").dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))');
+ await phone('document.getElementById("searchClose").click()');
  // The host must continue responding while another desktop tab is visible.
  await js('[...document.querySelectorAll("nav button")].find(b=>b.textContent.toLowerCase().includes("settings"))?.click()');
  await phone('document.querySelector("[data-tab=songs]").click()');
- await until(()=>phone('document.querySelectorAll("#songList button").length>0'));
- await phone('document.querySelector("#songList button").click();document.querySelector("#songSections button").click()');
- await until(()=>phone('document.getElementById("heardLabel").textContent.includes("·")'));
+ await until(()=>phone('document.querySelectorAll("#songList .row").length>0'));
+ await phone('document.querySelector("#songList .row").click()');
+ await until(()=>phone('document.querySelectorAll("#songSections .lyric-main").length>0'));
+ await phone('document.querySelector("#songSections .lyric-main").click()');
+ await until(()=>phone('document.getElementById("readyLabel").textContent.includes("·") && !document.getElementById("ready").hidden'));
+ await until(()=>phone('document.getElementById("goLive").getAttribute("aria-disabled") === "false"'));
  await phone('document.getElementById("goLive").click()');
- await until(()=>phone('document.getElementById("heardStatus").textContent === "Live"'));
+ await until(()=>phone('document.getElementById("liveLabel").textContent.includes("·") && document.querySelector("#songSections .lyric.is-live") !== null'));
  const current=await js('window.api.getLiveContent()');
  assert.equal(current.kind,'song');assert.ok(current.lines.length);
  await until(()=>output.webContents.executeJavaScript(`document.body.innerText.includes(${JSON.stringify(current.lines[0])})`));
@@ -88,11 +99,11 @@ async function run(){
  const image=await remote.webContents.capturePage();remote.hide();assert.equal(image.isEmpty(),false,'Phone screenshot must contain rendered pixels');
  const screenshot=path.join(profile,'mobile-remote.png');fs.writeFileSync(screenshot,image.toPNG());
  const state=await js('window.api.mobileStatus()');await js(`window.api.mobileRevoke(${JSON.stringify(state.devices[0].deviceId)})`);
- await until(()=>phone('!document.getElementById("pair").classList.contains("hidden")'));
+ await until(()=>phone('!document.getElementById("pair").hidden && document.getElementById("app").hidden'));
  await js('window.api.mobileEnable(false)');
  const relevantErrors=errors.filter(e=>!e.includes('Content Security Policy')&&!e.includes('ERR_FILE_NOT_FOUND'));
- assert.deepEqual(relevantErrors,[]);
- console.log('MOBILE_SMOKE_PASS '+JSON.stringify({screenshot,checks:['pair approval','scripture preview/live','control with desktop Settings open','song projection','next section','screen black/restore','theme','message','timers','revoke'],errors}));
+ if (relevantErrors.length) console.error("RELEVANT_ERRORS", JSON.stringify(relevantErrors, null, 1)); assert.deepEqual(relevantErrors,[]);
+ console.log('MOBILE_SMOKE_PASS '+JSON.stringify({screenshot,checks:['pair approval','scripture search/live','next verse','go live refused when nothing is ready','control with desktop Settings open','song ready → go live','screen black/restore','theme','message','timers','revoke'],errors}));
  app.exit(0);
 }
 run().catch(e=>{console.error('MOBILE_SMOKE_FAIL',e);app.exit(1)});

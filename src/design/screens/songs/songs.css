@@ -81,13 +81,19 @@
 .song-sheet-lines { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; font-size: 12px; line-height: 1.5; }
 .song-sheet-lines > span { display: block; }
 .song-sheet-arrow { position: absolute; right: 14px; bottom: 10px; color: var(--tri-accent-yellow); }
-.stage-resizer { height: 12px; flex-shrink: 0; display: grid; place-items: center; cursor: ns-resize; touch-action: none; position: relative; }
+/* The handle between the pictures and the library: a press lifts the
+   library (the arrow points up), the next press lowers it (the arrow has
+   turned to point down). Still draggable for any size between. */
+.stage-resizer { height: 12px; width: 100%; flex-shrink: 0; display: grid; place-items: center; cursor: pointer; touch-action: none; position: relative; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
 .stage-resizer::before { content: ''; width: 44px; height: 2px; background: rgb(229 243 242 / .28); border-radius: 2px; }
-.stage-resizer span { position:absolute; display:grid; place-items:center; width:34px; height:24px; border:1px solid rgb(229 243 242 / .22); color:rgb(229 243 242 / .75); background:#171b1b; border-radius:8px; opacity:0; z-index:30; }
+.stage-resizer span { position:absolute; display:grid; place-items:center; width:34px; height:24px; border:1px solid rgb(229 243 242 / .22); color:rgb(229 243 242 / .62); background:#171b1b; border-radius:8px; z-index:30; transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease; }
+.stage-resizer svg { transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1); }
+.stage-resizer.is-raised svg { transform: rotate(180deg); }
+.stage-resizer:hover span { color: rgb(229 243 242 / .95); border-color: rgb(229 243 242 / .4); background: #1d2222; }
 .stage-resizer:focus-visible { outline:none; }
-.stage-resizer:focus-visible span { border-color:var(--tri-accent-yellow); }
-.stage-resizer span:hover, .stage-resizer:focus-visible span { opacity: 1; }
-.verse-nav-hint { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: white; background: linear-gradient(to top, rgb(0 0 0 / .72), rgb(0 0 0 / .22) 38%, transparent 78%); opacity: 0; pointer-events: none; animation: verse-hint 1.2s ease-out both; }
+.stage-resizer:focus-visible span { border-color:var(--tri-accent-yellow); color: rgb(229 243 242 / .95); }
+@media (prefers-reduced-motion: reduce) { .stage-resizer svg, .stage-resizer span { transition: none; } }
+.verse-nav-hint { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 11%; gap: 6px; font-size: 12px; color: white; background: linear-gradient(to top, rgb(0 0 0 / .72), rgb(0 0 0 / .22) 38%, transparent 78%); opacity: 0; pointer-events: none; animation: verse-hint 1.2s ease-out both; }
 .verse-nav-hint::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgb(255 255 255 / .28) 1px, transparent 1px) 0 0 / 7px 7px; mask-image: linear-gradient(to top, black, transparent 80%); }
 .verse-nav-hint > span { display: grid; place-items: center; width: 30px; height: 58px; border: 1px solid rgb(255 255 255 / .3); border-radius: 10px; font-size: 23px; }
 .verse-nav-hint--next { animation-delay: 1.4s; }
@@ -111,3 +117,9 @@
 @media (max-width:1100px) { .song-sections-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media (max-width:800px) { .song-sections-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:500px) { .song-sections-grid { grid-template-columns:1fr; } }
+
+/* The two halves of the preview are the two arrows, and the pointer says
+   so: a filled arrow in place of the resize cursor, with a dark edge so it
+   reads on a bright photo as well as a dark one. Hotspot at its centre. */
+.verse-step--previous:not(:disabled) { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M17.5 4 7 14l10.5 10V17.5H24v-7h-6.5z' fill='white' stroke='rgb(0 0 0 / .7)' stroke-width='1.5' stroke-linejoin='round'/></svg>") 14 14, w-resize; }
+.verse-step--next:not(:disabled) { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><path d='M10.5 4 21 14 10.5 24V17.5H4v-7h6.5z' fill='white' stroke='rgb(0 0 0 / .7)' stroke-width='1.5' stroke-linejoin='round'/></svg>") 14 14, e-resize; }

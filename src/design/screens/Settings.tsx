@@ -6,6 +6,8 @@ import { Pill } from './parts';
 import { useArtboard } from './artboard';
 import { SettingRow, seedValues, rowVisible, SCRIPTURE_FACES, type Row } from './settingsRows';
 import { displayMapFrom, useOutputsStatus } from './dashboard/outputs/fromEngine';
+import { Cloud } from '../../screens/Cloud';
+import { Themes } from '../../screens/Themes';
 
 /*
  * S-10 — Settings.
@@ -38,6 +40,9 @@ interface Page {
   blurb: string;
   icon: ReactNode;
   rows: Row[];
+  /** A whole screen of its own above the rows — the cloud account and the
+      projector text live here now that the top tabs are gone. */
+  render?: () => ReactNode;
 }
 
 const ICON = 13;
@@ -172,20 +177,21 @@ const PAGES: Page[] = [
   },
   {
     id: 'S-10l',
-    title: 'Account',
-    blurb: 'Your Trilorah account, your companion link, and what syncs.',
+    title: 'Account & cloud',
+    blurb: 'Sign in to your Trilorah account, link this computer, and see what has synced.',
     icon: <ResetIcon size={ICON} />,
+    render: () => <Cloud />,
     rows: [
-      { kind: 'status', key: 'cloudStatus', label: 'Signed in as', blurb: '', state: 'ok', text: 'vrcministries@gmail.com · id TRL-••••5675' },
-      { kind: 'text', key: 'accountSlug', label: 'Companion link', blurb: 'trilorah.app/live/<name>. A name someone else holds will not save — you can ask for it, and the app tells you if they let it go. Change yours and the old one is free again.', value: 'vrc', placeholder: 'yourchurch' },
-      { kind: 'status', key: 'slugAvailability', label: 'This name', blurb: '', state: 'ok', text: 'vrc · yours' },
       { kind: 'text', key: 'publicWebUrl', label: 'Web address', blurb: 'Where the companion page and admin dashboard are served from.', value: 'http://localhost:3003', advanced: true },
-      { kind: 'status', key: 'syncStatus', label: 'Sync', blurb: 'Finished services, notes and audience counts. Nothing syncs during a service.', state: 'ok', text: 'last synced 23 april · 4 services' },
-      { kind: 'action', key: 'cloudRunRetentionCleanup', label: 'Retention', blurb: 'Sermon notes and audience activity older than four weeks are removed.', button: 'run now', note: 'next run sunday' },
-      { kind: 'action', key: 'cloudVerifyPassword', label: 'Password', blurb: '', button: 'change password' },
-      { kind: 'action', key: 'cloudSignOutAllDevices', label: 'Other devices', blurb: 'Sign this account out everywhere except here.', button: 'sign out all devices', tone: 'danger' },
-      { kind: 'action', key: 'cloudSignOut', label: 'This device', blurb: '', button: 'sign out', tone: 'danger' },
     ],
+  },
+  {
+    id: 'S-10n',
+    title: 'Projector text',
+    blurb: 'How verses are set on the wall: verse numbers, where the reference goes, a second translation, and how long verses split.',
+    icon: <BookIcon size={ICON} />,
+    render: () => <Themes />,
+    rows: [],
   },
   {
     id: 'S-10m',
@@ -229,6 +235,7 @@ const PAGES: Page[] = [
  * the hard way (src/screens/Settings.tsx) and the lesson comes with it.
  */
 function PageBody({ page }: { page: Page }) {
+  const screen = page.render?.();
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const values = seedValues(page.rows);
     try { values.appAurora = localStorage.getItem('trilorah.aurora') ?? 'fern'; } catch { /* default */ }
@@ -320,6 +327,7 @@ function PageBody({ page }: { page: Page }) {
       </div>
       <h1 className="mt-2 text-[26px] font-semibold tracking-tight text-[var(--tri-ink)]">{page.title}</h1>
       <p className="mt-2 max-w-[560px] text-[length:var(--tri-size)] leading-relaxed text-[rgb(229_243_242_/_0.55)]">{page.blurb}</p>
+      {screen ? <div className="settings-screen mt-8">{screen}</div> : null}
 
       {page.id === 'S-10g' && <GradientLab />}
       <div className="mt-8">

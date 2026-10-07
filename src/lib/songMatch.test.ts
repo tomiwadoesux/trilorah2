@@ -12,4 +12,7 @@ describe('live lyric matching', () => {
   it('rejects an insufficient fragment', () => {
     expect(lyricScore('amazing grace', 'Amazing grace how sweet the sound')).toBe(0);
   });
+  it('scores the line just sung, not the talk before it', () => {
+    expect(lyricScore('and now let us all stand and sing together rock of ages cleft for me let me', 'Rock of ages cleft for me let me hide myself in thee')).toBeGreaterThan(.8);
+  });
 });

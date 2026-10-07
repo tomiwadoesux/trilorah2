@@ -357,6 +357,12 @@ interface CloudStatus {
   hasAccount?: boolean;
   email?: string | null;
   activeServiceId?: string | null;
+  /** The operator ended public sharing; Start Listening will not reopen it. */
+  paused?: boolean;
+  /** Why the service could not be opened on the last Start Listening. */
+  serviceError?: string | null;
+  /** Writes waiting to reach the cloud, and the last reason one failed. */
+  queue?: { pending: number; lastError: string | null; lastErrorAt: number | null };
 }
 
 interface CloudOpResult {
@@ -537,6 +543,9 @@ interface WindowApi extends Partial<TriPackageApi> {
   onVerseAutoDismiss(callback: () => void): Unsubscribe;
   onNotesUpdated(callback: (snapshot: NotesSnapshot) => void): Unsubscribe;
   onExternalCommand(callback: (data: ExternalCommand) => void): Unsubscribe;
+  /** Which page of the live reading every output should show. */
+  setLiveSlide?(index: number): void;
+  onLiveSlide?(callback: (index: number) => void): Unsubscribe;
 
   /* Audio / display control ----------------------------------------- */
   startListening(deviceLabel?: string): void;
@@ -675,6 +684,14 @@ interface WindowApi extends Partial<TriPackageApi> {
   sendAudioLevel?(level: number): void;
   onMicRequest?(callback: (req: { sampleRate: number; deviceLabel?: string }) => void): Unsubscribe;
   onMicStop?(callback: () => void): Unsubscribe;
+  phoneMicStart(): Promise<import('../../shared/phoneMic').PhoneMicStatus>;
+  phoneMicStop(): Promise<import('../../shared/phoneMic').PhoneMicStatus>;
+  phoneMicApprove(allow: boolean): Promise<import('../../shared/phoneMic').PhoneMicStatus>;
+  phoneMicStatus(): Promise<import('../../shared/phoneMic').PhoneMicStatus>;
+  phoneMicSignal(message: import('../../shared/phoneMic').PhoneMicMessage): void;
+  phoneMicPeerState(state: 'connected' | 'failed', detail?: string): void;
+  onPhoneMicSignal(callback: (message: import('../../shared/phoneMic').PhoneMicMessage) => void): Unsubscribe;
+  onPhoneMicStatus(callback: (status: import('../../shared/phoneMic').PhoneMicStatus) => void): Unsubscribe;
   // Media on outputs + themes
   /** `url` is file:// (what the setting stores); `src` is local-media:// (what an <img> can load). */
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
@@ -741,6 +758,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   dismissAlert?(): Promise<boolean>;
   getAlert?(): Promise<ScreenAlert | null>;
   onAlert?(callback: (alert: ScreenAlert | null) => void): Unsubscribe;
+  /** The engine's newer channels — 'on-candidates', 'on-auto-mode-event' and the rest (see preload). */
+  onEngineEvent?(channel: string, callback: (payload: unknown) => void): Unsubscribe;
   searchBibleText?(query: string, opts?: { version?: string; limit?: number }): Promise<BibleSearchHit[]>;
 
   /* Library folders (BUILD-MAP 1.12) */

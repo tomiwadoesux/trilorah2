@@ -26,7 +26,7 @@ export async function fetchVerseText(d: VerseDetection): Promise<string | null> 
   const api = window.api;
   if (!api || d.verse == null) return null;
   const start = d.verse;
-  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 11) : start;
+  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 29) : start;
   const parts: string[] = [];
   for (let v = start; v <= end; v++) {
     try {
@@ -53,7 +53,10 @@ export async function fetchVerseParts(
   const api = window.api;
   if (!api || d.verse == null) return [];
   const start = d.verse;
-  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 11) : start;
+  /* 30, not 12: a long range is paged now (verseDisplay pageVerses), so the
+     bound only has to stop a misheard "1-150" fetching a whole psalm, and the
+     wall should show the same pages the operator's preview does. */
+  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 29) : start;
   const parts: { verse: number; text: string }[] = [];
   for (let v = start; v <= end; v++) {
     try {

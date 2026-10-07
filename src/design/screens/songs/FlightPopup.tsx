@@ -47,6 +47,14 @@ export interface FlightPopupProps {
 
 type Phase = 'closed' | 'opening' | 'open' | 'closing';
 
+/*
+ * Popups that are open, oldest first. They stack — the song editor opens
+ * over the online search, and the search waits underneath for the next song
+ * — and Esc belongs to the one on top. Every open popup listens on the
+ * window, so without this one press closed the editor AND the search.
+ */
+const OPEN: object[] = [];
+
 export function FlightPopup({
   open,
   origin,
@@ -137,13 +145,18 @@ export function FlightPopup({
 
   useEffect(() => {
     if (phase !== 'open') return;
+    const me = {};
+    OPEN.push(me);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape' || OPEN[OPEN.length - 1] !== me) return;
       e.stopPropagation();
       requestRef.current();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      OPEN.splice(OPEN.indexOf(me), 1);
+    };
   }, [phase]);
 
   const flying = phase !== 'closed';

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VerseSlide } from '../../../shared/verseDisplay';
 import { publishLiveItem } from '../../lib/publishLiveItem';
 import { withdrawRecognizedPreview } from '../../lib/recognitionWithdrawal';
@@ -141,6 +141,13 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const [slide, setSlideIndex] = useState(0);
   const [screen, setScreen] = useState<ScreenState>('live');
 
+  /* The engine owns the screen state; this panel follows it. A change made
+     anywhere else — the phone code going up over a cleared screen, a remote
+     press — used to leave the LIVE panel drawing the old state. */
+  useEffect(() => window.api?.onScreenState?.((next: string) => {
+    if (next === 'live' || next === 'clear' || next === 'black' || next === 'logo') setScreen(next);
+  }), []);
+
   const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
   const withdrawRecognition = useCallback((suggestionId: string) => {
     setPreview(current => withdrawRecognizedPreview(current, suggestionId));
@@ -172,6 +179,12 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setSlide = useCallback((n: number) => setSlideIndex(Math.max(0, n)), []);
+
+  /* The page of the live reading the operator is on is the page every
+     output shows — before this the pager moved this panel and nothing else. */
+  useEffect(() => {
+    window.api?.setLiveSlide?.(slide);
+  }, [slide, delivery]);
 
   /*
    * Returns whether it actually moved, so a caller can tell the difference

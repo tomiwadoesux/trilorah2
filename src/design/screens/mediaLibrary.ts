@@ -91,6 +91,13 @@ export function addMedia(media: ThemeMedia): void {
   emit();
 }
 
+/** Off the shelf. A stock wash has no file to delete and is not offered this. */
+export function removeMedia(id: string): void {
+  items = items.filter((m) => m.id !== id);
+  savePersistedMedia(items);
+  emit();
+}
+
 /** A package copies resources into this laptop's shelf in one update. */
 export function importMedia(media: ThemeMedia[]): void {
   if (!media.length) return;

@@ -1,0 +1,46 @@
+/* The reel — see ScriptureTravel. Rows copy the verse table's geometry
+   (16px inset, 16px gap, the reference column's width, the hairline under each
+   row) so the hand-over to the real list lines up. */
+.scripture-travel {
+  position: relative;
+  overflow: hidden;
+  /* The reel fades at both edges, so rows arrive and leave rather than
+     being cut off at the panel's lip. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+}
+.scripture-travel__reel { will-change: transform; }
+.scripture-travel__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.055);
+}
+.scripture-travel__ref {
+  /* The list's own reference column (set by useReferenceColumn), so the
+     reel lands on rows the list lines up with. */
+  width: var(--scripture-ref-w, calc(var(--tri-size) * 9));
+  flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--tri-size);
+  font-variant-numeric: tabular-nums;
+  color: rgb(228 216 122 / 0.55);
+}
+.scripture-travel__text { flex: 1; min-width: 0; max-width: 90ch; }
+.scripture-travel__text > span { display: block; height: 8px; border-radius: 4px; background: rgb(229 243 242 / 0.1); }
+.scripture-travel__row.is-live { background: rgb(228 216 122 / 0.1); }
+.scripture-travel__row.is-live .scripture-travel__ref { color: rgb(228 216 122 / 0.9); }
+.scripture-travel__row.is-live .scripture-travel__text > span { background: rgb(228 216 122 / 0.22); }
+
+/* The real list, as it takes over from the reel: the words come up through
+   the bars, and the live verse glows once and settles into its usual tint. */
+.scripture-landing { animation: scripture-rows-in 200ms ease-out both; }
+.scripture-landing [data-live], .scripture-arriving [data-live] { animation: scripture-arrive 1100ms var(--tri-ease-out, ease-out) both; }
+@keyframes scripture-rows-in { from { opacity: 0.35; } to { opacity: 1; } }
+@keyframes scripture-arrive { from { background-color: rgb(228 216 122 / 0.26); } to { background-color: rgb(228 216 122 / 0.1); } }
+@media (prefers-reduced-motion: reduce) {
+  .scripture-landing, .scripture-landing [data-live], .scripture-arriving [data-live] { animation: none; }
+}

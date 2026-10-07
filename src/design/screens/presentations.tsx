@@ -2,7 +2,7 @@ import { isEmptyPreview } from '../emptyPreviewMode';
 import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
 import { useProjector } from './projector';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BACKDROP_BY_CONTENT, Button, ImportIcon, PresentationIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, cx } from '../../ui';
+import { BACKDROP_BY_CONTENT, Button, ImportIcon, PencilIcon, PresentationIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, TrashIcon, cx, surface, toneClass } from '../../ui';
 import { FlightPopup } from './songs/FlightPopup';
 import { LibraryToolbar } from './LibraryToolbar';
 import { LibraryBrowser, LibraryPane, LibrarySearch, useLibrarySelection } from './library';
@@ -225,21 +225,23 @@ interface QuickSlideModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (deck: Deck) => void;
+  /** A quick slide being edited: its words fill the fields, and Save replaces it. */
+  editing?: Deck | null;
 }
 
-function QuickSlideModal({ isOpen, onClose, onCreate }: QuickSlideModalProps) {
+function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSlideModalProps) {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
 
   const titleRef = useRef<HTMLInputElement>(null);
-  /* Each open starts clean. */
+  /* Each open starts clean, or on the slide being edited. */
   useEffect(() => {
     if (!isOpen) return;
-    setTitle('');
-    setSubtitle('');
-    setBodyText('');
+    setTitle(editing?.spec.title ?? '');
+    setSubtitle(editing?.spec.subtitle ?? '');
+    setBodyText(editing?.spec.sections.flatMap((section) => section.bullets).join('\n') ?? '');
     setAlign('center');
     /* The caret goes to the title once the box has landed. */
     const t = setTimeout(() => titleRef.current?.focus(), 380);
@@ -278,11 +280,11 @@ function QuickSlideModal({ isOpen, onClose, onCreate }: QuickSlideModalProps) {
     <FlightPopup
       open={isOpen}
       size={{ w: 520, h: 500 }}
-      label="quick slide"
+      label={editing ? 'edit slide' : 'quick slide'}
       onRequestClose={onClose}
       header={
         <div>
-          <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">quick slide</h2>
+          <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">{editing ? 'edit slide' : 'quick slide'}</h2>
           <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">
             a title, a line under it, and a few points. it joins your decks as a one-page slide.
           </p>
@@ -290,7 +292,7 @@ function QuickSlideModal({ isOpen, onClose, onCreate }: QuickSlideModalProps) {
       }
       footer={
         <footer className="flex shrink-0 justify-end px-6 pb-5">
-          <Button label="create slide" tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim()} onClick={handleCreate} />
+          <Button label={editing ? 'save slide' : 'create slide'} tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim()} onClick={handleCreate} />
         </footer>
       }
     >
@@ -329,6 +331,7 @@ export function SlidesBrowser() {
   const [query, setQuery] = useState('');
   const [importNote, setImportNote] = useState<string | null>(null);
   const [quickModalOpen, setQuickModalOpen] = useState(false);
+  const [editingDeck, setEditingDeck] = useState<LoadedDeck | null>(null);
   const [customDecks, setCustomDecks] = useState<LoadedDeck[]>(() => {
     try {
       const raw = localStorage.getItem('trilorah_custom_presentation_decks');
@@ -358,14 +361,38 @@ export function SlidesBrowser() {
   const handleCreateQuickDeck = (deck: Deck) => {
     const loaded: LoadedDeck = {
       ...deck,
-      id: `custom-deck-${Date.now()}`,
-      seed: Math.floor(Math.random() * 100),
+      id: editingDeck?.id ?? `custom-deck-${Date.now()}`,
+      seed: editingDeck?.seed ?? Math.floor(Math.random() * 100),
     };
     setCustomDecks((prev) => {
-      const updated = [loaded, ...prev];
+      /* Editing keeps the slide where it was; a new one goes to the front. */
+      const updated = editingDeck ? prev.map((d) => (d.id === loaded.id ? loaded : d)) : [loaded, ...prev];
       try {
         localStorage.setItem('trilorah_custom_presentation_decks', JSON.stringify(updated));
       } catch {}
+      return updated;
+    });
+    window.dispatchEvent(new Event('trilorah-library-changed'));
+  };
+
+  /* Off the shelf. An imported deck's page images are the app's own copies,
+     so they go with it; a quick slide is only a line in local storage. */
+  const removeDeck = async (deck: LoadedDeck) => {
+    if (deck.paths) {
+      try {
+        await window.api?.deletePresentation({ id: deck.id, slides: deck.paths });
+        const remaining = ((await window.api?.loadPresentations()) ?? []).filter((d: { id: string }) => d.id !== deck.id);
+        await window.api?.savePresentations(remaining);
+      } catch (error) {
+        setImportNote(error instanceof Error ? error.message : 'Could not delete that presentation.');
+        return;
+      }
+      window.dispatchEvent(new Event('presentations-updated'));
+      return;
+    }
+    setCustomDecks((prev) => {
+      const updated = prev.filter((d) => d.id !== deck.id);
+      try { localStorage.setItem('trilorah_custom_presentation_decks', JSON.stringify(updated)); } catch {}
       return updated;
     });
     window.dispatchEvent(new Event('trilorah-library-changed'));
@@ -432,7 +459,8 @@ export function SlidesBrowser() {
     <>
       <QuickSlideModal
         isOpen={quickModalOpen}
-        onClose={() => setQuickModalOpen(false)}
+        editing={editingDeck}
+        onClose={() => { setQuickModalOpen(false); setEditingDeck(null); }}
         onCreate={handleCreateQuickDeck}
       />
       <LibraryBrowser
@@ -531,9 +559,30 @@ export function SlidesBrowser() {
                          recognisable as a picture. */
                       preview,
                     }))}
-                    className="group/card pb-3 transition-transform duration-150 ease-out hover:-translate-y-[2px]"
+                    className="group/card relative pb-3 transition-transform duration-150 ease-out hover:-translate-y-[2px]"
                     style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
                   >
+                    {/* The card's acts, as the song card carries its own. A
+                        quick slide can be edited; a deck from a file can
+                        only be removed. Over the picture, so the caption's
+                        two lines keep their room. */}
+                    {deck.id.startsWith('deck-') ? null : (
+                      <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/card:opacity-100"
+                        onPointerDown={(e) => e.stopPropagation()}>
+                        {!deck.paths ? (
+                          <button type="button" title={`edit ${deck.title}`} aria-label={`edit ${deck.title}`}
+                            className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
+                            onClick={(e) => { e.stopPropagation(); setEditingDeck(deck); setQuickModalOpen(true); }}>
+                            <PencilIcon size={12} />
+                          </button>
+                        ) : null}
+                        <button type="button" title={`delete ${deck.title}`} aria-label={`delete ${deck.title}`}
+                          className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
+                          onClick={(e) => { e.stopPropagation(); void removeDeck(deck); }}>
+                          <TrashIcon size={12} />
+                        </button>
+                      </div>
+                    )}
                     <SlideThumb
                       index={i}
                       label={deck.title}

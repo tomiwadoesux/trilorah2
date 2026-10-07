@@ -34,6 +34,8 @@ import { Widget5Icon as SolarDashboard } from '@solar-icons/react/bold/widget-5'
 import { UserSpeakRoundedIcon as SolarProfile } from '@solar-icons/react/bold/user-speak-rounded';
 import { GlobalIcon as SolarGlobe } from '@solar-icons/react/bold/global';
 import { LaptopIcon as SolarLaptop } from '@solar-icons/react/bold/laptop';
+import { SmartphoneIcon as SolarPhone } from '@solar-icons/react/bold/smartphone';
+import { SoundwaveIcon as SolarSoundwave } from '@solar-icons/react/bold/soundwave';
 import { CloseIcon as SolarClose } from '@solar-icons/react/bold/close';
 import { ScissorsIcon as SolarSplit } from '@solar-icons/react/bold/scissors';
 import { LayersMinimalisticIcon as SolarMerge } from '@solar-icons/react/bold/layers-minimalistic';
@@ -108,6 +110,8 @@ export const DashboardIcon = icon(SolarDashboard);
 export const ProfileIcon = icon(SolarProfile);
 export const GlobeIcon = icon(SolarGlobe);
 export const LaptopIcon = icon(SolarLaptop);
+export const PhoneIcon = icon(SolarPhone);
+export const SoundwaveIcon = icon(SolarSoundwave);
 export const CloseIcon = icon(SolarClose);
 export const SplitIcon = icon(SolarSplit);
 export const MergeIcon = icon(SolarMerge);

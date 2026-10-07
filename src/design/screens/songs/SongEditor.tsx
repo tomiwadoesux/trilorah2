@@ -80,6 +80,8 @@ export interface SongEditorProps {
   onDraft: (draft: SongDraft | null) => void;
   onRequestClose: () => void;
   onClosed: () => void;
+  /** Above another popup — the online search it was opened from. See FlightPopup. */
+  layer?: number;
 }
 
 const FIT_COPY: Record<Fit, string> = { fits: 'fits on slide', tight: 'text is dense', over: 'too much text' };
@@ -95,7 +97,7 @@ const MANY = 3;
 
 type Ask = { kind: 'reset' | 'resplit'; text: string } | null;
 
-export function SongEditor({ session, open, origin, onSave, onDraft, onRequestClose, onClosed }: SongEditorProps) {
+export function SongEditor({ session, open, origin, onSave, onDraft, onRequestClose, onClosed, layer }: SongEditorProps) {
   const { base, draft, isNew } = session;
   const [title, setTitle] = useState(draft?.title ?? base.title);
   const [author, setAuthor] = useState(draft?.author ?? base.author);
@@ -319,6 +321,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
       label={collectingLyrics ? 'add a song' : `edit ${base.title || 'song'}`}
       onRequestClose={close}
       onClosed={onClosed}
+      layer={layer}
       attention={attention}
       overlay={closePrompt && open ? <SongClosePrompt
         onKeepEditing={() => setClosePrompt(false)}

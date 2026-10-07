@@ -22,6 +22,7 @@ import {
   emitAudioLevel
 } from './emitters'
 import { feedAudioChunk } from './asr/audioBus'
+import { queueHealth } from './cloud/offlineQueue'
 import { longestCommandPhrase } from '../shared/voiceCommandText'
 // In-process TS resolver — drop-in replacement for the lost Python ml/ service
 import {
@@ -60,6 +61,8 @@ import type { PreacherTeaching } from '../shared/preacherLearning'
 import { PairingStore } from './integrations/pairing'
 import { MobileServer } from './integrations/mobileServer'
 import { MobileBridge } from './integrations/mobileBridge'
+import { PhoneMicLink, supabaseMicChannel } from './mic/phoneMicLink'
+import { hostname } from 'node:os'
 
 let mobileServer: MobileServer | null = null
 let mobilePairing: PairingStore | null = null
@@ -77,6 +80,42 @@ const mobileBridge = new MobileBridge(request => {
 ipcMain.on('mobile-reply', (event, reply) => {
   if (event.sender === mainWindow?.webContents) mobileBridge.reply(reply.id, reply.result, reply.error)
 })
+/*
+ * The phone microphone. Main holds the code and the approval; the renderer
+ * holds the call. See shared/phoneMic.ts.
+ */
+let phoneMic: PhoneMicLink | null = null
+function getPhoneMic(): PhoneMicLink {
+  if (phoneMic) return phoneMic
+  const supa = getSupabase()
+  if (!supa) throw new Error('cloud is off in this build — the phone microphone needs it to find the laptop')
+  phoneMic = new PhoneMicLink({
+    openChannel: supabaseMicChannel(supa),
+    qr: async (url) => (await import('qrcode')).toDataURL(url, { width: 320, margin: 1, color: { dark: '#e5f3f2', light: '#0e1413' } }),
+    laptopName: hostname().replace(/\.local$/i, '').replace(/-/g, ' ') || 'the laptop',
+    onStatus: (status) => broadcastToWindows('on-phone-mic-status', status),
+    onSignal: (message) => mainWindow?.webContents.send('on-phone-mic-signal', message),
+  })
+  return phoneMic
+}
+const noPhoneMic = (error: string) => ({ state: 'error', code: null, url: null, qr: null, phoneName: null, expiresAt: null, error })
+ipcMain.handle('phone-mic-start', async () => {
+  try { return await getPhoneMic().start(String(getSetting('publicWebUrl') ?? '')) }
+  catch (e: any) { return noPhoneMic(e?.message || 'could not start') }
+})
+ipcMain.handle('phone-mic-stop', async () => { await phoneMic?.stop(); return phoneMic?.status() ?? noPhoneMic('') })
+ipcMain.handle('phone-mic-approve', async (_event, allow: boolean) => { await phoneMic?.approve(allow === true); return phoneMic?.status() ?? noPhoneMic('') })
+ipcMain.handle('phone-mic-status', () => phoneMic?.status() ?? { state: 'idle', code: null, url: null, qr: null, phoneName: null, expiresAt: null, error: null })
+ipcMain.on('phone-mic-signal', (event, message) => {
+  if (event.sender !== mainWindow?.webContents) return
+  const parsed = parsePhoneMicMessage(message)
+  if (parsed) void phoneMic?.signal(parsed)
+})
+ipcMain.on('phone-mic-peer-state', (event, state, detail) => {
+  if (event.sender !== mainWindow?.webContents) return
+  if (state === 'connected' || state === 'failed') phoneMic?.peerState(state, typeof detail === 'string' ? detail : undefined)
+})
+
 ipcMain.handle('mobile-status', () => mobileServer?.status() ?? {running:false,urls:[],pending:[],devices:[],error:null})
 ipcMain.handle('mobile-enable', async (_event, enabled: boolean) => {
   if (!mobilePairing) mobilePairing = new PairingStore(path.join(app.getPath('userData'),'mobile'))
@@ -145,7 +184,9 @@ import type { LiveContent } from '../shared/liveContent'
 import { buildQrCard } from '../shared/qrCard'
 import { searchBible } from './data/bibleSearch'
 import { emitEngineEvent } from './emitters'
-import { resolveASRProvider, type ASRProvider } from './asr/provider'
+import { practiceSermonProvider, resolveASRProvider, type ASRProvider } from './asr/provider'
+import { PRACTICE_SERMON_DEVICE } from '../shared/practiceSermon'
+import { parsePhoneMicMessage } from '../shared/phoneMic'
 // (startDeepgram/stopDeepgram now flow through the provider abstraction)
 import { VoiceCommandEngine, type VoiceCommandCallbacks } from './engine/voiceCommands'
 import { IntentEngine } from './engine/intentEngine'
@@ -212,6 +253,7 @@ import { importScheduleFromImage } from './media/ocrSchedule'
 import { suggestSchedule, suggestionToEntries } from './data/scheduleLearner'
 import {
   isCloudConfigured,
+  getSupabase,
   signIn,
   signUp,
   signOut,
@@ -223,6 +265,7 @@ import {
   endService,
   getActiveServiceId,
   pushSegment,
+  setRehearsal,
   pushTranscriptChunk,
   pushDetectedVerse,
   markVersePushed,
@@ -295,6 +338,18 @@ if (app.isPackaged && !app.requestSingleInstanceLock()) app.quit()
 if (process.env.TRI_DEBUG_PORT) {
   app.commandLine.appendSwitch('remote-debugging-port', process.env.TRI_DEBUG_PORT)
 }
+
+/*
+ * A projector window must keep drawing when it is covered, unfocused or
+ * being shared — a Zoom window share, another app on top of it. Chromium
+ * otherwise marks a covered window hidden and stops painting it: measured on
+ * 2026-10-07 at 0 frames in 2 s, with a 2 s timer taking 5 s. That is the
+ * "it only updates once I click on it" the owner saw while sharing the
+ * output in Zoom.
+ */
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
 
 let transitionDetector: TransitionDetector | null = null
 const falsePositiveFilter = new FalsePositiveFilter()
@@ -961,7 +1016,9 @@ function startASR(deviceLabel?: string) {
   resetStoryMemory()
   suggestionTracker.reset()
   lastNamedPassage = null
-  activeASR = resolveASRProvider(getSetting('asrProvider'))
+  /* The practice sermon stands in for a microphone, and is not a service. */
+  activeASR = deviceLabel === PRACTICE_SERMON_DEVICE ? practiceSermonProvider : resolveASRProvider(getSetting('asrProvider'))
+  setRehearsal(activeASR.id === 'practice')
   console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
   // Both of these BEFORE start(), never after. A provider that cannot run at
   // all — no Deepgram key, or no whisper binary, which is every Windows PC —
@@ -1091,6 +1148,7 @@ function stopASR() {
   if (!isListening) return
   ;(activeASR ?? resolveASRProvider(getSetting('asrProvider'))).stop()
   activeASR = null
+  setRehearsal(false)
   isListening = false
   navFiredOnPartial = false
   withdrawProvisionalRecognition()
@@ -1428,7 +1486,10 @@ function createOutputWindow(id: string, title: string) {
       // Nobody ever clicks inside the projector window, so Chromium's
       // "a user gesture is needed before sound" rule would leave every
       // video silent there, permanently.
-      autoplayPolicy: 'no-user-gesture-required'
+      autoplayPolicy: 'no-user-gesture-required',
+      // Keeps painting and timing while covered or shared (see the switches
+      // at the top of this file).
+      backgroundThrottling: false
     }
   })
   console.log(
@@ -1463,7 +1524,10 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      // The operator is often in another app mid-service (Zoom, a browser):
+      // the catches' clocks and the phone remote run in this window.
+      backgroundThrottling: false
     }
   })
   if (isDev) {
@@ -1615,6 +1679,9 @@ ipcMain.on('process-text', (_event, text) => {
  * If this fails the service runs exactly as it did before — locally correct,
  * publicly silent — and says so in the log rather than blocking the start.
  */
+/** Why the last attempt to open the cloud service failed — shown on the companion card. */
+let cloudServiceError: string | null = null
+
 async function ensureCloudService(): Promise<void> {
   if (publicSharingPaused) return
   if (!isCloudConfigured()) return
@@ -1627,11 +1694,14 @@ async function ensureCloudService(): Promise<void> {
       return startService({ preacherId: activePreacherId() || null })
     })
     if (res.success && res.serviceId) {
+      cloudServiceError = null
       console.log(`☁️  Service opened for the companion page: ${res.serviceId}`)
     } else if (!res.success) {
+      cloudServiceError = res.error ?? 'could not open the service'
       console.error(`☁️  Could not open the cloud service — the phone page will stay empty: ${res.error}`)
     }
   } catch (e: any) {
+    cloudServiceError = e?.message ?? 'could not open the service'
     console.error('☁️  Could not open the cloud service:', e?.message)
   }
 }
@@ -1640,7 +1710,13 @@ ipcMain.on('start-listening', (_event, deviceLabel) => {
   if (soundCheck.active) return
   console.log('▶️ Start listening requested', deviceLabel ? `(device: ${deviceLabel})` : '')
   startASR(deviceLabel)
-  void ensureCloudService()
+  if (deviceLabel !== PRACTICE_SERMON_DEVICE) void ensureCloudService()
+})
+
+/* The operator stepped the live reading to another page: every output follows. */
+ipcMain.on('set-live-slide', (_event, index: unknown) => {
+  if (typeof index !== 'number' || !Number.isInteger(index) || index < 0 || index > 999) return
+  broadcastToWindows('on-live-slide', index)
 })
 
 ipcMain.on('stop-listening', () => {
@@ -2162,7 +2238,9 @@ ipcMain.handle('show-qr', async () => {
     console.log(`📱 Companion QR on outputs → ${url}`)
     currentLiveContent = null
     verseDelivery.clearLive()
-    screen.onContentPushed()
+    // Someone pressed "show the code": it goes up even over black or logo.
+    // (An automatic push lifts only clear — see onContentPushed.)
+    screen.set('live')
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) win.webContents.send('on-show-media', file, 'photo')
     })
@@ -2836,25 +2914,57 @@ ipcMain.handle(
   }
 )
 
+/*
+ * Who is signed in, and do they have a church — the slow half of
+ * cloud-status. Both are network round trips to Supabase (getUser validates
+ * the session with the auth server every time), and the phone remote asks
+ * for cloud-status in every state poll, four times a second per phone: that
+ * was two auth requests and a query each time, and a remote whose every
+ * refresh waited on the internet. Identity changes only when someone signs
+ * in or out, so it is cached and dropped on exactly those events; the live
+ * half (service, queue) is read fresh on every call.
+ */
+const CLOUD_IDENTITY_TTL_MS = 60_000
+let cloudIdentity: { at: number; value: Promise<{ signedIn: boolean; hasAccount: boolean; email: string | null }> } | null = null
+
+function forgetCloudIdentity(): void {
+  cloudIdentity = null
+}
+
+function readCloudIdentity() {
+  if (cloudIdentity && Date.now() - cloudIdentity.at < CLOUD_IDENTITY_TTL_MS) return cloudIdentity.value
+  const value = (async () => {
+    const user = await getCurrentUser()
+    const hasAcc = user ? await hasAccount() : false
+    if (hasAcc && !getSetting('accountSlug')) {
+      try {
+        const account = await fetchMyAccount()
+        if (account?.slug) {
+          setSetting('accountSlug', account.slug)
+        }
+      } catch {
+      }
+    }
+    return { signedIn: !!user, hasAccount: hasAcc, email: user?.email ?? null }
+  })()
+  cloudIdentity = { at: Date.now(), value }
+  // A failed lookup (offline) must not be remembered for a minute.
+  value.catch(() => {
+    if (cloudIdentity?.value === value) cloudIdentity = null
+  })
+  return value
+}
+
 ipcMain.handle('cloud-status', async () => {
   if (!isCloudConfigured()) return { configured: false, signedIn: false }
-  const user = await getCurrentUser()
-  const hasAcc = user ? await hasAccount() : false
-  if (hasAcc && !getSetting('accountSlug')) {
-    try {
-      const account = await fetchMyAccount()
-      if (account?.slug) {
-        setSetting('accountSlug', account.slug)
-      }
-    } catch {
-    }
-  }
+  const identity = await readCloudIdentity().catch(() => ({ signedIn: false, hasAccount: false, email: null }))
   return {
     configured: true,
-    signedIn: !!user,
-    hasAccount: hasAcc,
-    email: user?.email ?? null,
-    activeServiceId: getActiveServiceId()
+    ...identity,
+    activeServiceId: getActiveServiceId(),
+    paused: publicSharingPaused,
+    serviceError: getActiveServiceId() ? null : cloudServiceError,
+    queue: queueHealth()
   }
 })
 
@@ -2862,6 +2972,7 @@ ipcMain.handle(
   'cloud-complete-account-setup',
   async (_event, { churchName, slug }) => {
     const result = await completeAccountSetup(churchName, slug)
+    forgetCloudIdentity()
     if (result.success) {
       setSetting('accountSlug', slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
     }
@@ -2873,6 +2984,7 @@ ipcMain.handle(
   'cloud-sign-in',
   async (_event, { email, password }) => {
     const result = await signIn(email, password)
+    forgetCloudIdentity()
     if (result.success) {
       try {
         const account = await fetchMyAccount()
@@ -2890,12 +3002,16 @@ ipcMain.handle(
 ipcMain.handle(
   'cloud-sign-up',
   async (_event, { email, password, accountName }) => {
+    forgetCloudIdentity()
     return await signUp(email, password, accountName)
   }
 )
 
 ipcMain.handle('cloud-sign-out', async () => {
-  return await signOut()
+  forgetCloudIdentity()
+  const result = await signOut()
+  forgetCloudIdentity()
+  return result
 })
 
 ipcMain.handle('cloud-start-service', async (_event, opts) => {
@@ -2928,6 +3044,7 @@ ipcMain.handle('cloud-generate-link-code', async () => {
 })
 
 ipcMain.handle('cloud-redeem-link-code', async (_event, code) => {
+  forgetCloudIdentity()
   return await redeemLinkCode(code)
 })
 

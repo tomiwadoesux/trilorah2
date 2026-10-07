@@ -1282,3 +1282,17 @@
 @container empty-state (min-width: 360px) {
   .tri-empty-mark__line, .tri-empty-mark__hint { max-width: 60ch; }
 }
+
+/* A mark with buttons under it (the run rail's): on a short card the words
+   and the buttons are the point, so the drawing gets only what they leave
+   rather than holding a minimum that pushes the last row of buttons out —
+   which is what happened when the library was raised. Too short for even a
+   small drawing, it goes. */
+@container empty-state (max-height: 225px) {
+  .tri-empty-mark__layout--actions { grid-template-rows: minmax(0, 1fr) auto; }
+  .tri-empty-mark__layout--actions > .tri-empty-mark__stage { min-height: 0; overflow: hidden; }
+}
+@container empty-state (max-height: 140px) {
+  .tri-empty-mark__layout--actions { grid-template-rows: auto; align-content: center; }
+  .tri-empty-mark__layout--actions > .tri-empty-mark__stage { display: none; }
+}

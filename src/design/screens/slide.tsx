@@ -1,5 +1,5 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import type { VerseSlide } from '../../../shared/verseDisplay';
+import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { splitVerseNumbers, type VerseSlide } from '../../../shared/verseDisplay';
 import type { TextTransition } from '../../../shared/textTransitions';
 import { resolveTextPosition } from '../../../shared/textPosition';
 import { textWidthFrame } from '../../../shared/textWidth';
@@ -7,6 +7,7 @@ import { resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { displayFontFamily } from '../../../shared/displayFont';
+import { useFitText } from '../../lib/useFitText';
 
 /*
  * D-23 — the one renderer.
@@ -192,6 +193,18 @@ export interface SlideTheme {
   textWidth?: number;
 }
 
+/* The wall's .output-verse-num, for the stage boxes and editor. */
+const VERSE_NUM_STYLE: React.CSSProperties = {
+  verticalAlign: 'baseline',
+  position: 'relative',
+  top: '-0.7em',
+  fontSize: '0.5em',
+  lineHeight: 0,
+  marginRight: '0.14em',
+  fontVariantNumeric: 'lining-nums',
+  opacity: 0.85,
+};
+
 export function SlideCanvas({
   theme,
   slide = null,
@@ -243,6 +256,17 @@ export function SlideCanvas({
   /* 'clear' is the app's word for background-only — the words go, the
      picture stays. Black and logo are covers and handled further down. */
   const words = screen === 'live' && slide;
+
+  /* The same shrink-to-fit the wall does (lib/useFitText), so a reading
+     too tall for the box is seen here the way the room will see it: smaller,
+     and past half size cut with "…" — not running off the top. */
+  const textBoxRef = useRef<HTMLDivElement>(null);
+  const wordsRef = useRef<HTMLDivElement>(null);
+  useFitText(textBoxRef, wordsRef, JSON.stringify([
+    words ? slide.lines : null, words ? slide.reference : null, transition?.play ?? null,
+    theme.font, theme.size, theme.verseSize, theme.refGap, theme.layout, theme.safeMargin, theme.textWidth,
+    theme.textCase, theme.textSpacing, screen,
+  ]));
 
   /*
    * Dragging a corner.
@@ -408,6 +432,7 @@ export function SlideCanvas({
       )}
 
       <div
+        ref={textBoxRef}
         className="absolute flex flex-col"
         style={{
           top: `${theme.safeMargin}%`,
@@ -433,6 +458,7 @@ export function SlideCanvas({
                Width is independent of the safe guide, just as on the
                projector; it stays anchored to the chosen text position. */
             key={transition ? `tx-${transition.play}` : undefined}
+            ref={wordsRef}
             className={`tri-slide-words flex max-w-full flex-col text-white ${transition ? `tri-tx tri-tx-${transition.id}` : ''}`}
             style={{
               ...(transition ? ({ '--tri-tx-ms': `${transition.ms}ms` } as React.CSSProperties) : null),
@@ -492,10 +518,19 @@ export function SlideCanvas({
               {slide.lines.map((line, i) => (
                 <p
                   key={`${line.version}-${i}`}
+                  data-fit-body={i === 0 ? '' : undefined}
                   className={i > 0 ? 'mt-[0.45em] mb-0 whitespace-pre-line' : 'm-0 whitespace-pre-line'}
-                  style={{ letterSpacing: textSpacing.letterSpacing, lineHeight: 1.35 + textSpacing.lineHeightDelta }}
+                  /* --fit is set on the words by useFitText; the reference
+                     keeps its own size. */
+                  style={{ fontSize: 'calc(1em * var(--fit, 1))', letterSpacing: textSpacing.letterSpacing, lineHeight: 1.35 + textSpacing.lineHeightDelta }}
                 >
-                  {line.text}
+                  {/* Verse numbers raised, as the wall sets them
+                      (.output-verse-num). */}
+                  {splitVerseNumbers(line.text).map((part, n) =>
+                    part.kind === 'verse'
+                      ? <sup key={n} style={VERSE_NUM_STYLE}>{part.verse}</sup>
+                      : <Fragment key={n}>{part.text}</Fragment>,
+                  )}
                 </p>
               ))}
             </span>

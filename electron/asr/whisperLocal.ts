@@ -1,4 +1,4 @@
-import { usesDeviceAudio } from '../../shared/audioInput'
+import { usesWindowCapture } from '../../shared/audioInput'
 
 /**
  * Local Whisper ASR — the free-tier ears. No API key, nothing leaves the
@@ -231,7 +231,7 @@ export function startWhisperLocal(
   }
 
   // No SoX → capture the mic in the app window (getUserMedia → IPC).
-  if (usesDeviceAudio(deviceLabel) || !soxAvailable()) {
+  if (usesWindowCapture(deviceLabel) || !soxAvailable()) {
     console.log('🎙️ SoX not found — capturing microphone via the app window')
     usingWindowMic = true
     setAudioSink(accumulate)

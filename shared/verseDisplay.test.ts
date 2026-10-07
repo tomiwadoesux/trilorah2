@@ -6,6 +6,10 @@ import {
   splitText,
   TRANSLATION_SEPARATOR,
   VERSE_NUMBER_SPACE,
+  splitVerseNumbers,
+  pageVerses,
+  PAGE_WORDS,
+  CONTINUES,
   type VerseDisplayOptions,
   type VerseText
 } from './verseDisplay'
@@ -368,5 +372,48 @@ describe('buildVerseSlides — secondary translation', () => {
     )
     expect(slides.length).toBeGreaterThan(1)
     for (const s of slides) expect(s.lines[1]).toEqual({ version: 'NIV', text: SECONDARY.verses[0].text })
+  })
+})
+
+describe('splitVerseNumbers', () => {
+  it('lifts each verse number out of a composed range, keeping the space between verses', () => {
+    const [slide] = buildVerseSlides(REF, RANGE, opts({ showVerseNumbers: true }))
+    const parts = splitVerseNumbers(slide.lines[0].text)
+    expect(parts.filter((p) => p.kind === 'verse').map((p) => (p.kind === 'verse' ? p.verse : ''))).toEqual(['16', '17', '18'])
+    expect(parts[0]).toEqual({ kind: 'verse', verse: '16' })
+    expect(parts[1]).toMatchObject({ kind: 'text' })
+    expect(parts[1].kind === 'text' && parts[1].text.startsWith('For God')).toBe(true)
+    expect(parts[1].kind === 'text' && parts[1].text.endsWith(' ')).toBe(true)
+  })
+  it('leaves words with no verse numbers whole, numbers in the text included', () => {
+    expect(splitVerseNumbers('the 12 disciples went out')).toEqual([{ kind: 'text', text: 'the 12 disciples went out' }])
+  })
+})
+
+describe('pages of a long reading', () => {
+  const verse = (n: number, words: number) => ({ verse: n, text: Array.from({ length: words }, (_, i) => `w${i}`).join(' ') })
+
+  it('keeps a reading that can be read from the back on one slide', () => {
+    const three = [verse(3, 24), verse(4, 20), verse(5, 27)]
+    expect(pageVerses(three, PAGE_WORDS)).toHaveLength(1)
+    const slides = buildVerseSlides(REF, three, opts({ showVerseNumbers: true, maxWordsPerSlide: PAGE_WORDS }))
+    expect(slides).toHaveLength(1)
+    expect(slides[0].lines[0].text.endsWith(CONTINUES)).toBe(false)
+  })
+
+  it('pages a long one in whole verses, evenly, each page but the last saying there is more', () => {
+    const sixteen = Array.from({ length: 16 }, (_, i) => verse(i + 1, 18))
+    const pages = pageVerses(sixteen, PAGE_WORDS)
+    expect(pages.map((p) => p.length)).toEqual([4, 4, 4, 4])
+    const slides = buildVerseSlides(REF, sixteen, opts({ showVerseNumbers: true, maxWordsPerSlide: PAGE_WORDS }))
+    expect(slides.map((s) => [s.verseStart, s.verseEnd])).toEqual([[1, 4], [5, 8], [9, 12], [13, 16]])
+    expect(slides.slice(0, 3).every((s) => s.lines[0].text.endsWith(CONTINUES))).toBe(true)
+    expect(slides[3].lines[0].text.endsWith(CONTINUES)).toBe(false)
+    expect(slides[1].reference).toContain(':5-8')
+  })
+
+  it('never cuts a verse, even one longer than a page', () => {
+    const pages = pageVerses([verse(1, 30), verse(2, 120), verse(3, 30)], PAGE_WORDS)
+    expect(pages.map((p) => p.map((v) => v.verse))).toEqual([[1], [2], [3]])
   })
 })

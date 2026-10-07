@@ -170,6 +170,13 @@ export interface LibrarySelection {
    * in would rewrite it under their hands.
    */
   setPreview: (i: number, mirror?: boolean) => void;
+  /**
+   * Move the highlight only — no staging, no echo into the field. For a list
+   * catching up with something that already happened elsewhere, such as a
+   * verse going live from the engine: the arrows then carry on from it, and
+   * the preview box keeps whatever the operator had there.
+   */
+  point: (i: number) => void;
   /** Whether the arrows have been used since the list last changed. */
   navigated: boolean;
   /** ↑/↓, clamped to the ends of the list. */
@@ -233,9 +240,15 @@ export function useLibrarySelection<T>({
   }, [items, selectFirst]);
 
   /* Arrowing past the fold has to bring the row with it, or the selection
-     moves somewhere the operator cannot see. */
+     moves somewhere the operator cannot see. A `point` has already put the
+     row where it should be — sometimes mid smooth-scroll — so it is left be. */
+  const quiet = useRef(false);
   useEffect(() => {
     if (preview === null) return;
+    if (quiet.current) {
+      quiet.current = false;
+      return;
+    }
     listRef.current
       ?.querySelector<HTMLElement>(`[data-row="${preview}"]`)
       ?.scrollIntoView({ block: 'nearest' });
@@ -271,6 +284,13 @@ export function useLibrarySelection<T>({
     },
     [items, onPreviewChange, itemAt, contentOf, projector],
   );
+
+  const point = useCallback((i: number) => setPreviewIndex((current) => {
+    /* Only a real move runs the scroll effect, so only a real move may
+       silence it — otherwise the next arrow press would not scroll. */
+    if (current !== i) quiet.current = true;
+    return i;
+  }), []);
 
   const navigate = useCallback(
     (delta: -1 | 1) => {
@@ -316,5 +336,5 @@ export function useLibrarySelection<T>({
     [items, projector, source, idOf],
   );
 
-  return { preview, setPreview, navigated, navigate, activate, send, isLive, listRef };
+  return { preview, setPreview, point, navigated, navigate, activate, send, isLive, listRef };
 }

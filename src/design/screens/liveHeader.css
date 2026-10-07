@@ -1,53 +1,79 @@
-/* Header surfaces stay local to the live workspace and follow its density. */
+/*
+ * The toolbar, in the app's own material.
+ *
+ * The strip is bare — the workspace ground is one plain colour and the
+ * controls carry the surface (tokens.css: the four-stop gradient whose alpha
+ * is the state, the inset hairline, the smoothed corner). A grey slab holding
+ * grey boxes read as a mock-up of the app rather than the app; the owner
+ * said so (2026-10-07). Each control is one of the system's tones.
+ */
 .tri-live-header {
   gap: var(--tri-gap);
-  padding: 0 var(--tri-gap);
-  border: var(--tri-border) solid #262b2e;
-  border-radius: 10px;
-  background: #141719;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .tri-live-header .tri-header-control {
-  --header-bg: #252c32;
-  --header-hover: #303a43;
-  --header-active: #38444e;
-  --header-edge: #39444b;
-  --header-accent: #afc3d2;
-  --header-ink: #d0dce3;
+  --tri-alpha: var(--tri-alpha-rest);
+  --tri-a-mid: var(--tri-alpha);
+  --tri-a-edge: var(--tri-alpha);
+  --tri-1: var(--tri-teal-1);
+  --tri-2: var(--tri-teal-2);
+  --tri-3: var(--tri-teal-3);
+  --tri-4: var(--tri-teal-4);
+  --header-stroke: rgb(229 243 242 / var(--tri-stroke-opacity));
   height: var(--tri-control-h);
   padding: 0 var(--tri-control-pad-x);
-  border: var(--tri-border) solid var(--header-edge);
-  border-radius: calc(var(--tri-control-h) * 0.25);
+  border: 0;
+  border-radius: var(--tri-radius-control);
   corner-shape: var(--tri-corner);
-  background: var(--header-bg);
-  color: var(--header-ink);
-  font-size: var(--tri-control-size);
-  font-weight: 500;
-  letter-spacing: 0.015em;
+  background-color: transparent;
+  background-image:
+    radial-gradient(ellipse at 12% 115%, rgb(var(--tri-2) / var(--tri-a-mid)), transparent 62%),
+    radial-gradient(ellipse at 88% -25%, rgb(var(--tri-4) / var(--tri-a-mid)), transparent 64%),
+    radial-gradient(ellipse at 48% 48%, rgb(var(--tri-3) / var(--tri-a-edge)), rgb(var(--tri-1) / var(--tri-a-edge)) 82%);
+  box-shadow: inset 0 0 0 var(--tri-border) var(--header-stroke);
+  color: var(--tri-ink);
+  font-family: var(--tri-font);
+  font-size: var(--tri-size);
+  font-weight: var(--tri-weight);
+  letter-spacing: var(--tri-tracking);
   line-height: 1;
+  text-shadow: var(--tri-text-shadow);
   white-space: nowrap;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  transition:
+    --tri-a-mid var(--tri-dur-state) var(--tri-ease-out),
+    --tri-a-edge var(--tri-dur-state-trail) var(--tri-ease-soft) var(--tri-delay-trail),
+    box-shadow var(--tri-dur-state) var(--tri-ease-out),
+    color var(--tri-dur-state) var(--tri-ease-out),
+    transform var(--tri-dur-press) var(--tri-ease-out);
 }
+/* Every control leads with its glyph, a touch quieter than its word. */
+.tri-live-header .tri-header-icon { flex: none; opacity: 0.82; }
 
 .tri-live-header button.tri-header-control { cursor: pointer; }
-.tri-live-header button.tri-header-control:hover:not(:disabled) {
-  background: var(--header-hover);
-  border-color: var(--header-accent);
-  color: #f1f4f0;
+@media (hover: hover) and (pointer: fine) {
+  .tri-live-header button.tri-header-control:hover:not(:disabled),
+  .tri-live-header label.tri-header-control:hover {
+    --tri-alpha: var(--tri-alpha-hover);
+    --header-stroke: rgb(229 243 242 / var(--tri-stroke-opacity-hover));
+  }
+}
+.tri-live-header button.tri-header-control:active:not(:disabled) {
+  transform: scale(var(--tri-press-scale));
 }
 .tri-live-header button.tri-header-control:focus-visible {
-  outline: 2px solid var(--header-accent);
+  outline: 2px solid var(--tri-accent-yellow);
   outline-offset: 2px;
 }
 .tri-live-header .tri-header-control[aria-pressed='true'],
 .tri-live-header .tri-header-control[aria-expanded='true'] {
-  background: var(--header-active);
-  border-color: var(--header-accent);
-  color: #f1f4f0;
+  --tri-alpha: var(--tri-alpha-active);
 }
 .tri-live-header button.tri-header-control:disabled {
   cursor: not-allowed;
-  opacity: 0.48;
+  opacity: 0.4;
 }
 
 .tri-header-views {
@@ -84,6 +110,9 @@
   --header-ink: #aaaaaa;
   position: relative;
   z-index: 1;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
   width: auto;
   min-width: var(--tri-view-w);
   flex-shrink: 1;
@@ -214,56 +243,48 @@
   transform: scale(0.92);
 }
 
-.tri-live-header .tri-header-orb { margin-left: 0; }
-.tri-live-header .tri-header-orb .tri-header-control {
-  --header-bg: #202627;
-  --header-hover: #2b3333;
-  --header-edge: #35413e;
-  padding: 0;
-  overflow: hidden;
-}
-.tri-header-orb .tri-header-control > * { max-width: 100%; max-height: 100%; }
-.tri-live-header .tri-header-listen {
-  --header-bg: #243b32;
-  --header-hover: #2e4b3e;
-  --header-active: #335944;
-  --header-edge: #3f5a4c;
-  --header-accent: #a3c6ad;
-  --header-ink: #d4e8dc;
-  font-weight: 600;
+/* The orb is not a control. It is the engine's face: bare on the ground,
+   no box of its own, and a size up from the buttons beside it. */
+.tri-live-header .tri-header-orb { margin-left: 0; height: calc(var(--tri-control-h) * 1.3); }
+.tri-header-orb-face { border-radius: 50%; padding: 0; background: none; cursor: pointer; }
+.tri-header-orb-face:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 2px; }
+
+/* Tones: four stops each, nothing else changes — see tokens.css. */
+.tri-live-header .tri-header-listen { font-weight: 600; }
+.tri-live-header .tri-header-listen[aria-pressed='true'] {
+  --header-stroke: rgb(var(--tri-go-2) / 0.5);
 }
 .tri-live-header .tri-header-listen[data-error='true'] {
-  --header-bg: #432e2e;
-  --header-hover: #543737;
-  --header-edge: #754d4d;
-  --header-accent: #e0a8a8;
-  --header-ink: #efd1d1;
+  --tri-1: var(--tri-red-1);
+  --tri-2: var(--tri-red-2);
+  --tri-3: var(--tri-red-3);
+  --tri-4: var(--tri-red-4);
+  color: var(--tri-ink-danger);
 }
+/* The pickers are neutral: they say nothing about the service. */
+.tri-live-header .tri-header-audio,
+.tri-live-header .tri-header-remote,
 .tri-live-header .tri-header-import {
-  --header-bg: #2b3239;
-  --header-hover: #36414b;
-  --header-active: #3d4a55;
-  --header-edge: #46515c;
-  --header-accent: #adbed0;
+  --tri-1: var(--tri-ash-1);
+  --tri-2: var(--tri-ash-2);
+  --tri-3: var(--tri-ash-3);
+  --tri-4: var(--tri-ash-4);
 }
 .tri-live-header .tri-header-clock {
-  --header-bg: #212933;
-  --header-hover: #2b3745;
-  --header-edge: #384859;
-  --header-accent: #9fb7d0;
+  --tri-1: var(--tri-indigo-1);
+  --tri-2: var(--tri-indigo-2);
+  --tri-3: var(--tri-indigo-3);
+  --tri-4: var(--tri-indigo-4);
 }
 .tri-header-log-slot { width: var(--tri-rail-w); flex-shrink: 1; }
-.tri-live-header .tri-header-log {
-  --header-bg: #20322f;
-  --header-edge: #385048;
-  --header-ink: #cce2d8;
-}
-.tri-header-status-dot { background: #83bfa4; }
+.tri-header-status-dot { background: rgb(var(--tri-go-2)); }
 .tri-live-header .tri-header-log[data-attention='true'] {
-  --header-bg: #393224;
-  --header-edge: #655b3b;
+  --tri-1: var(--tri-gold-1);
+  --tri-2: var(--tri-gold-2);
+  --tri-3: var(--tri-gold-3);
+  --tri-4: var(--tri-gold-4);
 }
-.tri-header-log[data-attention='true'] .tri-header-status-dot { background: #d4c185; }
+.tri-header-log[data-attention='true'] .tri-header-status-dot { background: var(--tri-accent-yellow); }
 
 @media (prefers-reduced-motion: reduce) {
   .tri-live-header .tri-header-control,
@@ -277,3 +298,8 @@
   .tri-header-view-hint-old { animation: none !important; }
   .tri-header-view-hint-old { display: none; }
 }
+
+/* The audio picker is a control holding a native select: the select draws
+   nothing of its own, the control draws the box. */
+.tri-live-header .tri-header-audio select { font: inherit; letter-spacing: inherit; }
+.tri-live-header .tri-header-audio select option { color: #0b1214; }

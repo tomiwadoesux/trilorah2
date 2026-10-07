@@ -7,7 +7,8 @@
  * meter) back over IPC.
  */
 
-import { DEVICE_AND_MIC, usesDeviceAudio } from '../../shared/audioInput';
+import { DEVICE_AND_MIC, PHONE_MIC_LABEL, usesDeviceAudio } from '../../shared/audioInput';
+import { phoneMicStream } from './phoneMic';
 
 let ctx: AudioContext | null = null;
 let streams: MediaStream[] = [];
@@ -86,6 +87,12 @@ export async function startMicCapture(sampleRate: number, deviceLabel?: string):
       if (!desktop.getAudioTracks().length) throw new Error('No device audio stream was available. Check the computer sound output and try again.');
       if (ticket !== generation) { release(); return; }
       if (deviceLabel === DEVICE_AND_MIC) acquired.push(await openMicrophone());
+    } else if (deviceLabel === PHONE_MIC_LABEL) {
+      /* The phone's WebRTC track. Cloned, so stopping this capture does not
+         hang up the call — the phone stays connected between services. */
+      const phone = phoneMicStream();
+      if (!phone) throw new Error('the phone is not connected — choose audio › phone and scan the code');
+      acquired.push(phone.clone());
     } else {
       acquired.push(await openMicrophone(deviceLabel));
     }

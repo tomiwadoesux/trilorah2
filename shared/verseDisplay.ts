@@ -45,7 +45,26 @@ export interface VerseDisplayOptions {
    * splitting.
    */
   maxCharsPerSlide?: number
+  /**
+   * When a range is shown together (breakOnVerse off): at most this many
+   * words to a slide. A longer range becomes pages of whole verses, each
+   * page but the last ending in CONTINUES — see pageVerses.
+   */
+  maxWordsPerSlide?: number
 }
+
+/**
+ * How many words one slide of a reading may carry and still be read from
+ * across a room (owner, 2026-10-07: "these will be on TV, nobody can read
+ * these texts"). The screens shrink a page to fit its box, but never below
+ * three quarters of the set size (src/lib/useFitText); on the default wall
+ * about ninety words fit at that size, so eighty leaves room for a larger
+ * theme. Genesis 3:3-5 is 71 words: one slide.
+ */
+export const PAGE_WORDS = 80
+
+/** The end of every page of a reading but the last: there is more. */
+export const CONTINUES = ' …'
 
 export interface VerseSlide {
   /** Lines of scripture text for this slide (one entry per translation shown). */
@@ -140,6 +159,63 @@ export function splitText(text: string, max: number): string[] {
   return out
 }
 
+export type VersePart = { kind: 'text'; text: string } | { kind: 'verse'; verse: string }
+
+/**
+ * A composed line cut into words and verse numbers, so a screen can raise
+ * the numbers the way a printed Bible does (owner, 2026-10-07: "space, then
+ * 12 at the top, then continue that sentence"). A verse number is the one
+ * thing compose() follows with VERSE_NUMBER_SPACE, so that space is the
+ * mark: it is consumed here, and the raised number sits directly before
+ * its verse's first word. The space BEFORE the number — between one verse
+ * and the next — stays in the words.
+ */
+export function splitVerseNumbers(text: string): VersePart[] {
+  const parts: VersePart[] = []
+  const mark = new RegExp(`(^|\\s)(\\d{1,3})${VERSE_NUMBER_SPACE}`, 'g')
+  let at = 0
+  for (const m of text.matchAll(mark)) {
+    const start = (m.index ?? 0) + m[1].length
+    if (start > at) parts.push({ kind: 'text', text: text.slice(at, start) })
+    parts.push({ kind: 'verse', verse: m[2] })
+    at = start + m[2].length + VERSE_NUMBER_SPACE.length
+  }
+  if (at < text.length) parts.push({ kind: 'text', text: text.slice(at) })
+  return parts
+}
+
+const wordsIn = (text: string) => text.trim().split(/\s+/).filter(Boolean).length
+
+/**
+ * Whole verses into the fewest pages of at most `max` words, the pages as
+ * even as they can be — Psalm 119:1-16 as four pages of four verses, not
+ * three full pages and a verse on its own. A verse longer than `max` is a
+ * page by itself; it is never cut.
+ */
+export function pageVerses(verses: VerseText[], max: number): VerseText[][] {
+  const counts = verses.map((v) => wordsIn(v.text))
+  const total = counts.reduce((a, b) => a + b, 0)
+  if (!(max > 0) || total <= max) return [verses]
+  const target = total / Math.ceil(total / max)
+  const pages: VerseText[][] = []
+  let page: VerseText[] = []
+  let words = 0
+  verses.forEach((verse, i) => {
+    const w = counts[i]
+    const over = words + w > max
+    const further = Math.abs(words + w - target) > Math.abs(words - target)
+    if (page.length && (over || (words >= target * 0.75 && further))) {
+      pages.push(page)
+      page = []
+      words = 0
+    }
+    page.push(verse)
+    words += w
+  })
+  if (page.length) pages.push(page)
+  return pages
+}
+
 function compose(verses: VerseText[], showVerseNumbers: boolean): string {
   return verses
     .map((v) => (showVerseNumbers ? `${v.verse}${VERSE_NUMBER_SPACE}${v.text}` : v.text))
@@ -159,12 +235,16 @@ export function buildVerseSlides(
   const chunks: Chunk[] = []
 
   if (!options.breakOnVerse) {
-    // The whole reading collapses to one slide, numbers on every verse so the
-    // reader can still find their place inside the blob.
-    chunks.push({
-      text: compose(verses, options.showVerseNumbers),
-      verseStart: verses[0].verse,
-      verseEnd: verses[verses.length - 1].verse
+    // The whole reading together, numbers on every verse so the reader can
+    // still find their place in it — on one slide while it can be read from
+    // the back, otherwise on pages of whole verses (pageVerses).
+    const pages = options.maxWordsPerSlide ? pageVerses(verses, options.maxWordsPerSlide) : [verses]
+    pages.forEach((page, i) => {
+      chunks.push({
+        text: compose(page, options.showVerseNumbers) + (i < pages.length - 1 ? CONTINUES : ''),
+        verseStart: page[0].verse,
+        verseEnd: page[page.length - 1].verse
+      })
     })
   } else {
     for (const v of verses) {

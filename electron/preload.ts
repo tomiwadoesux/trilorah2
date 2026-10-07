@@ -193,6 +193,14 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('on-external-command', subscription)
     return () => ipcRenderer.removeListener('on-external-command', subscription)
   },
+  // Which page of the live reading is showing — the operator's pager drives
+  // every output window (a long range is pages of whole verses).
+  setLiveSlide: (index: number) => ipcRenderer.send('set-live-slide', index),
+  onLiveSlide: (callback: (index: number) => void) => {
+    const subscription = (_event: IpcRendererEvent, index: number) => callback(index)
+    ipcRenderer.on('on-live-slide', subscription)
+    return () => ipcRenderer.removeListener('on-live-slide', subscription)
+  },
 
   // Streaming — OBS Studio
   obsConnect: () => ipcRenderer.invoke('obs-connect'),
@@ -328,6 +336,25 @@ contextBridge.exposeInMainWorld('api', {
     const subscription = () => callback()
     ipcRenderer.on('on-mic-stop', subscription)
     return () => ipcRenderer.removeListener('on-mic-stop', subscription)
+  },
+
+  // The phone microphone (shared/phoneMic.ts): the laptop makes a code and
+  // approves the phone in main; the WebRTC peer answering it lives here.
+  phoneMicStart: () => ipcRenderer.invoke('phone-mic-start'),
+  phoneMicStop: () => ipcRenderer.invoke('phone-mic-stop'),
+  phoneMicApprove: (allow: boolean) => ipcRenderer.invoke('phone-mic-approve', allow),
+  phoneMicStatus: () => ipcRenderer.invoke('phone-mic-status'),
+  phoneMicSignal: (message: unknown) => ipcRenderer.send('phone-mic-signal', message),
+  phoneMicPeerState: (state: 'connected' | 'failed', detail?: string) => ipcRenderer.send('phone-mic-peer-state', state, detail),
+  onPhoneMicSignal: (callback: (message: any) => void) => {
+    const subscription = (_event: IpcRendererEvent, message: any) => callback(message)
+    ipcRenderer.on('on-phone-mic-signal', subscription)
+    return () => ipcRenderer.removeListener('on-phone-mic-signal', subscription)
+  },
+  onPhoneMicStatus: (callback: (status: any) => void) => {
+    const subscription = (_event: IpcRendererEvent, status: any) => callback(status)
+    ipcRenderer.on('on-phone-mic-status', subscription)
+    return () => ipcRenderer.removeListener('on-phone-mic-status', subscription)
   },
 
   // Themes — native background image picker (copies into userData)

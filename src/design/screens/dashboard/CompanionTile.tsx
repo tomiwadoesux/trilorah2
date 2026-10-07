@@ -5,6 +5,7 @@ import { EmptyMark } from '../emptyArt';
 import { CompanionBoxesArt } from '../CompanionBoxesArt';
 import { Expandable } from './expand';
 import { RowList, type Row } from '../settingsRows';
+import { companionPublishLine, type PublishLine } from '../../../lib/companionStatus';
 
 /*
  * The companion — the page the congregation opens by scanning.
@@ -70,6 +71,28 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
   const [link, setLink] = useState<string | null>(null);
   const [qrSvg, setQrSvg] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+
+  /* Whether the page is actually receiving this service. Every way it can
+     stay empty — signed out, sharing ended, writes stuck — was silent here. */
+  const [publish, setPublish] = useState<PublishLine | null>(null);
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const read = async () => {
+      try {
+        const status = await window.api?.cloudStatus?.();
+        if (alive) setPublish(companionPublishLine(status));
+      } catch {
+        /* the next read tries again */
+      }
+      if (alive) timer = setTimeout(read, 8000);
+    };
+    void read();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, []);
   const [backgroundName,setBackgroundName]=useState<string|null>(null);
   useEffect(()=>{void window.api?.qrBackground?.('status').then(r=>setBackgroundName(r.name || null)).catch(()=>undefined);},[]);
   const changeBackground=async(action:'choose'|'clear')=>{
@@ -213,6 +236,19 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
                 <p className="mt-1 truncate font-mono text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.7)]">
                   {link ? link.replace(/^https?:\/\//, '') : 'no link yet'}
                 </p>
+                {publish && (
+                  <p
+                    role="status"
+                    title={publish.text}
+                    className={cx(
+                      'mt-1 flex min-w-0 items-center gap-1.5 text-[length:var(--tri-size-xs)] leading-snug',
+                      publish.tone === 'live' ? 'text-[rgb(143_211_192_/_0.9)]' : publish.tone === 'warn' ? 'text-[rgb(228_216_122_/_0.9)]' : 'text-[rgb(229_243_242_/_0.5)]',
+                    )}
+                  >
+                    <span aria-hidden="true" className={cx('h-1.5 w-1.5 shrink-0 rounded-full', publish.tone === 'idle' ? 'ring-1 ring-inset ring-current' : 'bg-current')} />
+                    <span className="truncate">{publish.text}</span>
+                  </p>
+                )}
                 {note && (
                   <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(234_199_198_/_0.75)]">
                     {note}

@@ -1,5 +1,5 @@
 import { isEmptyPreview } from '../emptyPreviewMode';
-import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
+import { presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
 import { outputThemeSettings } from '../../lib/outputTheme';
 import { TEXT_WIDTH } from '../../../shared/textWidth';
@@ -13,7 +13,9 @@ import { lyricScore } from '../../lib/songMatch';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useMobileRemote } from './useMobileRemote';
 import { SermonStartControl } from './SermonStartControl';
-import { ScriptureCatches, ScriptureFindOverlay } from './ScriptureCatches';
+import { MicPicker } from '../../components/MicPicker';
+import { MobileRemotePanel } from '../../components/MobileRemotePanel';
+import { ScriptureCatches, ScriptureFindOverlay, StorySearch } from './ScriptureCatches';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
 import { orbStatusDescription, useOrbShape } from '../orb/orbIdle';
@@ -26,9 +28,7 @@ import {
   ChevronDownIcon,
   CheckIcon,
   CloseIcon,
-  ClipboardIcon,
   AddSongIcon,
-  VideoPlayIcon,
   type ActionMenuGroup,
   DisplayFontPicker,
   TextTransitionPicker,
@@ -50,7 +50,6 @@ import {
   PlayIcon,
   PauseIcon,
   slideBackdrop,
-  BACKDROP_BY_CONTENT,
   Slider,
   TextPositionPicker,
   ResetIcon,
@@ -59,9 +58,9 @@ import {
   type ScriptureBook,
   type SelectOption,
   type TextPositionOption,
-  ImportIcon,
   PresentationIcon,
   BookIcon,
+  ClockIcon,
   PaletteIcon,
   QrIcon,
   OperatorIcon,
@@ -83,11 +82,17 @@ import { EmptyMark, EqBars } from './emptyArt';
 import { TranscriptFace } from './dashboard/PreachingTile';
 import { ScriptureLibraryEmpty } from './ScriptureLibraryEmpty';
 import { SongRackArt } from './SongRackArt';
-import { MediaSlideArt } from './MediaSlideArt';
-import { MediaFilmArt } from './MediaFilmArt';
+import { GlobeEmptyArt } from './GlobeEmptyArt';
 import { loadScriptureChapter } from '../../lib/loadScriptureChapter';
 import { ScriptureQuoteArt } from './ScriptureQuoteArt';
 import { LibraryBrowser, LibraryPane, LibrarySearch, useLibrarySelection } from './library';
+import { REFERENCE_CAP_EMS, bookAllowance, referenceColumnWidth, splitReference } from '../../lib/referenceColumn';
+import { catchEntries, queuedIds, spotlightIndex, spotlightItem } from '../../lib/catchSets';
+import { useCatchStore } from '../../stores/catchStore';
+import { CatchPeek, CatchesPane } from './CatchesPane';
+import { ScriptureTravel } from './ScriptureTravel';
+import { chapterOrdinal, liveSpan, passingRows, spanReference, travelShape, type LiveSpan, type ReelRow } from '../../lib/scriptureReel';
+import { reducedMotion } from './dashboard/expand';
 import { AddSongDialog, type SongSource } from './songs/AddSongDialog';
 import { SongEditor, type EditorSession } from './songs/SongEditor';
 import { LibraryToolbar } from './LibraryToolbar';
@@ -106,13 +111,12 @@ import {
 } from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
-import { addMedia, mediaSrc, randomStill, useMediaLibrary, videoLength, videoPoster, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
+import { addMedia, removeMedia, mediaSrc, randomStill, useMediaLibrary, videoLength, videoPoster, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
-import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS } from './engine';
+import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, type Proposal } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
 import { DragKeyframes, DragProvider, useDrag } from './drag';
 import { Panel } from './parts';
-import { useForesight } from './foresight';
 import './liveHeader.css';
 import './dottedSurface.css';
 import { dottedSurfaceStyles } from './dottedSurface';
@@ -192,6 +196,9 @@ const TABS = [
  * invisible bold copy under every label, so choosing a tab (which bolds it)
  * never nudges the browser sideways.
  */
+/** Where the verses card sits in the library's tabs. */
+const SCRIPTURES_TAB = Math.max(0, TABS.findIndex((t) => t.id === 'scriptures'));
+
 const TAB_ICONS: Record<string, (p: { size?: number; className?: string }) => ReactNode> = {
   scriptures: BookIcon,
   themes: PaletteIcon,
@@ -833,7 +840,6 @@ function ThemeControls({ label, children }: { label: string; children: ReactNode
 type MediaView = 'themes' | 'media';
 
 function MediaBrowser({ selected, onSelect, onOpenSettings }: { selected: string; onSelect: (id: string) => void; onOpenSettings: () => void }) {
-  const [film] = useState(() => Math.random() < .5);
   const [view, setView] = useState<MediaView>('media');
   const [online, setOnline] = useState(false);
   const [query, setQuery] = useState('');
@@ -889,15 +895,28 @@ function MediaBrowser({ selected, onSelect, onOpenSettings }: { selected: string
             <img alt="" src={slideBackdrop(index + 1, index % 2 ? 'smoke' : 'facets')} className="aspect-[3/1] w-full object-cover" />
             <span className="block px-2 py-2 text-xs">{word}</span>
           </button>)}</div>
-          <div className="h-[240px] shrink-0"><StockSearch searchQuery={query} searchMode={view} onPick={store} onOpenSettings={onOpenSettings} /></div>
+          {/* In the panel's own flow, so the example backgrounds scroll
+              away with the results instead of holding the top. */}
+          <div className="min-h-[240px]"><StockSearch searchQuery={query} searchMode={view} onPick={store} onOpenSettings={onOpenSettings} flow /></div>
         </div>
       ) : null}
       <div role="status" className="shrink-0 text-xs text-[var(--tri-ink-muted)]">{notice || (drag.active?.mediaId ? 'Drop on themes to use this as a background.' : view === 'themes' ? 'Choose a background for your text.' : 'Select to preview · drag to themes or into the service.')}</div>
-      {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}>
+      {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}>
         <MediaCard src={mediaSrc(media)} label={media.label} detail={media.detail} selected={view === 'themes' && selected === media.id} badge={media.kind === 'video' ? 'video' : null}
           onClick={() => view === 'themes' && media.kind !== 'video' ? onSelect(media.id) : media.url && projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: media.kind ?? 'photo', origin: 'operator' })} />
-        {view === 'media' ? <button type="button" className="mt-1 text-xs text-[var(--tri-ink-muted)] hover:text-[var(--tri-ink)]" onClick={() => { addMedia({ ...media, collection: 'themes' }); setNotice('Moved to themes.'); }}>use as theme</button> : null}
-      </div>)}</MediaGrid> : <div className="min-h-0 flex-1"><EmptyMark w={220} h={220} plain art={film ? <MediaFilmArt /> : <MediaSlideArt />}
+        {/* The card's acts, on the picture, the way a song card carries
+            its own. Only something the church added can be deleted; the
+            stock washes have no file and come back on the next launch. */}
+        {media.url ? <div className="absolute right-2 top-2 flex items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/media:opacity-100"
+          onPointerDown={(e) => e.stopPropagation()}>
+          {view === 'media' && media.kind !== 'video' ? <button type="button" title="use as a background for text" aria-label={`use ${media.label} as a background`}
+            className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
+            onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'themes' }); setNotice('Added to backgrounds.'); }}><PaletteIcon size={12} /></button> : null}
+          <button type="button" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
+            className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
+            onClick={(e) => { e.stopPropagation(); removeMedia(media.id); setNotice(`Deleted ${media.label}.`); }}><TrashIcon size={12} /></button>
+        </div> : null}
+      </div>)}</MediaGrid> : <div className="min-h-0 flex-1"><EmptyMark w={220} h={220} plain art={<GlobeEmptyArt />}
         line={query && !online ? 'nothing matches' : `no ${view} yet`}
         hint={query && !online ? 'try another name' : 'add an image or clip to get started'}
         below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add media" icon={<PlusIcon size={13} />} disabled={!window.api?.pickMediaFile} onClick={() => void addLocal()} /><Button label="explore online" onClick={() => { setOnline(true); setSearchOpen(true); }} /></div>} /></div>}
@@ -1029,6 +1048,62 @@ interface VerseRow {
 }
 
 /*
+ * The list follows the wall.
+ *
+ * When a verse goes live — a caught one the operator pressed, a card from
+ * "find scripture", the phone — the table goes to that chapter and lights
+ * the verse, so the operator is looking at where the preacher is and the
+ * arrows carry on from there. Going to another chapter is shown as travel
+ * (ScriptureTravel): up the page when the verse is further on, down when it
+ * is further back. It moves the LIST only. The preview box keeps whatever
+ * the operator had staged, and while they are typing a reference the list
+ * is theirs and stays put.
+ */
+interface Journey {
+  id: number;
+  dir: 1 | -1;
+  to: LiveSpan;
+  /** Rows above the live verse when the list lands. */
+  lead: number;
+  departure: ReelRow[];
+  passing: ReelRow[];
+  rowHeight: number;
+  height: number;
+  visible: number;
+  ms: number;
+  /** The reel has stopped; only waiting for the chapter, if it is not here yet. */
+  done: boolean;
+}
+
+interface Landing extends LiveSpan {
+  lead: number;
+  /** After the reel: the words fade up through its bars. */
+  fromReel: boolean;
+}
+
+let journeys = 0;
+const spanKey = (bookIndex: number, chapter: number, verse: number | null | undefined) => `${bookIndex}:${chapter}:${verse ?? ''}`;
+/* Two verses of context above the live one, where there are two. */
+const leadFor = (span: LiveSpan) => Math.min(2, span.first - 1);
+
+/** The rows on screen as the list leaves, measured as they are drawn. */
+function measureDeparture(list: HTMLElement, scroller: HTMLElement, rows: VerseRow[], isLive: (i: number) => boolean) {
+  const drawn = [...list.querySelectorAll<HTMLElement>('[data-row]')];
+  if (!drawn.length) return null;
+  const top = scroller.getBoundingClientRect().top;
+  const firstIndex = Math.max(0, drawn.findIndex((el) => el.getBoundingClientRect().bottom > top + 1));
+  /* A one-line verse: the reel's rows are all one line. */
+  const rowHeight = Math.max(28, Math.round(Math.min(...drawn.slice(0, 16).map((el) => el.getBoundingClientRect().height))));
+  const height = scroller.clientHeight;
+  const visible = Math.ceil(height / rowHeight) + 1;
+  const shown = rows.slice(firstIndex, firstIndex + visible);
+  if (!shown.length || height <= 0) return null;
+  const reel: ReelRow[] = Array.from({ length: visible }, (_, k) =>
+    shown[k] ? { ref: shown[k].ref, length: shown[k].text.length, live: isLive(firstIndex + k) } : { ref: '', length: 0 });
+  return { rows: reel, rowHeight, height, visible };
+}
+
+/*
  * S-04 — the scripture browser.
  *
  * Two controls and a table. The input is the whole idea: it is a guided
@@ -1040,15 +1115,78 @@ interface VerseRow {
  * projector. One stray click during a service should never reach the
  * congregation, and that is worth an extra deliberate gesture.
  */
+/* The reference column's width — set on the browser as --scripture-ref-w
+   once measured; until then, the cap. See src/lib/referenceColumn.ts. */
+const REFERENCE_COLUMN = `var(--scripture-ref-w, calc(var(--tri-size) * ${REFERENCE_CAP_EMS}))`;
+
+/**
+ * Measures the chapter's references in the list's own font and returns the
+ * column width for them. Re-measured when the chapter changes, when the
+ * window crosses a size tier (the text size moves with it), and once the
+ * web font has loaded (the first measure may be in the fallback face).
+ */
+function useReferenceColumn(
+  refs: readonly string[],
+  listRef: React.RefObject<HTMLElement | null>,
+  headerRef: React.RefObject<HTMLElement | null>,
+): { column: number; book: number | null } | null {
+  const [width, setWidth] = useState<{ column: number; book: number | null } | null>(null);
+  const key = refs.join('|');
+  useLayoutEffect(() => {
+    let alive = true;
+    const measure = () => {
+      const list = listRef.current;
+      if (!alive || !list) return;
+      const style = getComputedStyle(list);
+      const size = parseFloat(style.getPropertyValue('--tri-size')) || parseFloat(style.fontSize) || 12;
+      const ctx = document.createElement('canvas').getContext('2d');
+      if (!ctx) return;
+      ctx.font = `${style.fontWeight} ${size}px ${style.fontFamily}`;
+      /* +2: the canvas and the page round a hair differently, and a column
+         a pixel short would put an ellipsis on a name that fits. */
+      const widths = refs.map((r) => ctx.measureText(r).width + 2);
+      const places = refs.map((r) => {
+        const { place } = splitReference(r);
+        return place ? ctx.measureText(` ${place}`).width + 2 : 0;
+      });
+      const floor = headerRef.current?.getBoundingClientRect().width ?? 0;
+      const column = referenceColumnWidth(widths, floor, size * REFERENCE_CAP_EMS);
+      setWidth({ column, book: bookAllowance(column, widths, places) });
+    };
+    measure();
+    void document.fonts?.ready.then(measure);
+    window.addEventListener('resize', measure);
+    return () => { alive = false; window.removeEventListener('resize', measure); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return width;
+}
+
+/** A reference as two pieces: the book, which may be cut short, and the numbers, which may not. */
+function ReferenceParts({ reference }: { reference: string }) {
+  const { book, place } = splitReference(reference);
+  return (
+    <>
+      <span className="min-w-0 truncate" style={{ maxWidth: 'var(--scripture-book-w, none)' }}>{book}</span>
+      {place ? <span className="shrink-0 whitespace-pre">{` ${place}`}</span> : null}
+    </>
+  );
+}
+
 function ScripturesBrowser() {
   const engine = useEngine();
   const drag = useDrag();
   const projector = useProjector();
   const [versions, setVersions] = useState<SelectOption[]>([{ value: 'KJV', label: 'KJV' }]);
   const [version, setVersion] = useState('KJV');
-  const [query, setQuery] = useState('');
+  /* Opened while a verse is live: open on it, not on Genesis. */
+  const [startAt] = useState(() => liveSpan(projector.live));
+  const [query, setQuery] = useState(() => (startAt ? spanReference(startAt) : ''));
   const [ref, setRef] = useState<ResolvedReference | null>(null);
   const [rows, setRows] = useState<VerseRow[]>([]);
+  /* Which chapter `rows` holds. Naming another leaves the old rows up for a
+     render or two while the new ones load. */
+  const [loadedFor, setLoadedFor] = useState<{ bookIndex: number; chapter: number } | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'no-api' | 'empty' | 'error'>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -1075,6 +1213,7 @@ function ScripturesBrowser() {
    */
   useEffect(() => {
     setRows([]);
+    setLoadedFor(null);
     setLoadError(null);
     if (!target) {
       setStatus('idle');
@@ -1082,9 +1221,11 @@ function ScripturesBrowser() {
     }
     let cancelled = false;
     setStatus('loading');
+    const at = { bookIndex: target.bookIndex, chapter: target.chapter };
     loadScriptureChapter(window.api, target.bookIndex, target.chapter, version).then((res) => {
       if (cancelled) return;
       setRows(res.data.map((v) => ({ verse: v.id, ref: v.ref, text: v.text })));
+      setLoadedFor(at);
       setLoadError(res.error);
       setStatus(res.status);
     });
@@ -1135,6 +1276,8 @@ function ScripturesBrowser() {
       };
     },
   });
+  const refHeader = useRef<HTMLSpanElement>(null);
+  const refColumn = useReferenceColumn(rows.map((r) => r.ref), sel.listRef, refHeader);
 
   /* A browser preview has no Bible database. Never attach another verse's
      words to the requested reference just to fill the design specimen. */
@@ -1147,9 +1290,142 @@ function ScripturesBrowser() {
       ? rows[rows.length - 1].verse
       : undefined;
 
+  /* ---- following the wall (see Journey) --------------------------- */
+  const followed = useRef<string | null>(startAt ? spanKey(startAt.bookIndex, startAt.chapter, startAt.first) : null);
+  const landing = useRef<Landing | null>(startAt ? { ...startAt, lead: leadFor(startAt), fromReel: false } : null);
+  const followedAt = useRef(0);
+  const pointAt = useRef<number | null>(null);
+  const seenDelivery = useRef(projector.delivery);
+  const [journey, setJourney] = useState<Journey | null>(null);
+  const [arrived, setArrived] = useState<'landing' | 'arriving' | null>(null);
+  const live = liveSpan(projector.live);
+  const showing = (at: { bookIndex: number; chapter: number } | null | undefined) =>
+    !!at && !!loadedFor && loadedFor.bookIndex === at.bookIndex && loadedFor.chapter === at.chapter;
+  /* A live range lights every verse in it, not only the one whose
+     reference happens to be the live item's id. */
+  const isLiveRow = (i: number) =>
+    sel.isLive(i) || (!!live && showing(live) && !!rows[i] && rows[i].verse >= live.first && rows[i].verse <= live.last);
+
+  const follow = (span: LiveSpan) => {
+    const key = spanKey(span.bookIndex, span.chapter, span.first);
+    /* The same verse delivered twice in a moment — the press, then the
+       engine's echo of it — is one arrival. Sent again later, it is a new
+       one, and the list comes back to it. */
+    if (followed.current === key && Date.now() - followedAt.current < 3000) return;
+    followed.current = key;
+    followedAt.current = Date.now();
+    const reference = spanReference(span);
+    const lead = leadFor(span);
+    const list = sel.listRef.current;
+    const scroller = list?.parentElement ?? null;
+    if (showing(span) && !journey) {
+      /* The chapter is already up: bring the verse into view. */
+      landing.current = null;
+      setQuery(reference);
+      const first = rows.findIndex((r) => r.verse === span.first);
+      const last = rows.findIndex((r) => r.verse === span.last);
+      const row = list?.querySelector<HTMLElement>(`[data-row="${first}"]`);
+      if (row && scroller) {
+        const r = row.getBoundingClientRect();
+        const box = scroller.getBoundingClientRect();
+        if (r.top < box.top || r.bottom > box.bottom) row.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+      }
+      if (first >= 0) sel.point(last >= 0 ? last : first);
+      setArrived('arriving');
+      return;
+    }
+    const here = target && showing(target) ? target : null;
+    const departure = here && list && scroller && !reducedMotion() ? measureDeparture(list, scroller, rows, isLiveRow) : null;
+    landing.current = { ...span, lead, fromReel: !!departure };
+    if (here && departure) {
+      const fromOrdinal = chapterOrdinal(here.bookIndex, here.chapter);
+      const toOrdinal = chapterOrdinal(span.bookIndex, span.chapter);
+      const dir = toOrdinal >= fromOrdinal ? 1 : -1;
+      const shape = travelShape(fromOrdinal, toOrdinal);
+      setJourney({
+        id: ++journeys, dir, to: span, lead,
+        departure: departure.rows, passing: passingRows(here, span, shape.passing),
+        rowHeight: departure.rowHeight, height: departure.height, visible: departure.visible,
+        ms: shape.ms, done: false,
+      });
+    } else {
+      setJourney(null);
+    }
+    setQuery(reference);
+  };
+
+  /* What the reel lands on: the chapter's real rows once they are here,
+     numbered placeholders until then. */
+  const arrivalRows = (j: Journey): ReelRow[] => {
+    const real = showing(j.to) ? rows : null;
+    const start = Math.max(1, j.to.first - j.lead);
+    return Array.from({ length: j.visible }, (_, k) => {
+      const verse = start + k;
+      const lit = verse >= j.to.first && verse <= j.to.last;
+      if (!real) return { ref: `${j.to.book} ${j.to.chapter}:${verse}`, length: 90, live: lit };
+      const row = real.find((r) => r.verse === verse);
+      return row ? { ref: row.ref, length: row.text.length, live: lit } : { ref: '', length: 0 };
+    });
+  };
+
+  /* A new delivery to the wall. Read once per delivery, not per render. */
+  useEffect(() => {
+    if (projector.delivery === seenDelivery.current) return;
+    seenDelivery.current = projector.delivery;
+    const span = liveSpan(projector.live);
+    if (!span) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement && active.closest('[data-scripture-browser]')) return;
+    follow(span);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projector.delivery]);
+
+  /* The reel has stopped. Hand over once the chapter is here — or has
+     failed to come, so the list can say why. */
+  useEffect(() => {
+    if (!journey?.done) return;
+    if (showing(journey.to) || status === 'error' || status === 'empty' || status === 'no-api') setJourney(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journey, loadedFor, status]);
+
+  /* Land: the row two above the live verse at the top of the table, where
+     the reel left it. Before paint, so the list never shows its top first. */
+  useLayoutEffect(() => {
+    const dest = landing.current;
+    if (!dest || journey || !showing(dest)) return;
+    landing.current = null;
+    const first = rows.findIndex((r) => r.verse === dest.first);
+    if (first < 0) return;
+    const last = rows.findIndex((r) => r.verse === dest.last);
+    const list = sel.listRef.current;
+    const scroller = list?.parentElement;
+    const top = list?.querySelector<HTMLElement>(`[data-row="${Math.max(0, first - dest.lead)}"]`);
+    if (scroller && top) scroller.scrollTop += top.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    pointAt.current = last >= 0 ? last : first;
+    setArrived(dest.fromReel ? 'landing' : 'arriving');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, loadedFor, journey]);
+
+  /* After the selection's own reset for a new list, which would put the
+     highlight back on verse 1. */
+  useEffect(() => {
+    if (pointAt.current === null) return;
+    sel.point(pointAt.current);
+    pointAt.current = null;
+  });
+
+  useEffect(() => {
+    if (!arrived) return;
+    const t = setTimeout(() => setArrived(null), 1200);
+    return () => clearTimeout(t);
+  }, [arrived]);
+
   /* Typing a verse selects its row rather than reloading anything. */
   useEffect(() => {
     if (!ref?.verse) return;
+    /* Unless the list went there itself, following the wall: then the
+       preview box is not the list's to change. */
+    if (followed.current === spanKey(ref.bookIndex, ref.chapter, ref.verse)) return;
     const i = rows.findIndex((r) => r.verse === ref.verse);
     if (i >= 0) sel.setPreview(i, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1174,16 +1450,28 @@ function ScripturesBrowser() {
         reference,
         version,
         text: verses.map((v) => v.text).join(' '),
-        slides: buildVerseSlides({ book: ref.book, chapter: ref.chapter, version }, verses, SLIDE_RULES),
+        slides: buildVerseSlides({ book: ref.book, chapter: ref.chapter, version }, verses, fitRules(verses)),
         origin: 'operator',
       });
     }
   }, [ref?.book, ref?.chapter, ref?.verse, ref?.rangeEnd, rows.length, version, projector]);
 
   return (
+    /* A box-less wrapper: lets the list tell whether the field the operator
+       is typing in is this one (see the follow above). */
+    <div data-scripture-browser className="contents"
+      style={refColumn ? ({
+        '--scripture-ref-w': `${refColumn.column}px`,
+        '--scripture-book-w': refColumn.book === null ? 'none' : `${refColumn.book}px`,
+      } as CSSProperties) : undefined}>
     <LibraryBrowser
       search={
-        <>
+        /* Split where the panes below split: the reference field over the
+           Bible, the story field over what was caught. The 32px gap is each
+           pane's 16px inset on either side of the line between them, so both
+           fields start where their pane's words start. */
+        <div className="flex w-full min-w-0 items-center gap-8">
+        <div className="flex min-w-0 flex-1 items-center gap-[var(--tri-gap)]">
           {/* Sized to the longest version code plus the chevron. The database
               ships KJV, BBE, RVR, APEE, AA and CUV — four characters at most,
               with a fifth in hand. */}
@@ -1196,13 +1484,19 @@ function ScripturesBrowser() {
             books={BOOK_DATA}
             versesInChapter={versesInChapter}
             value={query}
-            onChange={setQuery}
+            onChange={(next) => {
+              /* The operator has taken the list back. */
+              followed.current = null;
+              landing.current = null;
+              setJourney(null);
+              setQuery(next);
+            }}
             onReferenceChange={setRef}
             onSubmit={async (r) => {
               /*
                * A typed range is a READING, not a verse: "5-9" stages all
-               * five and lets buildVerseSlides break them the way the wall
-               * would. Before this, the field could not even parse the dash
+               * five, on one slide that the screen shrinks to fit (see
+               * fitRules). Before this, the field could not even parse the dash
                * and the whole reference came back null — which is why a
                * range put nothing on the screen at all.
                */
@@ -1219,10 +1513,11 @@ function ScripturesBrowser() {
                 ? picked.map((v) => ({ verse: v.verse, text: v.text }))
                 : [{ verse: first, text: FALLBACK_VERSE(first) }];
 
+              /* A typed range is one slide, like a spoken one (fitRules). */
               const slides = buildVerseSlides(
                 { book: r.book, chapter: r.chapter, version },
                 verses,
-                SLIDE_RULES,
+                fitRules(verses),
               );
 
               const item: LiveItem = {
@@ -1242,19 +1537,33 @@ function ScripturesBrowser() {
             onActivate={sel.activate}
           />
           </LibrarySearch>
-        </>
+        </div>
+        <div className="flex min-w-0 flex-1 items-center">
+          <StorySearch />
+        </div>
+        </div>
       }
     >
+      {/* The verses take the left half; the search row above stays the
+          full width. The right half is kept empty on purpose (owner,
+          2026-10-06) — its own pane, so the header rule runs on across. */}
       <LibraryPane
+        rule
         title={
           <>
-            <span className="w-[150px] shrink-0">reference</span>
+            <span className="shrink-0" style={{ width: REFERENCE_COLUMN }}><span ref={refHeader} className="whitespace-nowrap">reference</span></span>
             <span className="min-w-0 flex-1">scripture text</span>
           </>
         }
       >
-        <div ref={sel.listRef} className={rows.length === 0 ? 'h-full' : undefined} aria-busy={status === 'loading'}>
-          {rows.length === 0 ? (
+        <div ref={sel.listRef}
+          className={cx(rows.length === 0 || journey ? 'h-full' : undefined, arrived === 'landing' && 'scripture-landing', arrived === 'arriving' && 'scripture-arriving')}
+          aria-busy={status === 'loading' || !!journey}>
+          {journey ? (
+            <ScriptureTravel key={journey.id} dir={journey.dir} departure={journey.departure} passing={journey.passing}
+              arrival={arrivalRows(journey)} rowHeight={journey.rowHeight} height={journey.height} ms={journey.ms}
+              onDone={() => setJourney((j) => (j && j.id === journey.id ? { ...j, done: true } : j))} />
+          ) : rows.length === 0 ? (
             <ScriptureLibraryEmpty status={status} error={loadError} version={version}
               onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
               onReset={() => { setQuery(''); setRef(null); setVersion('KJV'); setLoadAttempt((attempt) => attempt + 1); }} />
@@ -1263,6 +1572,7 @@ function ScripturesBrowser() {
               <button
                 key={row.ref}
                 data-row={i}
+                data-live={isLiveRow(i) || undefined}
                 type="button"
                 /* Hold to drag. A press that moves early is refused with a
                    nudge and behaves as a click, so selecting the text of a
@@ -1283,23 +1593,30 @@ function ScripturesBrowser() {
                    highlighted row keeps its own edge and nothing shifts. */
                 style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.055)' }}
                 className={cx(
-                  'group/verse flex w-full items-baseline gap-4 px-4 py-2 text-left transition-colors',
-                  sel.isLive(i)
+                  'group/verse relative flex w-full items-baseline gap-4 px-4 py-2 text-left transition-colors',
+                  isLiveRow(i)
                     ? 'bg-[rgb(228_216_122_/_0.10)]'
                     : sel.preview === i
                       ? 'bg-[rgb(255_255_255_/_0.06)]'
                       : 'hover:bg-[rgb(255_255_255_/_0.03)]',
                 )}
               >
+                {/* As wide as the chapter's longest reference, to a cap; past
+                    it the BOOK name takes the ellipsis and the numbers stay
+                    ("Song of Sol… 8:14"). See useReferenceColumn. */}
                 <span
+                  title={row.ref}
+                  style={{ width: REFERENCE_COLUMN }}
                   className={cx(
-                    'w-[150px] shrink-0 text-[length:var(--tri-size)]',
-                    sel.isLive(i)
-                      ? 'text-[rgb(228_216_122_/_0.9)]'
-                      : 'text-[rgb(229_243_242_/_0.72)]',
+                    'flex min-w-0 shrink-0 text-[length:var(--tri-size)]',
+                    /* The accent yellow, held back: references read as the
+                       list's index, the live row's at full strength. */
+                    isLiveRow(i)
+                      ? 'text-[rgb(228_216_122_/_0.95)]'
+                      : 'text-[rgb(228_216_122_/_0.55)]',
                   )}
                 >
-                  {row.ref}
+                  <ReferenceParts reference={row.ref} />
                 </span>
                 {/* The stored text carries the KJV apparatus in braces; the
                     marginal notes are dropped and the supplied words set in
@@ -1326,8 +1643,11 @@ function ScripturesBrowser() {
                     ),
                   )}
                 </span>
-                {!sel.isLive(i) && <span className="verse-live-hint shrink-0 rounded-md border border-white/15 px-2 py-1 text-[10px] text-white/60 opacity-0 group-hover/verse:opacity-100 group-focus-visible/verse:opacity-100">double click · live</span>}
-                {sel.isLive(i) && (
+                {/* Floats over the row's right edge rather than holding a column of
+                    its own: in the half-width list an invisible hint was
+                    taking a third of the room the words had. */}
+                {!isLiveRow(i) && <span className="verse-live-hint pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-white/15 bg-[rgb(26_26_26_/_0.96)] px-2 py-1 text-[10px] text-white/60 opacity-0 shadow-[0_0_12px_6px_rgb(17_17_17_/_0.9)] group-hover/verse:opacity-100 group-focus-visible/verse:opacity-100">double click · live</span>}
+                {isLiveRow(i) && (
                   <span className="shrink-0 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.14em] text-[rgb(228_216_122_/_0.9)]">
                     live
                   </span>
@@ -1337,7 +1657,11 @@ function ScripturesBrowser() {
           )}
         </div>
       </LibraryPane>
+      {/* Everything the engine catches lands here, beside the Bible it came
+          from — see CatchesPane. */}
+      <LibraryPane title={<span>caught</span>}><CatchesPane /></LibraryPane>
     </LibraryBrowser>
+    </div>
   );
 }
 
@@ -1488,6 +1812,8 @@ interface EditorState {
   session: EditorSession;
   origin: HTMLElement | null;
   open: boolean;
+  /** Opened from an online search result, over the search; its id there. */
+  discoveryId?: string;
 }
 
 function songFromDraft(id: string, draft: SongDraft): Song {
@@ -1508,6 +1834,9 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  /* Search results saved while the search is up, so each card can say so.
+     Forgotten when the search closes: next time is a different list. */
+  const [addedFromSearch, setAddedFromSearch] = useState<ReadonlySet<string>>(() => new Set());
   const [songSource, setSongSource] = useState<SongSource>('search');
   const [query, setQuery] = useState('');
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
@@ -1604,14 +1933,21 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
       <AddSongDialog
         initialRoute={songSource}
         open={addOpen}
+        added={addedFromSearch}
         onRequestClose={() => setAddOpen(false)}
-        onReady={({ base, note }) => {
-          setAddOpen(false);
+        onClosed={() => setAddedFromSearch(new Set())}
+        onReady={({ base, note, route, discoveryId, origin }) => {
+          /* A song found by search opens over the search, which stays up:
+             save it, or close it, and the results are there for the next
+             one. Youtube and paste are one song at a time and close. */
+          const overSearch = route === 'search';
+          if (!overSearch) setAddOpen(false);
           setOpenId(null);
           setEditor({
             session: { id: `${NEW_PREFIX}${Date.now().toString(36)}`, isNew: true, base, note },
-            origin: null,
+            origin: overSearch ? origin ?? null : null,
             open: true,
+            discoveryId: overSearch ? discoveryId : undefined,
           });
         }}
       />
@@ -1621,7 +1957,15 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
           session={editor.session}
           open={editor.open}
           origin={editor.origin}
-          onSave={(song) => saveSong(editor.session.id, editor.session.isNew, song)}
+          /* Above the search's own layer when opened from it, so its ground
+             covers the results instead of sliding under them. */
+          layer={editor.discoveryId !== undefined ? 60 : undefined}
+          onSave={async (song) => {
+            const saved = await saveSong(editor.session.id, editor.session.isNew, song);
+            const found = editor.discoveryId;
+            if (saved && found) setAddedFromSearch((done) => new Set(done).add(found));
+            return saved;
+          }}
           onDraft={(draft) => (draft ? saveDraft(editor.session.id, draft) : clearDraft(editor.session.id))}
           onRequestClose={() => setEditor((e) => (e ? { ...e, open: false } : e))}
           onClosed={() => setEditor(null)}
@@ -1717,7 +2061,7 @@ function SongGrid({
   const engine = useEngine();
   const hearingSongs = useSongListeningStore((s) => s.active);
   const setHearingSongs = useSongListeningStore((s) => s.setActive);
-  const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial].join(' ').split(/\s+/).slice(-10).join(' ');
+  const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial].join(' ').split(/\s+/).slice(-16).join(' ');
   const searchRow = useRef<HTMLDivElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -1768,8 +2112,6 @@ function SongGrid({
           actions={[
             { id: 'add', label: 'add a song', text: 'add song', icon: <AddSongIcon size={13} />, onClick: onAdd },
             { id: 'lyrics', label: 'search online', text: 'search online', icon: <GlobeIcon size={13} />, onClick: () => onSource('search') },
-            { id: 'youtube', label: 'get lyrics from youtube', text: 'youtube', icon: <VideoPlayIcon size={13} />, onClick: () => onSource('youtube') },
-            { id: 'paste', label: 'paste lyrics', text: 'paste', icon: <ClipboardIcon size={13} />, onClick: () => onSource('paste') },
           ]}
           searchActions={[
             { id: 'listen', label: hearingSongs ? 'stop microphone song search' : 'search songs with microphone', text: 'microphone search', icon: <MicIcon size={13} />, active: hearingSongs, disabled: songs.length === 0 && !hearingSongs, onClick: () => { setHearingSongs(!hearingSongs); if (!hearingSongs && engine.asr !== 'listening') engine.listen(true); } },
@@ -2119,437 +2461,35 @@ function segmentAddMenu(): ActionMenuGroup[] {
 }
 
 /* ------------------------------------------------------------------ */
-/* Detected scripture — the engine's proposal card                     */
+/* The catches card — the room's microphone, asked two things           */
 /* ------------------------------------------------------------------ */
 
 /*
- * The one moment the whole product exists for: the engine heard a reference
- * mid-sermon and is asking permission. Everything on the card is tuned to
- * that half-second of judgement:
- *
- *   - It ARRIVES — rises in on the system ease, because a proposal that
- *     blinks into place reads as having always been there, and this one is
- *     news. The mint dot pulses while the card stands: the engine is still
- *     listening, this is live goods, not a leftover.
- *   - Scripture is set in scripture's face, both lines of it: reference
- *     large, verse small, one serif family carrying both. Sans is for
- *     chrome only. The verse is there so the operator can hear the echo —
- *     two whole-word lines, never a mid-word ellipsis.
- *   - The trust meter is on the card. How sure the engine is IS the
- *     product (the per-preacher trust that one day earns auto mode), so it
- *     rides every proposal as a quiet mint line, not a hidden number.
- *   - One gold act. "live" is the only thing here that touches the
- *     congregation, so it is the full-width floor of the card and the only
- *     word on it; dismissal is a small square that could never be pressed
- *     by mistake for it.
- *   - It sits on a picture. The card is a proposal for what the screen is
- *     about to show, so it is drawn on the same dark photograph the
- *     projector would put behind the verse — dimmed harder than a slide
- *     thumb, because there is a paragraph of small serif on it and a
- *     meter, not three lines of bold. The indigo surface stays underneath
- *     as the card's edge and fallback.
- *
- * Static specimen — the engine feeds the real one, and `trust` with it.
+ * Caught verses no longer land here: they go to the right half of the
+ * verses card, beside the Bible they came from (CatchesPane, owner
+ * 2026-10-06). This card keeps the two things the booth can ask the room's
+ * microphone for, and under them the transcript, always — the strip that
+ * used to rise along the foot of the window while a catch held this card is
+ * gone with the catches.
  */
-interface Heard {
-  id: string;
-  ref: string;
-  version: string;
-  text: string;
-  /** The engine's confidence, or null when it did not give one. */
-  trust: number | null;
-  recognition?: import('../../../shared/types').ScriptureRecognition;
-  /** Which backdrop the projector would put behind it. */
-  backdrop: number;
-  /** Pre-sliced, when this came from the engine rather than the seed. */
-  slides?: VerseSlide[];
-  verses?: { verse: number; text: string }[];
-  /** The database has no such verse — shown so the operator knows what was
-      heard, but it can only be dismissed. */
-  missing?: boolean;
-}
 
-/*
- * Three catches from one stretch of preaching — the realistic case, and the
- * reason this is a list and not an object.
- *
- * A preacher builds to John 3:16 through Romans and Ephesians and says all
- * three inside a minute; the panel that held one proposal had no answer for
- * the second. Trust FALLS down the stack rather than tracking recency: the
- * newest catch is not automatically the surest one, which is the whole
- * reason the operator is still in the loop and the meter is on every card
- * rather than on the top one.
- *
- * Each carries its own backdrop, so the three read as three different slides
- * waiting rather than as one card drawn three times.
- *
- * Static specimen — the engine feeds the real ones, and `trust` with them.
- */
-const CATCHES: Heard[] = [
-  {
-    id: 'jn',
-    ref: 'John 3:16',
-    version: 'kjv',
-    trust: 0.84,
-    backdrop: 5,
-    text: 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',
-  },
-  {
-    id: 'ro',
-    ref: 'Romans 8:28',
-    version: 'kjv',
-    trust: 0.71,
-    backdrop: 2,
-    text: 'And we know that all things work together for good to them that love God, to them who are the called according to his purpose.',
-  },
-  {
-    id: 'ep',
-    ref: 'Ephesians 2:8',
-    version: 'kjv',
-    trust: 0.62,
-    backdrop: 8,
-    text: 'For by grace are ye saved through faith; and that not of yourselves: it is the gift of God.',
-  },
-];
-
-/* The surface already owns its colour and press transitions. Width is added
-   locally for the intent-responsive dismiss control. */
-const SURFACE_TRANSITION = [
-  '--tri-a-mid var(--tri-dur-state) var(--tri-ease-out)',
-  '--tri-a-edge var(--tri-dur-state-trail) var(--tri-ease-soft) var(--tri-delay-trail)',
-  'color var(--tri-dur-state) var(--tri-ease-out)',
-  'transform var(--tri-dur-press) var(--tri-ease-out)',
-].join(', ');
-
-/*
- * The arrival, hoisted out of the card.
- *
- * Three cards rendering the same @keyframes block three times is three
- * copies of one rule in the document for no gain — the stack mounts this
- * once and every card animates off it.
- *
- * The pulse that used to live here went with the dot it drove. Nothing on
- * the card pulses now; the engine's heartbeat is the status orb's job, one
- * per screen rather than one per proposal.
- */
-function HeardMotion() {
-  return (
-    <style>{`
-      @keyframes tri-heard-in {
-        from { opacity: 0; transform: translateY(7px) scale(0.985); }
-        to   { opacity: 1; transform: none; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        @keyframes tri-heard-in { from { opacity: 0; transform: none; } to { opacity: 1; } }
-      }
-    `}</style>
-  );
-}
-
-/*
- * `index` is only for the arrival: the cards rise in one after another
- * rather than all at once, so the stack reads as an order — this was heard,
- * then this — instead of as a block that appeared. 60ms is under the
- * threshold where a stagger starts feeling like a queue to wait through.
- */
-function DetectedScripture({
-  heard,
-  index = 0,
-  onSelect,
-  onLive,
-  onDismiss,
-}: {
-  heard: Heard;
-  index?: number;
-  onSelect?: () => void;
-  /** Put it up. Absent on a specimen, which is what makes the card inert. */
-  onLive?: () => void;
-  onDismiss?: () => void;
-}) {
-  const dismiss = useForesight<HTMLButtonElement>('dismiss the proposal', {
-    top: 22,
-    bottom: 22,
-    left: 28,
-    right: 4,
-  });
-  const [dismissHover, setDismissHover] = useState(false);
-  const dismissWide = dismiss.predicted || dismissHover;
-
-  return (
-    <div
-      onClick={onSelect}
-      className={cx(
-        surface({ tone: 'indigo', shape: 'panel', wide: true }),
-        'relative isolate shrink-0 overflow-hidden p-3 cursor-pointer transition-all hover:ring-1 hover:ring-white/20',
-      )}
-      onMouseLeave={dismiss.relax}
-      style={{
-        borderRadius: 12,
-        animation: 'tri-heard-in 240ms var(--tri-ease-out) both',
-        animationDelay: `${index * 60}ms`,
-        /* A reference that is not in the Bible is information, not an
-           offer: it sits back, and the only thing it can do is go away. */
-        opacity: heard.missing ? 0.45 : undefined,
-      }}
-    >
-      {/* The picture and its dim, behind everything (-z-10 inside the
-          isolate). Stacked with the darker band at the foot, where the
-          gold act sits and the small text ends. The hairline rides the dim
-          rather than the surface: a negative-z child paints over its
-          parent's inset stroke, so the surface's own edge is under the
-          picture, and the card needs one it can see. */}
-      <img
-        aria-hidden
-        src={slideBackdrop(heard.backdrop, BACKDROP_BY_CONTENT.scripture)}
-        alt=""
-        draggable={false}
-        className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background:
-            'linear-gradient(to top, rgb(0 0 0 / 0.58) 0%, rgb(0 0 0 / 0.34) 55%, rgb(0 0 0 / 0.26) 100%)',
-          boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.12)',
-          borderRadius: 12,
-        }}
-      />
-
-      <div className="flex items-baseline gap-1.5">
-        {/*
-          The eyebrow is a figure and a version, and nothing else.
-
-          The word "heard" went first: every card in this panel is something
-          the engine heard, so labelling each one said it three times and
-          told the operator nothing they could act on. The pulsing dot went
-          with it — it was the last of that label, and once the word beside
-          it was gone it read as a bullet for the percentage rather than as
-          the engine still listening. That the engine is listening belongs to
-          the status orb on the bar, which says it once for the whole screen.
-
-          "confidence", not "sure": this is the per-preacher trust figure
-          the product is built on, and it goes in the operator's notes and
-          the settings copy under that name. A card that calls it something
-          friendlier makes them two different numbers.
-
-          And it is INK, not mint. Mint is the engine's colour on this
-          screen — the meter, the live states — so a mint number read as a
-          verdict the engine had reached. It is a measurement. The meter
-          below is where the engine gets to speak in its own colour; up here
-          the figure is just the figure.
-        */}
-        {/* A confidence the engine did not give is left blank rather than
-            drawn as 0%. The trust meter is the product's own promise and an
-            invented figure on it is worse than an absent one. */}
-        {heard.recognition && (
-          <span className="text-[length:var(--tri-size-eyebrow)] uppercase tracking-[0.14em] text-[rgb(229_243_242_/_0.6)]"
-            title={heard.recognition.source === 'quote'
-              ? 'These spoken words match part of this verse, allowing for small wording or hearing errors.'
-              : `The story details suggest this passage. Check it before presenting. ${heard.recognition.evidence.join(' · ')}`}>
-            {heard.recognition.source === 'quote' ? 'quote match' : 'possible passage'}
-          </span>
-        )}
-        {heard.trust != null && (
-          <span
-            className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.14em] tabular-nums text-[rgb(229_243_242_/_0.72)]"
-            title="how sure the engine is about this catch"
-          >
-            {Math.round(heard.trust * 100)}%
-            <span className="ml-1 font-normal text-[rgb(229_243_242_/_0.4)]">confidence</span>
-          </span>
-        )}
-        <span className="ml-auto text-[length:var(--tri-size-eyebrow)] uppercase tracking-[0.14em] text-[rgb(229_243_242_/_0.35)]">
-          {heard.version}
-        </span>
-      </div>
-
-      <p
-        className="mt-1.5 text-[var(--tri-ink)]"
-        style={{
-          fontFamily: 'var(--font-scripture)',
-          fontWeight: 'var(--font-scripture-weight)' as never,
-          fontSize: 17,
-          lineHeight: 1.25,
-        }}
-      >
-        {heard.ref}
-      </p>
-
-      <p
-        className="mt-1 overflow-hidden text-[rgb(229_243_242_/_0.6)]"
-        style={{
-          fontFamily: 'var(--font-scripture)',
-          fontWeight: 'var(--font-scripture-weight)' as never,
-          fontSize: 12,
-          lineHeight: 1.55,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-        }}
-      >
-        {heard.text}
-      </p>
-
-      {/* The trust meter, riding the proposal it justifies. Gone entirely
-          when there is no figure — a meter drawn empty reads as no
-          confidence rather than as no measurement. */}
-      {heard.trust != null && (
-        <div
-          className="mt-2.5 flex items-center gap-1.5"
-          title="how sure the engine is about this catch — the per-preacher trust meter"
-        >
-          <span className="h-[2px] min-w-0 flex-1 overflow-hidden rounded-full bg-[rgb(255_255_255_/_0.08)]">
-            <span
-              className="block h-full rounded-full bg-[rgb(143_211_192_/_0.55)]"
-              style={{ width: `${heard.trust * 100}%` }}
-            />
-          </span>
-        </div>
-      )}
-
-      {/*
-        Two acts on one line, and neither is dressed in anything the system
-        does not already own: both are tri-surface — the same linear
-        gradient, stroke, hover ramp and press every control on this screen
-        wears — ash for the refusal, gold for the one thing here that
-        reaches the congregation. No raised fill, no glow. Gold IS the
-        emphasis; adding light on top of it was saying the same thing
-        twice, and it made the card's floor look like a different material
-        from the rest of the app.
-
-        What separates them is size, not decoration: go-live takes the
-        control height and the label size the normal button takes, the ✕ is
-        a 28px square beside it.
-
-      */}
-      <div className="mt-2 flex items-stretch gap-[var(--tri-gap)]">
-        <button
-          ref={dismiss.ref}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDismiss?.();
-          }}
-          title="dismiss — the engine misheard"
-          onMouseEnter={() => setDismissHover(true)}
-          onMouseLeave={() => setDismissHover(false)}
-          className={cx(
-            surface({ tone: 'ash', interactive: true }),
-            'flex shrink-0 items-center justify-center',
-            dismissWide ? 'text-[var(--tri-ink)]' : 'text-[rgb(229_243_242_/_0.5)]',
-          )}
-          style={{
-            borderRadius: 8,
-            width: dismissWide ? 46 : 28,
-            transition: `width 200ms var(--tri-ease-out), ${SURFACE_TRANSITION}`,
-          }}
-        >
-          <CloseIcon size={12} />
-        </button>
-        {heard.missing ? (
-          <span className="flex min-w-0 flex-1 items-center text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.45)]">
-            not in the bible — nothing to show
-          </span>
-        ) : (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onLive?.();
-          }}
-          title="put it on the projector — enter does the same"
-          onMouseEnter={dismiss.relax}
-          className={cx(
-            surface({ tone: 'gold', shape: 'control', interactive: true }),
-            'tri-label flex min-h-[var(--tri-control-h)] min-w-0 flex-1',
-            'items-center justify-center whitespace-nowrap lowercase',
-            'px-[var(--tri-control-pad-x)] text-[rgb(228_216_122_/_0.95)]',
-          )}
-          style={{ borderRadius: 8 }}
-        >
-          {/* One word, and no keycap beside it.
-
-              The ↵ was drawn as a hint that enter does the same thing, but
-              on a stack of three proposals it is a claim the screen cannot
-              keep: enter puts up ONE of them, and a return key printed on
-              all three says each is the one it would reach. A hint that is
-              wrong two times in three is worse than no hint — the title
-              still carries it for the card the keyboard is actually on. */}
-          live
-        </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/*
- * What the preacher is saying, while there is nothing to answer.
- *
- * The rail is empty most of a sermon, and an empty box beside an open
- * microphone gives the operator no way to tell "nothing caught" from
- * "nothing heard". So the quiet state is the sermon itself, set the way a
- * lyrics view sets a song: the sentence being spoken is at full strength in
- * the middle, the ones before it climb and fade above it.
- *
- * The line being spoken is the recogniser's partial and is replaced as it
- * grows; when the recogniser closes the sentence it arrives punctuated and
- * takes its place in the stack, which is the moment everything moves up one.
- * Keyed by id so React moves the existing lines rather than redrawing them —
- * that is what makes the climb an animation and not a flicker.
- */
-/*
- * What the engine has heard and nobody has answered yet.
- *
- * Real catches when there is an engine, the three seeds when there is not.
- * The fallback is not laziness: this screen is also a design sheet, opened
- * in a browser tab with nothing behind it, and a rail that renders empty
- * there stops being reviewable. `caps.bridge` is the honest test — with a
- * bridge and no proposals the rail says so, which is the true state of a
- * quiet room and should look different from a dead window.
- *
- * A proposal is HELD here rather than staged into the preview box. The
- * engine's guess must not overwrite a verse the operator picked by hand
- * mid-sentence; that is the behaviour that makes an operator switch the
- * whole feature off. Answering it is a press.
- */
-function SongCatches() {
+/* "search song": the songs it finds are drawn in the right half of the
+   verses card too, and pressing it brings the verses card up to show them
+   (see LiveBody). */
+function SongSearchTile() {
   const engine = useEngine();
-  const projector = useProjector();
   const active = useSongListeningStore((s) => s.active);
   const setActive = useSongListeningStore((s) => s.setActive);
-  const [songs, setSongs] = useState<Song[]>([]);
-  useEffect(() => {
-    if (!active) return;
-    let alive = true;
-    const reload = () => { void window.api?.songs?.list().then((list) => {
-      if (alive) setSongs(list.map((song) => ({ id: song.id, title: song.title, author: (song.authors ?? []).join(', '), verses: song.sections.map((section, i) => ({ ...section, id: `${song.id}:${i}` })) })));
-    }).catch(() => undefined); };
-    reload();
-    window.addEventListener('trilorah-package-imported', reload);
-    window.addEventListener('trilorah-library-changed', reload);
-    return () => { alive = false; window.removeEventListener('trilorah-package-imported', reload); window.removeEventListener('trilorah-library-changed', reload); };
-  }, [active]);
-  const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial].join(' ').split(/\s+/).slice(-10).join(' ');
-  const matches = useMemo(() => active ? songs.flatMap((song) => song.verses.map((verse) => ({ song, verse, score: lyricScore(heard, verse.lines.join(' ')) })))
-    .filter((m) => m.score > 0).sort((a, b) => b.score - a.score).filter((m, i, all) => all.findIndex((a) => a.song.id === m.song.id) === i).slice(0, 4) : [], [active, songs, heard]);
-  /* A fragment, like ScriptureCatches: the button is a tile in the action
-     row, and what it finds runs under the whole row. */
-  return <>
-    <Button className="catch-tile" label={active ? 'stop search' : 'search song'} icon={<MusicIcon size={17} />} tone={active ? 'gold' : 'ash'} onClick={() => { setActive(!active); if (!active && engine.asr !== 'listening') engine.listen(true); }} />
-    {active && !matches.length && <p className="catch-extra px-2 text-center text-xs text-white/50">listening for songs in your library</p>}
-    {matches.map(({ song, verse }) => <button key={song.id} type="button" className="catch-extra song-sheet !min-h-0" onClick={() => projector.stage({ source: 'song', id: `${song.id}/${verse.id}`, label: song.title, title: song.title, section: verse.label, lines: verse.lines, origin: 'operator' })}>
-      <strong className="text-xs">{song.title}</strong><span className="song-sheet-lines">{verse.lines.slice(0, 4).join(' · ')}</span><span className="song-sheet-arrow">↗</span>
-    </button>)}
-  </>;
+  return (
+    <Button className="catch-tile" label={active ? 'stop search' : 'search song'} icon={<MicIcon size={18} />} tone={active ? 'gold' : 'ash'} aria-pressed={active}
+      onClick={() => { setActive(!active); if (!active && engine.asr !== 'listening') engine.listen(true); }} />
+  );
 }
 
 /*
  * The two things an operator can ask the catches card to do, as a pair of
  * tiles across its top: glyph over word, like the tiles in the run's "+"
- * menu. They were two full-width rows, which spent the card's first 80px
- * on labels and left the catches themselves the remainder.
+ * menu.
  */
 function CatchActions() {
   return (
@@ -2558,107 +2498,36 @@ function CatchActions() {
       style={{ '--tri-control-h': '54px', '--tri-control-pad-x': '8px' } as CSSProperties}
     >
       <style>{`
-        .catch-actions > .catch-tile { flex-direction: column; gap: 5px; min-width: 0; }
+        .catch-actions > .catch-tile { flex-direction: column; gap: 6px; min-width: 0; padding-block: 8px; font-size: 11px; letter-spacing: .02em; }
+        /* The microphone sits in its own ring, so the two tiles read as the
+           two things the booth can ask the room's microphone for. */
+        .catch-actions > .catch-tile > svg { box-sizing: content-box; width: 18px; height: 18px; padding: 6px; border-radius: 999px; background: rgb(229 243 242 / .07); box-shadow: inset 0 0 0 1px rgb(229 243 242 / .14); transition: background 140ms ease, box-shadow 140ms ease; }
+        .catch-actions > .catch-tile:hover > svg { background: rgb(229 243 242 / .12); }
+        .catch-actions > .catch-tile[aria-pressed="true"] > svg { background: rgb(228 216 122 / .18); box-shadow: 0 0 0 1px rgb(228 216 122 / .55), 0 0 0 5px rgb(228 216 122 / .12); animation: catch-tile-listen 1.6s ease-in-out infinite; }
+        /* A tile's note ("no passage found…") runs under both tiles. */
         .catch-actions > .catch-extra { grid-column: 1 / -1; order: 1; }
+        @keyframes catch-tile-listen { 0%, 100% { box-shadow: 0 0 0 1px rgb(228 216 122 / .55), 0 0 0 4px rgb(228 216 122 / .10); } 50% { box-shadow: 0 0 0 1px rgb(228 216 122 / .8), 0 0 0 8px rgb(228 216 122 / 0); } }
+        @media (prefers-reduced-motion: reduce) { .catch-actions > .catch-tile[aria-pressed="true"] > svg { animation: none; } }
       `}</style>
-      <SongCatches />
+      <SongSearchTile />
       <ScriptureCatches />
     </div>
   );
 }
 
-function ProposalStack({ onOpenTranscript }: { onOpenTranscript: () => void }) {
+/*
+ * What the preacher is saying — the same face the dashboard draws, in the
+ * card the operator already watches. Before anything has been heard it is
+ * the quiet placeholder: an empty transcript frame at launch said
+ * "transcript" about a silent room.
+ */
+function CatchesTranscript({ onOpenTranscript }: { onOpenTranscript: () => void }) {
   const engine = useEngine();
-  const projector = useProjector();
-  const live = engine.caps.bridge;
-
-  const cards: Heard[] = live || isEmptyPreview
-    ? engine.proposals.map((p, i) => ({
-        id: p.id,
-        ref: p.reference,
-        version: p.version,
-        text: p.text,
-        trust: p.trust,
-        recognition: p.recognition,
-        /* The seeds carry a hand-picked backdrop each; a real catch has no
-           opinion, so it takes one off its position in the stack — stable
-           for as long as the card stands, and different from its
-           neighbours, which is all the backdrop is doing here. */
-        backdrop: 2 + i * 3,
-        slides: p.slides,
-        verses: p.verses,
-        missing: p.missing,
-      }))
-    : CATCHES;
-
-  if (cards.length === 0) {
-    /*
-     * Nothing waiting, so this is where the transcript lives: the same face
-     * the dashboard draws, in the card the operator is already watching for
-     * a catch. When a verse lands here the transcript gives the card up and
-     * rises along the foot of the window instead (see `stripOpen` in the
-     * screen), and comes back once the verse has been answered or has gone.
-     *
-     * Before anything has been heard it is the quiet placeholder — an empty
-     * transcript frame at launch said "transcript" about a silent room.
-     */
-    const heard = engine.asr === 'listening' || engine.spoken.lines.length > 0 || Boolean(engine.spoken.partial);
-    return heard ? (
-      <TranscriptFace rail spoken={engine.spoken} asr={engine.asr} className="h-full w-full" onOpen={onOpenTranscript} />
-    ) : (
-      <EmptyMark w={120} h={100} plain art={<ScriptureQuoteArt />} play="hover" line="verses caught land here" />
-    );
-  }
-
-  return (
-    <FadeScroller className="h-full" contentClassName="flex flex-col gap-[var(--tri-gap)]">
-      {cards.map((c, i) => {
-        const handleActivate = (toLive: boolean) => {
-          if (c.missing) return;
-          const slides: VerseSlide[] = c.slides && c.slides.length > 0
-            ? c.slides
-            : [{
-                reference: c.ref,
-                lines: [{ version: c.version, text: c.text }],
-                verseStart: 1,
-                verseEnd: 1,
-                index: 1,
-                total: 1,
-              }];
-          const item: LiveItem = {
-            source: 'scripture',
-            id: c.ref,
-            label: c.ref,
-            reference: c.ref,
-            version: c.version,
-            text: c.text,
-            slides,
-            verses: c.verses ?? [{ verse: 1, text: c.text }],
-            // Clicking a suggestion is a deliberate choice. A later ASR
-            // revision may remove its card, but cannot undo this selection.
-            origin: 'operator',
-          };
-          projector.stage(item);
-          if (toLive) {
-            if (live) {
-              engine.dismissProposal(c.id);
-            }
-            projector.send(item);
-          }
-        };
-
-        return (
-          <DetectedScripture
-            key={c.id}
-            heard={c}
-            index={i}
-            onSelect={!c.missing ? () => handleActivate(false) : undefined}
-            onLive={!c.missing ? () => handleActivate(true) : undefined}
-            onDismiss={live ? () => engine.dismissProposal(c.id) : undefined}
-          />
-        );
-      })}
-    </FadeScroller>
+  const heard = engine.asr === 'listening' || engine.spoken.lines.length > 0 || Boolean(engine.spoken.partial);
+  return heard ? (
+    <TranscriptFace rail spoken={engine.spoken} asr={engine.asr} className="h-full w-full" onOpen={onOpenTranscript} />
+  ) : (
+    <EmptyMark w={120} h={100} plain art={<ScriptureQuoteArt />} play="hover" line="what the preacher says shows here" />
   );
 }
 
@@ -2743,7 +2612,7 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
   const phrase = orbStatusDescription(label);
   const show = () => setNamed(true);
   return (
-    <div className="tri-header-orb relative flex aspect-square shrink-0" style={{ height: 'var(--tri-control-h)' }}>
+    <div className="tri-header-orb relative flex aspect-square shrink-0">
       <button
         type="button"
         onClick={onClick}
@@ -2752,7 +2621,7 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
         onFocus={show}
         onBlur={() => setNamed(false)}
         aria-label={phrase}
-        className="tri-header-control flex h-full w-full items-center justify-center"
+        className="tri-header-orb-face flex h-full w-full items-center justify-center"
       >
         {/* The dot ball, drawn as SVG by the same geometry as the WebGPU
             one, so it draws on a machine with no GPU driver. Its surface
@@ -2770,7 +2639,7 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
           dotOpacity={look.opacity}
           showsPill={false}
           showsLabel={false}
-          ball={30}
+          ball={40}
           dots={0.6}
           fps={30}
           scheme="dark"
@@ -2985,139 +2854,6 @@ function useServiceLog(stateLabel: string) {
 
 
 /**
- * Import button bento pill with an icon-led dropdown menu for Image, Presentation Slides, and Songs.
- */
-function ImportBentoMenu({
-  onImportImage,
-  onImportSlides,
-  onImportSongs,
-}: {
-  onImportImage: () => void;
-  onImportSlides: () => void;
-  onImportSongs: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('mousedown', handleDown);
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      window.removeEventListener('mousedown', handleDown);
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className="relative flex shrink-0 items-center">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className={cx(
-          'tri-header-control tri-header-import flex shrink-0 cursor-pointer items-center gap-1.5 lowercase',
-        )}
-        title="import images, presentation slides, or songs"
-        aria-expanded={open}
-      >
-        <ImportIcon size={12} className="opacity-80" />
-        <span className="tracking-wide">import</span>
-        <ChevronDownIcon
-          size={8}
-          className={cx('opacity-60 transition-transform duration-200', open && 'rotate-180')}
-        />
-      </button>
-
-      {open && (
-        <div
-          className="absolute right-0 top-[calc(100%+6px)] z-50 flex w-64 flex-col gap-1 rounded-xl p-1.5 text-left shadow-[0_16px_36px_rgba(0,0,0,0.7)]"
-          style={{
-            ...EDGE,
-            background: 'rgba(18, 26, 29, 0.95)',
-            backdropFilter: 'blur(16px)',
-          }}
-        >
-          <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[rgb(229_243_242_/_0.4)]">
-            import content
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onImportImage();
-            }}
-            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[rgb(255_255_255_/_0.07)]"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sky-500/15 text-sky-400">
-              <MediaIcon size={14} />
-            </span>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-[12px] font-medium lowercase text-[var(--tri-ink)]">
-                image
-              </span>
-              <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
-                backgrounds, stills & photos
-              </span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onImportSlides();
-            }}
-            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[rgb(255_255_255_/_0.07)]"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-400">
-              <PresentationIcon size={14} />
-            </span>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-[12px] font-medium lowercase text-[var(--tri-ink)]">
-                presentation slides
-              </span>
-              <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
-                pptx, ppt or odp decks
-              </span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onImportSongs();
-            }}
-            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[rgb(255_255_255_/_0.07)]"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-400">
-              <MusicIcon size={14} />
-            </span>
-            <div className="flex min-w-0 flex-col">
-              <span className="text-[12px] font-medium lowercase text-[var(--tri-ink)]">
-                songs
-              </span>
-              <span className="truncate text-[10px] lowercase text-[rgb(229_243_242_/_0.45)]">
-                youtube, paste lyrics or file
-              </span>
-            </div>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
  * Digital clock bento pill showing live device time with seconds and am/pm.
  */
 /*
@@ -3131,7 +2867,7 @@ function ImportBentoMenu({
  * code included, and announces a cleared wall too, so a photo shown over
  * the code from another window turns this off without being told.
  */
-function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
+function useCompanionQr(live: boolean, say?: (e: { text: string }) => void, qrLive = false) {
   const [qrUp, setQrUp] = useState(false);
 
   useEffect(() => {
@@ -3151,8 +2887,11 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
   }, [live]);
 
   const toggleQr = useCallback(() => {
-    if (live) return;
-    if (qrUp) {
+    if (live) {
+      say?.({ text: 'clear the projector first — the phone code only goes onto an empty screen' });
+      return;
+    }
+    if (qrUp || qrLive) {
       void window.api?.clearMedia?.();
       setQrUp(false);
       return;
@@ -3170,7 +2909,7 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void) {
         else say?.({ text: "companion isn't set up yet — add your public web address and account in Settings" });
       })
       .catch(() => say?.({ text: "couldn't show the phone code — try again" }));
-  }, [live, qrUp, say]);
+  }, [live, qrUp, qrLive, say]);
 
   return { qrUp, toggleQr };
 }
@@ -3493,6 +3232,7 @@ function DigitalClockBento() {
         </span>
       ) : mode === 'clock' ? (
         <>
+          <ClockIcon size={12} className="tri-header-icon" />
           <span className="font-mono tracking-wider text-[rgb(229_243_242_/_0.75)] tabular-nums">
             {displayHours}:{minutes}
             <span className="text-[rgb(229_243_242_/_0.4)]">:{seconds}</span>
@@ -3638,7 +3378,7 @@ function ListenControl() {
       }
       className="tri-header-control tri-header-listen flex shrink-0 items-center gap-2 lowercase"
     >
-      <MicIcon size={12} />
+      <MicIcon size={12} className="tri-header-icon" />
       {label}
       {/*
         The level, as four rising bars rather than a number.
@@ -4079,7 +3819,9 @@ function Stage({
        here has to become that setting or the preview would be a picture of
        something the congregation never sees. */
     if ((preview.verses?.length ?? 0) > 1) {
-      void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) > 1);
+      /* Apart is a slide (or more) for every verse; together is fewer slides
+         than verses — one, or pages of several (verseDisplay pageVerses). */
+      void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) >= (preview.verses?.length ?? 0));
     }
     try {
       await projector.promote();
@@ -4105,6 +3847,25 @@ function Stage({
       setStepping(true);
       try { await projector.send(next); projector.stage(next); }
       catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not show slide. Try again.' }); }
+      finally { navigating.current = false; setStepping(false); }
+      return;
+    }
+    if (preview?.source === 'song') {
+      /* The song's own cards, in order, so ← → walk the sheet the way the
+         songs tab does: chorus, verse two, the second page of a long verse.
+         The item names the song and the card it came from. */
+      const songId = preview.id.split('/')[0];
+      const song = songId && window.api?.songs?.get ? await window.api.songs.get(songId).catch(() => null) : null;
+      if (!song?.sections) return;
+      const cards = songCards({ id: songId, sections: song.sections });
+      const at = cards.findIndex((card) => card.id === preview.id || card.id.startsWith(`${preview.id}/`));
+      const card = cards[at + dir];
+      if (at < 0 || !card) return;
+      const next: LiveItem = { source: 'song', id: card.id, label: `${song.title} — ${card.label}`, title: song.title, section: card.label, lines: card.lines, origin: 'operator' };
+      navigating.current = true;
+      setStepping(true);
+      try { await projector.send(next); projector.stage(next); }
+      catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not show the next lyrics. Try again.' }); }
       finally { navigating.current = false; setStepping(false); }
       return;
     }
@@ -4147,7 +3908,8 @@ function Stage({
    * Pressing the control re-slices the same verses; nothing is fetched.
    */
   const range = (preview?.verses?.length ?? 0) > 1;
-  const together = range && (preview?.slides?.length ?? 0) === 1;
+  /* Together is fewer slides than verses: one slide, or pages of several. */
+  const together = range && (preview?.slides?.length ?? 0) < (preview?.verses?.length ?? 0);
   const words = preview?.text ? wordCount(preview.text) : 0;
   const fit = fitOf(words);
   const reslice = () => {
@@ -4189,8 +3951,14 @@ function Stage({
     return () => { clearTimeout(timer); setHintPass(0); };
   }, [preview?.id]);
   const [stageScale, setStageScale] = useState(1);
-  const resizeStart = useRef<{ y: number; scale: number } | null>(null);
-  const canStep = !editingTheme && (!!stagedRef || deckCount > 1);
+  /* The handle between the pictures and the library is a press first: one
+     press lifts the library (the pictures at their smallest), the next
+     puts it back. A drag still sets any size in between; `moved` tells a
+     drag's release from a press, and the height only animates for a press. */
+  const resizeStart = useRef<{ y: number; scale: number; moved: boolean } | null>(null);
+  const [resizing, setResizing] = useState(false);
+  const libraryRaised = stageScale < (STAGE_SCALE_MIN + STAGE_SCALE_FULL) / 2;
+  const canStep = !editingTheme && (!!stagedRef || deckCount > 1 || preview?.source === 'song');
   useEffect(() => {
     if (!overPreview || !canStep) return;
     const onKey = (e: KeyboardEvent) => {
@@ -4213,7 +3981,18 @@ function Stage({
   const liveKey = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
   useEffect(() => setVideoPaused(false), [liveKey]);
 
-  const { qrUp, toggleQr } = useCompanionQr(!!live, say);
+  /*
+   * Is the room reading something the phone code would cover?
+   *
+   * Not merely "is anything live": a cleared screen keeps its live item (clear
+   * drops the words, keeps the picture), so that test disabled the code for
+   * the rest of the service after the first verse — and once the code itself
+   * went up it counted as "something live" too, so the button could not take
+   * it down again.
+   */
+  const qrLive = live?.source === 'media' && /trilorah-companion-qr/.test(live.path ?? '');
+  const wallBusy = !!live && !qrLive && screen === 'live';
+  const { qrUp, toggleQr } = useCompanionQr(wallBusy, say, qrLive);
 
   return (
     /*
@@ -4251,6 +4030,7 @@ function Stage({
           /* panel width = half the row less half the gap between the two;
              picture width = that less the inset each side. */
           'calc(((100cqw - var(--tri-gap)) / 2 - 2 * var(--tri-gap)) * 9 / 16 * var(--stage-scale) + var(--stage-row) + 2 * var(--tri-gap))',
+        transition: resizing || prefersReducedMotion() ? undefined : 'height 280ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
       {/*
@@ -4267,7 +4047,9 @@ function Stage({
         canvas={
           <>
             <SlideCanvas seated theme={previewTheme} transition={transition} slide={staged ?? (editingTheme && !preview ? THEME_SAMPLE : null)} empty="nothing staged" guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
-            {preview?.source === 'presentation' && preview.path && <img src={presentationImageSrc(preview.path)} alt={preview.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
+            {/* Pictures have no words for the canvas to draw — the phone code
+                and media-library photos showed as "nothing" here. */}
+            {(preview?.source === 'presentation' || (preview?.source === 'media' && preview.mediaKind !== 'video')) && preview.path && <img src={presentationImageSrc(preview.path)} alt={preview.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
             {/*
               The verse before and the verse after, with nothing drawn.
 
@@ -4285,9 +4067,9 @@ function Stage({
                   type="button"
                   aria-label={deckCount ? "previous slide" : "previous verse"}
                   title="previous — show on both screens ←"
-                  disabled={stepping || (deckCount ? deckIndex <= 0 : (stagedRef?.start ?? 1) <= 1)}
+                  disabled={stepping || (deckCount ? deckIndex <= 0 : !!stagedRef && stagedRef.start <= 1)}
                   onClick={() => step(-1)}
-                  className="verse-step absolute inset-y-0 left-0 w-1/2 cursor-w-resize disabled:cursor-default"
+                  className="verse-step verse-step--previous absolute inset-y-0 left-0 w-1/2 disabled:cursor-default"
                 >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--previous"><span>‹</span>previous</span>}</button>
                 <button
                   type="button"
@@ -4295,7 +4077,7 @@ function Stage({
                   disabled={stepping || (deckCount > 0 && deckIndex >= deckCount - 1)}
                   title="next — show on both screens →"
                   onClick={() => step(1)}
-                  className="verse-step absolute inset-y-0 right-0 w-1/2 cursor-e-resize"
+                  className="verse-step verse-step--next absolute inset-y-0 right-0 w-1/2"
                 >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--next"><span>›</span>next</span>}</button>
               </>
             )}
@@ -4360,7 +4142,7 @@ function Stage({
             screen={screen}
             empty="nothing on the projector"
           />
-          {live?.source === 'presentation' && live.path && screen === 'live' && <img src={presentationImageSrc(live.path)} alt={live.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
+          {(live?.source === 'presentation' || (live?.source === 'media' && live.mediaKind !== 'video')) && live.path && screen === 'live' && <img src={presentationImageSrc(live.path)} alt={live.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
           </>
         }
         controls={
@@ -4425,13 +4207,13 @@ function Stage({
             */}
             <Button
               label=""
-              tone={qrUp ? 'gold' : 'ash'}
+              tone={qrUp || qrLive ? 'gold' : 'ash'}
               icon={<QrIcon size={13} />}
-              disabled={!!live}
+              disabled={wallBusy}
               title={
-                live
+                wallBusy
                   ? 'the projector is in use — clear it to show the phone code'
-                  : qrUp
+                  : qrUp || qrLive
                     ? 'take the phone code off the projector'
                     : 'show the phone code on the projector'
               }
@@ -4449,15 +4231,41 @@ function Stage({
         }
       />
     </div>
-    <div role="separator" aria-label="resize preview and library" aria-orientation="horizontal" aria-valuemin={55} aria-valuemax={115} aria-valuenow={Math.round(stageScale * 100)} tabIndex={0}
-      className="stage-resizer"
-      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setStageScale((v) => Math.max(.55, Math.min(1.15, v + (e.key === 'ArrowUp' ? -.05 : .05)))); } }}
-      onPointerDown={(e) => { resizeStart.current = { y: e.clientY, scale: stageScale }; e.currentTarget.setPointerCapture(e.pointerId); }}
-      onPointerMove={(e) => { if (resizeStart.current) setStageScale(Math.max(.55, Math.min(1.15, resizeStart.current.scale + (e.clientY - resizeStart.current.y) / 400))); }}
-      onPointerUp={() => { resizeStart.current = null; }} onPointerCancel={() => { resizeStart.current = null; }}><span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v14M6 5l3-3 3 3M6 13l3 3 3-3M3 9h2M13 9h2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"/></svg></span></div>
+    <button type="button"
+      aria-label={libraryRaised ? 'lower the library' : 'raise the library'}
+      title={libraryRaised ? 'lower the library — drag to set any size' : 'raise the library — drag to set any size'}
+      aria-pressed={libraryRaised}
+      className={cx('stage-resizer', libraryRaised && 'is-raised')}
+      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setStageScale((v) => clampStageScale(v + (e.key === 'ArrowUp' ? -.05 : .05))); } }}
+      onPointerDown={(e) => { resizeStart.current = { y: e.clientY, scale: stageScale, moved: false }; e.currentTarget.setPointerCapture(e.pointerId); }}
+      onPointerMove={(e) => {
+        const start = resizeStart.current;
+        if (!start) return;
+        if (!start.moved && Math.abs(e.clientY - start.y) < 4) return;
+        if (!start.moved) { start.moved = true; setResizing(true); }
+        setStageScale(clampStageScale(start.scale + (e.clientY - start.y) / 400));
+      }}
+      onPointerUp={() => { setResizing(false); }}
+      onPointerCancel={() => { resizeStart.current = null; setResizing(false); }}
+      onClick={() => {
+        /* A drag's release also lands here as a click; only a press toggles. */
+        const dragged = resizeStart.current?.moved;
+        resizeStart.current = null;
+        if (dragged) return;
+        setStageScale(libraryRaised ? STAGE_SCALE_FULL : STAGE_SCALE_MIN);
+      }}><span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 14.5V3.5M4.5 8 9 3.5 13.5 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span></button>
     </div>
   );
 }
+
+/* How far the pictures above the library shrink and grow, as a share of
+   their natural size. The handle's press moves between MIN and FULL. */
+const STAGE_SCALE_MIN = 0.55;
+const STAGE_SCALE_FULL = 1;
+const STAGE_SCALE_MAX = 1.15;
+const clampStageScale = (v: number) => Math.max(STAGE_SCALE_MIN, Math.min(STAGE_SCALE_MAX, v));
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 export function LiveScreen({ state }: { state?: string } = {}) {
   return (
@@ -4546,10 +4354,6 @@ function LiveBody({ state }: { state?: string }) {
   const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
 
   const engine = useEngine();
-  /* The foot strip is up only while a catch holds the rail's card — that
-     card is the transcript's home (see ProposalStack). With no engine the
-     card shows the seed catches, so the strip stays up for the design sheet. */
-  const stripOpen = engine.caps.bridge ? engine.proposals.length > 0 : !isEmptyPreview;
   const projector = useProjector();
   const themeLibrary = useMediaLibrary();
   useEffect(() => projector.beforeSend(async () => {
@@ -4619,7 +4423,10 @@ function LiveBody({ state }: { state?: string }) {
         text,
         verses,
         slides: buildVerseSlides({ book: pick.book, chapter: pick.chapter, version }, verses, fitRules(verses)),
-        origin: 'operator',
+        /* Nobody chose it, so the first catch may take its place: as
+           'operator' it blocked every catch from the preview box until the
+           operator happened to stage something themselves. */
+        origin: 'engine',
       });
     })().catch((err) => console.error('opening verse: could not stage', err));
 
@@ -4753,8 +4560,8 @@ function LiveBody({ state }: { state?: string }) {
    * This used to stage and push in the same breath, which put the engine's
    * guess in front of the congregation the instant it heard one — over
    * whatever the operator had chosen, mid-sentence, with no press involved.
-   * The proposal stack exists precisely so that answering a catch is a
-   * deliberate act (see ProposalStack), and pushing here went behind it.
+   * The catches pane exists precisely so that answering a catch is a
+   * deliberate act (see CatchesPane), and pushing here went behind it.
    *
    * So it fills the preview box only: the operator sees the verse arrive,
    * reads it, and presses live when the preacher actually gets there. The
@@ -4765,28 +4572,63 @@ function LiveBody({ state }: { state?: string }) {
    * hand — a catch is a suggestion, and overwriting a chosen verse is the
    * same mistake one step quieter.
    */
-  const latestProposal = engine.proposals[0];
-  const latestProposalKey = latestProposal ? `${latestProposal.id}:${latestProposal.reference}:${latestProposal.version}` : null;
+  /*
+   * What it stages is what the spotlight in the verses card shows
+   * (lib/catchSets): for references named in one breath that is the FIRST
+   * one said — the one the preacher will read first — not the last one
+   * heard.
+   */
+  const catchSent = useCatchStore((st) => st.sent);
+  const catchPicked = useCatchStore((st) => st.picked);
+  const pruneCatches = useCatchStore((st) => st.prune);
+  const catchView = useMemo(() => catchEntries(engine.proposals, catchSent, catchPicked), [engine.proposals, catchSent, catchPicked]);
+  const spotIndex = spotlightIndex(catchView);
+  /* Caught verses are drawn in the verses card; on any other tab the one in
+     the spotlight comes to the left card instead (CatchPeek), and the
+     transcript it displaces rises along the foot of the window. */
+  const catchesAway = TABS[tab]?.id !== 'scriptures' && catchView.length > 0;
+  const latestProposal = spotIndex >= 0 ? catchView[spotIndex].current : undefined;
+  const stagedKey = (proposal: Proposal) => `${proposal.id}:${proposal.reference}:${proposal.version}:${proposal.arrivedAt}`;
+  const latestProposalKey = latestProposal ? stagedKey(latestProposal) : null;
   const lastStagedRef = useRef<string | null>(null);
   const proposalsForWithdrawal = useRef(engine.proposals);
   proposalsForWithdrawal.current = engine.proposals;
+  const catchesNow = useRef({ sent: catchSent, picked: catchPicked });
+  catchesNow.current = { sent: catchSent, picked: catchPicked };
   const withdrawnSuggestions = useRef(new Set<string>());
+  /* What the spotlight shows once these verses are gone. A verse leaving —
+     withdrawn by the engine, or out of time — must not put the one behind
+     it into the preview box; only a verse arriving does that. */
+  const spotlightWithout = (gone: (proposal: Proposal) => boolean) => {
+    const rest = proposalsForWithdrawal.current.filter((proposal) => !gone(proposal) &&
+      (!proposal.recognition || !withdrawnSuggestions.current.has(proposal.recognition.suggestionId)));
+    const next = spotlightItem(rest, catchesNow.current.sent, catchesNow.current.picked);
+    return next ? stagedKey(next) : null;
+  };
   const withdrawRecognition = projector.withdrawRecognition;
   useEffect(() => window.api?.onRecognitionWithdrawn?.(({ suggestionId }) => {
     withdrawnSuggestions.current.add(suggestionId);
-    // Removing the newest provisional card must not automatically stage an
-    // older card behind it. A subsequent new detection still stages normally.
-    const next = proposalsForWithdrawal.current.find(proposal =>
-      !proposal.recognition || !withdrawnSuggestions.current.has(proposal.recognition.suggestionId));
-    lastStagedRef.current = next ? `${next.id}:${next.reference}:${next.version}` : null;
+    lastStagedRef.current = spotlightWithout(() => false);
     withdrawRecognition(suggestionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [withdrawRecognition]);
+  /* A catch whose six seconds ran out leaves the same way a withdrawn one
+     does. The preview keeps whatever is in it — the verse the catch put
+     there is still one press from the wall. */
+  const onProposalExpired = engine.onProposalExpired;
+  useEffect(() => onProposalExpired((id) => {
+    lastStagedRef.current = spotlightWithout((proposal) => proposal.id === id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [onProposalExpired]);
 
   useEffect(() => {
     if (!latestProposal || latestProposal.missing || !latestProposal.reference) return;
     if (lastStagedRef.current === latestProposalKey) return;
     lastStagedRef.current = latestProposalKey;
     if (projector.preview?.origin === 'operator') return;
+    /* Already there — the catches pane stages the next verse of a set itself. */
+    if (projector.preview?.source === 'scripture' && projector.preview.id === latestProposal.reference &&
+      projector.preview.version === latestProposal.version) return;
 
     projector.stage({
       source: 'scripture',
@@ -4800,7 +4642,30 @@ function LiveBody({ state }: { state?: string }) {
       origin: 'engine',
       recognitionSuggestionId: latestProposal.recognition?.suggestionId,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latestProposalKey, projector]);
+
+  /* Verses waiting their turn in a set do not spend their six seconds until
+     they are up (lib/catchSets) — held here rather than in the catches pane,
+     so a set keeps its order while the verses card is not showing. */
+  const holdProposal = engine.holdProposal;
+  const queued = useMemo(() => new Set(queuedIds(catchView)), [catchView]);
+  const queuedBefore = useRef(new Set<string>());
+  useEffect(() => {
+    for (const id of queued) if (!queuedBefore.current.has(id)) holdProposal(id, true, 'queued');
+    for (const id of queuedBefore.current) if (!queued.has(id)) holdProposal(id, false, 'queued');
+    queuedBefore.current = queued;
+  }, [queued, holdProposal]);
+  useEffect(() => {
+    pruneCatches([...new Set(engine.proposals.map((proposal) => proposal.group))]);
+  }, [engine.proposals, pruneCatches]);
+
+  /* "search song" draws what it finds in the verses card, so pressing it
+     brings that card up. */
+  const songSearchOn = useSongListeningStore((st) => st.active);
+  useEffect(() => {
+    if (songSearchOn) setTab(SCRIPTURES_TAB);
+  }, [songSearchOn]);
 
   /* The bar's contents. The log listens to the state so a change speaks
      for itself, and the one action any line offers lands back here. */
@@ -4811,6 +4676,9 @@ function LiveBody({ state }: { state?: string }) {
      sentence goes to the log, where there is room to read it. */
   useEffect(() => {
     if (engine.asr === 'error' && engine.asrMessage) say({ text: engine.asrMessage });
+    /* The practice sermon names what each line tests, or what to press, as
+       it starts (shared/practiceSermon.ts). */
+    else if (/^listening — practice/i.test(engine.asrMessage)) say({ text: engine.asrMessage.replace(/^listening — /i, '') });
   }, [engine.asr, engine.asrMessage, say]);
   /* What the OPERATOR does to the wall belongs in the record too. The log used
      to speak only for the engine — a verse caught, a command heard — so on a
@@ -4827,79 +4695,6 @@ function LiveBody({ state }: { state?: string }) {
     else if (had) say({ text: 'wall cleared' });
   }, [onWall, projector.live, say]);
   const goManual = useCallback(() => say({ text: "suggestions off — you're driving" }), [say]);
-
-  const [songAddRequest, setSongAddRequest] = useState(0);
-  const hiddenImageInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImportImage = useCallback(() => {
-    if (window.api?.pickBackgroundImage) {
-      void window.api.pickBackgroundImage().then((res) => {
-        if (!res?.success || !res.url) return;
-        const name = decodeURIComponent(res.url.split('/').pop() ?? 'image');
-        const media: ThemeMedia = {
-          id: `local:${res.url}`,
-          label: name.replace(/\.[a-z0-9]+$/i, ''),
-          detail: 'imported image',
-          seed: 4,
-          style: 'smoke' as const,
-          source: 'local' as const,
-          url: res.src ?? res.url,
-          kind: 'photo' as const,
-        };
-        addMedia(media);
-        setPreviewTheme((prev) => ({ ...prev, backgroundId: media.id }));
-        setView('operator');
-        setTab(TABS.findIndex((t) => t.id === 'media'));
-        say({ text: `imported image: ${media.label}` });
-      });
-    } else {
-      hiddenImageInputRef.current?.click();
-    }
-  }, [say]);
-
-  const handleImageFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const media: ThemeMedia = {
-      id: `local:${Date.now()}`,
-      label: file.name.replace(/\.[a-z0-9]+$/i, ''),
-      detail: 'imported image',
-      seed: 4,
-      style: 'smoke' as const,
-      source: 'local' as const,
-      url,
-      kind: 'photo' as const,
-    };
-    addMedia(media);
-    setPreviewTheme((prev) => ({ ...prev, backgroundId: media.id }));
-    setView('operator');
-    setTab(TABS.findIndex((t) => t.id === 'media'));
-    say({ text: `imported image: ${media.label}` });
-    e.target.value = '';
-  };
-
-  const handleImportSlides = useCallback(() => {
-    if (window.api?.importPresentation) {
-      say({ text: 'importing presentation slides…' });
-      void importAndSavePresentation().then(deck => {
-        if (!deck) return;
-        setView('operator');
-        setTab(TABS.findIndex(t => t.id === 'slides'));
-        say({ text: `Imported ${deck.slides.length} slides. Select the deck to preview.` });
-      }).catch(error => say({ text: error instanceof Error ? error.message : 'Slide import failed. Try another file.' }));
-    } else {
-      say({ text: 'Open the desktop app to import PowerPoint slides.' });
-    }
-  }, [say]);
-
-  /* The songs tab owns the add-song dialog (and the rule that nothing is
-     added until the editor's Save). The header only asks for it. */
-  const handleImportSongs = useCallback(() => {
-    setView('operator');
-    setTab(TABS.findIndex((t) => t.id === 'songs'));
-    setSongAddRequest(Date.now());
-  }, []);
 
   return (
     <>
@@ -4941,12 +4736,9 @@ function LiveBody({ state }: { state?: string }) {
           <StatusOrb label={stateLabel} onClick={stepState} />
           <ListenControl />
           <SermonStartControl />
+          <MicPicker />
+          <MobileRemotePanel />
           <div className="min-w-0 flex-1" />
-          <ImportBentoMenu
-            onImportImage={handleImportImage}
-            onImportSlides={handleImportSlides}
-            onImportSongs={handleImportSongs}
-          />
           <DigitalClockBento />
           <div className="tri-header-log-slot flex min-w-0 items-stretch">
             <ServiceLogBar entries={log.entries} onAction={goManual} />
@@ -5034,9 +4826,15 @@ function LiveBody({ state }: { state?: string }) {
               bodyClass="pt-3 flex flex-col"
               bodyStyle={{ paddingBottom: 'var(--tri-card-gap)' }}
             >
-              <HeardMotion />
               <CatchActions />
-              <div className="operator-empty min-h-0 flex-1 overflow-y-auto"><ProposalStack onOpenTranscript={() => setView('dashboard')} /></div>
+              <div className="operator-empty min-h-0 flex-1 overflow-y-auto">
+                {/* Away from the verses card, a catch comes here instead,
+                    and the transcript rises along the foot of the window
+                    until it has gone — see CatchPeek and the strip below. */}
+                {catchesAway
+                  ? <CatchPeek onOpen={() => setTab(SCRIPTURES_TAB)} />
+                  : <CatchesTranscript onOpenTranscript={() => setView('dashboard')} />}
+              </div>
             </Panel>
 
             {/* The ticker's row, under the rail: the ON AIR sign, the
@@ -5082,7 +4880,7 @@ function LiveBody({ state }: { state?: string }) {
                 />
               ) : null}
               {TABS[tab]?.id === 'scriptures' ? <ScripturesBrowser /> : null}
-              {TABS[tab]?.id === 'songs' ? <SongsBrowser addRequest={songAddRequest} /> : null}
+              {TABS[tab]?.id === 'songs' ? <SongsBrowser /> : null}
               {TABS[tab]?.id === 'slides' ? <SlidesBrowser /> : null}
               {TABS[tab]?.id === 'media' ? (
                 <MediaBrowser
@@ -5111,14 +4909,16 @@ function LiveBody({ state }: { state?: string }) {
             </Panel>
             </div>
 
-            {/* The live transcript, along the foot of the window — but only
-                while a caught verse is holding the catches card, which is
-                where the transcript otherwise lives. It grows up out of the
+            {/* The live transcript, along the foot of the window — only while
+                a caught verse holds the left card, which is where the
+                transcript otherwise lives (owner, 2026-10-07: on a tab other
+                than verses, the catch goes to the left card and the
+                transcript comes up from the bottom). It grows up out of the
                 bottom edge when the card is taken and sinks back when the
                 card is free again; the rest of the time there is no strip
                 here at all, not even an empty one. Under the right-hand
                 column only: the owner does not want it under the rail. */}
-            <div className="tri-strip-rise" data-open={stripOpen || undefined} aria-hidden={!stripOpen}>
+            <div className="tri-strip-rise" data-open={catchesAway || undefined} aria-hidden={!catchesAway}>
               <style>{`
                 .tri-strip-rise {
                   display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; visibility: hidden;
@@ -5152,14 +4952,6 @@ function LiveBody({ state }: { state?: string }) {
       )}
       </div>
 
-      {/* Hidden file pickers for web fallback */}
-      <input
-        ref={hiddenImageInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleImageFilePicked}
-        className="hidden"
-      />
 
 
     </>

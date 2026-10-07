@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, BookIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from '../../ui';
+import { Button, MicIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, SearchField } from '../../ui';
 import { useEngine } from './engine';
 import { useScriptureFindStore } from '../../stores/scriptureFindStore';
 import './scriptureFind.css';
@@ -46,9 +46,52 @@ export function ScriptureCatches() {
   /* A fragment: the button is one tile in the catches card's action row and
      the note runs under the whole row — see .catch-actions in Live. */
   return <>
-    <Button className="catch-tile" label={busy ? 'searching' : 'find scripture'} icon={<BookIcon size={17} />} tone="ash" onClick={() => { void find(); }} />
+    <Button className="catch-tile" label={busy ? 'searching' : 'find scripture'} icon={<MicIcon size={18} />} tone="ash" onClick={() => { void find(); }} />
     {note && <p className="catch-extra px-2 text-center text-xs text-white/50">{note}</p>}
   </>;
+}
+
+/**
+ * "find scripture", typed: the second field of the verses card's search row
+ * (owner, 2026-10-07). The operator describes a story or half-remembers a
+ * line — "abraham offers his son", "the one about the lost sheep" — and the
+ * same matchers the button uses look for it. The answers open over the
+ * preview, the same four-to-a-page cards as the button's.
+ */
+export function StorySearch() {
+  const open = useScriptureFindStore((s) => s.open);
+  const close = useScriptureFindStore((s) => s.close);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+
+  async function search(value: string) {
+    const words = value.trim();
+    const api = window.api;
+    if (!words || busy || !api?.findHeardScripture) return;
+    setBusy(true); setNote('');
+    try {
+      const result = await api.findHeardScripture(words);
+      if (result.matches.length) open(words, result.matches, 'typed');
+      else { close(); setNote('nothing close — try other words'); }
+    } catch {
+      setNote('could not search just now');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="story-search" aria-busy={busy}>
+      <SearchField
+        value={text}
+        onChange={(next) => { setText(next); if (note) setNote(''); }}
+        onSubmit={(value) => { void search(value); }}
+        placeholder="find a story — “abraham offers his son”"
+      />
+      {(busy || note) && <span className="story-search__note" aria-live="polite">{busy ? 'searching…' : note}</span>}
+    </div>
+  );
 }
 
 /**
@@ -90,9 +133,9 @@ export function ScriptureFindOverlay() {
   if (!found) return null;
   const shown = found.matches.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
-  return <div className="find-veil" role="dialog" aria-label="passages found for what was just said">
+  return <div className="find-veil" role="dialog" aria-label={found.how === 'typed' ? 'passages found for what was typed' : 'passages found for what was just said'}>
     <div className="find-head">
-      <p className="find-heard" title={found.heard}>heard <em>“{found.heard.split(' ').slice(-10).join(' ')}”</em></p>
+      <p className="find-heard" title={found.heard}>{found.how === 'typed' ? 'searched' : 'heard'} <em>“{found.heard.split(' ').slice(-10).join(' ')}”</em></p>
       <button type="button" className="find-round" aria-label="close" title="close without choosing (Esc)" onClick={close}><CloseIcon size={12} /></button>
     </div>
     {/* Keyed by page so the cards of a new page rise in like the first did. */}

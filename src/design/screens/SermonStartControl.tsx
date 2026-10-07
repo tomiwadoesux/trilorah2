@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BookIcon } from '../../ui';
 import type { SermonStartAction, SermonStartState } from '../../../shared/sermonStart';
 
 export function SermonStartControl() {
@@ -35,6 +36,7 @@ export function SermonStartControl() {
       aria-expanded={panel} aria-controls="sermon-start-panel"
       onClick={() => active ? setOpen(!open) : pending ? setOpen(true) : void act('start')}
       title={active ? 'Sermon is underway' : 'Mark the sermon as started now'}>
+      <BookIcon size={12} className="tri-header-icon" />
       {active ? 'Sermon started' : pending ? 'Has sermon started?' : 'Start sermon'}
     </button>
     {panel && <section id="sermon-start-panel" aria-label="Sermon confirmation" className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border p-4 shadow-xl"

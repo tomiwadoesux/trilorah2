@@ -1,8 +1,9 @@
-import { StrictMode, useEffect, useRef, useState } from 'react';
+import { Fragment, StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { outputRestore } from './lib/outputRestore';
-import { buildVerseSlides, type VerseSlide } from '../shared/verseDisplay';
+import { buildVerseSlides, PAGE_WORDS, splitVerseNumbers, type VerseSlide } from '../shared/verseDisplay';
+import { useFitText } from './lib/useFitText';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
 import { cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
@@ -191,6 +192,20 @@ function useClock(enabled: boolean): string {
   return now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+/* A reading's words with its verse numbers raised, the way a printed Bible
+   sets them: a space, the small number above the line, then the verse. */
+function VerseWords({ text }: { text: string }) {
+  return (
+    <>
+      {splitVerseNumbers(text).map((part, i) =>
+        part.kind === 'verse'
+          ? <sup key={i} className="output-verse-num">{part.verse}</sup>
+          : <Fragment key={i}>{part.text}</Fragment>,
+      )}
+    </>
+  );
+}
+
 function OutputSurface() {
   // `shown` keeps the last verse during fade-out; `visible` drives opacity.
   const [delivery, setDelivery] = useState(0);
@@ -276,10 +291,17 @@ function OutputSurface() {
           primary,
           {
             breakOnVerse: opts.breakOnVerse,
-            showVerseNumbers: opts.showVerseNumbers,
+            /* A range shown together always carries its verse numbers,
+               raised (owner, 2026-10-07: "before the next verse ... 12 at
+               the top"), as the operator's preview does; the church's
+               verse-numbers setting still adds one to a single verse. */
+            showVerseNumbers: opts.showVerseNumbers || (!opts.breakOnVerse && primary.length > 1),
             referenceMode: opts.referenceMode,
             showTranslation: opts.showTranslation,
             maxCharsPerSlide: opts.maxCharsPerSlide,
+            /* A long range together is pages of whole verses, the same
+               pages the operator's preview shows (engine.tsx SLIDE_RULES). */
+            maxWordsPerSlide: PAGE_WORDS,
             secondary:
               secondaryVerses.length > 0
                 ? { version: secondaryVersion, verses: secondaryVerses }
@@ -360,6 +382,8 @@ function OutputSurface() {
         if (cmd.command === 'slide-next') setSlideIndex((i) => i + 1);
         if (cmd.command === 'slide-previous') setSlideIndex((i) => Math.max(0, i - 1));
       }),
+      // The operator's pager on the live panel: a long reading is pages.
+      api.onLiveSlide?.((index) => setSlideIndex(index)),
       api.onMediaControl?.((action) => {
         const v = videoRef.current;
         if (!v) return;
@@ -421,6 +445,19 @@ function OutputSurface() {
   const atBottom = !referenceAbove;
   const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, stageTextAlign);
   const textSpacing = TEXT_SPACING[theme.textSpacing];
+
+  /* Words that fit the screen (lib/useFitText): a reading too tall for the
+     stage shrinks to fit, to half the set size at least, and past that ends
+     in "…" — before this a long range ran off the top and bottom edges. The
+     key is everything that changes how the words wrap. */
+  const verseStage = useRef<HTMLDivElement>(null);
+  const verseWords = useRef<HTMLDivElement>(null);
+  const songStage = useRef<HTMLDivElement>(null);
+  const songWords = useRef<HTMLDivElement>(null);
+  const wrapKey = JSON.stringify([theme.fontFamily, theme.scale, theme.weight, theme.safeMargin, theme.textWidth,
+    theme.textCase, theme.textSpacing, theme.refScale, theme.refGap, theme.verseLayout, role, theme.streamLayout, screen]);
+  useFitText(verseStage, verseWords, JSON.stringify([wrapKey, delivery, slideIndex, slide?.lines, slide?.reference, slide ? null : shown?.detection]));
+  useFitText(songStage, songWords, JSON.stringify([wrapKey, delivery, song?.title, song?.label, song?.lines]));
 
   const themedStage = {
     '--verse-font': theme.fontFamily,
@@ -641,10 +678,10 @@ function OutputSurface() {
         </div>
       )}
       {song && screen === 'live' && (
-        <div className="output-stage visible output-song">
+        <div ref={songStage} className="output-stage visible output-song">
           {/* Keyed by what is showing, so each new section re-mounts and the
               entrance plays again, including when the same section is sent again. */}
-          <div className="output-enter" key={`${delivery}|${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
+          <div ref={songWords} className="output-enter" key={`${delivery}|${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
           {song.lines?.map((line: string, i: number) => (
             <div key={i} className="output-verse">
               {line}
@@ -657,9 +694,9 @@ function OutputSurface() {
           </div>
         </div>
       )}
-      <div className={`output-stage ${contentVisible ? 'visible' : ''} ${atBottom ? '' : 'ref-above'}`}>
+      <div ref={verseStage} className={`output-stage ${contentVisible ? 'visible' : ''} ${atBottom ? '' : 'ref-above'}`}>
         {shown && (
-          <div className="output-enter" key={`${delivery}|${formatRef(shown.detection)}|${slideIndex}`}>
+          <div ref={verseWords} className="output-enter" key={`${delivery}|${formatRef(shown.detection)}|${slideIndex}`}>
             {shown.isPreview && <div className="output-preview-mark">preview</div>}
             {slide ? (
               <>
@@ -668,8 +705,9 @@ function OutputSurface() {
                   <div
                     key={line.version + i}
                     className={i === 0 ? 'output-verse' : 'output-verse output-verse-secondary'}
+                    data-fit-body={i === 0 ? '' : undefined}
                   >
-                    {line.text}
+                    <VerseWords text={line.text} />
                   </div>
                 ))}
                 {atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}

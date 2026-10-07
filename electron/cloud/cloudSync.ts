@@ -38,16 +38,19 @@ async function applyOp(op: CloudOp): Promise<void> {
   const supa = getSupabase()
   if (!supa) throw new Error('Supabase client unavailable')
   const { table, op: kind, payload } = op
+  // The HTTP status rides along on the error so the queue can tell a refusal
+  // that will repeat forever from a network blip (see cloudErrors).
+  const fail = (error: unknown, status: number) => Object.assign(error as object, { status })
   if (kind === 'insert') {
-    const { error } = await supa.from(table).insert(payload)
-    if (error) throw error
+    const { error, status } = await supa.from(table).insert(payload)
+    if (error) throw fail(error, status)
   } else if (kind === 'update') {
     const { id, ...rest } = payload
-    const { error } = await supa.from(table).update(rest).eq('id', id)
-    if (error) throw error
+    const { error, status } = await supa.from(table).update(rest).eq('id', id)
+    if (error) throw fail(error, status)
   } else if (kind === 'upsert') {
-    const { error } = await supa.from(table).upsert(payload)
-    if (error) throw error
+    const { error, status } = await supa.from(table).upsert(payload)
+    if (error) throw fail(error, status)
   }
 }
 
@@ -155,8 +158,18 @@ export function getActiveServiceId(): string | null {
   return activeServiceId
 }
 
+/*
+ * While the practice sermon plays (asr/practiceSermon.ts) the engine runs for
+ * real, but none of it is a service: nothing goes to the phone page or the
+ * service record, even when a real service is open.
+ */
+let rehearsal = false
+export function setRehearsal(on: boolean): void {
+  rehearsal = on
+}
+
 export function pushSegment(type: string, confidence = 1): void {
-  if (!activeServiceId) return
+  if (!activeServiceId || rehearsal) return
   enqueue({
     table: 'segments',
     op: 'insert',
@@ -177,7 +190,7 @@ export function pushTranscriptChunk(
   /** Per-word timings, when the recogniser gave any (Deepgram; not whisper). */
   words?: { w: string; s: number; e: number }[] | null
 ): void {
-  if (!activeServiceId) return
+  if (!activeServiceId || rehearsal) return
   if (!text.trim()) return
   enqueue({
     table: 'transcript_chunks',
@@ -203,7 +216,7 @@ export function pushDetectedVerse(
   confidence = 0.5,
   pushedToLive = false
 ): string | null {
-  if (!activeServiceId) return null
+  if (!activeServiceId || rehearsal) return null
   const id = crypto.randomUUID()
   enqueue({
     table: 'detected_verses',
@@ -223,7 +236,7 @@ export function pushDetectedVerse(
 }
 
 export function markVersePushed(verseId: string): void {
-  if (!activeServiceId) return
+  if (!activeServiceId || rehearsal) return
   enqueue({
     table: 'detected_verses',
     op: 'update',
@@ -237,7 +250,7 @@ export function markVersePushed(verseId: string): void {
 }
 
 export function upsertNotes(notes: any): void {
-  if (!activeServiceId) return
+  if (!activeServiceId || rehearsal) return
   enqueue({
     table: 'sermon_notes',
     op: 'upsert',

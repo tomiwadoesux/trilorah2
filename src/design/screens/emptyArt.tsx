@@ -102,7 +102,7 @@ export function EmptyMark({
   const px = (value: number | string) => typeof value === 'number' ? `${value}px` : value;
   return (
     <EmptyMotion play={play} className="tri-empty-mark">
-      <div className="tri-empty-mark__layout" style={{ '--empty-art-w': px(w), '--empty-art-h': px(h) } as CSSProperties}>
+      <div className={`tri-empty-mark__layout${below ? ' tri-empty-mark__layout--actions' : ''}`} style={{ '--empty-art-w': px(w), '--empty-art-h': px(h) } as CSSProperties}>
         <div className="tri-empty-mark__stage" aria-hidden="true">
           <div className="tri-empty-mark__art" style={plain ? { color: INK } : {
             color: INK,

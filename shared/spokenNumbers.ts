@@ -68,6 +68,10 @@ export function parseNumberWithTable(
     return { value: total, consumed }
   }
 
+  // "six teen": a teen split in two by the transcriber.
+  if (v !== undefined && v >= 3 && v <= 9 && words[j + 1] === 'teen') {
+    return { value: total + v + 10, consumed: consumed + 2 }
+  }
   if (v !== undefined && v < 100) {
     total += v
     consumed += 1

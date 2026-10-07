@@ -79,7 +79,8 @@ body {
 
 .output-verse {
   font-family: var(--verse-font, Georgia, 'Times New Roman', serif);
-  font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--verse-scale, 1));
+  /* --fit: shrink-to-fit, set by useFitText (1 when the words fit as set). */
+  font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--verse-scale, 1) * var(--fit, 1));
   font-weight: var(--verse-weight, 600);
   line-height: calc(1.35 + var(--text-line-spacing, 0));
   letter-spacing: var(--text-letter-spacing, 0em);
@@ -89,6 +90,22 @@ body {
     0 2px 14px rgba(0, 0, 0, 0.6),
     0 0 3px rgba(0, 0, 0, 0.5);
   max-width: 62ch;
+}
+
+/* A verse number inside a range, raised like a printed Bible's: small, above
+   the line, set against its verse's first word. Positioned rather than
+   vertical-aligned so it never opens up the line spacing. */
+.output-verse-num {
+  /* Baseline, not <sup>'s own raise: the offset alone puts the number's top
+     at the capitals' height (0.7em of its own 0.5em size). */
+  vertical-align: baseline;
+  position: relative;
+  top: -0.7em;
+  font-size: 0.5em;
+  line-height: 0;
+  margin-right: 0.14em;
+  font-variant-numeric: lining-nums;
+  opacity: 0.85;
 }
 
 .output-ref {
@@ -226,7 +243,7 @@ body {
 }
 
 .role-stream.layout-lower-third .output-verse {
-  font-size: calc(clamp(1.3rem, 2.6vw, 3.2vw) * var(--verse-scale, 1));
+  font-size: calc(clamp(1.3rem, 2.6vw, 3.2vw) * var(--verse-scale, 1) * var(--fit, 1));
   line-height: calc(1.3 + var(--text-line-spacing, 0));
   max-width: 80vw;
 }
@@ -244,7 +261,7 @@ body {
 }
 
 .role-stage .output-verse {
-  font-size: calc(clamp(1.6rem, 3.6vw, 4.8vw) * var(--verse-scale, 1));
+  font-size: calc(clamp(1.6rem, 3.6vw, 4.8vw) * var(--verse-scale, 1) * var(--fit, 1));
 }
 
 .output-stage-strip {
@@ -382,13 +399,13 @@ body {
    family, a size down, slightly dimmed. */
 .output-verse-secondary {
   margin-top: 2.4vh;
-  font-size: calc(clamp(1.4rem, 3.2vw, 4.2vw) * var(--verse-scale, 1));
+  font-size: calc(clamp(1.4rem, 3.2vw, 4.2vw) * var(--verse-scale, 1) * var(--fit, 1));
   opacity: 0.78;
 }
 
 .role-stream.layout-lower-third .output-verse-secondary {
   margin-top: 0.8vh;
-  font-size: calc(clamp(1rem, 2vw, 2.4vw) * var(--verse-scale, 1));
+  font-size: calc(clamp(1rem, 2vw, 2.4vw) * var(--verse-scale, 1) * var(--fit, 1));
 }
 
 /* '2 / 3' — quiet enough that the congregation never reads it first. */

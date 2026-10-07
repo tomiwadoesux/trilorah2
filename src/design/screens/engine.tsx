@@ -8,12 +8,16 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
+import { buildVerseSlides, PAGE_WORDS, type VerseSlide } from '../../../shared/verseDisplay';
 import type { LiveItem, ScreenState } from './projector';
 import type { Spoken } from './transcript/types';
 import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
 import type { ScriptureRecognition } from '../../../shared/types';
 import { removeWithdrawnProposals } from '../../lib/recognitionWithdrawal';
+import { CatchClocks, type CatchClock } from '../../lib/catchClock';
+import { usePracticeStore } from '../../stores/practiceStore';
+import { PRACTICE_SERMON_DEVICE } from '../../../shared/practiceSermon';
+import { catchKind, groupFor, type CatchKind, type SetTail } from '../../lib/catchSets';
 
 /*
  * The one door between this surface and the real engine.
@@ -112,6 +116,23 @@ export interface EngineValue {
   /** Most recently called scripture, retained when its proposal is cleared. */
   latestReference: string | null;
   dismissProposal: (id: string) => void;
+  /**
+   * Each waiting proposal's clock — it stays CATCH_LIFE_MS and then leaves.
+   * Keyed by proposal id; a proposal with no clock has none running.
+   */
+  proposalClocks: Record<string, CatchClock>;
+  /** Proposals whose time ran out and that are on their way off the screen. */
+  leavingProposals: readonly string[];
+  /**
+   * Hold (true) or let go of (false) a proposal's clock for one reason —
+   * 'pointer' while the operator's hand is on it, 'queued' while it waits its
+   * turn in a set. It runs only when nothing holds it.
+   */
+  holdProposal: (id: string, held: boolean, reason?: string) => void;
+  /** Put one of the engine's close alternatives in a proposal's place. */
+  swapProposal: (id: string, reading: Reading) => void;
+  /** Fires when a proposal's time runs out, just before it is removed. */
+  onProposalExpired: (fn: (id: string) => void) => () => void;
   /** Fires when the engine pushes something itself. */
   onEngineLive: (fn: (item: LiveItem) => void) => () => void;
 }
@@ -135,6 +156,18 @@ export interface Proposal {
   /** The database had no such verse. Shown, but never offered to the room. */
   missing: boolean;
   recognition?: ScriptureRecognition;
+  /** How it was caught: said, read out, a named passage, or a story. */
+  kind: CatchKind;
+  /** Verses named one straight after another share a set (lib/catchSets). */
+  group: string;
+  arrivedAt: number;
+  /** The last words heard as it arrived — why it was caught. */
+  heard?: string;
+  /**
+   * The engine's close runners-up for what was heard, best first ("thirteen"
+   * against "thirty"). Only those within ALTERNATE_MARGIN of the best.
+   */
+  alternates?: string[];
 }
 
 const EngineContext = createContext<EngineValue | null>(null);
@@ -155,6 +188,9 @@ export const SLIDE_RULES = {
   referenceMode: 'each' as const,
   showTranslation: false,
   maxCharsPerSlide: 240,
+  /* A range together is pages of whole verses past this, so it can be read
+     on a TV — the same number the wall pages by (src/output.tsx). */
+  maxWordsPerSlide: PAGE_WORDS,
 };
 
 /*
@@ -179,21 +215,50 @@ export function fitOf(words: number): Fit {
 }
 
 /**
- * "Verse four and five" means show four and five — together, if they fit.
- * A range is kept on one slide until it would stop being readable, and only
- * then walked verse by verse.
+ * "Verse four and five" means show four and five — together (owner,
+ * 2026-10-07: "Genesis 3 verse 3-5 should show 3-5", and 3-7 likewise).
+ *
+ * A range is one slide. Fitting it is the screen's job, not a word count's:
+ * the wall and the preview shrink the words until they fit, to half size at
+ * most, and past that end them with "…" (lib/useFitText). Before, a range
+ * past TIGHT_WORDS was walked verse by verse — which is why 3-5 showed 3.
+ * Apart is still the operator's to choose, with the preview's
+ * together/apart control (`together` false).
  */
 export function fitRules(verses: { text: string }[], together?: boolean) {
-  const words = wordCount(verses.map((v) => v.text).join(' '));
-  const keep = together ?? (verses.length > 1 && words <= TIGHT_WORDS);
+  const keep = together ?? verses.length > 1;
   return { ...SLIDE_RULES, breakOnVerse: !keep, showVerseNumbers: keep && verses.length > 1 };
 }
 
 /** How many transcript lines to keep. Enough to read back, not a log file. */
 const TRANSCRIPT_CAP = 200;
 /** Finished sentences kept for the read-along. It shows six; this is slack. */
-/** How many unanswered proposals the rail will hold. */
-const PROPOSAL_CAP = 4;
+/** How many unanswered proposals are held. Each leaves after six seconds, so
+    this only bites when a preacher names a long list in one breath. */
+const PROPOSAL_CAP = 8;
+/** How close, in the engine's 0–100 points, a runner-up must be to be offered. */
+const ALTERNATE_MARGIN = 15;
+
+interface Candidate {
+  book: string;
+  chapter: number;
+  verse: number;
+  endVerse?: number;
+  score: number;
+  source: string;
+}
+
+const candidateReference = (c: Candidate) =>
+  `${c.book} ${c.chapter}:${c.verse}${c.endVerse && c.endVerse !== c.verse ? `-${c.endVerse}` : ''}`;
+
+/** The last few words of what is being heard, for a catch's "why". */
+function lastWords(spoken: Spoken, count = 12): string {
+  const text = spoken.partial.trim() || spoken.lines[spoken.lines.length - 1]?.text || '';
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  return words.length > count ? `…${words.slice(-count).join(' ')}` : words.join(' ');
+}
+/** How long a proposal whose time ran out takes to fade before it is removed. */
+const PROPOSAL_LEAVE_MS = 240;
 
 function referenceOf(d: Detection): string {
   const verse = d.verse == null ? '' : `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `-${d.endVerse}` : ''}`;
@@ -217,14 +282,81 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     lines: [],
     partial: '',
   });
+  /* The latest words, readable from the event handlers below without
+     resubscribing them every time a word arrives. */
+  const spokenRef = useRef(spoken);
+  spokenRef.current = spoken;
+  /* The set the last plain reference joined, for the next one to join. */
+  const setTail = useRef<SetTail | null>(null);
+  const setCount = useRef(0);
+  const lastArrival = useRef(0);
   const [screen, setScreenState] = useState<ScreenState>('live');
   const [latestReference, setLatestReference] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  /*
+   * Every change to the list goes through updateProposals, which keeps this
+   * copy current as of the change itself rather than as of the last render.
+   * The clocks are tidied against it in the same step: tidying them in an
+   * effect after the render used a list one arrival behind, and when three
+   * verses came in one breath it threw away the clocks of the two newest
+   * cards, which then never left.
+   */
+  const proposalsNow = useRef<Proposal[]>([]);
+  const clocksRef = useRef<CatchClocks | null>(null);
+  const updateProposals = useCallback((change: (list: Proposal[]) => Proposal[]) => {
+    const next = change(proposalsNow.current);
+    if (next === proposalsNow.current) return;
+    proposalsNow.current = next;
+    setProposals(next);
+    /* A proposal that left any way but its clock — answered, dismissed,
+       withdrawn, pushed by the engine, crowded past the cap — takes its
+       clock with it. */
+    clocksRef.current?.keepOnly(next.map((p) => p.id));
+  }, []);
 
   /* Subscribers rather than a state value: a push is an event, and a
      component that reacts to one should not also re-render every time
      another one happens. */
   const liveListeners = useRef(new Set<(item: LiveItem) => void>());
+  const expiryListeners = useRef(new Set<(id: string) => void>());
+
+  /*
+   * Every proposal stays CATCH_LIFE_MS and then leaves (see catchClock).
+   * When its time is up it is marked leaving — the card fades — and taken
+   * off the list a moment later. A proposal heard again in that moment is
+   * a new arrival: its removal is called off and its clock starts afresh.
+   */
+  const [proposalClocks, setProposalClocks] = useState<Record<string, CatchClock>>({});
+  const [leavingProposals, setLeavingProposals] = useState<string[]>([]);
+  const leaveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  if (!clocksRef.current) {
+    clocksRef.current = new CatchClocks((id) => {
+      expiryListeners.current.forEach((fn) => fn(id));
+      setLeavingProposals((l) => (l.includes(id) ? l : [...l, id]));
+      leaveTimers.current.set(id, setTimeout(() => {
+        leaveTimers.current.delete(id);
+        updateProposals((p) => p.filter((x) => x.id !== id));
+        setLeavingProposals((l) => l.filter((x) => x !== id));
+      }, PROPOSAL_LEAVE_MS));
+    }, setProposalClocks);
+  }
+  const startProposalClock = useCallback((id: string) => {
+    const pending = leaveTimers.current.get(id);
+    if (pending) {
+      clearTimeout(pending);
+      leaveTimers.current.delete(id);
+      setLeavingProposals((l) => l.filter((x) => x !== id));
+    }
+    clocksRef.current?.start(id);
+  }, []);
+  useEffect(() => {
+    const timers = leaveTimers.current;
+    return () => {
+      clocksRef.current?.dispose();
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
 
   /* Ask the database whether it is there. It answers under DESIGN_MODE=1
      too, which is exactly why db and resolver are separate capabilities. */
@@ -317,6 +449,19 @@ export function EngineProvider({ children }: { children: ReactNode }) {
            the row is absent. That is a message to the operator, and it must
            never be one press away from the projector. */
         const missing = /\bnot found\b/i.test(text);
+        const kind = catchKind(d.recognition);
+        /* Heard again while it waits: same place in its set, fresh clock
+           (startProposalClock below). Without this, a reference repeated in
+           the sentence's final moved to the end of its set. */
+        const again = proposalsNow.current.find((x) => x.reference === reference && x.version === version && x.kind === kind);
+        /* Strictly increasing, so references that land in the same instant
+           — the end of one spoken list — keep the order they were said. */
+        const arrivedAt = again?.arrivedAt ?? Math.max(Date.now(), lastArrival.current + 1);
+        if (!again) lastArrival.current = arrivedAt;
+        const tail = setTail.current;
+        const group = again?.group ?? groupFor(kind, arrivedAt, tail, !!tail && proposalsNow.current.some((p) => p.group === tail.group),
+          `set-${++setCount.current}`);
+        if (kind === 'said' && !again) setTail.current = { group, at: arrivedAt };
         const proposal: Proposal = {
           id: `${d.recognition?.suggestionId ?? reference}@${version}`,
           reference,
@@ -330,14 +475,44 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           slides: buildVerseSlides({ book: d.book, chapter: d.chapter, version }, verses, fitRules(verses)),
           verses,
           missing,
+          kind,
+          group,
+          arrivedAt,
+          heard: lastWords(spokenRef.current) || undefined,
         };
-        setProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id &&
+        updateProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id &&
           !(x.reference === proposal.reference && x.version === proposal.version))].slice(0, PROPOSAL_CAP));
+        /* Its six seconds start now — or start again, if it was already up. */
+        startProposalClock(proposal.id);
       }),
     );
 
     off.push(api.onRecognitionWithdrawn?.(({ suggestionId }) => {
-      setProposals(proposals => removeWithdrawnProposals(proposals, suggestionId));
+      updateProposals(proposals => removeWithdrawnProposals(proposals, suggestionId));
+    }));
+
+    /*
+     * The engine weighs the likely mishearings of every reference it hears
+     * ("John" or "Jonah", "thirteen" or "thirty") and says so right after the
+     * preview. Runners-up close to the best are offered on the card as "or".
+     */
+    off.push(api.onEngineEvent?.('on-candidates', (payload) => {
+      const list = ((payload as { candidates?: Candidate[] } | null)?.candidates ?? []).filter((c) => c && c.book);
+      const primary = list.find((c) => c.source === 'primary');
+      if (!primary) return;
+      const top = Math.max(...list.map((c) => c.score));
+      const near = list
+        .filter((c) => c !== primary && c.score >= top - ALTERNATE_MARGIN)
+        .sort((a, b) => b.score - a.score)
+        .map(candidateReference)
+        .filter((ref, i, all) => all.indexOf(ref) === i && ref !== candidateReference(primary))
+        .slice(0, 3);
+      if (!near.length) return;
+      const said = `${primary.book} ${primary.chapter}:${primary.verse}`;
+      updateProposals((p) => {
+        const i = p.findIndex((x) => x.reference === said || x.reference.startsWith(`${said}-`));
+        return i < 0 ? p : p.map((x, n) => (n === i ? { ...x, alternates: near } : x));
+      });
     }));
 
     /* The engine put something up itself — auto mode, or a push from the
@@ -361,13 +536,13 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           verses,
           origin: 'engine',
         };
-        setProposals((p) => p.filter((x) => !(x.reference === reference && x.version === version)));
+        updateProposals((p) => p.filter((x) => !(x.reference === reference && x.version === version)));
         liveListeners.current.forEach((fn) => fn(item));
       }),
     );
 
     return () => off.forEach((fn) => fn?.());
-  }, [api]);
+  }, [api, startProposalClock, updateProposals]);
 
   /*
    * Starting the microphone, and why this does not say "connecting".
@@ -404,6 +579,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
         return;
       }
       setAsr('listening');
+      /* The practice sermon in place of a microphone (stores/practiceStore). */
+      if (usePracticeStore.getState().on) {
+        api.startListening(PRACTICE_SERMON_DEVICE);
+        return;
+      }
       void Promise.resolve(api.getSetting?.('micDeviceLabel'))
         .then((label) => api.startListening(typeof label === 'string' && label ? label : undefined))
         .catch(() => api.startListening());
@@ -491,11 +671,43 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     [api],
   );
 
-  const dismissProposal = useCallback((id: string) => setProposals((p) => p.filter((x) => x.id !== id)), []);
+  const dismissProposal = useCallback((id: string) => updateProposals((p) => p.filter((x) => x.id !== id)), [updateProposals]);
 
   const onEngineLive = useCallback((fn: (item: LiveItem) => void) => {
     liveListeners.current.add(fn);
     return () => liveListeners.current.delete(fn) as unknown as void;
+  }, []);
+
+  const holdProposal = useCallback(
+    (id: string, held: boolean, reason = 'pointer') => clocksRef.current?.hold(id, held, reason),
+    [],
+  );
+
+  /* The operator chose one of the runners-up: it takes the proposal's place —
+     same card, same set — and the one it replaced becomes the runner-up, so
+     the choice can be taken back. A fresh six seconds, as for a verse heard. */
+  const swapProposal = useCallback((id: string, reading: Reading) => {
+    const m = reading.reference.match(/^(.+?) (\d+):/);
+    if (!m) return;
+    const book = m[1];
+    const chapter = Number(m[2]);
+    updateProposals((p) => p.map((x) => x.id !== id ? x : {
+      ...x,
+      reference: reading.reference,
+      version: reading.version,
+      text: reading.text,
+      verses: reading.verses,
+      slides: buildVerseSlides({ book, chapter, version: reading.version }, reading.verses, fitRules(reading.verses)),
+      trust: null,
+      missing: false,
+      alternates: [x.reference, ...(x.alternates ?? []).filter((a) => a !== reading.reference)].slice(0, 3),
+    }));
+    startProposalClock(id);
+  }, [updateProposals, startProposalClock]);
+
+  const onProposalExpired = useCallback((fn: (id: string) => void) => {
+    expiryListeners.current.add(fn);
+    return () => expiryListeners.current.delete(fn) as unknown as void;
   }, []);
 
   const value = useMemo(
@@ -517,6 +729,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       proposals,
       latestReference,
       dismissProposal,
+      proposalClocks,
+      leavingProposals,
+      holdProposal,
+      swapProposal,
+      onProposalExpired,
       onEngineLive,
     }),
     [
@@ -537,6 +754,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       proposals,
       latestReference,
       dismissProposal,
+      proposalClocks,
+      leavingProposals,
+      holdProposal,
+      swapProposal,
+      onProposalExpired,
       onEngineLive,
     ],
   );
@@ -571,6 +793,11 @@ const DEAD: EngineValue = {
   proposals: [],
   latestReference: null,
   dismissProposal: () => undefined,
+  proposalClocks: {},
+  leavingProposals: [],
+  holdProposal: () => undefined,
+  swapProposal: () => undefined,
+  onProposalExpired: () => () => undefined,
   onEngineLive: () => () => undefined,
 };
 

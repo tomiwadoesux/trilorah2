@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PhoneIcon } from '../ui';
 
 export function MobileRemotePanel() {
   const [open,setOpen]=useState(false);
@@ -33,7 +34,7 @@ export function MobileRemotePanel() {
   useEffect(()=>{ setQr(''); if(url) void api?.mobileQr(url).then(setQr).catch(e=>setError(String(e))); },[url]);
   async function act(fn:()=>Promise<unknown>) { try{setError(''); await fn(); await refresh();}catch(e){reportError(e);} }
   return <>
-    <button type="button" className="rounded border border-hairline px-2 py-1 text-xs" onClick={()=>setOpen(true)}>Mobile remote</button>
+    <button type="button" className="tri-header-control tri-header-remote flex shrink-0 items-center gap-2 lowercase" title="pair a phone as a remote" onClick={()=>setOpen(true)}><PhoneIcon size={12} className="tri-header-icon" />mobile remote</button>
     {open && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-5" onClick={()=>setOpen(false)}>
       <section role="dialog" aria-modal="true" aria-label="Mobile remote" className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl border border-neutral-700 bg-[#171918] p-6 text-white shadow-xl" onClick={e=>e.stopPropagation()}>
         <div className="flex justify-between"><h2 className="text-xl">Mobile remote</h2><button onClick={()=>setOpen(false)} aria-label="Close mobile remote">✕</button></div>

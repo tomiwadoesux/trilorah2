@@ -39,7 +39,9 @@ type Phase =
   | { at: 'ready'; items: StockItem[]; total: number; provider: StockProvider; more: boolean }
   | { at: 'error'; message: string };
 
-export function StockSearch({ onPick, searchQuery, searchMode = 'media', onOpenSettings }: { onOpenSettings?: () => void; onPick: (media: ThemeMedia) => void; searchQuery?: string; searchMode?: 'themes' | 'media' }) {
+export function StockSearch({ onPick, searchQuery, searchMode = 'media', onOpenSettings, flow = false }: { onOpenSettings?: () => void; onPick: (media: ThemeMedia) => void; searchQuery?: string; searchMode?: 'themes' | 'media';
+  /** Grow with the results and let the parent scroll, instead of scrolling inside a fixed box. */
+  flow?: boolean }) {
   const [group, setGroup] = useState<PresetGroup>('creation');
   const [kind, setKind] = useState<Kind>('photo');
   const [preset, setPreset] = useState<StockPreset | null>(null);
@@ -129,7 +131,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', onOpenS
   const noKey = providers !== null && providers.length === 0;
 
   return (
-    <div className="stock-search flex h-full min-h-0 flex-col gap-3">
+    <div className={cx("stock-search flex flex-col gap-3", !flow && "h-full min-h-0")}>
       {embedded && <SegmentedControl options={KINDS} value={kind} onChange={setKind} size="sm" />}
       {/* The two ways in, on one row: the vocabulary on the left, the field
           on the right, and the photo/video switch between them where it
@@ -178,7 +180,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', onOpenS
         })}
       </div>}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-1" style={{ paddingBottom: 'var(--tri-gap)' }}>
+      <div className={cx("px-1", !flow && "min-h-0 flex-1 overflow-y-auto")} style={{ paddingBottom: 'var(--tri-gap)' }}>
         {noEngine ? (
           <OnlineEmpty line="find something for the room" hint="set up a photo library to search images and clips" onSetup={onOpenSettings} />
         ) : noKey ? (

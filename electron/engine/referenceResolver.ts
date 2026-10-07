@@ -21,6 +21,7 @@
  */
 
 import { bookIdMap } from '../data/books'
+import { CHAPTER_COUNTS } from '../../shared/chapterCounts'
 import { EN_NUMBER_WORDS, parseNumberWithTable, parseSpokenNumber } from '../../shared/spokenNumbers'
 export { parseSpokenNumber } from '../../shared/spokenNumbers'
 import { chineseNumberValue, type LanguagePack } from './lang'
@@ -587,7 +588,7 @@ export class SpokenReferenceResolver {
         this.pendingAt = now
         this.pendingAdjacent = true
 
-        const after = this.readReferenceNumbers(tokens, i + 1)
+        const after = this.readReferenceNumbers(tokens, i + 1, book)
         if (after) {
           const { chapter, verse, rangeEnd, consumed, explicit } = after
           i += 1 + consumed
@@ -715,7 +716,8 @@ export class SpokenReferenceResolver {
   /** After a book token: read "3 16", "3 verse 16", "chapter 3 verse 16". */
   private readReferenceNumbers(
     tokens: { word: string; bookBoundary: BookMatch | null }[],
-    start: number
+    start: number,
+    book?: string
   ): { chapter: number; verse: number | null; rangeEnd: number | null; consumed: number; explicit: boolean } | null {
     const words = tokens.map((x) => x.word)
     let i = start
@@ -724,6 +726,20 @@ export class SpokenReferenceResolver {
     if (this.chapterWords.has(words[i])) {
       explicit = true
       i++
+    }
+    // "Exodus 165": the transcriber ran "sixteen five" together into one
+    // number. No book has that many chapters, so it is a chapter and a verse
+    // written as one — the longest chapter the book has, then the rest.
+    const chapters = book === undefined ? undefined : CHAPTER_COUNTS[bookIdMap[book]]
+    if (chapters !== undefined && /^\d{3,4}$/.test(words[i] ?? '') && Number(words[i]) > chapters) {
+      const digits = words[i]
+      for (const split of [2, 1]) {
+        const chapter = Number(digits.slice(0, split))
+        const verse = Number(digits.slice(split))
+        if (chapter >= 1 && chapter <= chapters && verse >= 1) {
+          return { chapter, verse, rangeEnd: null, consumed: i + 1 - start, explicit }
+        }
+      }
     }
     const chap = this.parseNum(words, i)
     if (!chap) return null

@@ -1,0 +1,240 @@
+/* The right half of the verses card — see CatchesPane. Flat cards on the
+   panel's own ground (the owner's plain-ground rule); the only gradients are
+   the app's own controls, the gold "live" and the ash ✕. */
+.catches-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  min-height: 100%;
+  container-type: inline-size;
+}
+.catches-pane.is-empty { height: 100%; padding: 0; }
+
+.catch-eyebrow {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--tri-size-eyebrow);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(229 243 242 / 0.42);
+}
+
+/* The one that is up. */
+.catch-spot {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 12px;
+  padding: 12px 14px 15px;
+  background: rgb(255 255 255 / 0.035);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.09);
+  animation: catch-in 240ms var(--tri-ease-out, ease-out) both;
+  transition: box-shadow 150ms ease;
+}
+.catch-spot.is-pressable, .catch-spot.is-song { cursor: pointer; }
+.catch-spot.is-pressable:hover, .catch-spot.is-song:hover { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18); }
+.catch-spot.is-missing, .catch-row.is-missing { opacity: 0.5; }
+
+/* A set said together, in the order it was said. */
+.catch-steps { display: flex; gap: 6px; margin-bottom: 10px; }
+.catch-step {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  font: inherit;
+  font-size: var(--tri-size-xs);
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: rgb(229 243 242 / 0.55);
+  box-shadow: inset 0 0 0 1px rgb(229 243 242 / 0.14);
+  cursor: pointer;
+  transition: color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+.catch-step:hover { color: rgb(229 243 242 / 0.85); }
+.catch-step.is-current {
+  color: rgb(228 216 122);
+  background: rgb(228 216 122 / 0.08);
+  box-shadow: inset 0 0 0 1px rgb(228 216 122 / 0.6);
+}
+.catch-step.is-sent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: default;
+  color: rgb(228 216 122 / 0.55);
+  background: rgb(228 216 122 / 0.04);
+  box-shadow: inset 0 0 0 1px rgb(228 216 122 / 0.22);
+}
+
+.catch-spot__head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.catch-pill {
+  flex-shrink: 0;
+  font-size: var(--tri-size-xs);
+  line-height: 17px;
+  padding: 0 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.catch-pill.is-sure { color: rgb(228 216 122); background: rgb(228 216 122 / 0.1); box-shadow: inset 0 0 0 1px rgb(228 216 122 / 0.45); }
+.catch-pill.is-maybe { color: rgb(229 243 242 / 0.72); border: 1px dashed rgb(229 243 242 / 0.32); line-height: 15px; }
+.catch-pill.is-song { color: rgb(143 211 192); background: rgb(143 211 192 / 0.08); box-shadow: inset 0 0 0 1px rgb(143 211 192 / 0.45); }
+.catch-meta {
+  font-size: var(--tri-size-eyebrow);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: rgb(229 243 242 / 0.6);
+}
+.catch-meta__dim { color: rgb(229 243 242 / 0.38); }
+.catch-push { margin-left: auto; }
+
+.catch-spot__ref {
+  margin-top: 8px;
+  font-family: var(--font-scripture);
+  font-weight: var(--font-scripture-weight);
+  font-size: clamp(16px, 4.6cqw, 22px);
+  line-height: 1.2;
+  color: rgb(228 216 122);
+}
+.catch-spot__text {
+  margin: 6px 0 0;
+  font-family: var(--font-scripture);
+  font-weight: var(--font-scripture-weight);
+  font-size: clamp(12.5px, 3.2cqw, 15px);
+  line-height: 1.5;
+  color: rgb(229 243 242 / 0.8);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.catch-spot__title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--tri-size); color: var(--tri-ink); }
+.catch-spot__lines {
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  font-size: clamp(12.5px, 3.2cqw, 15px);
+  line-height: 1.45;
+  color: rgb(229 243 242 / 0.85);
+}
+
+/* What else it might have been. */
+.catch-or { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: var(--tri-size-xs); }
+.catch-alt {
+  font: inherit;
+  font-size: var(--tri-size-xs);
+  padding: 2px 8px;
+  border: 1px dashed rgb(228 216 122 / 0.45);
+  border-radius: 7px;
+  background: none;
+  color: rgb(228 216 122);
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+.catch-alt:hover { background: rgb(228 216 122 / 0.08); }
+
+.catch-spot__foot { display: flex; align-items: center; gap: var(--tri-gap); margin-top: 12px; min-width: 0; }
+.catch-why {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--tri-size-xs);
+  font-style: italic;
+  color: rgb(229 243 242 / 0.42);
+}
+.catch-x {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: var(--tri-control-h);
+  border-radius: 8px;
+  color: rgb(229 243 242 / 0.6);
+}
+.catch-x:hover { color: var(--tri-ink); }
+.catch-live {
+  flex-shrink: 0;
+  min-width: 96px;
+  height: var(--tri-control-h);
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: var(--tri-size);
+  text-transform: lowercase;
+  color: rgb(228 216 122 / 0.95);
+}
+.catch-x.is-small { width: 24px; height: 24px; border-radius: 7px; }
+.catch-live.is-small { min-width: 0; height: 24px; padding: 0 12px; border-radius: 7px; font-size: var(--tri-size-xs); }
+
+/* Six seconds, draining. */
+.catch-countdown { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgb(255 255 255 / 0.07); pointer-events: none; }
+.catch-countdown__bar { display: block; height: 100%; transform-origin: left; background: rgb(228 216 122 / 0.85); transition: background-color 200ms ease; }
+.catch-countdown__bar.is-held { background: rgb(229 243 242 / 0.6); }
+
+/* Everything else that is waiting. */
+.catch-rows { display: flex; flex-direction: column; gap: 6px; }
+.catch-row {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 10px 9px;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.025);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+  cursor: pointer;
+  animation: catch-in 240ms var(--tri-ease-out, ease-out) both;
+  transition: box-shadow 150ms ease;
+}
+.catch-row:hover { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15); }
+.catch-row__ref { flex-shrink: 0; white-space: nowrap; font-size: var(--tri-size); color: rgb(228 216 122); }
+.catch-row__title { flex-shrink: 1; min-width: 0; max-width: 55%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--tri-size); color: var(--tri-ink); }
+.catch-row__more { flex-shrink: 0; white-space: nowrap; font-size: var(--tri-size-xs); }
+.catch-row__text { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--tri-size-xs); color: rgb(229 243 242 / 0.55); }
+
+.catch-songs { display: flex; flex-direction: column; gap: 8px; }
+.catch-songs__dot { width: 6px; height: 6px; border-radius: 999px; background: rgb(143 211 192); }
+.catch-songs__waiting { margin: 0; font-size: var(--tri-size-xs); color: rgb(229 243 242 / 0.5); }
+
+/* The catch in the left card, while the verses card is away. */
+.catch-peek { container-type: inline-size; padding: 2px 0; }
+.catch-spot.is-peek { padding: 10px 12px 13px; }
+.catch-spot.is-peek .catch-spot__ref { margin-top: 6px; font-size: clamp(15px, 7.5cqw, 19px); }
+.catch-spot.is-peek .catch-spot__text { -webkit-line-clamp: 3; font-size: clamp(12px, 5.2cqw, 13.5px); }
+.catch-spot.is-peek .catch-spot__foot { margin-top: 10px; }
+.catch-grow { flex: 1; min-width: 0; }
+.catch-peek__more {
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(228 216 122);
+  color: #1d1c0e;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Its six seconds are up. */
+.catches-pane [data-leaving] { animation: catch-out 240ms var(--tri-ease-out, ease-out) both; pointer-events: none; }
+
+@keyframes catch-in { from { opacity: 0; transform: translateY(6px) scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes catch-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-4px) scale(0.99); } }
+@media (prefers-reduced-motion: reduce) {
+  .catch-spot, .catch-row, .catches-pane [data-leaving] { animation-duration: 1ms; }
+}
