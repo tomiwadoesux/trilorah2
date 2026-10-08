@@ -205,6 +205,7 @@ import { DisplayTimingManager } from './engine/displayTimingManager'
 import { processSlides } from './media/ocrProcessor'
 import { MediaMatcher } from './media/mediaMatcher'
 import { searchStock, downloadStock, stockProviders } from './media/stockImages'
+import { importMediaPaths, localPathFromUrl, pickerExtensions, saveClipPoster } from './media/mediaImport'
 import { ServiceAgent } from './engine/serviceAgent'
 import { PostServiceSummary } from './notes/postServiceSummary'
 import {
@@ -324,6 +325,8 @@ function getMimeType(filePath: string): string {
   if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg'
   if (extension === '.webp') return 'image/webp'
   if (extension === '.gif') return 'image/gif'
+  if (extension === '.avif') return 'image/avif'
+  if (extension === '.bmp') return 'image/bmp'
   if (extension === '.svg') return 'image/svg+xml'
   if (extension === '.mp4' || extension === '.m4v') return 'video/mp4'
   if (extension === '.mov') return 'video/quicktime'
@@ -2486,43 +2489,39 @@ ipcMain.handle('pick-background-image', async () => {
   }
 })
 
-// Pick any media file (image or video), save locally to userData/media, and return accessible URL
-ipcMain.handle('pick-media-file', async () => {
-  if (!mainWindow) return { success: false, error: 'No window' }
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Choose Photo or Video',
-    filters: [
-      { name: 'Media Files', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mov', 'webm'] },
-      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] },
-      { name: 'Videos', extensions: ['mp4', 'mov', 'webm'] }
-    ],
-    properties: ['openFile']
-  })
-  if (result.canceled || result.filePaths.length === 0) {
-    return { success: false, canceled: true }
+/*
+ * Pictures and clips from this laptop — electron/media/mediaImport.ts.
+ *
+ * Split in two so the renderer can say "adding 2 of 5…": the dialog only
+ * names the files, and the renderer imports them one call at a time. The
+ * dialog hangs off whichever window asked (the sandbox has no mainWindow),
+ * and takes many files at once.
+ */
+async function pickMediaPaths(event: Electron.IpcMainInvokeEvent): Promise<{ canceled: boolean; paths: string[] }> {
+  const owner = BrowserWindow.fromWebContents(event.sender) ?? mainWindow ?? undefined
+  const options: Electron.OpenDialogOptions = {
+    title: 'Add pictures and clips',
+    filters: [{ name: 'Pictures and clips', extensions: pickerExtensions() }],
+    properties: ['openFile', 'multiSelections'],
   }
-  try {
-    const src = result.filePaths[0]
-    const dir = path.join(app.getPath('userData'), 'media')
-    fs.mkdirSync(dir, { recursive: true })
-    const ext = path.extname(src).toLowerCase()
-    const isVideo = ['.mp4', '.mov', '.webm'].includes(ext)
-    const dest = path.join(dir, `media-${Date.now()}${ext}`)
-    fs.copyFileSync(src, dest)
-    const posix = dest.split(path.sep).join('/')
-    const url = `file://${posix}`
-    const displaySrc = `local-media://file${posix.startsWith('/') ? '' : '/'}${posix}`
-    const name = path.basename(src, ext)
-    return {
-      success: true,
-      url,
-      src: displaySrc,
-      kind: isVideo ? 'video' : 'photo',
-      name
-    }
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'could not copy media file' }
-  }
+  const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options)
+  return { canceled: result.canceled || result.filePaths.length === 0, paths: result.filePaths }
+}
+const mediaDir = () => path.join(app.getPath('userData'), 'media')
+ipcMain.handle('pick-media-paths', (event) => pickMediaPaths(event))
+ipcMain.handle('import-media-files', (_event, paths: unknown) => importMediaPaths(paths, mediaDir()))
+// A clip's card picture as a file, not a data: URL in localStorage (mediaImport.ts).
+ipcMain.handle('save-clip-poster', (_event, id: unknown, dataUrl: unknown) => saveClipPoster(id, dataUrl, mediaDir()))
+
+// The single-file picker older renderer code still calls: the first file of
+// a pick, in the old shape. No longer a blocking copy (see mediaImport.ts).
+ipcMain.handle('pick-media-file', async (event) => {
+  const picked = await pickMediaPaths(event)
+  if (picked.canceled) return { success: false, canceled: true }
+  const { items, skipped } = await importMediaPaths(picked.paths.slice(0, 1), mediaDir())
+  const item = items[0]
+  if (!item) return { success: false, error: skipped[0]?.reason ?? 'could not copy media file' }
+  return { success: true, url: item.url, src: item.src, kind: item.kind, name: item.name }
 })
 
 // Real display status for connections tile
@@ -3380,12 +3379,9 @@ ipcMain.handle('apply-schedule-suggestion', () => {
 ipcMain.handle('read-image-data-url', (_event, imagePath) => {
   if (!imagePath || typeof imagePath !== 'string') return null
   try {
-    // Both URL forms the app stores resolve to the same file on disk.
-    const normalizedPath = imagePath.startsWith('file://')
-      ? decodeURI(imagePath.replace(/^file:\/+/, '/'))
-      : imagePath.startsWith('local-media://')
-        ? decodeURIComponent(new URL(imagePath).pathname)
-        : imagePath
+    // Both URL forms the app stores resolve to the same file on disk — on
+    // Windows too, where both used to come out as '/C:/…' and miss.
+    const normalizedPath = localPathFromUrl(imagePath)
     if (!fs.existsSync(normalizedPath)) return null
     const mimeType = getMimeType(normalizedPath)
     const bytes = fs.readFileSync(normalizedPath)
@@ -3601,9 +3597,7 @@ app.whenReady().then(() => {
   // design-mode branch so the sandbox can show a downloaded background too.
   protocol.handle('local-media', async (request) => {
     try {
-      const requestUrl = new URL(request.url)
-      const requestedPath = decodeURIComponent(requestUrl.pathname)
-      const filePath = process.platform === 'win32' && /^\/[a-zA-Z]:\//.test(requestedPath) ? requestedPath.slice(1) : requestedPath
+      const filePath = localPathFromUrl(request.url)
       if (!filePath || !fs.existsSync(filePath)) {
         return new Response('Not found', { status: 404 })
       }
