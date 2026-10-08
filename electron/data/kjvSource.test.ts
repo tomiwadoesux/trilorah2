@@ -42,6 +42,14 @@ describe('Explicitly numbered KJV imports', () => {
 \v 1 A different canon.`)).toEqual([])
   })
 
+  it('keeps the verse under a bare heading marker (BSB Zechariah 12:1)', () => {
+    expect(parseUsfmBook(String.raw`\id ZEC
+\c 12
+\d
+\v 1 Invented first verse.
+\v 2 Invented second verse.`)).toEqual([[37, 12, 1, 'Invented first verse.'], [37, 12, 2, 'Invented second verse.']])
+  })
+
   it('rejects invalid archives without extracting any files', () => {
     expect(() => readZipEntries(Buffer.from('not a zip'))).toThrow('ZIP directory')
   })

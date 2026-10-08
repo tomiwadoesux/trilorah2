@@ -89,6 +89,8 @@ interface VerseDetection {
   source?: string;
   isPreview?: boolean;
   version?: string;
+  /** The operator's own push on its way through the preview — not a catch. */
+  operatorPush?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -435,6 +437,7 @@ type SongImportResult = import('../../shared/types').SongImportResult;
 type LyricsHit = import('../../electron/songs/lyricsSearch').LyricsHit;
 type LyricsSearchResult = import('../../electron/songs/lyricsSearch').LyricsSearchResult;
 type LyricsGetResult = import('../../electron/songs/lyricsSearch').LyricsGetResult;
+type LyricsPreviewResult = import('../../electron/songs/lyricsSearch').LyricsPreviewResult;
 type YoutubeCaptionsResult = import('../../electron/songs/youtubeCaptions').YoutubeCaptionsResult;
 
 /**
@@ -480,15 +483,23 @@ interface SongsApi {
    * back named in the report rather than dropped, for the operator to settle.
    */
   importCommit(songs: ImportedSong[]): Promise<SongImportResult>;
+  discoverChristianSongs(query: string): Promise<{ ok: true; songs: import('../../shared/christianSongs').ChristianSong[] } | { ok: false; reason: string }>;
   /**
    * LRCLIB search. Never rejects: no connection and no matches both come back
    * as `{ ok: false, reason, message }`, with a `message` fit to show as-is.
    * Hits are already de-duplicated and all have lyrics; at most 25.
    */
-  discoverChristianSongs(query: string): Promise<{ ok: true; songs: import('../../shared/christianSongs').ChristianSong[] } | { ok: false; reason: string }>;
   searchLyrics(query: string): Promise<LyricsSearchResult>;
   /** The words for one hit, as plain text with blank lines between stanzas — feed it to `importText`. */
   getLyrics(id: number): Promise<LyricsGetResult>;
+  /**
+   * One song card's lyrics, in one LRCLIB search: the record a click on the
+   * card opens (`id`, for `getLyrics`, which then answers without the
+   * network) and its opening sung line. Never rejects. `reason: 'busy'` is
+   * LRCLIB overloaded; `retry` waits out one short Retry-After first — for a
+   * click, never for a hover.
+   */
+  lyricsPreview(title: string, artist: string, opts?: { retry?: boolean }): Promise<LyricsPreviewResult>;
   /**
    * Lyrics from a video's captions; takes any YouTube link or a bare id.
    * `trackKind: 'auto'` means speech recognition wrote them: expect wrong
@@ -513,7 +524,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   mobileThumbnail(imagePath:string):Promise<string|null>;
   mobileApprove(id:string,allow:boolean): Promise<boolean>;
   mobileQr(url:string): Promise<string>;
-  mobileVerse(reference:string,version:string,live:boolean): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string}>;
+  /** `superseded`: a live press overtaken while its online chapter loaded — main did not put it up. */
+  mobileVerse(reference:string,version:string,live:boolean): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string;superseded?:boolean}>;
   onMobileRequest(callback:(request:{id:string;command:string;args:Record<string,unknown>;deadline:number})=>void): Unsubscribe;
   mobileReply(reply:{id:string;result?:unknown;error?:string}):void;
   remoteGenerateCode():Promise<string|null>;
@@ -524,9 +536,13 @@ interface WindowApi extends Partial<TriPackageApi> {
   /* Scripture ------------------------------------------------------ */
   getChapter(bookId: number, chapter: number, version?: string): Promise<ChapterResult>;
   getAvailableVersions(): Promise<string[]>;
+  /** Every Bible a picker lists: installed and online ones usable now, then NKJV/NIV greyed with why. Refreshes arrive on 'on-bible-versions-changed'. */
+  getBibleVersions?(): Promise<{ versions: import('../../shared/bibleVersions').BibleVersionRow[]; online: { state: string; configured: boolean; text: string; versions: { code: string; title: string; attribution: string | null; chapters: number }[] } | null }>;
+  /** The verses of book chapter:start-end this version has — a number it leaves out is skipped, not a stop. */
+  getVerseRange?(book: string | number, chapter: number, start: number, end: number, version?: string): Promise<{ success: boolean; verses: { verse: number; text: string }[]; version?: string; error?: string }>;
   /** Fullscreen the window this page is in. Resolves to the new state. */
   toggleWindowFullscreen?(): Promise<boolean>;
-  getDbStatus?(): Promise<{ connected: boolean; verses?: number; error?: string }>;
+  getDbStatus?(): Promise<{ connected: boolean; verses?: number; versions?: string[]; error?: string }>;
   searchVerse(book: string, chapter: number, verse: number, version?: string): Promise<VerseSearchResult>;
 
   /* Engine events --------------------------------------------------- */
@@ -672,6 +688,10 @@ interface WindowApi extends Partial<TriPackageApi> {
     matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: 'named' | 'story' | 'meaning' }[];
   }>;
   setDisplayVersion?(version: string): Promise<void>;
+  /** Change this service's Bible (null: back to the church's default). Resolves to the version now in use. */
+  setSessionVersion?(version: string | null): Promise<string>;
+  /** The version catches and the library read from right now. */
+  getSessionVersion?(): Promise<string>;
   getSeasonalTheme?(): Promise<string>;
   getNotesProviderStatus?(): Promise<{ id: string; status: string }>;
   getAvailableLanguages?(): Promise<Array<{ code: string; label: string }>>;
@@ -696,6 +716,14 @@ interface WindowApi extends Partial<TriPackageApi> {
   /** `url` is file:// (what the setting stores); `src` is local-media:// (what an <img> can load). */
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
   pickMediaFile?(): Promise<{ success: boolean; url?: string; src?: string; kind?: 'video' | 'photo'; name?: string; canceled?: boolean; error?: string }>;
+  /** The native dialog, many files at once — paths only; nothing is copied yet. */
+  pickMediaPaths?(): Promise<{ canceled: boolean; paths: string[] }>;
+  /** Copies into userData/media, deduped by content (electron/media/mediaImport.ts). Folders open one level. */
+  importMediaFiles?(paths: string[]): Promise<import('../../shared/importedMedia').MediaImportResult>;
+  /** A clip's poster (a jpeg data: URL) as a file in userData/media/posters → its local-media:// URL, or null. */
+  saveClipPoster?(id: string, dataUrl: string): Promise<string | null>;
+  /** A dropped File's path on disk ('' for one that has none — an image dragged out of a web page). */
+  pathForFile?(file: File): string;
   getDisplaysStatus?(): Promise<{ totalDisplays: number; hasExternal: boolean; primary: { id: number; bounds: any }; externals: Array<{ id: number; bounds: any }> }>;
   getOutputsStatus?(): Promise<OutputsStatus>;
   /** A display came or went, an output opened or closed, or a job or display choice changed. */

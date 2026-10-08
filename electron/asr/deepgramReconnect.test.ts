@@ -43,6 +43,11 @@ describe('Deepgram reconnect', () => {
   const statuses: string[] = []
   const errors: string[] = []
   beforeEach(() => {
+    /* A fresh module per test: deepgram.ts keeps lastAudioAt at module
+       level, and the reconnect test's audio left it 500 fake-ms in the
+       future, so the keep-alive test lost its first tick whenever the two
+       ran less than half a second apart (it only passed on a slow machine). */
+    vi.resetModules()
     vi.useFakeTimers()
     process.env.DEEPGRAM_API_KEY = 'test-key'
     sockets.length = 0

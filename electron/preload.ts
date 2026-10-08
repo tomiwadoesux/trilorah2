@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type { SongPatch } from '../shared/types'
 import type { LiveContent } from '../shared/liveContent'
@@ -44,6 +44,11 @@ contextBridge.exposeInMainWorld('api', {
 
   // Get available Bible versions
   getAvailableVersions: () => ipcRenderer.invoke('get-available-versions'),
+  // The same list with names, online/bundled, and NKJV/NIV greyed with the reason until a YouVersion key unlocks them
+  getBibleVersions: () => ipcRenderer.invoke('get-bible-versions'),
+  // A passage's verses in one read, gaps and all (the projector and its second line)
+  getVerseRange: (book: string | number, chapter: number, start: number, end: number, version?: string) =>
+    ipcRenderer.invoke('get-verse-range', { book, chapter, start, end, version }),
   toggleWindowFullscreen: () => ipcRenderer.invoke('window-toggle-fullscreen') as Promise<boolean>,
 
   // Bible database health (drives the missing-DB banner)
@@ -281,6 +286,9 @@ contextBridge.exposeInMainWorld('api', {
   // Translation control (also reachable by the preacher's voice)
   setDisplayVersion: (version: string) =>
     ipcRenderer.invoke('set-display-version', version),
+  // This service's Bible (LIVE's dropdown) — never saved over the church's default
+  setSessionVersion: (version: string | null) => ipcRenderer.invoke('set-session-version', version),
+  getSessionVersion: () => ipcRenderer.invoke('get-session-version'),
   getSeasonalTheme: () => ipcRenderer.invoke('get-seasonal-theme'),
   getNotesProviderStatus: () => ipcRenderer.invoke('get-notes-provider-status'),
 
@@ -360,6 +368,20 @@ contextBridge.exposeInMainWorld('api', {
   // Themes — native background image picker (copies into userData)
   pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
   pickMediaFile: () => ipcRenderer.invoke('pick-media-file'),
+  // Many at once: the dialog names them, then the renderer imports them one
+  // call at a time so it can say how far along it is (main.ts, mediaImport.ts).
+  pickMediaPaths: () => ipcRenderer.invoke('pick-media-paths'),
+  importMediaFiles: (paths: string[]) => ipcRenderer.invoke('import-media-files', paths),
+  saveClipPoster: (id: string, dataUrl: string) => ipcRenderer.invoke('save-clip-poster', id, dataUrl),
+  // A file dropped from Finder → its path. File.path is gone since Electron
+  // 32; this is its documented replacement, and only a preload can call it.
+  pathForFile: (file: File) => {
+    try {
+      return webUtils.getPathForFile(file)
+    } catch {
+      return ''
+    }
+  },
   getDisplaysStatus: () => ipcRenderer.invoke('get-displays-status'),
   // The connected displays and where each output goes — the outputs card
   // and Settings draw this. Asked again whenever on-outputs-changed fires.
@@ -537,6 +559,8 @@ contextBridge.exposeInMainWorld('api', {
     discoverChristianSongs: (query: string) => ipcRenderer.invoke('songs-discover', { query }),
     searchLyrics: (query: string) => ipcRenderer.invoke('lyrics-search', { query }),
     getLyrics: (id: number) => ipcRenderer.invoke('lyrics-get', { id }),
+    lyricsPreview: (title: string, artist: string, opts?: { retry?: boolean }) =>
+      ipcRenderer.invoke('lyrics-preview', { title, artist, retry: !!opts?.retry }),
     youtubeCaptions: (url: string) => ipcRenderer.invoke('youtube-captions', { url })
   },
   // Evals (item 25)

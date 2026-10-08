@@ -155,6 +155,21 @@ body {
   background-position: center;
 }
 
+/* A new background fading in over the one it replaces — see
+   lib/useBackgroundCrossfade, which holds the duration in step with this. */
+.output-background-enter {
+  animation: output-background-in 300ms ease-out both;
+}
+
+@keyframes output-background-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .output-background-enter { animation: none; }
+}
+
 .output-dim {
   position: absolute;
   inset: 0;
@@ -422,6 +437,34 @@ body {
 
 .role-stage .output-slide-count {
   bottom: 13vh;
+}
+
+/* An online Bible's copyright line (NIV, NKJV — YouVersion's terms): on
+   every slide of its words, as the last line of the block — under the
+   reference whichever way round the slide is built, aligned with the words,
+   and never over them. Small and quiet so the room reads the verse first;
+   two lines at most. */
+.output-credit {
+  margin-top: 1.4vh;
+  max-width: 62vw;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: clamp(0.62rem, 0.9vw, 1.15vw);
+  font-weight: 400;
+  font-variant-caps: normal;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  text-transform: none;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.role-stream.layout-lower-third .output-credit {
+  margin-top: 0.6vh;
+  max-width: none;
 }
 
 .output-stage-timer {

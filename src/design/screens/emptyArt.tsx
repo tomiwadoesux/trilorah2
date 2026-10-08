@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ExpandIcon } from '../../ui';
 import { createPatches } from './dottedSurface';
 import { useEmptyHover } from './useEmptyHover';
@@ -61,6 +61,33 @@ export function EmptyMotion({ children, className = '', play = 'hover' }: {
  * on a hard edge — the same radial mask idea as ArtLayer, so a trace never
  * competes with the words beneath it.
  */
+/*
+ * The short-card tiers the drawing's layout steps down at, as attributes:
+ * data-short at 225px tall or less, data-shorter at 140, data-shortest at
+ * 135. They used to be @container height queries, which need a SIZE
+ * container — and in Chromium a size container cancels the hover
+ * transitions of the drawing inside it the frame after they start (while
+ * the header orb redraws), so the drawings snapped instead of easing.
+ * Measured before paint, then on resize only.
+ */
+function useShortCard() {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const tier = (h: number) => {
+      el.toggleAttribute('data-short', h <= 225);
+      el.toggleAttribute('data-shorter', h <= 140);
+      el.toggleAttribute('data-shortest', h <= 135);
+    };
+    tier(el.clientHeight);
+    const observer = new ResizeObserver(([entry]) => tier(entry.contentRect.height));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
 export function EmptyMark({
   art,
   line,
@@ -100,8 +127,12 @@ export function EmptyMark({
   plain?: boolean;
 }) {
   const px = (value: number | string) => typeof value === 'number' ? `${value}px` : value;
+  const frame = useShortCard();
   return (
     <EmptyMotion play={play} className="tri-empty-mark">
+      {/* A width-only container; its height tiers come from useShortCard
+          (see .tri-empty-mark__frame for why it is not a size container). */}
+      <div ref={frame} className="tri-empty-mark__frame">
       <div className={`tri-empty-mark__layout${below ? ' tri-empty-mark__layout--actions' : ''}`} style={{ '--empty-art-w': px(w), '--empty-art-h': px(h) } as CSSProperties}>
         <div className="tri-empty-mark__stage" aria-hidden="true">
           <div className="tri-empty-mark__art" style={plain ? { color: INK } : {
@@ -118,6 +149,7 @@ export function EmptyMark({
           {hint && <p className="tri-empty-mark__hint">{hint}</p>}
           {below && <div className="tri-empty-mark__actions">{below}</div>}
         </div>}
+      </div>
       </div>
     </EmptyMotion>
   );

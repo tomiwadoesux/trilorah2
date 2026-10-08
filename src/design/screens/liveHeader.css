@@ -76,20 +76,30 @@
   opacity: 0.4;
 }
 
+/* The view tabs sit in a tray of the run-of-service card's material (#111
+   and its hairline), the width of the rail, so the four icons read as one
+   control lined up with that card below (owner, 2026-10-08). The padding is the inset the pill sits
+   at; the tray is still shorter than the strip at every density. */
 .tri-header-views {
   --tri-view-w: calc(var(--tri-control-h) * 1.25);
+  --tri-view-inset: 4px;
   position: relative;
   isolation: isolate;
-  height: var(--tri-control-h);
+  height: calc(var(--tri-control-h) + var(--tri-view-inset) * 2);
+  padding: var(--tri-view-inset);
   justify-content: space-between;
   gap: 0;
+  border-radius: calc(var(--tri-radius-control) + var(--tri-view-inset));
+  corner-shape: var(--tri-corner);
+  background: #111111;
+  box-shadow: inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.055);
 }
 
 /* Sliding motion adapted from LeonLinBuild's nav:
    https://codepen.io/LeonLinBuild/pen/emdgRJj */
 .tri-header-view-pill {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: var(--tri-view-inset) auto var(--tri-view-inset) 0;
   z-index: 0;
   width: var(--tri-view-pill-w, var(--tri-view-w));
   border-radius: 8px;
@@ -245,7 +255,8 @@
 
 /* The orb is not a control. It is the engine's face: bare on the ground,
    no box of its own, and a size up from the buttons beside it. */
-.tri-live-header .tri-header-orb { margin-left: 0; height: calc(var(--tri-control-h) * 1.3); }
+/* Taller than the strip on purpose: it overhangs the row a few px each way. */
+.tri-live-header .tri-header-orb { margin-left: 0; height: calc(var(--tri-control-h) * 1.65); }
 .tri-header-orb-face { border-radius: 50%; padding: 0; background: none; cursor: pointer; }
 .tri-header-orb-face:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 2px; }
 

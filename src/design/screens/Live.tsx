@@ -1,21 +1,25 @@
 import { isEmptyPreview } from '../emptyPreviewMode';
 import { presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
+import { liveKey } from '../../lib/liveKey';
+import { readingStep } from '../../lib/readingStep';
 import { outputThemeSettings } from '../../lib/outputTheme';
+import { CLIP_NOT_BACKGROUND, NO_BACKGROUND, backgroundDropAction, backgroundFor, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
+import { toDisplayUrl } from '../../../shared/mediaUrl';
 import { TEXT_WIDTH } from '../../../shared/textWidth';
 import { resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, type TextSpacing } from '../../../shared/textSpacing';
-import { normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
+import { forgetTriMedia, normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
 import { editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
 import { lyricScore } from '../../lib/songMatch';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useMobileRemote } from './useMobileRemote';
-import { SermonStartControl } from './SermonStartControl';
 import { MicPicker } from '../../components/MicPicker';
 import { MobileRemotePanel } from '../../components/MobileRemotePanel';
 import { ScriptureCatches, ScriptureFindOverlay, StorySearch } from './ScriptureCatches';
+import { useScriptureFindStore } from '../../stores/scriptureFindStore';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
 import { orbStatusDescription, useOrbShape } from '../orb/orbIdle';
@@ -47,6 +51,7 @@ import {
   GlobeIcon,
   LaptopIcon,
   PlusIcon,
+  ImportIcon,
   PlayIcon,
   PauseIcon,
   slideBackdrop,
@@ -89,13 +94,15 @@ import { LibraryBrowser, LibraryPane, LibrarySearch, useLibrarySelection } from 
 import { REFERENCE_CAP_EMS, bookAllowance, referenceColumnWidth, splitReference } from '../../lib/referenceColumn';
 import { catchEntries, queuedIds, spotlightIndex, spotlightItem } from '../../lib/catchSets';
 import { useCatchStore } from '../../stores/catchStore';
+import { useLiveStore } from '../../stores/liveStore';
+import { versionOptions, versionRowOptions, type BibleVersionRow } from '../../../shared/bibleVersions';
 import { CatchPeek, CatchesPane } from './CatchesPane';
 import { ScriptureTravel } from './ScriptureTravel';
 import { chapterOrdinal, liveSpan, passingRows, spanReference, travelShape, type LiveSpan, type ReelRow } from '../../lib/scriptureReel';
 import { reducedMotion } from './dashboard/expand';
 import { AddSongDialog, type SongSource } from './songs/AddSongDialog';
 import { SongEditor, type EditorSession } from './songs/SongEditor';
-import { LibraryToolbar } from './LibraryToolbar';
+import { LibraryAction, LibraryToolbar } from './LibraryToolbar';
 import { useSongDrafts } from './songs/useSongDrafts';
 import { NEW_PREFIX, cardsToSections, isNewId, type SongBase, type SongDraft } from '../../../shared/songDraft';
 import './songs/songs.css';
@@ -111,11 +118,14 @@ import {
 } from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
-import { addMedia, removeMedia, mediaSrc, randomStill, useMediaLibrary, videoLength, videoPoster, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
-import { ProjectorProvider, useProjector, type LiveItem } from './projector';
+import { addMedia, addFromLaptop, removeMedia, mediaSrc, randomStill, useMediaLibrary, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
+import { finderDropProps, useFinderDrag, type FinderDropProps } from './finderDrop';
+import { finderPaneHint, finderStageHint, finderStagePick, shelfFor, type FinderStageKey } from '../../lib/laptopImport';
+import { ProjectorProvider, useProjector, type LiveItem, type ScreenState } from './projector';
+import { previewClearPlan } from '../../lib/previewClear';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, type Proposal } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
-import { DragKeyframes, DragProvider, useDrag } from './drag';
+import { DragKeyframes, DragProvider, useDrag, type DragItem, type DropTargetProps } from './drag';
 import { Panel } from './parts';
 import './liveHeader.css';
 import './dottedSurface.css';
@@ -401,7 +411,10 @@ const REF_GAP = { min: 0, max: 3, step: 0.05 } as const;
  *
  * NOT part of ThemeSettings, and the difference is the point: a theme is
  * edited in preview and only reaches the room on "go live", because changing
- * it moves words people are reading. A transition cannot disturb what is
+ * it moves words people are reading. (The one exception is the background
+ * alone, put on the wall on purpose — a double-click in themes or a drop on
+ * the LIVE box — which changes the picture behind the words and nothing that
+ * moves them.) A transition cannot disturb what is
  * already up — it only decides how the NEXT thing arrives — so it is written
  * through the moment it is chosen, like any other setting.
  *
@@ -580,7 +593,7 @@ function ThemesEditor({
         <Slider label="dimness" value={theme.dimness} onChange={(dimness) => onChange({ ...theme, dimness })} />
         <Slider label="blur" value={theme.blur} onChange={(blur) => onChange({ ...theme, blur })} min={0} max={12} />
         <p className="text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
-          choose a background in media
+          choose a background in media › themes, or drop a picture on the preview or the live screen
         </p>
         <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} />
         <div className="grid min-w-0 grid-cols-2 gap-x-4">
@@ -839,7 +852,24 @@ function ThemeControls({ label, children }: { label: string; children: ReactNode
  */
 type MediaView = 'themes' | 'media';
 
-function MediaBrowser({ selected, onSelect, onOpenSettings }: { selected: string; onSelect: (id: string) => void; onOpenSettings: () => void }) {
+/** Puts a still behind the words — in the preview, or on the wall now — and
+    says what happened (LiveBody's chooseBackground). */
+type ChooseBackground = (id: string, where: 'preview' | 'live', how?: 'click' | 'drop' | 'pick') => Promise<string>;
+
+function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettings }: {
+  /** The preview's background — the ring, in themes only: in media a click
+      stages content, and a ring there would read as that. */
+  selected: string;
+  /** The wall's background — the gold "live" tag, on whichever shelf the
+      card sits: a media photo dropped on LIVE is the wall's background too. */
+  live: string;
+  onChoose: ChooseBackground;
+  /** The preview's background was deleted: LiveBody picks another, without
+      leaving this tab (its onSelect used to throw the operator back to
+      verses), and says which. */
+  onBackgroundGone?: () => string | undefined;
+  onOpenSettings: () => void;
+}) {
   const [view, setView] = useState<MediaView>('media');
   const [online, setOnline] = useState(false);
   const [query, setQuery] = useState('');
@@ -858,32 +888,138 @@ function MediaBrowser({ selected, onSelect, onOpenSettings }: { selected: string
     return () => window.removeEventListener('pointerdown', close);
   }, []);
   const store = (media: ThemeMedia) => {
-    addMedia({ ...media, collection: view });
+    /* A clip goes to media from either view, the way one from the laptop
+       does (shelfFor): on the themes shelf nothing could use it, and a click
+       there would stage it as content from the backgrounds view. */
+    const shelf = shelfFor({ kind: media.kind ?? 'photo' }, view);
+    addMedia({ ...media, collection: shelf });
     setSearchOpen(false);
-    setNotice(`Added to ${view}.`);
+    /* Picked or added while looking at backgrounds, a still is wanted as one:
+       it goes into the preview as well as onto the shelf. */
+    if (view === 'themes' && canBeBackground(media)) {
+      void onChoose(media.id, 'preview', 'click').then((said) => setNotice(`added to themes · ${said}`));
+      return;
+    }
+    setNotice(shelf !== view ? `added to ${shelf} — ${CLIP_NOT_BACKGROUND}` : `added to ${view}`);
   };
-  const addLocal = async () => {
-    const result = await window.api?.pickMediaFile?.();
-    if (!result?.success || !result.url) return;
-    const url = result.src ?? result.url;
-    const [poster, length] = result.kind === 'video' ? await Promise.all([videoPoster(url), videoLength(url)]) : [undefined, undefined];
-    store({ id: `local:${result.url}`, label: result.name ?? 'media', detail: length ? `${length} · this laptop` : 'this laptop', seed: 4,
-      style: 'smoke', source: 'local', url, poster, kind: result.kind === 'video' ? 'video' : 'photo' });
+  /*
+   * A card's press. On the drag-bound wrapper, not on the card's button: the
+   * drag binding captures the pointer on the wrapper at pointerdown, and a
+   * captured pointer's click is delivered to the capture target — so a click
+   * handler on the button inside never ran for any card with a file (every
+   * photo or clip from the laptop or online), in either view. Enter and Space
+   * on the focused button still click it, and that click bubbles here.
+   *
+   *   themes  click previews it as the background; double-click puts it on
+   *           the wall now, the way a verse row previews on one press and
+   *           sends on two
+   *   media   click stages it as content, a picture instead of words
+   */
+  const press = (media: ThemeMedia) => {
+    if (view === 'themes' && canBeBackground(media)) {
+      void onChoose(media.id, 'preview', 'click').then(setNotice);
+      return;
+    }
+    if (media.url) projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: media.kind ?? 'photo', origin: 'operator' });
+  };
+  const pressTwice = (media: ThemeMedia) => {
+    if (view === 'themes' && canBeBackground(media)) void onChoose(media.id, 'live').then(setNotice);
+  };
+  /* What a carried card can be dropped on, said while it is carried. */
+  const carried = drag.active?.mediaId ? drag.active : null;
+  /*
+   * Pictures and clips from this laptop — the picker, or files dropped from
+   * Finder on this pane. They land on the shelf being looked at (a clip
+   * always in media), and the status line says how far along it is and
+   * then how it went: never silent, because an add that did nothing reads
+   * exactly like a broken one.
+   *
+   * In themes, one picture is wanted as a background, so it goes into the
+   * preview too — the same as picking one online there.
+   */
+  const [adding, setAdding] = useState(false);
+  const canAdd = !!(window.api?.pickMediaPaths || window.api?.pickMediaFile);
+  const addHere = async (paths?: string[]) => {
+    const wanted = view;
+    setAdding(true);
+    try {
+      const { cards, notice: said, canceled } = await addFromLaptop({ paths, wanted, onProgress: setNotice });
+      if (canceled) {
+        setNotice('');
+        return;
+      }
+      setSearchOpen(false);
+      const one = cards.length === 1 ? cards[0] : undefined;
+      if (wanted === 'themes' && one && canBeBackground(one)) {
+        setNotice(`${said} · ${await onChoose(one.id, 'preview', 'click')}`);
+        return;
+      }
+      setNotice(said);
+    } finally {
+      setAdding(false);
+    }
+  };
+  const finder = useFinderDrag();
+  const finderHere = finder.active && finder.over === 'media-pane';
+  const dropHere = finderDropProps('media-pane', (paths, count) => {
+    if (paths.length) void addHere(paths);
+    else setNotice(count ? 'drag the files themselves from Finder' : 'nothing to add there');
+  });
+  /*
+   * Off the shelf, and out of the last saved service so it does not come
+   * back on the next launch. The file stays where it is: a run row or a
+   * saved service may still point at it.
+   *
+   * Not the wall's own background — the wall would go on showing a picture
+   * the shelf no longer has, and the LIVE box could not draw it. The
+   * preview's is fine: LiveBody moves the preview to another background.
+   */
+  const remove = (media: ThemeMedia) => {
+    if (media.id === live) {
+      setNotice(`${media.label} is on the wall — put another background up before deleting it`);
+      return;
+    }
+    const gone = removeMedia(media.id);
+    if (!gone) return;
+    void forgetTriMedia(gone.id);
+    window.dispatchEvent(new Event('trilorah-library-changed'));
+    const next = gone.id === selected ? onBackgroundGone?.() : undefined;
+    setNotice(next ? `deleted ${gone.label} · the preview is on ${next} now` : `deleted ${gone.label}`);
   };
   const pill = 'flex h-[35px] min-w-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1';
   const button = 'flex h-[25px] shrink-0 items-center justify-center rounded-full px-3 text-xs transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2';
   return (
-    <div ref={root} className="relative flex h-full min-h-0 flex-col gap-3 px-3" onKeyDown={e => { if (e.key === 'Escape') setSearchOpen(false); }}>
-      <div role="toolbar" aria-label="media library" className="flex shrink-0 items-center gap-2">
+    <div ref={root} className="relative flex h-full min-h-0 flex-col gap-3 px-3" onKeyDown={e => { if (e.key === 'Escape') setSearchOpen(false); }} {...dropHere}>
+      {/* A container, so the add action can drop its words before the row —
+          which does not wrap — runs out of room. */}
+      <div role="toolbar" aria-label="media library" className="@container/mediabar flex shrink-0 items-center gap-2">
         <div className={`${pill} flex-1`}>
-          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" aria-pressed={online} onClick={() => { setOnline(true); setSearchOpen(true); }}><GlobeIcon size={15} /></button>
-          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="search this laptop" aria-pressed={!online} onClick={() => { setOnline(false); setSearchOpen(false); }}><LaptopIcon size={15} /></button>
+          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" title="search online" aria-pressed={online} onClick={() => { setOnline(true); setSearchOpen(true); }}><GlobeIcon size={15} /></button>
+          {/* A filter, not an add: it shows what is already on this laptop's
+              shelf. It used to sit beside the add button and read as one. */}
+          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="show what is on this laptop" title="show what is on this laptop" aria-pressed={!online} onClick={() => { setOnline(false); setSearchOpen(false); }}><LaptopIcon size={15} /></button>
           <span aria-hidden className="mx-1 h-3 w-px bg-white/15" />
           <input type="text" aria-label={`search ${view}`} placeholder={`search ${view}…`} value={query} onFocus={() => online && setSearchOpen(true)} onChange={e => { setQuery(e.target.value); setSearchOpen(online); }} className="min-w-0 flex-1 bg-transparent px-1 text-xs outline-none" />
-          <button type="button" className={button} aria-label="add media from this laptop" disabled={!window.api?.pickMediaFile} onClick={() => void addLocal()}><PlusIcon size={14} /></button>
         </div>
+        {/* Its own control in the library toolbars' material — the slides
+            tab's "import slides" is the same act — rather than a + tucked
+            inside the search field, where it read as part of the search. */}
+        <LibraryAction
+          textClassName="hidden @min-[30rem]/mediabar:inline"
+          action={{
+            id: 'add',
+            label: canAdd ? 'add pictures and clips from this laptop — or drop them here from Finder' : 'adding from the laptop needs the desktop app',
+            text: 'add from laptop',
+            icon: <ImportIcon size={13} />,
+            disabled: !canAdd || adding,
+            onClick: () => void addHere(),
+          }}
+        />
         <div className={pill} role="group" aria-label="library collection">
-          {(['themes','media'] as const).map(value => <button key={value} type="button" {...(value === 'themes' && (!drag.active || drag.active.mediaId) ? drag.dropProps('media-themes') : {})}
+          {/* The themes toggle takes a carried still: filed under themes and
+              previewed. Never a clip — a clip is not a background — and only
+              the card in hand, so parked verses are not lost (solo). */}
+          {(['themes','media'] as const).map(value => <button key={value} type="button" {...(value === 'themes' && carried && carried.mediaKind !== 'video' ? drag.dropProps('media-themes', { solo: true }) : {})}
             className={`${button} ${view === value || (value === 'themes' && drag.over === 'media-themes') ? 'bg-white/15 text-[var(--tri-ink)]' : 'text-[var(--tri-ink-muted)]'}`}
             aria-pressed={view === value} onClick={() => { setView(value); setNotice(''); }}>{value}</button>)}
         </div>
@@ -900,26 +1036,45 @@ function MediaBrowser({ selected, onSelect, onOpenSettings }: { selected: string
           <div className="min-h-[240px]"><StockSearch searchQuery={query} searchMode={view} onPick={store} onOpenSettings={onOpenSettings} flow /></div>
         </div>
       ) : null}
-      <div role="status" className="shrink-0 text-xs text-[var(--tri-ink-muted)]">{notice || (drag.active?.mediaId ? 'Drop on themes to use this as a background.' : view === 'themes' ? 'Choose a background for your text.' : 'Select to preview · drag to themes or into the service.')}</div>
-      {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}>
+      <div role="status" className="shrink-0 text-xs text-[var(--tri-ink-muted)]">{carried
+        ? carried.mediaKind === 'video' ? 'drop on the preview to stage this clip, or into the service' : 'drop on themes, the preview or the live screen to use it as a background'
+        : finder.active ? finderPaneHint(view, finder.kinds, finderHere)
+        : notice || (view === 'themes' ? 'click to preview a background · double-click to put it on the wall now' : 'select to preview · drag to themes or into the service')}</div>
+      {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
+        onClick={() => press(media)} onDoubleClick={() => pressTwice(media)}>
         <MediaCard src={mediaSrc(media)} label={media.label} detail={media.detail} selected={view === 'themes' && selected === media.id} badge={media.kind === 'video' ? 'video' : null}
-          onClick={() => view === 'themes' && media.kind !== 'video' ? onSelect(media.id) : media.url && projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: media.kind ?? 'photo', origin: 'operator' })} />
+          live={live === media.id} />
         {/* The card's acts, on the picture, the way a song card carries
             its own. Only something the church added can be deleted; the
             stock washes have no file and come back on the next launch. */}
-        {media.url ? <div className="absolute right-2 top-2 flex items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/media:opacity-100"
-          onPointerDown={(e) => e.stopPropagation()}>
-          {view === 'media' && media.kind !== 'video' ? <button type="button" title="use as a background for text" aria-label={`use ${media.label} as a background`}
+        {media.url || (view === 'themes' && canBeBackground(media)) ? <div className="absolute right-2 top-2 flex items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/media:opacity-100"
+          onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+          {/* The double-click's twin, for a keyboard or a hand that does
+              not know to double-click: the wall's background, now. */}
+          {view === 'themes' && canBeBackground(media) ? <button type="button" title="on the wall now — the background only, the words stay" aria-label={`put ${media.label} on the wall now`}
+            className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), toneClass('gold'), 'grid size-7 place-items-center')}
+            onClick={(e) => { e.stopPropagation(); void onChoose(media.id, 'live').then(setNotice); }}><MediaIcon size={12} /></button> : null}
+          {view === 'media' && canBeBackground(media) ? <button type="button" title="use as a background for text" aria-label={`use ${media.label} as a background`}
             className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
-            onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'themes' }); setNotice('Added to backgrounds.'); }}><PaletteIcon size={12} /></button> : null}
-          <button type="button" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
+            onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'themes' }); void onChoose(media.id, 'preview', 'pick').then((said) => setNotice(`added to themes · ${said}`)); }}><PaletteIcon size={12} /></button> : null}
+          {media.url ? <button type="button" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
             className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
-            onClick={(e) => { e.stopPropagation(); removeMedia(media.id); setNotice(`Deleted ${media.label}.`); }}><TrashIcon size={12} /></button>
+            onClick={(e) => { e.stopPropagation(); remove(media); }}><TrashIcon size={12} /></button> : null}
         </div> : null}
       </div>)}</MediaGrid> : <div className="min-h-0 flex-1"><EmptyMark w={220} h={220} plain art={<GlobeEmptyArt />}
         line={query && !online ? 'nothing matches' : `no ${view} yet`}
-        hint={query && !online ? 'try another name' : 'add an image or clip to get started'}
-        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add media" icon={<PlusIcon size={13} />} disabled={!window.api?.pickMediaFile} onClick={() => void addLocal()} /><Button label="explore online" onClick={() => { setOnline(true); setSearchOpen(true); }} /></div>} /></div>}
+        hint={query && !online ? 'try another name' : 'add pictures and clips, or drop them here from Finder'}
+        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add from laptop" icon={<ImportIcon size={13} />} disabled={!canAdd || adding} onClick={() => void addHere()} /><Button label="explore online" onClick={() => { setOnline(true); setSearchOpen(true); }} /></div>} /></div>}
+      {/* Files from Finder over this pane: where they will land. Over
+          everything, taking no pointer, so the drop still reaches the pane;
+          a dashed edge, not a glow — the ground stays plain. */}
+      {finderHere ? (
+        <div aria-hidden className="tri-rounded-control pointer-events-none absolute inset-0 z-50 grid place-items-center border border-dashed border-[rgb(229_243_242_/_0.55)] bg-[rgb(0_0_0_/_0.45)]">
+          <span className="tri-label rounded-full px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
+            {finderPaneHint(view, finder.kinds)}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -942,25 +1097,32 @@ function MediaCard({
   detail,
   selected,
   badge,
-  onClick,
+  live = false,
 }: {
   src: string;
   label: string;
   detail: string;
   selected: boolean;
   badge: string | null;
-  onClick?: () => void;
+  /** Behind the words on the wall right now. */
+  live?: boolean;
 }) {
+  /* No onClick here: the press belongs to the wrapper the drag binding sits
+     on (see MediaBrowser's `press`). The button is kept for focus — Enter
+     and Space click it, and that click bubbles up to the wrapper. */
   return (
     <button
       type="button"
-      onClick={onClick}
       aria-pressed={selected}
       className="group/card block w-full pb-3 text-left transition-transform duration-150 ease-out hover:-translate-y-[2px]"
       style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
     >
       <span className="tri-rounded-control relative block overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
-        <img src={src} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover/card:scale-[1.03]" />
+        {/* Not natively draggable: the browser's own image drag starts on the
+            first move, cancels the pointer the drag layer is following, and
+            the card never leaves the shelf — nor do the parked chips survive
+            the cancel. */}
+        <img src={src} alt="" draggable={false} className="h-full w-full object-cover transition-transform duration-200 group-hover/card:scale-[1.03]" />
         {/*
           A scrim under the badge, not a box around it. The badge sits on
           whatever the picture happens to be at that corner — a bright sky
@@ -973,6 +1135,22 @@ function MediaCard({
             className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2"
             style={{ background: 'linear-gradient(to top, rgb(0 0 0 / 0.62), transparent)' }}
           />
+        ) : null}
+        {/* The wall's own background, tagged the way everything on the
+            projector is: gold. Top left, clear of the badge and of the
+            card's acts at top right; the ring stays the preview's. */}
+        {live ? (
+          <>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
+              style={{ background: 'linear-gradient(to bottom, rgb(0 0 0 / 0.62), transparent)' }}
+            />
+            <span className="absolute left-2 top-2 flex items-center gap-[5px] text-[length:var(--tri-size-xs)] leading-none lowercase text-[var(--tri-accent-yellow)]">
+              <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-[var(--tri-accent-yellow)]" />
+              live
+            </span>
+          </>
         ) : null}
         {/*
           The edge, carrying the corner itself rather than leaning on
@@ -1177,8 +1355,29 @@ function ScripturesBrowser() {
   const engine = useEngine();
   const drag = useDrag();
   const projector = useProjector();
-  const [versions, setVersions] = useState<SelectOption[]>([{ value: 'KJV', label: 'KJV' }]);
-  const [version, setVersion] = useState('KJV');
+  const [versions, setVersions] = useState<SelectOption[]>(() => versionOptions(['KJV']));
+  /*
+   * This service's Bible, not a picker of the library's own. It lives in the
+   * live store (App feeds it from on-version-changed), so it survives the
+   * tab switch that unmounts this browser, follows the preacher's "read it
+   * in the BSB", and the catches read from it too. Choosing one here tells
+   * the engine; the church's saved default is never touched.
+   */
+  const sessionVersion = useLiveStore((s) => s.displayVersion);
+  const version = sessionVersion ?? 'KJV';
+  const setVersion = useCallback((next: string | null) => {
+    // The list answers both pointerdown and click; one choice is one change.
+    if (next && next === useLiveStore.getState().displayVersion) return;
+    if (next) useLiveStore.getState().setDisplayVersion(next);
+    const api = window.api;
+    if (!api?.setSessionVersion) {
+      if (!next) useLiveStore.getState().setDisplayVersion('KJV');
+      return;
+    }
+    void api.setSessionVersion(next).then((using) => {
+      if (typeof using === 'string' && using) useLiveStore.getState().setDisplayVersion(using);
+    }).catch(() => undefined);
+  }, []);
   /* Opened while a verse is live: open on it, not on Genesis. */
   const [startAt] = useState(() => liveSpan(projector.live));
   const [query, setQuery] = useState(() => (startAt ? spanReference(startAt) : ''));
@@ -1191,13 +1390,55 @@ function ScripturesBrowser() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
-  /* Whatever translations the database actually holds — not a guessed list.
-     This one ships KJV, BBE and four non-English versions. */
+  /* Whatever translations the database actually holds — not a guessed list
+     — each with its name beside the code, because "AA APEE BBE" means
+     nothing to a volunteer. Opens on the version the service is using.
+     NKJV and NIV come from YouVersion: listed greyed, with the reason,
+     until the build's key unlocks them, and the list follows when it does. */
+  const [rowsByCode, setRowsByCode] = useState<Record<string, BibleVersionRow>>({});
   useEffect(() => {
-    window.api?.getAvailableVersions().then((v) => {
-      if (v?.length) setVersions(v.map((code) => ({ value: code, label: code })));
+    const api = window.api;
+    const take = (list: { versions?: BibleVersionRow[] } | null | undefined) => {
+      if (!list?.versions?.length) return;
+      setVersions(versionRowOptions(list.versions));
+      setRowsByCode(Object.fromEntries(list.versions.map((r) => [r.code, r])));
+    };
+    if (api?.getBibleVersions) void api.getBibleVersions().then(take).catch(() => undefined);
+    else api?.getAvailableVersions().then((v) => {
+      if (v?.length) setVersions(versionOptions(v));
     }).catch(() => { /* KJV remains available if the version list fails. */ });
+    const off = api?.onEngineEvent?.('on-bible-versions-changed', (list) => take(list as { versions?: BibleVersionRow[] }));
+    if (useLiveStore.getState().displayVersion == null) {
+      void window.api?.getSessionVersion?.().then((using) => {
+        if (typeof using === 'string' && using && useLiveStore.getState().displayVersion == null) {
+          useLiveStore.getState().setDisplayVersion(using);
+        }
+      }).catch(() => undefined);
+    }
+    return () => off?.();
   }, []);
+  /* An online Bible's copyright line goes wherever its words are read. */
+  const versionRow = rowsByCode[version];
+  const onlineVersion = versionRow?.source === 'online';
+  /* "Read it in the default Bible" when an online one cannot load — unless
+     the church's default IS that Bible (Settings offers NIV as a default),
+     where going back to it only fails again: then a Bible on this computer. */
+  const bundledStandIn = rowsByCode.KJV?.source === 'bundled' ? 'KJV'
+    : Object.values(rowsByCode).find((r) => r.source === 'bundled' && r.available)?.code ?? 'KJV';
+  const [savedDefault, setSavedDefault] = useState<string | null>(null);
+  const failedOnline = onlineVersion && status === 'error';
+  useEffect(() => {
+    if (!failedOnline) return;
+    let current = true;
+    void window.api?.getSetting?.('displayVersion').then((saved) => {
+      if (current) setSavedDefault(typeof saved === 'string' && saved ? saved.toUpperCase() : null);
+    }).catch(() => undefined);
+    return () => { current = false; };
+  }, [failedOnline]);
+  const readInDefault = useCallback(async () => {
+    const saved = await window.api?.getSetting?.('displayVersion').catch(() => null);
+    setVersion(typeof saved === 'string' && saved.toUpperCase() === version ? bundledStandIn : null);
+  }, [version, bundledStandIn, setVersion]);
 
   /*
    * What the table is showing: whatever has been named, or Genesis while the
@@ -1222,15 +1463,19 @@ function ScripturesBrowser() {
     let cancelled = false;
     setStatus('loading');
     const at = { bookIndex: target.bookIndex, chapter: target.chapter };
-    loadScriptureChapter(window.api, target.bookIndex, target.chapter, version).then((res) => {
+    const load = () => loadScriptureChapter(window.api, target.bookIndex, target.chapter, version).then((res) => {
       if (cancelled) return;
       setRows(res.data.map((v) => ({ verse: v.id, ref: v.ref, text: v.text })));
       setLoadedFor(at);
       setLoadError(res.error);
       setStatus(res.status);
     });
+    /* An online chapter costs one of the hour's YouVersion requests, so the
+       "John 1" passed on the way to typing "John 14" is not fetched. */
+    const wait = onlineVersion ? setTimeout(load, 300) : (void load(), undefined);
     return () => {
       cancelled = true;
+      clearTimeout(wait);
     };
   }, [target?.bookIndex, target?.chapter, version, loadAttempt]);
 
@@ -1472,13 +1717,15 @@ function ScripturesBrowser() {
            fields start where their pane's words start. */
         <div className="flex w-full min-w-0 items-center gap-8">
         <div className="flex min-w-0 flex-1 items-center gap-[var(--tri-gap)]">
-          {/* Sized to the longest version code plus the chevron. The database
-              ships KJV, BBE, RVR, APEE, AA and CUV — four characters at most,
-              with a fifth in hand. */}
+          {/* Sized to the longest version code plus the chevron: the codes
+              are four characters at most (APEE), with a fifth in hand. The
+              list opens wider than the trigger so each code has its name. */}
           <div className="w-[68px] shrink-0">
-            <Select options={versions} value={version} onChange={setVersion} />
+            <Select options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
           </div>
-          <LibrarySearch disabled={status === 'error' || status === 'no-api' || status === 'empty'}>
+          {/* An online Bible that could not load is not a broken library: the
+              operator can still type another reference, or change Bible. */}
+          <LibrarySearch disabled={(status === 'error' && !onlineVersion) || status === 'no-api' || status === 'empty'}>
           <ScriptureReferenceInput
             className="min-w-0 flex-1"
             books={BOOK_DATA}
@@ -1566,7 +1813,9 @@ function ScripturesBrowser() {
           ) : rows.length === 0 ? (
             <ScriptureLibraryEmpty status={status} error={loadError} version={version}
               onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
-              onReset={() => { setQuery(''); setRef(null); setVersion('KJV'); setLoadAttempt((attempt) => attempt + 1); }} />
+              onReset={() => { setQuery(''); setRef(null); setVersion(null); setLoadAttempt((attempt) => attempt + 1); }}
+              onDefaultBible={onlineVersion ? () => void readInDefault() : undefined}
+              defaultBible={savedDefault === version ? bundledStandIn : undefined} />
           ) : (
             rows.map((row, i) => (
               <button
@@ -1654,6 +1903,14 @@ function ScripturesBrowser() {
                 )}
               </button>
             ))
+          )}
+          {/* The licence's own words under an online Bible's text (YouVersion:
+              "always display a Bible Version's copyright attribution"). The
+              wall carries the initials (shared/verseDisplay). */}
+          {onlineVersion && rows.length > 0 && !journey && (
+            <p className="px-4 py-3 text-[length:var(--tri-size-xs)] leading-relaxed text-white/40">
+              {versionRow.attribution || `${versionRow.name} (${version})`} · via YouVersion
+            </p>
           )}
         </div>
       </LibraryPane>
@@ -2629,7 +2886,9 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
             is a MULTIPLIER on the style's own count (150 × 0.6 = 90), not a
             count — the full 150 is mush at this size. Speed 0 draws once
             and stops, so idle and frozen cost nothing; 30fps is plenty
-            for a 30px ball and halves what a moving one costs. */}
+            for a ball this size and halves what a moving one costs.
+            52px since 2026-10-08: the owner wanted it bigger, and 0.75
+            keeps the dots as dense as 0.6 was at 40px. */}
         <SvgOrbsPill
           style={pick.style}
           startAt={pick.startAt ?? 0}
@@ -2639,8 +2898,8 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
           dotOpacity={look.opacity}
           showsPill={false}
           showsLabel={false}
-          ball={40}
-          dots={0.6}
+          ball={52}
+          dots={0.75}
           fps={30}
           scheme="dark"
         />
@@ -2826,10 +3085,22 @@ function useServiceLog(stateLabel: string) {
     );
 
     off.push(
-      api.onVersePreview?.((d: { book?: string; chapter?: number; verse?: number | null; endVerse?: number | null }) => {
-        if (!d?.book) return;
+      api.onVersePreview?.((d: { book?: string; chapter?: number; verse?: number | null; endVerse?: number | null; operatorPush?: boolean }) => {
+        /* The operator's own push passes through the engine's preview on its
+           way to the wall; it was not caught and nobody is waiting. */
+        if (!d?.book || d.operatorPush) return;
         const verse = d.verse == null ? '' : `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `-${d.endVerse}` : ''}`;
         say({ text: `caught ${d.book} ${d.chapter}${verse} — waiting for you` });
+      }),
+    );
+
+    /* A Bible the service asked for that this computer does not have (a
+       default set by a .tri package, a phone naming one): the verses come
+       in another version, and the operator should know which, and why. */
+    off.push(
+      api.onEngineEvent?.('on-bible-notice', (n) => {
+        const text = (n as { text?: unknown } | null)?.text;
+        if (typeof text === 'string' && text) say({ text });
       }),
     );
 
@@ -3714,6 +3985,8 @@ function StageBox({
   controls,
   onKeyDown,
   onHover,
+  drop,
+  files,
 }: {
   label: string;
   tone?: 'default' | 'live';
@@ -3721,6 +3994,12 @@ function StageBox({
   controls: ReactNode;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   onHover?: (over: boolean) => void;
+  /** A carried background can land here: the drag layer's target props
+      (none for files from Finder, which `files` takes), whether the pointer
+      is over it now, and what letting go will do. */
+  drop?: { props?: DropTargetProps; over: boolean; hint: string };
+  /** Takes files dragged in from Finder (./finderDrop). */
+  files?: FinderDropProps;
 }) {
   return (
     <Panel
@@ -3741,6 +4020,10 @@ function StageBox({
         onKeyDown={onKeyDown}
         onPointerEnter={onHover ? () => onHover(true) : undefined}
         onPointerLeave={onHover ? () => onHover(false) : undefined}
+        /* On this div rather than the Panel, which does not forward
+           attributes — the whole box, picture and row, is the target. */
+        {...drop?.props}
+        {...files}
         style={
           {
             containerType: 'size',
@@ -3758,6 +4041,33 @@ function StageBox({
           }}
         >
           {canvas}
+          {/*
+            Where a carried picture can land. A faint edge while one is in
+            hand, so both boxes say they take it; a full edge and the one
+            line of what letting go does once the pointer is over this one.
+            White, not gold — gold is "on the projector", and this is a
+            question, not a state.
+          */}
+          {drop ? (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-30 grid place-items-center transition-[box-shadow,background-color] duration-150 [corner-shape:var(--tri-corner)]"
+              style={{
+                borderRadius: 'calc(var(--tri-radius-surface) - var(--tri-gap))',
+                boxShadow: drop.over ? 'inset 0 0 0 2px rgb(229 243 242 / 0.9)' : 'inset 0 0 0 1px rgb(229 243 242 / 0.35)',
+                backgroundColor: drop.over ? 'rgb(0 0 0 / 0.38)' : 'transparent',
+              }}
+            >
+              {/* On a dark chip of its own: the box is usually showing words
+                  at the same centre, and a line laid over a verse reads as
+                  neither. */}
+              {drop.over ? (
+                <span className="tri-label rounded-full px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
+                  {drop.hint}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
         </div>
         {/* Bottom-anchored: the controls sit --tri-gap off the panel's bottom
             edge exactly as the picture sits off its top, and whatever height
@@ -3787,20 +4097,58 @@ function Stage({
   previewTheme,
   liveTheme,
   editingTheme,
+  sampling,
   onThemeChange,
   say,
+  onFiles,
 }: {
   transition: ReturnType<typeof useTextTransition>;
   previewTheme: ThemeSettings;
   liveTheme: ThemeSettings;
   editingTheme?: boolean;
+  /** A background was just chosen: an empty preview shows sample words over
+      it, so there is something to judge the picture against. */
+  sampling?: boolean;
   onThemeChange?: (theme: ThemeSettings) => void;
   /** The service log — where a refused act explains itself. */
   say?: (line: { text: string }) => void;
+  /** Files from Finder let go over a box (LiveBody's dropFiles). */
+  onFiles?: (key: FinderStageKey, paths: string[], count: number) => void;
 }) {
   const projector = useProjector();
   const engine = useEngine();
   const { preview, live, slide, screen } = projector;
+
+  /*
+   * The two boxes take a carried background — and only a background.
+   *
+   * A media card in hand lights them up: PREVIEW for any (a still becomes
+   * the preview's background, a clip is staged as content), LIVE for a
+   * still only (it goes behind the words on the wall now). A verse, a song
+   * or a slide in hand lights up neither, so a drag can never become a new
+   * way onto the wall. Solo, so chips parked for the run stay parked.
+   */
+  const drag = useDrag();
+  const carried = drag.active?.source === 'media' && drag.active.mediaId ? drag.active : null;
+  /*
+   * Files from Finder land here too — imported (pictures under themes, clips
+   * under media) and then treated exactly as that card dropped here would
+   * be. Same rings, same lines, same refusal: the LIVE box does not light up
+   * for clips, and the cursor says no over it.
+   */
+  const finder = useFinderDrag();
+  const finderDrop = (key: FinderStageKey) => {
+    const hint = finder.active ? finderStageHint(key, finder.kinds) : null;
+    return hint ? { over: finder.over === key, hint } : undefined;
+  };
+  const filesFor = (key: FinderStageKey) =>
+    onFiles ? finderDropProps(key, (paths, count) => onFiles(key, paths, count), (kinds) => finderStageHint(key, kinds) !== null) : undefined;
+  const previewDrop = carried
+    ? { props: drag.dropProps('stage-preview', { solo: true }), over: drag.over === 'stage-preview', hint: carried.mediaKind === 'video' ? 'stage this clip' : 'preview this background' }
+    : finderDrop('stage-preview');
+  const liveDrop = carried
+    ? carried.mediaKind !== 'video' ? { props: drag.dropProps('stage-live', { solo: true }), over: drag.over === 'stage-live', hint: 'background on the wall now' } : undefined
+    : finderDrop('stage-live');
 
   /*
    * Staged readings show their first slide, always.
@@ -3809,9 +4157,16 @@ function Stage({
    * cursors is two places to be lost, and what the operator wants from the
    * left box is "what will appear when I press this" — which is slide one.
    */
-  const staged = stageSlide(preview, 0);
+  /* Except when the preview IS what is on the wall (after go live or ‹ ›):
+     then it follows the wall's page, or next would walk the wall through
+     verses 1, 2, 3 of a long reading while the preview sat on verse 1. */
+  const previewOnAir = !!preview && !!live && liveKey(preview) === liveKey(live);
+  const staged = stageSlide(preview, previewOnAir ? Math.min(slide, (preview.slides?.length ?? 1) - 1) : 0);
   const onAir = stageSlide(live, slide);
 
+  /* A go live on its way. The preview's ✕ waits it out, like a step: a clear
+     taken mid-push is lifted again when the push lands. */
+  const [sending, setSending] = useState(false);
   // Pass the staged identity so a newer speech preview cannot replace it.
   const goLive = async () => {
     if (!preview) return;
@@ -3823,12 +4178,28 @@ function Stage({
          than verses — one, or pages of several (verseDisplay pageVerses). */
       void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) >= (preview.verses?.length ?? 0));
     }
+    setSending(true);
     try {
       await projector.promote();
     } catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not send to the live screen.' }); }
+    finally { setSending(false); }
   };
 
   const blacked = screen === 'black' || screen === 'logo';
+  /* One way to change the wall's screen state, for the LIVE pane's clear and
+     the preview's ✕ alike: the engine (and through it every output) and this
+     panel, which would otherwise wait for the round trip to redraw. */
+  const setWall = (next: ScreenState) => { engine.setScreen(next); projector.setScreen(next); };
+  /* What the preview's ✕ takes away — the staged item, and the words on the
+     wall too when the preview is showing what the room is reading
+     (lib/previewClear). Decided on the press alone: an engine withdrawal or a
+     catch replacing the box never reaches the wall. */
+  const clearPlan = previewClearPlan({ preview, live, screen, editingTheme });
+  /* The find-scripture answers are up over the preview (ScriptureFindOverlay).
+     The row's controls would act on the verse hidden behind them — the
+     pager even steps the wall — so they stand down until a card is chosen or
+     the answers are closed. */
+  const finding = useScriptureFindStore((s) => !!s.found);
 
   // Preview navigation is an explicit presentation action: both panels and
   // the audience output follow. Selecting a new library item still only stages it.
@@ -3870,6 +4241,12 @@ function Stage({
       return;
     }
     if (!stagedRef || !preview) return;
+    /* A reading on the wall in pages is stepped page by page first: 1-3 goes
+       1, 2, 3 and only then 4 (readingStep). */
+    if (previewOnAir) {
+      const page = readingStep(slide, live?.slides?.length ?? 0, dir);
+      if (page !== null) { projector.setSlide(page); return; }
+    }
     const bookIndex = BOOKS.indexOf(stagedRef.book);
     const target = dir === 1 ? stagedRef.end + 1 : stagedRef.start - 1;
     if (bookIndex < 0 || target < 1 || !window.api?.getChapter) return;
@@ -3978,8 +4355,8 @@ function Stage({
    * Whether the clip on the wall is paused, as far as this window knows.
    */
   const [videoPaused, setVideoPaused] = useState(false);
-  const liveKey = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
-  useEffect(() => setVideoPaused(false), [liveKey]);
+  const liveId = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
+  useEffect(() => setVideoPaused(false), [liveId]);
 
   /*
    * Is the room reading something the phone code would cover?
@@ -4044,9 +4421,11 @@ function Stage({
         label="preview"
         onKeyDown={canStep && !editingTheme ? onStepKey : undefined}
         onHover={setOverPreview}
+        drop={previewDrop}
+        files={filesFor('stage-preview')}
         canvas={
           <>
-            <SlideCanvas seated theme={previewTheme} transition={transition} slide={staged ?? (editingTheme && !preview ? THEME_SAMPLE : null)} empty="nothing staged" guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
+            <SlideCanvas seated theme={previewTheme} transition={transition} slide={staged ?? ((editingTheme || sampling) && !preview ? THEME_SAMPLE : null)} empty="nothing staged" guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
             {/* Pictures have no words for the canvas to draw — the phone code
                 and media-library photos showed as "nothing" here. */}
             {(preview?.source === 'presentation' || (preview?.source === 'media' && preview.mediaKind !== 'video')) && preview.path && <img src={presentationImageSrc(preview.path)} alt={preview.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
@@ -4086,8 +4465,8 @@ function Stage({
         }
         controls={
           <>
-            {deckCount > 0 && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
-            {range && (
+            {deckCount > 0 && !finding && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
+            {range && !finding && (
               <Button
                 label={together ? 'separate' : 'together'}
                 tone="ash"
@@ -4104,25 +4483,40 @@ function Stage({
             {/* The staged reading's length, without a cursor to move — it
                 says "this is three screens" before the operator commits to
                 reading it out. */}
-            {(preview?.slides?.length ?? 0) > 1 && (
+            {(preview?.slides?.length ?? 0) > 1 && !finding && (
               <span className="shrink-0 text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.4)]">
                 {preview!.slides!.length} slides
               </span>
             )}
-            {preview && (
+            {/* Only with something staged: an empty box, or the themes
+                sample, has nothing to take away — and the LIVE pane's clear
+                is one panel over. Waits out a step or a go live in flight,
+                whose landing would put the words straight back. Hidden under
+                the find answers, whose own ✕ is the one that means "close". */}
+            {preview && !finding && (
               <Button
                 label=""
                 tone="ash"
                 icon={<CloseIcon size={12} />}
-                title="unstage — take it out of preview"
-                onClick={() => projector.stage(null)}
+                disabled={stepping || sending}
+                title={clearPlan.clearWall
+                  ? 'clear — take it out of preview and off the projector (background stays)'
+                  : 'unstage — take it out of preview'}
+                onClick={() => {
+                  projector.stage(null);
+                  if (!clearPlan.clearWall) return;
+                  setWall('clear');
+                  /* The log keys on what is live, which a clear keeps. Short
+                     enough for the status pill; "restore" is on the LIVE pane. */
+                  say?.({ text: 'words off — background stays' });
+                }}
               />
             )}
             <Button
               label="go live"
               tone="go"
-              disabled={!preview || stepping}
-              title={preview ? `put ${preview.label} on the projector` : 'stage something first'}
+              disabled={!preview || stepping || finding}
+              title={finding ? 'choose a passage above, or close the results (esc)' : preview ? `put ${preview.label} on the projector` : 'stage something first'}
               onClick={goLive}
             />
           </>
@@ -4132,6 +4526,8 @@ function Stage({
       <StageBox
         label="live"
         tone={live && !blacked ? 'live' : 'default'}
+        drop={liveDrop}
+        files={filesFor('stage-live')}
         canvas={
           <>
           <SlideCanvas
@@ -4182,16 +4578,16 @@ function Stage({
               </>
             ) : null}
             {/* Clear drops the words and keeps the picture — the app's own
-                meaning of the word, not a blank screen. */}
+                meaning of the word, not a blank screen. While the wall is
+                cleared it says "restore", the way the phone remote does: the
+                preview's ✕ can clear it too, and the gold LIVE panel stays
+                lit over a wall showing only its background. */}
             <Button
-              label="clear"
+              label={screen === 'clear' ? 'restore' : 'clear'}
               tone="ash"
               disabled={!engine.caps.outputs && !live}
-              title="drop the words, keep the background"
-              onClick={() => {
-                engine.setScreen(screen === 'clear' ? 'live' : 'clear');
-                projector.setScreen(screen === 'clear' ? 'live' : 'clear');
-              }}
+              title={screen === 'clear' ? 'bring the words back' : 'drop the words, keep the background'}
+              onClick={() => setWall(screen === 'clear' ? 'live' : 'clear')}
             />
             {/*
               The companion code, on the wall.
@@ -4267,6 +4663,10 @@ const clampStageScale = (v: number) => Math.max(STAGE_SCALE_MIN, Math.min(STAGE_
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+/* A push whose item has not landed this long after its theme was written
+   has failed; the wall sync stops waiting for it. */
+const LANDING_GRACE_MS = 4000;
+
 export function LiveScreen({ state }: { state?: string } = {}) {
   return (
     <AppShell model={{ tab: 'LIVE', engine: 'connected' }}>
@@ -4292,32 +4692,38 @@ export function LiveScreen({ state }: { state?: string } = {}) {
  */
 function RunDragBridge({ state }: { state?: string }) {
   const run = useRun();
+  /* The three background targets (the themes toggle, the two stage boxes)
+     are not run segments: their drops go to LiveBody, which owns the theme,
+     through this ref. They are solo targets, so `items` is the one card. */
+  const backgroundDrop = useRef<BackgroundDropHandler | null>(null);
   return (
     <DragProvider onDrop={(segmentKey, items) => {
-      if (segmentKey === 'media-themes') {
-        for (const item of items) {
-          const media = getMediaLibrary().find(m => m.id === item.mediaId);
-          if (media) addMedia({ ...media, collection: 'themes' });
-        }
+      if (isBackgroundDropKey(segmentKey)) {
+        const item = items[items.length - 1];
+        if (item) backgroundDrop.current?.(segmentKey, item);
       } else run.dropInto(segmentKey, items);
     }}>
       <DragKeyframes />
       <ServiceLogKeyframes />
-      <LiveBody state={state} />
+      <LiveBody state={state} backgroundDrop={backgroundDrop} />
     </DragProvider>
   );
 }
 
+type BackgroundDropHandler = (key: BackgroundDropKey, item: DragItem) => void;
+
 /* Inside the providers, so the screen itself can read the run — the rail and
    the browser are both in here and both need it. */
-function LiveBody({ state }: { state?: string }) {
+function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: React.MutableRefObject<BackgroundDropHandler | null> }) {
   useMobileRemote();
   const textTransition = useTextTransition();
   const [tab, setTab] = useState(0);
   /* The preview opens on a background off the shelf, so there is a picture
      in it from the first frame; the one from the online library replaces it
      a moment later (below). Only the preview: the wall's own background is a
-     setting, and it changes on promote like everything else. */
+     setting. It changes on promote with the rest of the theme — or on its
+     own, at once, when the operator puts one on the wall on purpose (a
+     double-click in themes, a drop on the LIVE box; chooseBackground). */
   const restoredTheme = useRef(!!readTriLocal(TRI_THEME_KEY, null));
   const [previewTheme, setPreviewTheme] = useState<ThemeSettings>(() => normalizeTriTheme(readTriLocal(TRI_THEME_KEY, null), {
     ...DEFAULT_THEME,
@@ -4351,17 +4757,54 @@ function LiveBody({ state }: { state?: string }) {
     return () => window.removeEventListener(TRI_THEME_EVENT, importTheme);
   }, []);
   const openedOn = useRef(previewTheme.backgroundId);
+  /*
+   * The LIVE box's theme: a picture of the wall's, not a memory of the last
+   * push. It is read off the wall's own settings at launch and whenever they
+   * change (below), so a background chosen in Settings, or one the box never
+   * saw go up, is what the box shows — it used to open on 'quiet sea' while
+   * the wall showed something else, or nothing.
+   */
   const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
+  const liveThemeNow = useRef(liveTheme);
+  liveThemeNow.current = liveTheme;
+  /* The wall's background as this window last wrote or read it (display
+     form). A change that arrives with any other URL was made somewhere else.
+     Null until the first read. */
+  const wallBg = useRef<string | null>(null);
+  /*
+   * The theme a push in flight will land in.
+   *
+   * beforeSend writes the theme to the wall BEFORE the item is published, and
+   * used to set the LIVE box's theme right there — so for a moment the box
+   * repainted the verse already up in the new theme, then swapped in the new
+   * verse: two changes for one press. Now the theme waits here and goes on in
+   * the same frame as the item it was written for (the layout effect on
+   * `delivery` below), and the wall sync leaves the box alone meanwhile.
+   */
+  const landing = useRef<{ theme: ThemeSettings; at: number } | null>(null);
+  const resyncWall = useRef<() => void>(() => undefined);
 
   const engine = useEngine();
   const projector = useProjector();
   const themeLibrary = useMediaLibrary();
   useEffect(() => projector.beforeSend(async () => {
-    const media = themeLibrary.find(item => item.id === previewTheme.backgroundId) ?? themeLibrary[0];
+    const chosen = previewTheme.backgroundId;
+    const media = chosen === NO_BACKGROUND ? undefined : themeLibrary.find(item => item.id === chosen && canBeBackground(item));
+    /* '' takes the wall's picture down (NO_BACKGROUND). null — a background
+       that has left the shelf, or a clip — leaves the wall's picture alone:
+       this used to fall back to themeLibrary[0], whatever was added last,
+       which could be an announcement photo or a video's poster. */
+    const url = chosen === NO_BACKGROUND ? '' : media ? mediaSrc(media) : null;
     const appearance = readTriLocal<Record<string, unknown>>(TRI_DISPLAY_KEY, {});
-    const settings = { ...appearance, ...outputThemeSettings(previewTheme, media ? mediaSrc(media) : ''),
+    const settings: Record<string, unknown> = { ...appearance, ...outputThemeSettings(previewTheme, url ?? ''),
       ...(typeof appearance.backgroundFit === 'string' ? { backgroundFit: appearance.backgroundFit } : {}),
       ...(typeof appearance.backgroundPosition === 'string' ? { backgroundPosition: appearance.backgroundPosition } : {}),
+    };
+    if (url === null) delete settings.defaultBackgroundUrl;
+    else wallBg.current = toDisplayUrl(url);
+    landing.current = {
+      theme: url === null ? { ...previewTheme, backgroundId: liveThemeNow.current.backgroundId } : previewTheme,
+      at: Date.now(),
     };
     if (window.api) {
       await Promise.all(Object.entries(settings).map(([key, value]) => window.api!.setSetting(key, value)));
@@ -4370,8 +4813,123 @@ function LiveBody({ state }: { state?: string }) {
         localStorage.removeItem(TRI_DISPLAY_KEY);
       }
     }
-    setLiveTheme(previewTheme);
   }), [projector.beforeSend, previewTheme, themeLibrary]);
+
+  /* The pushed theme goes on with the pushed item — before the browser
+     paints the frame the item arrives in, so the box changes once. */
+  useLayoutEffect(() => {
+    const next = landing.current;
+    if (!next) return;
+    landing.current = null;
+    setLiveTheme((current) => (sameTheme(current, next.theme) ? current : next.theme));
+    resyncWall.current();
+  }, [projector.delivery]);
+
+  /*
+   * Keep the LIVE box honest with the wall — read-only.
+   *
+   * At launch, and (debounced: a push writes a dozen theme keys, each one a
+   * broadcast) whenever a theme setting changes anywhere. Nothing is ever
+   * written from here: nothing about a launch is a press, and the wall
+   * changing is not a reason to change it again.
+   *
+   * The URL is matched back to a card on the shelf; a picture the shelf has
+   * never seen (chosen in Settings, left by an older build) is filed under
+   * themes as "current background" so the box can draw it and the operator
+   * can find it. A change made somewhere else is also adopted by the
+   * preview — otherwise the next go live, which writes the preview's
+   * background, would quietly put the old one back.
+   */
+  useEffect(() => {
+    const api = window.api;
+    if (!api?.getSettings) return;
+    let gone = false;
+    let first = true;
+    let timer: number | undefined;
+    let revision = 0;
+    const soon = (ms = 100) => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void sync(), ms);
+    };
+    const sync = async () => {
+      const mine = ++revision;
+      const settings = (await api.getSettings().catch(() => null)) as unknown as Record<string, unknown> | null;
+      if (gone || mine !== revision || !settings) return;
+      /* A push is on its way and its theme lands with it; look again after.
+         One that has not landed in a few seconds failed, and the wall —
+         which it did write — is the truth again. */
+      const pending = landing.current;
+      if (pending && Date.now() - pending.at < LANDING_GRACE_MS) {
+        soon(LANDING_GRACE_MS - (Date.now() - pending.at) + 50);
+        return;
+      }
+      landing.current = null;
+      const raw = typeof settings.defaultBackgroundUrl === 'string' ? settings.defaultBackgroundUrl : '';
+      const url = toDisplayUrl(raw);
+      let backgroundId = wallUrlToMediaId(url, getMediaLibrary(), mediaSrc, liveThemeNow.current.backgroundId);
+      if (backgroundId === undefined) {
+        const card = wallBackgroundMedia(raw);
+        addMedia(card);
+        backgroundId = card.id;
+      }
+      const id = backgroundId;
+      const elsewhere = !first && url !== wallBg.current;
+      first = false;
+      wallBg.current = url;
+      setLiveTheme((current) => {
+        const next = liveThemeFromSettings(settings, current, id);
+        return sameTheme(next, current) ? current : next;
+      });
+      if (elsewhere) setPreviewTheme((prev) => (prev.backgroundId === id ? prev : { ...prev, backgroundId: id }));
+    };
+    resyncWall.current = () => soon();
+    void sync();
+    const off = api.onThemeChanged?.(() => soon());
+    return () => {
+      gone = true;
+      window.clearTimeout(timer);
+      off?.();
+      resyncWall.current = () => undefined;
+    };
+  }, []);
+
+  /*
+   * The one way a background is chosen — from a card, a drop, a pick.
+   *
+   * Always into the preview, so the next go live (which writes the preview's
+   * background) keeps it. 'live' also puts it on the wall now, and ONLY the
+   * background: one setting, which repaints the picture and leaves the words
+   * where they are — dimness, type and layout still wait for go live,
+   * because changing those moves words people are reading. Clips are never
+   * backgrounds; the wall paints a still.
+   *
+   * Resolves to a sentence saying what happened, including when nobody will
+   * see it yet (lib/backgroundDrop).
+   */
+  const [sampling, setSampling] = useState(false);
+  /* The sample words are for an EMPTY preview; anything staged ends them. */
+  useEffect(() => setSampling(false), [projector.preview]);
+  const projectorNow = useRef(projector);
+  projectorNow.current = projector;
+  const chooseBackground = useCallback<ChooseBackground>(async (id, where, how = 'drop') => {
+    const media = getMediaLibrary().find((m) => m.id === id);
+    if (!media) return 'that background is no longer on the shelf';
+    if (!canBeBackground(media)) return CLIP_NOT_BACKGROUND;
+    setPreviewTheme((prev) => (prev.backgroundId === id ? prev : { ...prev, backgroundId: id }));
+    if (where === 'preview') {
+      setSampling(true);
+      return previewBackgroundNotice(projectorNow.current.preview, how);
+    }
+    const url = mediaSrc(media);
+    wallBg.current = toDisplayUrl(url);
+    setLiveTheme((prev) => (prev.backgroundId === id ? prev : { ...prev, backgroundId: id }));
+    const api = window.api;
+    if (!api) return 'no engine here — only this window changed';
+    await api.setSetting('defaultBackgroundUrl', url);
+    const status = await api.getOutputsStatus?.().catch(() => undefined);
+    const { screen, live } = projectorNow.current;
+    return liveBackgroundNotice({ screen, live, outputs: status?.outputs });
+  }, []);
 
   /*
    * A verse in the preview from the first frame.
@@ -4625,12 +5183,11 @@ function LiveBody({ state }: { state?: string }) {
     if (!latestProposal || latestProposal.missing || !latestProposal.reference) return;
     if (lastStagedRef.current === latestProposalKey) return;
     lastStagedRef.current = latestProposalKey;
-    if (projector.preview?.origin === 'operator') return;
-    /* Already there — the catches pane stages the next verse of a set itself. */
-    if (projector.preview?.source === 'scripture' && projector.preview.id === latestProposal.reference &&
-      projector.preview.version === latestProposal.version) return;
-
-    projector.stage({
+    /* Never over the operator's own pick, and not again when it is already
+       there (the catches pane stages the next verse of a set itself). Asked
+       of the box as React applies it: this render's projector.preview can be
+       stale by a step's own stage(next), still queued behind it. */
+    projector.stageUnlessOperator({
       source: 'scripture',
       id: latestProposal.reference,
       label: latestProposal.reference,
@@ -4696,6 +5253,76 @@ function LiveBody({ state }: { state?: string }) {
   }, [onWall, projector.live, say]);
   const goManual = useCallback(() => say({ text: "suggestions off — you're driving" }), [say]);
 
+  /*
+   * A media card let go over a background target (see RunDragBridge).
+   *
+   *   themes toggle  a still is filed under themes and previewed
+   *   PREVIEW        a still is previewed; a clip is staged as content
+   *   LIVE           a still goes behind the words on the wall now
+   *
+   * The stage boxes never move a card between shelves — an announcement
+   * photo used once as a background is still an announcement photo. What
+   * happened is said in the service log, beside the boxes it happened to.
+   */
+  const dropMedia = useCallback(async (key: BackgroundDropKey, media: ThemeMedia | undefined): Promise<string> => {
+    const action = backgroundDropAction(key, media);
+    if (!media || action === 'refuse') return media ? CLIP_NOT_BACKGROUND : 'that picture is no longer on the shelf';
+    if (action === 'stage-content') {
+      projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: 'video', origin: 'operator' });
+      return `${media.label} is in preview — ${CLIP_NOT_BACKGROUND}`;
+    }
+    if (key === 'media-themes') addMedia({ ...media, collection: 'themes' });
+    const text = await chooseBackground(media.id, action, 'drop');
+    return key === 'media-themes' ? `added to themes · ${text}` : text;
+  }, [chooseBackground, projector]);
+  useEffect(() => {
+    if (!backgroundDrop) return;
+    backgroundDrop.current = (key, item) => {
+      void dropMedia(key, getMediaLibrary().find((m) => m.id === item.mediaId)).then((text) => say({ text }));
+    };
+    return () => {
+      backgroundDrop.current = null;
+    };
+  }, [backgroundDrop, dropMedia, say]);
+
+  /*
+   * Files from Finder let go over the PREVIEW or the LIVE box: onto the
+   * shelf first (pictures under themes, clips under media, anything already
+   * there left where it is), then exactly what dropping that card there
+   * does — the first still, or on the preview a clip when there is none.
+   * One line in the log says both halves.
+   */
+  const dropFiles = useCallback((key: FinderStageKey, paths: string[], count: number) => {
+    if (!paths.length) {
+      say({ text: count ? 'drag the files themselves from Finder' : 'nothing to add there' });
+      return;
+    }
+    void (async () => {
+      /* A picture lands in a blink; a folder of clips does not, and a box
+         that says nothing for ten seconds reads as a drop that missed. So
+         a slow one says it has started — once, to keep the log quiet. */
+      const slow = window.setTimeout(() => say({ text: paths.length > 1 ? `adding ${paths.length}…` : 'adding…' }), 800);
+      const { cards, notice } = await addFromLaptop({ paths, wanted: 'themes' }).finally(() => window.clearTimeout(slow));
+      const pick = finderStagePick(key, cards);
+      if (!pick) {
+        say({ text: notice });
+        return;
+      }
+      /* A clip dropped here is staged, and the import line has already
+         said a clip is not a background — once is enough. */
+      const done = await dropMedia(key, pick);
+      say({ text: `${notice} · ${notice.includes(CLIP_NOT_BACKGROUND) ? done.replace(` — ${CLIP_NOT_BACKGROUND}`, '') : done}` });
+    })();
+  }, [dropMedia, say]);
+
+  /* The preview's background was deleted from the shelf: another themes
+     still, chosen now, so the preview and the next go live agree on it. */
+  const backgroundGone = useCallback(() => {
+    const next = backgroundFor('', getMediaLibrary());
+    setPreviewTheme((prev) => ({ ...prev, backgroundId: next?.id ?? NO_BACKGROUND }));
+    return next?.label;
+  }, []);
+
   return (
     <>
       {/*
@@ -4733,12 +5360,15 @@ function LiveBody({ state }: { state?: string }) {
           className="tri-live-header tri-live-controls flex min-w-0 items-center"
           style={{ height: 'var(--tri-topbar-h)' }}
         >
+          <div className="min-w-0 flex-1" />
+          {/* The service controls sit on the right, beside the clock, with the
+              orb leading them — it is the listening state's face (owner,
+              2026-10-08). SermonStartControl is off the toolbar for now; it
+              comes back later and the engine half still runs without it. */}
           <StatusOrb label={stateLabel} onClick={stepState} />
           <ListenControl />
-          <SermonStartControl />
           <MicPicker />
           <MobileRemotePanel />
-          <div className="min-w-0 flex-1" />
           <DigitalClockBento />
           <div className="tri-header-log-slot flex min-w-0 items-stretch">
             <ServiceLogBar entries={log.entries} onAction={goManual} />
@@ -4848,9 +5478,11 @@ function LiveBody({ state }: { state?: string }) {
               transition={textTransition}
               say={say}
               editingTheme={TABS[tab]?.id === 'themes'}
+              sampling={sampling}
               onThemeChange={setPreviewTheme}
               previewTheme={previewTheme}
               liveTheme={liveTheme}
+              onFiles={dropFiles}
 
             />
 
@@ -4883,26 +5515,34 @@ function LiveBody({ state }: { state?: string }) {
               {TABS[tab]?.id === 'songs' ? <SongsBrowser /> : null}
               {TABS[tab]?.id === 'slides' ? <SlidesBrowser /> : null}
               {TABS[tab]?.id === 'media' ? (
+                /* Choosing a background keeps the library on media: the
+                   next thing the operator does is often the double-click
+                   that puts it on the wall. */
                 <MediaBrowser
                   onOpenSettings={openOnlineSettings}
                   selected={previewTheme.backgroundId}
-                  onSelect={(backgroundId) => {
-                    setPreviewTheme((prev) => ({ ...prev, backgroundId }));
-                    setTab(0);
-                  }}
+                  live={liveTheme.backgroundId}
+                  onChoose={chooseBackground}
+                  onBackgroundGone={backgroundGone}
                 />
               ) : null}
               {TABS[tab]?.id === 'online' ? (
                 /* The same search the media tab's third shelf opens, and a
                    pick does what a pick there does: the file is saved to
-                   this laptop, joins the library, becomes the preview's
-                   background, and the browser goes back to verses. */
+                   this laptop, joins the library and becomes the preview's
+                   background — and the browser stays here, for the next
+                   look. A clip is content, never a background: it goes on
+                   the media shelf, and the log says why. */
                 <StockSearch
                   onOpenSettings={openOnlineSettings}
                   onPick={(media) => {
+                    if (!canBeBackground(media)) {
+                      addMedia({ ...media, collection: 'media' });
+                      say({ text: `${media.label} is in media — ${CLIP_NOT_BACKGROUND}` });
+                      return;
+                    }
                     addMedia(media);
-                    setPreviewTheme((prev) => ({ ...prev, backgroundId: media.id }));
-                    setTab(0);
+                    void chooseBackground(media.id, 'preview', 'pick').then((text) => say({ text }));
                   }}
                 />
               ) : null}

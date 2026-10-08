@@ -41,3 +41,36 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+## Bible translations in bible.db
+
+Every translation bundled in `bible.db` is public domain. Where each came from,
+when it was fetched and a SHA-256 of its rows are recorded in
+`electron/data/bible-sources.json` (WEB, BSB, ASV) and
+`electron/data/kjv-source.json` (KJV).
+
+- **Berean Standard Bible (BSB)** — dedicated to the public domain on
+  30 April 2023; "all uses are freely permitted" (https://berean.bible/terms.htm).
+  The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with
+  Bible Hub, Discovery Bible, OpenBible.com, and the Berean Bible Translation
+  Committee. This text of God's Word has been dedicated to the public domain.
+- **American Standard Version (1901)** — public domain
+  (https://ebible.org/Scriptures/details.php?id=eng-asv).
+- **World English Bible** — public domain (https://worldenglish.bible/).
+- **King James Version (1769)** — public domain outside the United Kingdom.
+
+Fetched through bible.helloao.org (eBible's own API) by
+`scripts/build-bible-db.mjs`. Licensed translations (NKJV, NIV, ESV, NLT, NASB,
+AMP) are not bundled.
+
+## Licensed translations through YouVersion
+
+NKJV, NIV and any other Bible the build's app key is licensed for are read
+from the YouVersion Platform API (https://developers.youversion.com), free for
+non-commercial apps under the YouVersion Platform Terms of Use. Their text is
+never bundled: a chapter is fetched when it is first needed and kept on the
+church's computer (`userData/bibles/online-cache.db`) for at most 30 days and
+120 chapters per version, and is deleted at once if the key is refused or a
+version is no longer licensed. Each version's own copyright line, as YouVersion
+supplies it, is shown under its text in the scripture library, and its initials
+follow every quotation on the projector. Code: `electron/data/bibleOnline/`.

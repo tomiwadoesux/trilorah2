@@ -1,6 +1,6 @@
 import { GradientLab } from './GradientLab';
 import { useEffect, useState, type ReactNode } from 'react';
-import { cx, surface, Button, SearchField, SettingsIcon, MicIcon, BookIcon, SparkleIcon, MediaIcon, PencilIcon, CheckIcon, ResetIcon, TrashIcon, ChevronRightIcon, IconCredits } from '../../ui';
+import { cx, surface, Button, SearchField, SettingsIcon, MicIcon, BookIcon, SparkleIcon, MediaIcon, PencilIcon, CheckIcon, ResetIcon, TrashIcon, ChevronRightIcon, IconCredits, type SelectOption } from '../../ui';
 import { AppShell, type ShellModel } from './AppShell';
 import { Pill } from './parts';
 import { useArtboard } from './artboard';
@@ -8,6 +8,7 @@ import { SettingRow, seedValues, rowVisible, SCRIPTURE_FACES, type Row } from '.
 import { displayMapFrom, useOutputsStatus } from './dashboard/outputs/fromEngine';
 import { Cloud } from '../../screens/Cloud';
 import { Themes } from '../../screens/Themes';
+import { sortVersions, versionLabel, type BibleVersionRow } from '../../../shared/bibleVersions';
 
 /*
  * S-10 — Settings.
@@ -94,7 +95,7 @@ const PAGES: Page[] = [
          here, so the blurb names the common ones and the field accepts
          whatever the transcriber does. */
       { kind: 'text', key: 'asrLanguage', label: 'Speech language', blurb: 'What the transcriber listens for — a language code such as en-US, en-GB, es-ES, es-419, fr-FR, fr-CA, pt-BR, de, it, hi-IN, zh-CN, ko or ja. Usually the same language as the engine above.', value: 'en-US', placeholder: 'en-US' },
-      { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live; this is what it goes back to.', value: 'KJV', options: ['KJV'] },
+      { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live, or the preacher by asking for another; the next service goes back to this.', value: 'KJV', options: [{ value: 'KJV', label: versionLabel('KJV') }] },
       { kind: 'note', key: 'uiLanguage', text: 'UI language is not built yet — the app is English-only for now. The setting is here so it is not forgotten.' },
     ],
   },
@@ -204,7 +205,10 @@ const PAGES: Page[] = [
       { kind: 'action', key: 'evalExport', label: 'Evaluation set', blurb: 'The corrections as test fixtures — for improving the resolver.', button: 'export corrections', note: 'evals/ · last 3 sept' },
       { kind: 'action', key: 'wipeTranscripts', label: 'Transcripts', blurb: 'Delete every transcript on this computer. Profiles and settings stay.', button: 'wipe transcripts', tone: 'danger' },
       { kind: 'action', key: 'wipeProfiles', label: 'Pastor profiles', blurb: 'Delete every profile and everything it learned. Auto mode starts from nothing.', button: 'wipe profiles', tone: 'danger' },
-      { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: '', state: 'ok', text: 'bible.db · 186,486 verses · 6 versions', advanced: true },
+      /* Filled from get-db-status: a count typed in here went stale the day a Bible was added. */
+      { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: '', state: 'idle', text: 'bible.db', advanced: true },
+      /* NKJV and NIV through YouVersion. No key field: the key is built in (owner rule). */
+      { kind: 'status', key: 'onlineBibles', label: 'Online Bibles', blurb: 'NKJV and NIV from YouVersion, kept on this computer up to 30 days as they are used.', state: 'idle', text: 'checking…', advanced: true },
       { kind: 'action', key: 'rebuildIndex', label: 'Search index', blurb: 'Rebuild if verse search returns nothing for a reference you know exists.', button: 'rebuild', advanced: true },
       { kind: 'action', key: 'openLogs', label: 'Logs', blurb: '', button: 'open logs folder', advanced: true },
       { kind: 'status', key: 'version', label: 'Version', blurb: '', state: 'idle', text: 'trilorah 0.4.1 · up to date', advanced: true },
@@ -271,6 +275,9 @@ function PageBody({ page }: { page: Page }) {
      old hardcoded list offered NKJV and NIV against a database that has
      neither — pick one and every verse on the projector reads "not found". */
   const [versions, setVersions] = useState<string[] | null>(null);
+  const [dbStatus, setDbStatus] = useState<{ connected: boolean; verses?: number; versions?: string[] } | null>(null);
+  /* The same list with names and the online ones (NKJV/NIV greyed with the reason until a key unlocks them). */
+  const [bibleRows, setBibleRows] = useState<{ versions: BibleVersionRow[]; online: { state: string; text: string } | null } | null>(null);
   /* Same rule for the language pack: offering a language the app has no
      pack for means a church picks it and the resolver quietly keeps
      speaking English. The engine knows which packs are installed. */
@@ -280,11 +287,25 @@ function PageBody({ page }: { page: Page }) {
     void window.api?.getAvailableVersions?.().then((v) => {
       if (alive && Array.isArray(v) && v.length) setVersions(v);
     });
+    void window.api?.getDbStatus?.().then((status) => {
+      if (alive && status) setDbStatus(status);
+    }).catch(() => undefined);
+    void window.api?.getBibleVersions?.().then((rows) => {
+      if (alive && rows?.versions?.length) setBibleRows(rows);
+    }).catch(() => undefined);
+    const offBibles = window.api?.onEngineEvent?.('on-bible-versions-changed', (rows) => {
+      const next = rows as typeof bibleRows;
+      if (alive && next?.versions?.length) {
+        setBibleRows(next);
+        setVersions(next.versions.filter((r) => r.available).map((r) => r.code));
+      }
+    });
     void window.api?.getAvailableLanguages?.().then((l) => {
       if (alive && Array.isArray(l) && l.length) setLanguages(l.map((x) => x.code));
     }).catch(() => undefined);
     return () => {
       alive = false;
+      offBibles?.();
     };
   }, []);
   /* And for the display map: the displays actually connected. It used to
@@ -293,7 +314,35 @@ function PageBody({ page }: { page: Page }) {
      rather than show a projector that is not plugged in. */
   const outputs = useOutputsStatus(page.rows.some((r) => r.kind === 'displays'));
   const withLiveOptions = (r: Row): Row => {
-    if (r.key === 'displayVersion' && versions && 'options' in r) return { ...r, options: versions };
+    if (r.key === 'displayVersion' && versions && r.kind === 'select') {
+      const installed: SelectOption[] = sortVersions(versions).map((v) => ({ value: v, label: versionLabel(v) }));
+      /* A saved default this computer does not have (a .tri package can set
+         one) used to read as a blank "select option". Catches quietly come
+         in the fallback, so this is where the operator learns why: the
+         saved one is listed for what it is, and cannot be picked again. */
+      const saved = typeof values.displayVersion === 'string' ? values.displayVersion : '';
+      /* NKJV/NIV a key has not unlocked: listed for what they are, greyed with the reason. */
+      for (const row of bibleRows?.versions ?? []) {
+        if (!row.available && row.code !== saved.trim().toUpperCase()) {
+          // The same short form as "· not on this computer" below: the code, and why.
+          installed.push({ value: row.code, label: `${row.code} · ${row.note ?? 'unavailable'}`, disabled: true });
+        }
+      }
+      return saved && !versions.includes(saved.trim().toUpperCase())
+        ? { ...r, options: [{ value: saved, label: `${saved.trim().toUpperCase()} · not on this computer`, disabled: true }, ...installed] }
+        : { ...r, options: installed };
+    }
+    if (r.key === 'dbStatus' && r.kind === 'status' && dbStatus) {
+      const count = dbStatus.versions?.length ?? 0;
+      return dbStatus.connected
+        ? { ...r, state: 'ok', text: `bible.db · ${(dbStatus.verses ?? 0).toLocaleString('en-US')} verses · ${count} ${count === 1 ? 'version' : 'versions'}` }
+        : { ...r, state: 'danger', text: 'bible.db is missing — reinstall Trilorah' };
+    }
+    if (r.key === 'onlineBibles' && r.kind === 'status' && bibleRows) {
+      const state = bibleRows.online?.state ?? 'no-key';
+      return { ...r, state: state === 'ready' ? 'ok' : state === 'key-rejected' ? 'danger' : state === 'checking' ? 'idle' : 'warn',
+        text: bibleRows.online?.text ?? 'no YouVersion key in this build' };
+    }
     if (r.key === 'engineLanguage' && languages && 'options' in r) return { ...r, options: languages };
     if (r.kind === 'displays' && window.api) return { ...r, displays: outputs ? displayMapFrom(outputs) : [] };
     return r;

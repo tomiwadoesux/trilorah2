@@ -8,7 +8,8 @@
  * Sources, all public domain and safe to redistribute:
  *   eBible / CrossWire explicitly numbered USFM — KJV (1769, 66 books)
  *   thiagobodruk/bible (JSON) — BBE and the multilingual set
- *   bible.helloao.org (eBible's own API) — WEB
+ *   bible.helloao.org (eBible's own API) — WEB, BSB and ASV
+ *     (scripts/lib/helloao-bible.mjs; provenance in electron/data/bible-sources.json)
  * Licensed translations (NIV, ESV, NLT, NKJV, NASB) are NOT here and cannot
  * be: displaying a chapter to a congregation is past every publisher's free
  * quotation limit, and building the text into software needs a negotiated
@@ -19,6 +20,18 @@
  * copyright) Modern English translation of the Holy Bible… you may freely
  * copy it in any form, including electronic and print formats."
  * (https://worldenglish.bible/ — verified 2026-09-20)
+ *
+ * BSB is the modern-English Bible a church already reads aloud: the Berean
+ * Standard Bible was dedicated to the public domain on 30 April 2023 and "all
+ * uses are freely permitted" (https://berean.bible/terms.htm). ASV (1901) is
+ * the public-domain Bible EasyWorship ships free, and the voice phrase
+ * "american standard version" already asked for it.
+ *
+ * Every helloao version is checked before it replaces anything
+ * (validateBibleRows): 66 books, all 1,189 chapters, unique clean rows, the
+ * exact expected verse count, and spot references. Run one at a time:
+ *   node scripts/build-bible-db.mjs --version BSB
+ * --cache <dir> keeps each fetched chapter, so a rebuild is offline and exact.
  *
  * Uses node:sqlite so the script runs on plain Node regardless of which ABI
  * better-sqlite3 was last compiled for (electron vs node).
@@ -31,6 +44,7 @@ import os from 'node:os'
 import { createHash } from 'node:crypto'
 import { KJV_USFM_URL, parseKjvArchive } from './lib/usfm-bible.mjs'
 import { replaceBibleVersion } from './lib/replace-bible-version.mjs'
+import { HELLOAO, HELLOAO_SOURCES, chapterRows, validateBibleRows, rowsSha256 } from './lib/helloao-bible.mjs'
 
 const ROOT = path.join(import.meta.dirname, '..')
 const args = process.argv.slice(2)
@@ -42,7 +56,9 @@ const valueOf = (flag) => {
 }
 const DB_PATH = path.resolve(valueOf('--database') ?? path.join(ROOT, 'bible.db'))
 const ONLY_VERSION = valueOf('--version')?.toUpperCase()
-if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB'].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
+if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB', 'BSB', 'ASV'].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
+const CACHE_DIR = valueOf('--cache') ? path.resolve(valueOf('--cache')) : null
+const SOURCES_JSON = path.join(ROOT, 'electron', 'data', 'bible-sources.json')
 
 /**
  * Pinned to a commit, not `master`. On 2026-09-23 upstream "refreshed" its
@@ -66,58 +82,78 @@ const SOURCES = [
 ]
 
 /**
- * WEB, from eBible's own API.
+ * WEB, BSB and ASV, from eBible's own API (bible.helloao.org).
  *
- * Shaped differently from the thiagobodruk files — a call per chapter, and a
- * verse arrives as SEGMENTS rather than a string: several pieces of text with
- * footnote references (`{noteId}`) and formatting objects between them. Join
- * the text, drop everything else; a footnote number is a scholar's apparatus
- * and has no business on a wall in front of a congregation.
- *
- * 1189 chapters means 1189 requests, so they run in small batches — polite to
- * a free service, and still under two minutes.
+ * A call per chapter: 1,189 requests a version, so they run in small
+ * batches — polite to a free service, and still a couple of minutes.
+ * Text cleaning and validation live in scripts/lib/helloao-bible.mjs.
  */
-const HELLOAO = 'https://bible.helloao.org/api'
-const WEB_ID = 'ENGWEBP'
 const BATCH = 12
 
-function verseText(content) {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part) => (typeof part === 'string' ? part : typeof part?.text === 'string' ? part.text : ''))
-    .filter(Boolean)
-    .join(' ')
+async function fetchChapter(sourceId, bookId, ch) {
+  const file = CACHE_DIR && path.join(CACHE_DIR, sourceId, `${bookId}-${ch}.json`)
+  if (file && fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8'))
+  const data = await fetchJson(`${HELLOAO}/${sourceId}/${bookId}/${ch}.json`)
+  const chapter = data.chapter ?? data
+  if (file) {
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, JSON.stringify(chapter))
+  }
+  return chapter
 }
 
-async function fetchWeb(onProgress) {
-  const { books } = await fetchJson(`${HELLOAO}/${WEB_ID}/books.json`)
+async function fetchHelloao(version, onProgress) {
+  const source = HELLOAO_SOURCES[version]
+  const { books } = await fetchJson(`${HELLOAO}/${source.id}/books.json`)
   if (!Array.isArray(books) || books.length !== 66) {
-    throw new Error(`WEB: expected 66 books, got ${books?.length}`)
+    throw new Error(`${version}: expected 66 books, got ${books?.length}`)
   }
-  // Every chapter of every book, as [bookIndex, chapterNumber].
+  // Every chapter of every book, as [bookIndex, sourceBookId, chapterNumber].
   const jobs = books.flatMap((b, i) =>
     Array.from({ length: b.numberOfChapters }, (_, c) => [i, b.id, c + 1])
   )
   const rows = []
+  /* Text a source marks as descriptive (a title inside a verse) is kept —
+     BSB Zechariah 12:1 opens with one — but listed, so a person sees what
+     came in besides the verse itself. */
+  const descriptive = []
   for (let at = 0; at < jobs.length; at += BATCH) {
     const slice = jobs.slice(at, at + BATCH)
-    const chapters = await Promise.all(
-      slice.map(([, bookId, ch]) =>
-        fetchJson(`${HELLOAO}/${WEB_ID}/${bookId}/${ch}.json`).then((d) => d.chapter ?? d)
-      )
-    )
+    const chapters = await Promise.all(slice.map(([, bookId, ch]) => fetchChapter(source.id, bookId, ch)))
     chapters.forEach((chapter, k) => {
-      const [bookIndex, , ch] = slice[k]
+      const [bookIndex, bookId, ch] = slice[k]
+      rows.push(...chapterRows(chapter, bookIndex, ch))
       for (const item of chapter.content ?? []) {
-        if (item?.type !== 'verse' || typeof item.number !== 'number') continue
-        const text = verseText(item.content).replace(/\s+/g, ' ').trim()
-        if (text) rows.push([bookIndex, ch, item.number, text])
+        if (item?.type === 'verse' && Array.isArray(item.content) && item.content.some((part) => part?.descriptive)) {
+          descriptive.push(`${bookId} ${ch}:${item.number}`)
+        }
       }
     })
     onProgress?.(Math.min(at + BATCH, jobs.length), jobs.length)
   }
-  return rows
+  return { rows: validateBibleRows(rows, { version, expectedVerses: source.expectedVerses }), descriptive }
+}
+
+/** Record where a version came from, next to the KJV's kjv-source.json. */
+function recordProvenance(version, rows) {
+  const source = HELLOAO_SOURCES[version]
+  let file = { note: 'Where each bundled translation in bible.db came from. Written by scripts/build-bible-db.mjs.', versions: {} }
+  try { file = JSON.parse(fs.readFileSync(SOURCES_JSON, 'utf8')) } catch { /* first run */ }
+  const chapters = new Set(rows.map((row) => `${row[0]}:${row[1]}`))
+  file.versions[version] = {
+    translation: source.name,
+    sourceId: source.id,
+    sourceUrl: `${HELLOAO}/${source.id}/books.json`,
+    licenseUrl: source.licenseUrl,
+    rights: source.rights,
+    ...(source.attribution ? { attribution: source.attribution } : {}),
+    retrieved: new Date().toISOString().slice(0, 10),
+    rowsSha256: rowsSha256(rows),
+    books: new Set(rows.map((row) => row[0])).size,
+    chapters: chapters.size,
+    verses: rows.length,
+  }
+  fs.writeFileSync(SOURCES_JSON, JSON.stringify(file, null, 2) + '\n')
 }
 
 async function fetchJson(url) {
@@ -130,6 +166,9 @@ async function fetchJson(url) {
 
 const db = new DatabaseSync(DB_PATH)
 db.exec('PRAGMA busy_timeout = 10000')
+/* The app opens the shipped file from inside a signed bundle; a WAL file
+   beside it could never be created there. Rollback journal only. */
+db.exec('PRAGMA journal_mode = DELETE')
 db.exec(`
   CREATE TABLE IF NOT EXISTS bible (
     Book INTEGER NOT NULL,
@@ -180,13 +219,15 @@ for (const { version, url } of SOURCES.filter(source => !ONLY_VERSION || source.
   console.log(`✅ ${version}: ${rows.length} verses imported`)
 }
 
-if (!ONLY_VERSION || ONLY_VERSION === 'WEB') {
-console.log('⬇️  Downloading WEB (a call per chapter — this one takes a minute)…')
-const webRows = await fetchWeb((done, all) => {
-  if (done % 120 === 0 || done === all) process.stdout.write(`   ${done}/${all} chapters\r`)
-})
-replaceBibleVersion(db, 'WEB', webRows)
-console.log(`\n✅ WEB: ${webRows.length} verses imported`)
+for (const version of Object.keys(HELLOAO_SOURCES).filter(v => !ONLY_VERSION || v === ONLY_VERSION)) {
+  console.log(`⬇️  Downloading ${version} (a call per chapter — this one takes a minute)…`)
+  const { rows, descriptive } = await fetchHelloao(version, (done, all) => {
+    if (done % 120 === 0 || done === all) process.stdout.write(`   ${done}/${all} chapters\r`)
+  })
+  replaceBibleVersion(db, version, rows)
+  recordProvenance(version, rows)
+  console.log(`\n✅ ${version}: ${rows.length} verses imported`)
+  if (descriptive.length) console.log(`   kept descriptive text inside ${descriptive.length} verses: ${descriptive.slice(0, 12).join(', ')}${descriptive.length > 12 ? ' …' : ''}`)
 }
 
 const total = db.prepare('SELECT COUNT(*) AS n FROM bible').get()

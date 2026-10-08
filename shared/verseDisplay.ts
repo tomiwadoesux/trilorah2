@@ -18,8 +18,18 @@
  *
  * It lives in shared/ because both the Electron main process (which logs
  * and broadcasts slides) and the React renderer (which draws them) need the
- * identical answer — so it imports nothing at all, not even from shared/.
+ * identical answer — so it imports nothing but the version catalogue, which
+ * itself imports nothing.
+ *
+ * Licensed translations (NKJV, NIV, …) carry their initials whatever the
+ * theme says: the reference names the version even with "show translation"
+ * off, the last slide of a reading always has its reference, and a licensed
+ * second translation ends in "(NIV)". An online Bible's words also carry its
+ * copyright line on every slide (`credit`). Deciding that here, not in the
+ * projector, is what keeps the operator's preview and the wall identical.
  */
+
+import { requiresInitials, versionCredit } from './bibleVersions'
 
 export type ReferenceMode = 'each' | 'last' | 'first' | 'none'
 
@@ -35,7 +45,7 @@ export interface VerseDisplayOptions {
   showVerseNumbers: boolean
   /** Where the 'John 3:16' line appears across the generated slides. */
   referenceMode: ReferenceMode
-  /** Append the translation code to the reference, e.g. 'John 3:16 · KJV'. */
+  /** Append the translation code to the reference, e.g. 'John 3:16 · KJV'. A licensed version always has it. */
   showTranslation: boolean
   /** Optional second translation shown under the first. */
   secondary?: { version: string; verses: VerseText[] } | null
@@ -77,6 +87,12 @@ export interface VerseSlide {
   /** 1-based position and total, so the UI can show 'slide 2 of 3'. */
   index: number
   total: number
+  /**
+   * The copyright line of an online Bible whose words are on this slide
+   * (bibleVersions versionCredit) — every slide of it, small at the foot of
+   * the screen. Absent for the bundled Bibles.
+   */
+  credit?: string
 }
 
 export interface VerseRef {
@@ -109,7 +125,7 @@ export function formatReference(
   const span = verseEnd > verseStart ? `${verseStart}-${verseEnd}` : `${verseStart}`
   const base = `${ref.book} ${ref.chapter}:${span}`
   // A blank version code would otherwise leave a dangling separator on screen.
-  if (!opts.showTranslation || !ref.version) return base
+  if (!ref.version || (!opts.showTranslation && !requiresInitials(ref.version))) return base
   return base + TRANSLATION_SEPARATOR + ref.version
 }
 
@@ -275,19 +291,31 @@ export function buildVerseSlides(
       // A ragged secondary translation (missing verse, shorter book) simply
       // drops its line rather than throwing or showing an empty row.
       if (picked.length > 0) {
-        lines.push({ version: secondary.version, text: compose(picked, options.showVerseNumbers) })
+        const text = compose(picked, options.showVerseNumbers)
+        lines.push({
+          version: secondary.version,
+          // The second line has no reference of its own to carry the initials.
+          text: requiresInitials(secondary.version) ? `${text} (${secondary.version})` : text
+        })
       }
     }
 
+    /* A licensed reading may not end without saying whose words they were,
+       so its last slide keeps the reference whatever referenceMode says. */
+    const cited = requiresInitials(ref.version) && i === total - 1
+    /* An online Bible's words carry its copyright line on every slide they
+       are on — the second translation's too, when it has a line here. */
+    const credit = [...new Set(lines.map((line) => versionCredit(line.version)).filter((c): c is string => !!c))].join(' · ')
     return {
       lines,
-      reference: showsReference(options.referenceMode, i, total)
+      reference: showsReference(options.referenceMode, i, total) || cited
         ? formatReference(ref, chunk.verseStart, chunk.verseEnd, { showTranslation: options.showTranslation })
         : null,
       verseStart: chunk.verseStart,
       verseEnd: chunk.verseEnd,
       index: i + 1,
-      total
+      total,
+      ...(credit ? { credit } : {})
     }
   })
 }

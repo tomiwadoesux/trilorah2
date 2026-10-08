@@ -95,7 +95,8 @@
 @media (prefers-reduced-motion: reduce) { .stage-resizer svg, .stage-resizer span { transition: none; } }
 .verse-nav-hint { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 11%; gap: 6px; font-size: 12px; color: white; background: linear-gradient(to top, rgb(0 0 0 / .72), rgb(0 0 0 / .22) 38%, transparent 78%); opacity: 0; pointer-events: none; animation: verse-hint 1.2s ease-out both; }
 .verse-nav-hint::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgb(255 255 255 / .28) 1px, transparent 1px) 0 0 / 7px 7px; mask-image: linear-gradient(to top, black, transparent 80%); }
-.verse-nav-hint > span { display: grid; place-items: center; width: 30px; height: 58px; border: 1px solid rgb(255 255 255 / .3); border-radius: 10px; font-size: 23px; }
+/* min(): a raised library leaves the picture ~114px tall, and a fixed 58px glyph filled half of it. */
+.verse-nav-hint > span { display: grid; place-items: center; width: 30px; height: min(58px, 42%); border: 1px solid rgb(255 255 255 / .3); border-radius: 10px; font-size: 23px; }
 .verse-nav-hint--next { animation-delay: 1.4s; }
 @keyframes verse-hint { 0%, 100% { opacity: 0; } 15%, 80% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .verse-nav-hint { animation: none; opacity: .65; } }

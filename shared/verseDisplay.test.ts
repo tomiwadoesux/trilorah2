@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
+import { setVersionCredits } from './bibleVersions'
 import {
   buildVerseSlides,
   formatReference,
@@ -49,8 +50,8 @@ describe('formatReference', () => {
   })
 
   it('handles multi-word books and a reversed-looking range', () => {
-    const song = { book: 'Song of Solomon', chapter: 2, version: 'NIV' }
-    expect(formatReference(song, 1, 1, { showTranslation: true })).toBe('Song of Solomon 2:1 · NIV')
+    const song = { book: 'Song of Solomon', chapter: 2, version: 'WEB' }
+    expect(formatReference(song, 1, 1, { showTranslation: true })).toBe('Song of Solomon 2:1 · WEB')
     // endVerse below start is treated as a single verse, never '5-3'.
     expect(formatReference(song, 5, 3, { showTranslation: false })).toBe('Song of Solomon 2:5')
   })
@@ -314,11 +315,11 @@ describe('buildVerseSlides — round trip, no text lost', () => {
 
 describe('buildVerseSlides — secondary translation', () => {
   const SECONDARY = {
-    version: 'NIV',
+    version: 'WEB',
     verses: [
-      { verse: 16, text: 'For God so loved the world (NIV).' },
-      { verse: 17, text: 'For God did not send his Son (NIV).' },
-      { verse: 18, text: 'Whoever believes is not condemned (NIV).' }
+      { verse: 16, text: 'For God so loved the world (WEB).' },
+      { verse: 17, text: 'For God did not send his Son (WEB).' },
+      { verse: 18, text: 'Whoever believes is not condemned (WEB).' }
     ]
   }
 
@@ -326,7 +327,7 @@ describe('buildVerseSlides — secondary translation', () => {
     const slides = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: SECONDARY }))
     expect(slides).toHaveLength(3)
     for (const s of slides) expect(s.lines).toHaveLength(2)
-    expect(slides[0].lines[1]).toEqual({ version: 'NIV', text: SECONDARY.verses[0].text })
+    expect(slides[0].lines[1]).toEqual({ version: 'WEB', text: SECONDARY.verses[0].text })
   })
 
   it('joins the same range on the collapsed slide', () => {
@@ -347,18 +348,18 @@ describe('buildVerseSlides — secondary translation', () => {
       opts({ breakOnVerse: true, showTranslation: true, secondary: SECONDARY })
     )
     expect(slides[0].reference).toBe('John 3:16 · KJV')
-    expect(slides[0].reference).not.toContain('NIV')
+    expect(slides[0].reference).not.toContain('WEB')
   })
 
   it('drops the second line for a ragged secondary instead of throwing', () => {
-    const ragged = { version: 'NIV', verses: [SECONDARY.verses[0], SECONDARY.verses[2]] }
+    const ragged = { version: 'WEB', verses: [SECONDARY.verses[0], SECONDARY.verses[2]] }
     const slides = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: ragged }))
     expect(slides.map((s) => s.lines.length)).toEqual([2, 1, 2])
     expect(slides[1].lines[0].version).toBe('KJV')
   })
 
   it('survives an entirely empty or null secondary', () => {
-    const empty = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: { version: 'NIV', verses: [] } }))
+    const empty = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: { version: 'WEB', verses: [] } }))
     expect(empty.every((s) => s.lines.length === 1)).toBe(true)
     const nulled = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: null }))
     expect(nulled.every((s) => s.lines.length === 1)).toBe(true)
@@ -371,7 +372,7 @@ describe('buildVerseSlides — secondary translation', () => {
       opts({ breakOnVerse: true, maxCharsPerSlide: 12, secondary: SECONDARY })
     )
     expect(slides.length).toBeGreaterThan(1)
-    for (const s of slides) expect(s.lines[1]).toEqual({ version: 'NIV', text: SECONDARY.verses[0].text })
+    for (const s of slides) expect(s.lines[1]).toEqual({ version: 'WEB', text: SECONDARY.verses[0].text })
   })
 })
 
@@ -415,5 +416,69 @@ describe('pages of a long reading', () => {
   it('never cuts a verse, even one longer than a page', () => {
     const pages = pageVerses([verse(1, 30), verse(2, 120), verse(3, 30)], PAGE_WORDS)
     expect(pages.map((p) => p.map((v) => v.verse))).toEqual([[1], [2], [3]])
+  })
+})
+
+/*
+ * A licensed translation carries its initials on every surface, whatever
+ * the church's theme says (Biblica: "(NIV)" after each quotation in church
+ * media). These are the rules that keep the preview and the wall agreeing.
+ */
+describe('licensed translations always carry their initials', () => {
+  const NIV = { book: 'John', chapter: 3, version: 'NIV' }
+
+  it('names the version even with "show translation" off', () => {
+    expect(formatReference(NIV, 16, 16, { showTranslation: false })).toBe('John 3:16' + TRANSLATION_SEPARATOR + 'NIV')
+    // A public-domain version still follows the setting.
+    expect(formatReference(REF, 16, 16, { showTranslation: false })).toBe('John 3:16')
+  })
+
+  it('keeps the reference on the last slide when the theme hides it', () => {
+    const none = buildVerseSlides(NIV, RANGE, opts({ breakOnVerse: true, referenceMode: 'none' }))
+    expect(none.map((s) => s.reference)).toEqual([null, null, 'John 3:18 · NIV'])
+    const first = buildVerseSlides(NIV, RANGE, opts({ breakOnVerse: true, referenceMode: 'first' }))
+    expect(first.map((s) => s.reference)).toEqual(['John 3:16 · NIV', null, 'John 3:18 · NIV'])
+    const together = buildVerseSlides(NIV, RANGE, opts({ referenceMode: 'none' }))
+    expect(together.map((s) => s.reference)).toEqual(['John 3:16-18 · NIV'])
+    // Public domain: 'none' still means none.
+    expect(buildVerseSlides(REF, RANGE, opts({ referenceMode: 'none' }))[0].reference).toBeNull()
+  })
+
+  it('ends a licensed second translation in its initials', () => {
+    const secondary = { version: 'NKJV', verses: [{ verse: 16, text: 'Invented second line.' }] }
+    const slides = buildVerseSlides(REF, SINGLE, opts({ secondary }))
+    expect(slides[0].lines[1]).toEqual({ version: 'NKJV', text: 'Invented second line. (NKJV)' })
+    expect(slides[0].reference).toBe('John 3:16')
+  })
+
+  it('treats a version it cannot name as licensed, and a blank one as nothing', () => {
+    expect(formatReference({ ...REF, version: 'XYZ' }, 1, 1, { showTranslation: false })).toBe('John 3:1 · XYZ')
+    expect(formatReference({ ...REF, version: '' }, 1, 1, { showTranslation: false })).toBe('John 3:1')
+  })
+})
+
+describe("an online Bible's copyright line on its slides", () => {
+  afterEach(() => setVersionCredits([]))
+  const NIV = { book: 'John', chapter: 3, version: 'NIV' }
+  const INVENTED = [{ verse: 1, text: 'Invented words one.' }, { verse: 2, text: 'Invented words two.' }]
+
+  it('is on every slide of its words, not only the last', () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented NIV line' }])
+    const slides = buildVerseSlides(NIV, INVENTED, opts({ breakOnVerse: true }))
+    expect(slides).toHaveLength(2)
+    expect(slides.map((s) => s.credit)).toEqual(['Invented NIV line', 'Invented NIV line'])
+  })
+  it('is absent for a bundled Bible, and for an online one main gives no line for', () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented NIV line' }])
+    expect(buildVerseSlides(REF, RANGE, opts())[0]).not.toHaveProperty('credit')
+    expect(buildVerseSlides({ ...NIV, version: 'NKJV' }, INVENTED, opts())[0]).not.toHaveProperty('credit')
+  })
+  it("adds the second translation's line where that translation has words on the slide", () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented NIV line' }, { code: 'NKJV', attribution: 'Invented NKJV line' }])
+    const slides = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: { version: 'NKJV', verses: [{ verse: 16, text: 'Invented second.' }] } }))
+    expect(slides[0].credit).toBe('Invented NKJV line')
+    expect(slides[1]).not.toHaveProperty('credit')
+    const both = buildVerseSlides(NIV, INVENTED, opts({ secondary: { version: 'NKJV', verses: INVENTED } }))
+    expect(both[0].credit).toBe('Invented NIV line · Invented NKJV line')
   })
 })

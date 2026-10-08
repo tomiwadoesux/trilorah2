@@ -18,7 +18,8 @@ export interface LiveSpan {
 /** "Genesis 22:1-3" off the projector's live item, or null for anything else. */
 export function liveSpan(item: LiveItem | null | undefined): LiveSpan | null {
   if (!item || item.source !== 'scripture') return null;
-  const m = (item.reference ?? item.id).trim().match(/^(.+?)\s+(\d+):(\d+)(?:\s*-\s*(\d+))?$/);
+  /* The phone writes a range with an en dash ("John 3:16–18"). */
+  const m = (item.reference ?? item.id).trim().match(/^(.+?)\s+(\d+):(\d+)(?:\s*[-–—]\s*(\d+))?$/);
   if (!m) return null;
   const bookIndex = BOOKS.findIndex((name) => name.toLowerCase() === m[1].toLowerCase());
   const chapter = Number(m[2]);

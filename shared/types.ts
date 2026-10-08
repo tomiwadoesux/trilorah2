@@ -40,6 +40,12 @@ export interface VerseDetection {
   version?: string
   explicitBook?: boolean
   recognition?: ScriptureRecognition
+  /** The reading's words, which main composes onto every detection it sends. */
+  text?: string
+  verses?: { verse: number; text: string }[]
+  /** Set on the preview an operator's own push makes on its way to the wall
+      (Go live, a step, a catch sent by reference). Not heard, so not a catch. */
+  operatorPush?: boolean
 }
 
 /** Payload ScriptureSession emits toward the display layer. */

@@ -1,0 +1,42 @@
+{
+  "note": "Where each bundled translation in bible.db came from. Written by scripts/build-bible-db.mjs.",
+  "versions": {
+    "WEB": {
+      "translation": "World English Bible",
+      "sourceId": "ENGWEBP",
+      "sourceUrl": "https://bible.helloao.org/api/ENGWEBP/books.json",
+      "licenseUrl": "https://ebible.org/Scriptures/details.php?id=engwebp",
+      "rights": "Public domain (no copyright).",
+      "retrieved": "2026-10-07",
+      "rowsSha256": "b9fa71e9ddc445b195e20cae7f01ce0ceaec720035504e62f2129a7268d02bbd",
+      "books": 66,
+      "chapters": 1189,
+      "verses": 31098
+    },
+    "BSB": {
+      "translation": "Berean Standard Bible",
+      "sourceId": "BSB",
+      "sourceUrl": "https://bible.helloao.org/api/BSB/books.json",
+      "licenseUrl": "https://berean.bible/terms.htm",
+      "rights": "Dedicated to the public domain on 30 April 2023; all uses freely permitted. Only the verbatim text may carry the Berean name.",
+      "attribution": "The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with Bible Hub, Discovery Bible, OpenBible.com, and the Berean Bible Translation Committee. This text of God's Word has been dedicated to the public domain.",
+      "retrieved": "2026-10-07",
+      "rowsSha256": "4c823f035d8b13b6aa26227b742d4ff30d0bed5a6809949f845f8d41d86c3a97",
+      "books": 66,
+      "chapters": 1189,
+      "verses": 31086
+    },
+    "ASV": {
+      "translation": "American Standard Version (1901)",
+      "sourceId": "eng_asv",
+      "sourceUrl": "https://bible.helloao.org/api/eng_asv/books.json",
+      "licenseUrl": "https://ebible.org/Scriptures/details.php?id=eng-asv",
+      "rights": "Public domain.",
+      "retrieved": "2026-10-07",
+      "rowsSha256": "612d01a352a944d9033e3a16690aed1cf4124a079a1828ba0a44ed8f462370fb",
+      "books": 66,
+      "chapters": 1189,
+      "verses": 31086
+    }
+  }
+}

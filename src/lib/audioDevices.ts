@@ -45,8 +45,12 @@ export async function listAudioInputs(): Promise<AudioInput[]> {
       console.error('mic: could not open a stream to unlock device labels', err);
     }
   }
+  /* Chromium lists the system's default input twice: once as itself and once
+     as "Default - <its name>" (and "Communications - …" on Windows). The
+     copies are the same microphone under a second name; "system default"
+     already covers following the OS, so they are never shown. */
   return [...deviceInputs, ...inputs
-    .filter((d) => d.label && d.deviceId !== 'communications')
+    .filter((d) => d.label && d.deviceId !== 'default' && d.deviceId !== 'communications')
     .map((d) => ({ id: d.deviceId, label: d.label }))];
 }
 

@@ -53,6 +53,13 @@ describe('VoiceCommandEngine — translation switching', () => {
     expect(switched).toEqual(['KJV'])
   })
 
+  it('"the berean standard bible" switches to the bundled BSB', () => {
+    versions = ['KJV', 'BSB', 'WEB']
+    const engine = makeEngine()
+    expect(engine.process('let us read it from the berean standard bible')).toBe(true)
+    expect(switched).toEqual(['BSB'])
+  })
+
   it('reports but does not switch to an uninstalled version', () => {
     const engine = makeEngine()
     expect(engine.process('read it in the new living translation')).toBe(false)

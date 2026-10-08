@@ -9,6 +9,10 @@ describe('liveSpan', () => {
     expect(liveSpan({ source: 'scripture', id: '1 Samuel 17:45', label: '' }))
       .toEqual({ bookIndex: 8, book: '1 Samuel', chapter: 17, first: 45, last: 45 });
   });
+  it('reads a range written with an en dash, the way the phone writes it', () => {
+    expect(liveSpan({ source: 'scripture', id: 'John 3:16–18@KJV', label: '', reference: 'John 3:16–18' }))
+      .toEqual({ bookIndex: 42, book: 'John', chapter: 3, first: 16, last: 18 });
+  });
   it('ignores what is not a verse it can find', () => {
     expect(liveSpan({ source: 'song', id: 'Amazing Grace', label: '' })).toBeNull();
     expect(liveSpan({ source: 'scripture', id: 'Genesis 22', label: '' })).toBeNull();

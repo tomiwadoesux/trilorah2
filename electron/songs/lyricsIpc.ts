@@ -11,8 +11,8 @@ import { discoverChristianSongs } from './songDiscovery';
  * operator on a Sunday.
  */
 
-import type { IpcMain } from 'electron'
-import { getLyrics, searchLyrics } from './lyricsSearch'
+import { app, type IpcMain } from 'electron'
+import { getLyrics, lyricsPreview, searchLyrics, setLyricsClientVersion } from './lyricsSearch'
 import { youtubeCaptions } from './youtubeCaptions'
 
 const backstop = (err: unknown) => ({
@@ -22,12 +22,18 @@ const backstop = (err: unknown) => ({
 })
 
 export function registerLyricsIpc(ipcMain: IpcMain): void {
+  setLyricsClientVersion(app?.getVersion?.() ?? '')
   ipcMain.handle('songs-discover', (_event, payload: { query?: string } | undefined) => discoverChristianSongs(String(payload?.query ?? '')));
   ipcMain.handle('lyrics-search', (_event, payload: { query?: string } | undefined) =>
     searchLyrics(String(payload?.query ?? '')).catch(backstop)
   )
   ipcMain.handle('lyrics-get', (_event, payload: { id?: number } | undefined) =>
     getLyrics(Number(payload?.id)).catch(backstop)
+  )
+  // A song card's opening line, and the record its click will open. `retry`
+  // is the click's: a hover never retries a busy LRCLIB.
+  ipcMain.handle('lyrics-preview', (_event, payload: { title?: string; artist?: string; retry?: boolean } | undefined) =>
+    lyricsPreview(String(payload?.title ?? ''), String(payload?.artist ?? ''), { retry: !!payload?.retry }).catch(backstop)
   )
   ipcMain.handle('youtube-captions', (_event, payload: { url?: string } | undefined) =>
     youtubeCaptions(String(payload?.url ?? '')).catch(backstop)

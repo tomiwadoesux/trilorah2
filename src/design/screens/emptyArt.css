@@ -1222,7 +1222,17 @@
   min-width: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  container: empty-state / size;
+}
+/* Width-only container. A SIZE container here (as this used to be) makes
+   Chromium cancel every hover transition inside it the frame after it
+   starts while the header orb redraws, so the drawings snapped to their
+   hover pose instead of easing. The height tiers are attributes set by
+   useShortCard (emptyArt.tsx): data-short ≤ 225px, data-shorter ≤ 140px,
+   data-shortest ≤ 135px. */
+.tri-empty-mark__frame {
+  height: 100%;
+  min-height: 0;
+  container: empty-state / inline-size;
 }
 .tri-empty-mark__layout {
   display: grid;
@@ -1265,19 +1275,15 @@
 .tri-empty-mark__actions { max-width: 100%; margin-top: 4px; }
 .tri-empty-mark__actions > div { margin-top: 0; }
 .tri-empty-mark__actions button { max-width: 100%; }
-@container empty-state (max-height: 225px) {
-  .tri-empty-mark__layout { grid-template-rows: minmax(64px, 1fr) auto; gap: 6px; padding: 2px 8px; }
-  .tri-empty-mark__stage { min-height: 64px; }
-  .tri-empty-mark__copy { gap: 4px; }
-  .tri-empty-mark__line { font-size: 11px; line-height: 1.35; }
-  .tri-empty-mark__hint { font-size: 10px; line-height: 1.35; }
-  .tri-empty-mark__actions { --tri-control-h: 28px; --tri-control-pad-x: 9px; --tri-size: 11px; margin-top: 2px; }
-}
+[data-short] > .tri-empty-mark__layout { grid-template-rows: minmax(64px, 1fr) auto; gap: 6px; padding: 2px 8px; }
+[data-short] .tri-empty-mark__stage { min-height: 64px; }
+[data-short] .tri-empty-mark__copy { gap: 4px; }
+[data-short] .tri-empty-mark__line { font-size: 11px; line-height: 1.35; }
+[data-short] .tri-empty-mark__hint { font-size: 10px; line-height: 1.35; }
+[data-short] .tri-empty-mark__actions { --tri-control-h: 28px; --tri-control-pad-x: 9px; --tri-size: 11px; margin-top: 2px; }
 
-@container empty-state (max-height: 135px) {
-  .tri-empty-mark__layout { grid-template-rows: minmax(32px, 1fr) auto; gap: 4px; }
-  .tri-empty-mark__stage { min-height: 32px; }
-}
+[data-shortest] > .tri-empty-mark__layout { grid-template-rows: minmax(32px, 1fr) auto; gap: 4px; }
+[data-shortest] .tri-empty-mark__stage { min-height: 32px; }
 
 @container empty-state (min-width: 360px) {
   .tri-empty-mark__line, .tri-empty-mark__hint { max-width: 60ch; }
@@ -1288,11 +1294,7 @@
    rather than holding a minimum that pushes the last row of buttons out —
    which is what happened when the library was raised. Too short for even a
    small drawing, it goes. */
-@container empty-state (max-height: 225px) {
-  .tri-empty-mark__layout--actions { grid-template-rows: minmax(0, 1fr) auto; }
-  .tri-empty-mark__layout--actions > .tri-empty-mark__stage { min-height: 0; overflow: hidden; }
-}
-@container empty-state (max-height: 140px) {
-  .tri-empty-mark__layout--actions { grid-template-rows: auto; align-content: center; }
-  .tri-empty-mark__layout--actions > .tri-empty-mark__stage { display: none; }
-}
+[data-short] > .tri-empty-mark__layout--actions { grid-template-rows: minmax(0, 1fr) auto; }
+[data-short] > .tri-empty-mark__layout--actions > .tri-empty-mark__stage { min-height: 0; overflow: hidden; }
+[data-shorter] > .tri-empty-mark__layout--actions { grid-template-rows: auto; align-content: center; }
+[data-shorter] > .tri-empty-mark__layout--actions > .tri-empty-mark__stage { display: none; }

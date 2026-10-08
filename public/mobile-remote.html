@@ -216,6 +216,8 @@ button.s.go:active:not([aria-disabled=true]), button.s.caution:active:not([aria-
 .fit-4 { font-size: 14.5px; line-height: 1.44; }
 .slide-caption { margin-top: 9px; font-size: 12px; font-weight: 600; letter-spacing: .03em; color: rgb(255 255 255 / .62); }
 .slide-empty { font-size: 14px; color: var(--ink-3); }
+/* An online Bible's copyright line (NIV, NKJV), under its caption. */
+.slide-credit { margin-top: 4px; font-size: 10.5px; line-height: 1.35; color: rgb(255 255 255 / .45); }
 /* A picture keeps the projector's own shape; words take only the room they need. */
 .monitor[data-visual=true] .slide { aspect-ratio: 16 / 9; min-height: 0; }
 .monitor[data-visual=true] .slide-img { object-fit: contain; background: #000; }
@@ -276,6 +278,7 @@ button.s.go:active:not([aria-disabled=true]), button.s.caution:active:not([aria-
 .tag.is-live { color: var(--gold); background: rgb(228 216 122 / .12); }
 .catch-text { margin-top: 5px; font-family: var(--serif); font-size: 14.5px; line-height: 1.45; color: var(--ink-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .catch-hint { margin-top: 7px; font-size: 12.5px; color: var(--gold); }
+.catch-credit { display: block; margin-top: 4px; font-size: 11px; line-height: 1.35; color: var(--ink-3); }
 .catch-x { flex: 0 0 50px; display: grid; place-items: center; color: var(--ink-3); border-radius: 0 var(--r-card) var(--r-card) 0; transition: color 120ms ease, transform var(--press) var(--ease-out); }
 .catch-x:active { color: var(--ink); transform: scale(.9); }
 
@@ -524,6 +527,7 @@ body[data-connected=false] .needs-desktop { opacity: .38; pointer-events: none; 
         <div id="slideBody" class="slide-body">
           <p id="liveText" class="slide-text fit-2"></p>
           <p id="liveLabel" class="slide-caption"></p>
+          <p id="liveCredit" class="slide-credit" hidden></p>
         </div>
       </div>
       <!-- Under the picture, as on the desktop's live pane: what it is, then the state. -->
@@ -880,7 +884,7 @@ function renderPrompt(s) {
 function renderMonitor(s) {
   const live = s.live;
   const screen = s.screen || 'live';
-  const key = JSON.stringify([screen, live && [live.id, live.label, itemText(live)]]);
+  const key = JSON.stringify([screen, live && [live.id, live.label, itemText(live), live.credit]]);
   if (key === seen.monitor) return;
   const swapped = seen.monitor !== undefined && JSON.parse(seen.monitor)[1]?.[0] !== live?.id;
   seen.monitor = key;
@@ -902,6 +906,9 @@ function renderMonitor(s) {
   const label = $('liveLabel');
   label.textContent = live ? caption(live) : screen === 'live' ? 'tap a catch, a lyric or search' : '';
   label.className = live ? 'slide-caption' : 'slide-empty';
+  const credit = $('liveCredit');
+  credit.textContent = text && live?.credit ? live.credit : '';
+  credit.hidden = !credit.textContent;
 
   const img = $('liveImage');
   if (isVisual(live)) loadThumb('live', live, img);
@@ -1014,6 +1021,7 @@ function renderProposals(s) {
         h('span', { class: 'tag', text: p.version }),
         h('span', { class: 'tag state', hidden: true })),
       p.text ? h('span', { class: 'catch-text', text: p.text }) : null,
+      p.text && p.credit ? h('span', { class: 'catch-credit', text: p.credit }) : null,
       hintFor(p) ? h('span', { class: 'catch-hint', text: hintFor(p) }) : null);
     setDisabled(main, p.missing);
     const node = h('div', { class: 'catch' }, main,
@@ -1312,8 +1320,14 @@ async function loadLibrary() {
     library = await rpc('library');
     const select = $('version');
     const old = select.value;
-    select.replaceChildren(...library.versions.map((v) => h('option', { value: v, text: v })));
-    select.value = library.versions.includes(old) ? old : library.versions.includes('KJV') ? 'KJV' : library.versions[0] || '';
+    /* The code is what fits a 76px picker; its name rides along as the
+       option's title and the picker's spoken label. Opens on the Bible the
+       service is using, not on KJV. */
+    const names = library.versionNames || {};
+    select.replaceChildren(...library.versions.map((v) => h('option', { value: v, text: v, title: names[v] || v })));
+    const using = library.versions.includes(library.version) ? library.version : 'KJV';
+    select.value = library.versions.includes(old) ? old : library.versions.includes(using) ? using : library.versions[0] || '';
+    nameVersion();
     seen.songList = seen.decks = null;
     renderSongList();
     renderDecks();
@@ -1653,7 +1667,13 @@ function eraseReferenceToken() {
 }
 $('reference').addEventListener('beforeinput', (e) => { if (e.inputType === 'deleteContentBackward' && e.cancelable && eraseReferenceToken()) e.preventDefault(); });
 $('reference').oninput = () => { renderReferenceTokens(); clearTimeout(suggestTimer); suggestSequence++; suggestTimer = setTimeout(suggest, 160); };
-$('version').onchange = () => void suggest();
+function nameVersion() {
+  const select = $('version');
+  const name = (library?.versionNames || {})[select.value] || select.value;
+  select.title = name;
+  select.setAttribute('aria-label', name ? `Translation: ${name}` : 'Translation');
+}
+$('version').onchange = () => { nameVersion(); void suggest(); };
 $('reference').onkeydown = (e) => {
   if (e.key === 'Backspace' && eraseReferenceToken()) { e.preventDefault(); return; }
   if (e.key === 'Escape') { $('suggestions').hidden ? closeSearch() : closeSuggestions(); return; }

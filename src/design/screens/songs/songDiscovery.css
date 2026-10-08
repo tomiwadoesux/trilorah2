@@ -27,3 +27,14 @@
 .song-discovery-status:empty { display: none; }
 @keyframes song-cover-loading { to { background-position: -160% 0; } }
 @media (prefers-reduced-motion: reduce) { .song-discovery-image-placeholder.is-loading { animation: none; } }
+
+/* A card's opening line, over the foot of its cover and under the "find
+   lyrics" pill — on the art rather than below the artist so the grid never
+   shifts. The scrim only darkens the photo enough to read on — it fades out
+   above the words, not under them, so a white cover still reads — and it
+   rises in once the pointer or keyboard has rested on the card. */
+.song-discovery-preview { position: absolute; left: 0; right: 0; bottom: 0; padding: 24px 9px 40px; background: linear-gradient(to top, rgb(0 0 0 / .8), rgb(0 0 0 / .68) calc(100% - 20px), transparent); pointer-events: none; opacity: 0; transform: translateY(4px); transition: opacity 160ms ease-out, transform 160ms ease-out; }
+.song-discovery-preview[aria-hidden="false"] { opacity: 1; transform: none; }
+.song-discovery-preview-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: rgb(255 255 255 / .94); font-size: 11px; line-height: 1.4; font-style: italic; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
+.song-discovery-preview:not([data-state="line"]) .song-discovery-preview-text { font-style: normal; color: rgb(255 255 255 / .72); }
+@media (prefers-reduced-motion: reduce) { .song-discovery-preview { transition: none; transform: none; } }

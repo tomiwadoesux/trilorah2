@@ -8,8 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { buildVerseSlides, PAGE_WORDS, type VerseSlide } from '../../../shared/verseDisplay';
-import type { LiveItem, ScreenState } from './projector';
+import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
+import { SLIDE_RULES, fitRules } from '../../lib/slideRules';
+import { isScreenState, type LiveItem, type ScreenState } from './projector';
 import type { Spoken } from './transcript/types';
 import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
 import type { ScriptureRecognition } from '../../../shared/types';
@@ -78,6 +79,11 @@ interface Detection {
      this is an observation of the implementation. */
   text?: string;
   verses?: { verse: number; text: string }[];
+  /** The operator's own push on its way through the engine's preview. */
+  operatorPush?: boolean;
+  /** A catch shown first in the bundled fallback, now in the online Bible
+      it was heard in: the version its card is showing (main.ts). */
+  replaces?: string;
 }
 
 export interface EngineValue {
@@ -172,26 +178,9 @@ export interface Proposal {
 
 const EngineContext = createContext<EngineValue | null>(null);
 
-/*
- * How a reading becomes slides.
- *
- * These are the renderer-facing options, and they are deliberately NOT the
- * app's saved projector settings: the sandbox has no business rewriting a
- * church's configuration to draw its own preview. One verse per slide with
- * the reference on it is the arrangement a Bible study wants — the reading
- * is walked verse by verse and every slide has to say where it is, because
- * people arrive late and look up.
- */
-export const SLIDE_RULES = {
-  breakOnVerse: true,
-  showVerseNumbers: false,
-  referenceMode: 'each' as const,
-  showTranslation: false,
-  maxCharsPerSlide: 240,
-  /* A range together is pages of whole verses past this, so it can be read
-     on a TV — the same number the wall pages by (src/output.tsx). */
-  maxWordsPerSlide: PAGE_WORDS,
-};
+/* How a reading becomes slides — lib/slideRules, so a plain module can
+   slice a reading the same way without importing this provider. */
+export { SLIDE_RULES, fitRules };
 
 /*
  * How much one slide can hold and still be read from the back row.
@@ -212,22 +201,6 @@ export function wordCount(text: string): number {
 export type Fit = 'fits' | 'tight' | 'too long';
 export function fitOf(words: number): Fit {
   return words <= FIT_WORDS ? 'fits' : words <= TIGHT_WORDS ? 'tight' : 'too long';
-}
-
-/**
- * "Verse four and five" means show four and five — together (owner,
- * 2026-10-07: "Genesis 3 verse 3-5 should show 3-5", and 3-7 likewise).
- *
- * A range is one slide. Fitting it is the screen's job, not a word count's:
- * the wall and the preview shrink the words until they fit, to half size at
- * most, and past that end them with "…" (lib/useFitText). Before, a range
- * past TIGHT_WORDS was walked verse by verse — which is why 3-5 showed 3.
- * Apart is still the operator's to choose, with the preview's
- * together/apart control (`together` false).
- */
-export function fitRules(verses: { text: string }[], together?: boolean) {
-  const keep = together ?? verses.length > 1;
-  return { ...SLIDE_RULES, breakOnVerse: !keep, showVerseNumbers: keep && verses.length > 1 };
 }
 
 /** How many transcript lines to keep. Enough to read back, not a log file. */
@@ -424,7 +397,14 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
     off.push(api.onVoiceCommand?.((event) => setSpoken((s) => confirmTranscriptCommand(s, event))));
 
-    off.push(api.onScreenState?.((s: string) => setScreenState(s as ScreenState)));
+    /* Asked once as well as followed. After a reload this started at 'live'
+       over a held black, and the operator's status read from it. A change
+       heard before the answer lands is newer, so it wins. */
+    let screenHeard = false;
+    off.push(api.onScreenState?.((s: string) => { screenHeard = true; setScreenState(s as ScreenState); }));
+    void api.getScreenState?.()
+      .then((s) => { if (!screenHeard && isScreenState(s)) setScreenState(s); })
+      .catch(() => undefined);
 
     /*
      * A proposal, not a stage.
@@ -438,6 +418,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     off.push(
       api.onVersePreview?.((d: Detection) => {
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
+        /* A push the operator made — a step, a go live, a catch sent — goes
+           through the engine's preview on its way to the wall. It was not
+           heard, so it is not a catch: as one it flashed in the caught pane,
+           raised the strip on the other tabs and joined a set. */
+        if (d.operatorPush) return;
         const reference = referenceOf(d);
         setLatestReference(reference);
 
@@ -450,10 +435,16 @@ export function EngineProvider({ children }: { children: ReactNode }) {
            never be one press away from the projector. */
         const missing = /\bnot found\b/i.test(text);
         const kind = catchKind(d.recognition);
+        /* The same catch arriving in its online Bible (main re-reads it once
+           the chapter is here): its card turns into it — same place, same
+           clock running — rather than a second card with a fresh one. Gone
+           already (sent, dismissed, timed out): nothing is put back. */
+        const replaced = d.replaces ? proposalsNow.current.find((x) => x.reference === reference && x.version === d.replaces) : undefined;
+        if (d.replaces && !replaced) return;
         /* Heard again while it waits: same place in its set, fresh clock
            (startProposalClock below). Without this, a reference repeated in
            the sentence's final moved to the end of its set. */
-        const again = proposalsNow.current.find((x) => x.reference === reference && x.version === version && x.kind === kind);
+        const again = replaced ?? proposalsNow.current.find((x) => x.reference === reference && x.version === version && x.kind === kind);
         /* Strictly increasing, so references that land in the same instant
            — the end of one spoken list — keep the order they were said. */
         const arrivedAt = again?.arrivedAt ?? Math.max(Date.now(), lastArrival.current + 1);
@@ -463,7 +454,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           `set-${++setCount.current}`);
         if (kind === 'said' && !again) setTail.current = { group, at: arrivedAt };
         const proposal: Proposal = {
-          id: `${d.recognition?.suggestionId ?? reference}@${version}`,
+          id: replaced?.id ?? `${d.recognition?.suggestionId ?? reference}@${version}`,
           reference,
           version,
           text,
@@ -478,8 +469,13 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           kind,
           group,
           arrivedAt,
-          heard: lastWords(spokenRef.current) || undefined,
+          // A card turned into its online text still says what was heard then.
+          heard: replaced ? replaced.heard : lastWords(spokenRef.current) || undefined,
         };
+        if (replaced) {
+          updateProposals((p) => p.map((x) => (x.id === replaced.id ? proposal : x)));
+          return;
+        }
         updateProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id &&
           !(x.reference === proposal.reference && x.version === proposal.version))].slice(0, PROPOSAL_CAP));
         /* Its six seconds start now — or start again, if it was already up. */

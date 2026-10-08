@@ -9,6 +9,7 @@ import { isTextPosition } from '../../shared/textPosition';
 import { clampTextWidth } from '../../shared/textWidth';
 import { resolveTextCase } from '../../shared/textCase';
 import { resolveTextSpacing } from '../../shared/textSpacing';
+import { themeFieldsFromSettings } from './backgroundDrop';
 
 export const TRI_THEME_KEY = 'trilorah_theme_layout';
 export const TRI_THEME_EVENT = 'trilorah-theme-imported';
@@ -109,18 +110,10 @@ export function applyTriSnapshot(snapshot: TriSnapshot, openService: boolean): v
     // A display-only import needs a matching preview, so projection cannot
     // overwrite the imported appearance with the previous layout.
     if (!layout) {
-      const converted = { ...readTriLocal<Record<string, unknown>>(TRI_THEME_KEY, {}) };
-      if (display.scriptureFontPreset === 'display-serif') converted.font = 'serif';
-      if (display.scriptureFontPreset === 'modern-sans') converted.font = 'default';
-      if (typeof display.overlayOpacity === 'number') converted.dimness = display.overlayOpacity * 100;
-      if (typeof display.backgroundBlur === 'number') converted.blur = display.backgroundBlur;
-      if (typeof display.safeMargin === 'number') converted.safeMargin = display.safeMargin;
-      if (typeof display.textWidth === 'number') converted.textWidth = clampTextWidth(display.textWidth);
-      if (display.textCase !== undefined) converted.textCase = resolveTextCase(display.textCase);
-      if (display.textSpacing !== undefined) converted.textSpacing = resolveTextSpacing(display.textSpacing);
-      if (typeof display.verseLayout === 'string') converted.layout = display.verseLayout;
-      if (typeof display.refGap === 'number') converted.refGap = display.refGap;
-      if (typeof display.refScale === 'number') converted.verseSize = (display.refScale * 0.46 - 0.46) / 0.035;
+      /* The same reading of display settings the LIVE box uses on the wall's
+         own (lib/backgroundDrop), so an import and the wall cannot disagree
+         about what a setting means. */
+      const converted: Record<string, unknown> = { ...readTriLocal<Record<string, unknown>>(TRI_THEME_KEY, {}), ...themeFieldsFromSettings(display) };
       if (typeof display.defaultBackgroundUrl === 'string' && display.defaultBackgroundUrl) {
         const existing = getMediaLibrary().find(item => item.url === display.defaultBackgroundUrl);
         const id = existing?.id ?? `tri-background-${Date.now()}`;
@@ -137,6 +130,21 @@ export function applyTriSnapshot(snapshot: TriSnapshot, openService: boolean): v
   }
   window.dispatchEvent(new Event('presentations-updated'));
   window.dispatchEvent(new Event('trilorah-package-imported'));
+}
+
+/**
+ * A card deleted from the shelf, forgotten by the last saved service too.
+ *
+ * restoreTriRenderer (below) puts back any card missing from the shelf on
+ * every LIVE mount, so without this a deleted picture that was in the last
+ * .tri save came back on the next launch.
+ */
+export async function forgetTriMedia(id: string): Promise<void> {
+  const api = window.api;
+  if (!api?.getSetting || !api.setSetting) return;
+  const saved = await api.getSetting('triRendererState').catch(() => undefined) as Partial<TriRendererState> | undefined;
+  if (!saved || !Array.isArray(saved.media) || !saved.media.some(item => item?.id === id)) return;
+  await api.setSetting('triRendererState', { ...saved, media: saved.media.filter(item => item?.id !== id) });
 }
 
 /** Restore only missing local data; this must never overwrite current edits. */

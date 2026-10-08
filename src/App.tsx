@@ -37,7 +37,9 @@ function useEngineWiring() {
 
     const subs: ((() => void) | undefined)[] = [
       api.onTranscriptUpdate((text) => live().appendTranscript(text)),
-      api.onVersePreview((d) => showVerse(d, 'preview')),
+      // The operator's own push lands as live a moment later; staging it here
+      // only fetched its words twice.
+      api.onVersePreview((d) => { if (!d.operatorPush) showVerse(d, 'preview'); }),
       api.onVerseDetected((d) => {
         showVerse(d, 'live');
       }),
@@ -117,8 +119,13 @@ function useEngineWiring() {
     void api.getSettings().then((settings) => {
       app().setSettings(settings);
       const preacherId = typeof settings.activePreacherId === 'string' ? settings.activePreacherId : '';
-      if (settings.defaultVersion && live().displayVersion == null) {
-        live().setDisplayVersion(settings.defaultVersion);
+      /* The Bible this service reads from. It used to be seeded from
+         `defaultVersion`, a key nothing writes, so it started empty; the
+         engine answers with the installed version it is actually using. */
+      if (live().displayVersion == null) {
+        void (api.getSessionVersion?.() ?? Promise.resolve(settings.displayVersion)).then((version) => {
+          if (typeof version === 'string' && version && live().displayVersion == null) live().setDisplayVersion(version);
+        }).catch(() => undefined);
       }
       if (preacherId) {
         /* The dashboard keeps its own preacher list (design/screens/

@@ -32,7 +32,10 @@ export function BentoGrid({ children }: { children: ReactNode }) {
     if (!el) return;
     const media = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
     const sync = () => {
-      enabled.current = media.matches && !document.hidden;
+      /* Hover growth is off for now (owner, 2026-10-08) — restore the line
+         below and the @media block in dashboardBento.css to bring it back. */
+      // enabled.current = media.matches && !document.hidden;
+      enabled.current = false;
       if (!enabled.current) { reset(cells.current, 0); active.current = null; }
     };
     let width = 0;

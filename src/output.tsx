@@ -4,6 +4,7 @@ import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { outputRestore } from './lib/outputRestore';
 import { buildVerseSlides, PAGE_WORDS, splitVerseNumbers, type VerseSlide } from '../shared/verseDisplay';
 import { useFitText } from './lib/useFitText';
+import { useBackgroundCrossfade } from './lib/useBackgroundCrossfade';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
 import { cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
@@ -15,6 +16,16 @@ import { resolveTextCase, type TextCase } from '../shared/textCase';
 import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
 import './output.css';
 import { DISPLAY_FONTS } from '../shared/displayFont';
+import { watchVersionCredits } from './lib/versionCredits';
+
+/**
+ * How long a reading waits for its second translation before going up
+ * without it. A Bible on this computer answers in a few milliseconds; an
+ * online one whose chapter is not kept yet can take seconds, and the wall
+ * should not sit on the bare reference for them — the line joins when it
+ * comes.
+ */
+const SECONDARY_GRACE_MS = 150;
 
 /**
  * The projector / stream / stage window: a transparent surface that fades
@@ -278,11 +289,11 @@ function OutputSurface() {
         const primary = await fetchVerseParts(detection);
         if (primary.length === 0) return;
         const secondaryVersion = opts.secondaryVersion;
-        const secondaryVerses =
+        const secondaryFetch =
           secondaryVersion && secondaryVersion !== (detection.version ?? primaryVersion(settings))
-            ? await fetchVerseParts(detection, secondaryVersion)
-            : [];
-        const slides = buildVerseSlides(
+            ? fetchVerseParts(detection, secondaryVersion)
+            : Promise.resolve([]);
+        const build = (secondaryVerses: { verse: number; text: string }[]) => buildVerseSlides(
           {
             book: detection.book,
             chapter: detection.chapter,
@@ -308,9 +319,20 @@ function OutputSurface() {
                 : null,
           },
         );
-        setShown((current) =>
+        const show = (slides: VerseSlide[]) => setShown((current) =>
           current?.detection === detection ? { ...current, slides } : current,
         );
+        /* The reading goes up with its second line when that answers at
+           once, else without it — and again, same pages, when it arrives. */
+        const quick = await Promise.race([
+          secondaryFetch,
+          new Promise<null>((resolve) => window.setTimeout(() => resolve(null), SECONDARY_GRACE_MS)),
+        ]);
+        show(build(quick ?? []));
+        if (quick === null) {
+          const late = await secondaryFetch;
+          if (late.length > 0) show(build(late));
+        }
       })();
     };
 
@@ -362,7 +384,9 @@ function OutputSurface() {
       // on-verse-detected. The stage monitor is the one exception: it shows
       // the pending verse as "up next" so the preacher knows it's coming.
       api.onVerseDetected((d) => { restore.invalidate(); display(d, false); }),
-      api.onVersePreview((d) => setUpNext(d)),
+      // An operator's own push passes through the preview on its way up; as
+      // "up next" it flashed "awaiting approval" for the verse already going live.
+      api.onVersePreview((d) => setUpNext(d.operatorPush ? null : d)),
       api.onVerseAutoDismiss(() => { restore.invalidate(); contentRevision++; setVisible(false); }),
       api.onShowCleanBackground(() => {
         restore.invalidate();
@@ -431,6 +455,9 @@ function OutputSurface() {
   const showAlert = alert && (alert.target === 'all' || alert.target === role || (isTimer && alert.target === 'stage'));
   // Stream never paints the theme background: the capture wants alpha.
   const paintBackground = !isStream && theme.backgroundUrl;
+  /* The old picture stays up until the new one has decoded, then the new
+     fades in over it (lib/useBackgroundCrossfade). */
+  const backgroundLayers = useBackgroundCrossfade(paintBackground ? theme.backgroundUrl : '');
   const contentVisible = visible && screen === 'live';
   const nextLabel = upNext ? formatRef(upNext) : queue[0]?.ref ?? null;
   // Clamp rather than wrap: walking past the end of a reading should rest on
@@ -641,11 +668,12 @@ function OutputSurface() {
 
   return (
     <div className={rootClass} style={themedStage}>
-      {paintBackground && (
+      {paintBackground && backgroundLayers.map((layer) => (
         <div
-          className="output-background"
+          key={layer.key}
+          className={layer.entering ? 'output-background output-background-enter' : 'output-background'}
           style={{
-            backgroundImage: cssImageUrl(theme.backgroundUrl),
+            backgroundImage: cssImageUrl(layer.url),
             backgroundSize: theme.backgroundFit === 'fill' ? '100% 100%' : theme.backgroundFit,
             backgroundPosition: theme.backgroundPosition,
             filter: theme.backgroundBlur ? `blur(${theme.backgroundBlur}px)` : undefined,
@@ -654,7 +682,7 @@ function OutputSurface() {
         >
           <div className="output-dim" style={{ opacity: isStage ? 0.75 : theme.overlayOpacity }} />
         </div>
-      )}
+      ))}
       {media && screen === 'live' && (
         <div className="output-media">
           <img src={media} alt="" />
@@ -711,6 +739,11 @@ function OutputSurface() {
                   </div>
                 ))}
                 {atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}
+                {/* An online Bible's copyright line (YouVersion's terms): the
+                    last line of the block, small — in the flow, so no layout
+                    can put it under the words. The operator's preview draws
+                    the same. */}
+                {slide.credit && <div className="output-credit">{slide.credit}</div>}
                 {slide.total > 1 && (
                   <div className="output-slide-count">
                     {slide.index} / {slide.total}
@@ -780,6 +813,9 @@ function OutputSurface() {
     </div>
   );
 }
+
+// An online Bible's copyright line, for every slide this window cuts (shared/verseDisplay).
+watchVersionCredits();
 
 const rootEl = document.getElementById('output-root');
 if (rootEl) {

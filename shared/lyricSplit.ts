@@ -381,7 +381,9 @@ function cleanLine(raw: string): Cleaned {
   // Whatever is still in square brackets mid-line is a chord or an aside.
   s = s.replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim()
   // Genius glues its footer onto the last lyric: "…my soul sings123Embed".
-  s = s.replace(/\d*Embed$/, '').trim()
+  // On a line of its own it can carry a space ("12 Embed"); stripping only
+  // the glued form there left a lone "12" behind as a lyric.
+  s = s.replace(/(?:^\d*\s*|\d*)Embed$/, '').trim()
 
   if (!s) return { kind: 'skip', repeat: marked.repeat }
   const label = readLabel(s)
@@ -471,6 +473,38 @@ export function splitLyrics(text: string, opts?: SplitOptions): SongSection[] {
     })
   }
   return out
+}
+
+/**
+ * Credit lines a lyrics site leaves above the words. Only `firstSungLine`
+ * drops them. Import keeps them, so the operator sees them in the editor and
+ * decides what reaches a slide; a card's one line has no editor behind it.
+ */
+const CREDIT = [
+  /^(?:words|music|lyrics|written|composed|produced|arranged)(?:\s+(?:and|&)\s+\w+)?\s+by\b/i,
+  /^(?:©|\(c\)|copyright\b|ccli\b)/i
+]
+
+/**
+ * The opening line a congregation would sing, for a song card that has to
+ * say "this is the one you mean" before anyone opens it.
+ *
+ * It reads lines exactly as `splitLyrics` does — labels, chords, site debris
+ * and repeat marks are gone — so for credit-free text it is the first line of
+ * the first slide. A line too long for a card is cut at a word and marked
+ * with "…". Null when nothing in the text is sung (an instrumental, or a
+ * record of labels only), which callers treat as "no lyrics".
+ */
+export function firstSungLine(text: string, maxChars = 120): string | null {
+  for (const raw of String(text ?? '').replace(/\r\n?|[\u2028\u2029]/g, '\n').split('\n')) {
+    const c = cleanLine(raw)
+    if (c.kind !== 'line' || CREDIT.some((re) => re.test(c.text))) continue
+    if (c.text.length <= maxChars) return c.text
+    const cut = c.text.slice(0, Math.max(1, maxChars - 1))
+    const space = cut.lastIndexOf(' ')
+    return `${(space > maxChars / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:.\-–—]+$/, '')}…`
+  }
+  return null
 }
 
 /**

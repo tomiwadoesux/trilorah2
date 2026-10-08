@@ -52,7 +52,8 @@ const s = {
   timers: [{ id: 't1', name: 'Sermon', state: 'running', display: '31:42' }, { id: 't2', name: 'Offering', state: 'stopped', display: '5:00' }],
 };
 const library = { songs, decks: [{ id: 'deck-welcome', title: 'Welcome slides', count: 7 }, { id: 'deck-give', title: 'Giving', count: 2 }],
-  versions: ['KJV', 'BBE', 'RVR'], theme: {}, media: [], books: ['Genesis', 'Exodus', 'Psalms', 'John', 'Romans', 'Hebrews'], run: s.run };
+  versions: ['KJV', 'BSB', 'WEB', 'BBE', 'RVR'], version: 'BSB',
+  versionNames: { KJV: 'King James Version', BSB: 'Berean Standard Bible', WEB: 'World English Bible', BBE: 'Bible in Basic English', RVR: 'Reina-Valera' }, theme: {}, media: [], books: ['Genesis', 'Exodus', 'Psalms', 'John', 'Romans', 'Hebrews'], run: s.run };
 const cards = (song) => song.sections.flatMap((sec, i) => { const n = Math.max(1, Math.ceil(sec.lines.length / 4)); return Array.from({ length: n }, (_, p) => ({ id: `${song.id}/${song.id}:${i}/page-${p}`, i, offset: p * 4, label: n > 1 ? `${sec.label} · ${p + 1}` : sec.label, lines: sec.lines.slice(p * 4, p * 4 + 4) })); });
 const slideSvg = (n, title) => 'data:image/svg+xml;base64,' + Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#173d3e"/><stop offset="1" stop-color="#3a2f22"/></linearGradient></defs><rect width="640" height="360" fill="url(#g)"/><text x="48" y="190" fill="#fff" font-family="Georgia" font-size="44">${title}</text><text x="48" y="236" fill="#ffffffaa" font-family="Arial" font-size="20">Slide ${n}</text></svg>`).toString('base64');
 

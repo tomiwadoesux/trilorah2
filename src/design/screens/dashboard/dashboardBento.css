@@ -132,6 +132,7 @@
 .dashboard-bento__motion,
 .dashboard-bento__motion > * { width: 100%; height: 100%; min-width: 0; min-height: 0; }
 .dashboard-bento__motion { position: relative; }
+/* Hover growth is off for now (owner, 2026-10-08); see BentoGrid's sync().
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .dashboard-bento__motion {
     left: var(--bento-left, 0px);
@@ -139,3 +140,4 @@
     transition: left var(--bento-motion-ms, 680ms) cubic-bezier(.4, 0, .2, 1), width var(--bento-motion-ms, 680ms) cubic-bezier(.4, 0, .2, 1);
   }
 }
+*/

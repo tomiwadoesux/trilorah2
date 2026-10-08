@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { splitLyrics, resliceSection, estimateSyllables, slideFit, MAX_LINES } from './lyricSplit'
+import { splitLyrics, resliceSection, estimateSyllables, slideFit, firstSungLine, MAX_LINES } from './lyricSplit'
 
 // Every lyric line in this file is invented. Nothing here is from a real song.
 const L = (n: number, stem = 'made up line number') => Array.from({ length: n }, (_, i) => `${stem} ${i + 1}`)
@@ -75,6 +75,11 @@ describe('splitLyrics — cleaning what the internet hands over', () => {
       'second made up line'
     ])
   })
+  it('drops a counted footer on its own line, glued or spaced', () => {
+    expect(allLines('first made up line\n12 Embed')).toEqual(['first made up line'])
+    expect(allLines('first made up line\n12Embed')).toEqual(['first made up line'])
+    expect(allLines('last made up line34Embed')).toEqual(['last made up line'])
+  })
   it('takes a repeat marker off the words', () => {
     const lines = allLines('sing it out again (x2)')
     expect(lines.join(' ')).not.toMatch(/x2/i)
@@ -128,5 +133,44 @@ describe('invariants, for every length from 1 to 40', () => {
   it.each([3, 5, 9, 14, 23])('%i lines: splitting its own output changes nothing', (n) => {
     const once = splitLyrics(L(n).join('\n'))
     for (const s of once) expect(resliceSection(s).map((r) => r.lines)).toEqual([s.lines])
+  })
+})
+
+describe('firstSungLine — the one line a song card shows', () => {
+  it('skips labels, blank lines, chords, credits and site debris', () => {
+    const text = [
+      '12 Embed',
+      'Written by Invented Person',
+      '© 2031 Invented Music',
+      'Words and music by Nobody Real',
+      '',
+      '[Verse 1]',
+      'G  D/F#  Em',
+      'Chorus:',
+      'paper lanterns over the harbour x2',
+      'second invented line'
+    ].join('\n')
+    expect(firstSungLine(text)).toBe('paper lanterns over the harbour')
+  })
+  it('reads CRLF and Unicode line separators as line breaks', () => {
+    expect(firstSungLine('[Intro]\r\nmade up opening\r\nnext')).toBe('made up opening')
+    expect(firstSungLine('[Intro]\u2028made up opening\u2029next')).toBe('made up opening')
+  })
+  it('answers null when nothing is sung', () => {
+    expect(firstSungLine('[Instrumental]')).toBeNull()
+    expect(firstSungLine('')).toBeNull()
+    expect(firstSungLine('[Verse 1]\n[Chorus]\n(Repeat Chorus)')).toBeNull()
+  })
+  it('cuts a long line at a word and marks it', () => {
+    const long = Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ')
+    const line = firstSungLine(long, 120)!
+    expect(line.endsWith('…')).toBe(true)
+    expect(line.length).toBeLessThanOrEqual(120)
+    expect(long.startsWith(line.slice(0, -1))).toBe(true)
+    expect(line.slice(0, -1)).toMatch(/word\d+$/)
+  })
+  it('is the first line of the first slide for credit-free text', () => {
+    const text = '[Verse 1]\nan invented morning song\nwith a second line\n\n[Chorus]\nla la invented'
+    expect(firstSungLine(text)).toBe(splitLyrics(text)[0].lines[0])
   })
 })

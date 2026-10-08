@@ -8,6 +8,7 @@ import './ui/tokens.css';
    Trilorah screens are drawn for it, so the app that renders them loads it. */
 import './design/sandbox.css';
 import { trackDensity } from './ui/density';
+import { watchVersionCredits } from './lib/versionCredits';
 
 /*
  * The changeover ui/density.ts was waiting for: the app now renders the
@@ -20,6 +21,8 @@ document.documentElement.dataset.theme = 'dark';
 trackDensity();
 
 restoreAurora();
+// An online Bible's copyright line, for every slide this window cuts (shared/verseDisplay).
+watchVersionCredits();
 
 const rootEl = document.getElementById('root');
 if (rootEl) {

@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { SoundwaveIcon } from '../ui';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { SoundwaveIcon, ChevronDownIcon, CheckIcon, cx } from '../ui';
+import { usePopupPlacement, popupBounds } from '../ui/primitives/usePopupPlacement';
 import { useAppStore } from '../stores/appStore';
 import { listAudioInputs, onDeviceChange } from '../lib/audioDevices';
 import { usePracticeStore } from '../stores/practiceStore';
@@ -16,12 +18,27 @@ import { usePhoneMicStore } from '../lib/phoneMic';
  * reads the saved micDeviceLabel to do so. Locked while listening — a picker
  * that looked live but changed nothing until the next start would be lying
  * about which microphone is open.
+ *
+ * The button says "audio" and no more than a nickname for the input: the
+ * full device names ("MacBook Air Microphone") took a third of the toolbar.
+ * The names are in the menu it opens, and in the tooltip.
  */
+
+/** Seven letters and an ellipsis — enough to tell two inputs apart. */
+function nickname(label: string) {
+  if (label.length <= 7) return label;
+  return `${label.slice(0, 7).replace(/[^a-z0-9]+$/i, '')}…`;
+}
+
 export function MicPicker() {
   const asrStatus = useAppStore((s) => s.asrStatus);
   const settings = useAppStore((s) => s.settings);
   const patchSetting = useAppStore((s) => s.patchSetting);
   const [inputs, setInputs] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const position = usePopupPlacement(open, triggerRef, menuRef, 'left');
 
   useEffect(() => {
     let cancelled = false;
@@ -49,53 +66,149 @@ export function MicPicker() {
   const phone = usePhoneMicStore((s) => s.status);
   const phoneLabel = phone.state === 'connected' && phone.phoneName ? `phone · ${phone.phoneName}` : 'phone (over wi-fi)';
 
+  const options = [
+    { value: '', label: 'system default' },
+    ...inputs.map((label) => ({ value: label, label })),
+    /* Three minutes of scripted preaching through the real engine — for
+       trying every kind of catch without speaking. */
+    { value: PRACTICE_SERMON_DEVICE, label: PRACTICE_SERMON_DEVICE },
+    { value: PHONE_MIC_LABEL, label: phoneLabel },
+  ];
+  /* A "Default - …" label saved before those copies were hidden means
+     "follow the system", which is what system default says. */
+  const current = practice ? PRACTICE_SERMON_DEVICE : /^default - /i.test(saved) ? '' : saved;
+  const currentLabel = options.find((o) => o.value === current)?.label ?? current;
+
+  /* Listening started with the menu open: the choice is locked, so is the menu. */
+  useEffect(() => {
+    if (busy) setOpen(false);
+  }, [busy]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!menuRef.current?.contains(t) && !triggerRef.current?.contains(t)) setOpen(false);
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  /* Opening lands on the input in use, so the arrows start from there. Once
+     per opening: a later re-placement must not pull focus back. */
+  const placed = position !== null;
+  useEffect(() => {
+    if (!open || !placed) return;
+    menuRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus();
+  }, [open, placed]);
+
+  const choose = (value: string) => {
+    setOpen(false);
+    triggerRef.current?.focus();
+    if (value === PRACTICE_SERMON_DEVICE) {
+      setPractice(true);
+      return;
+    }
+    setPractice(false);
+    patchSetting('micDeviceLabel', value);
+    void window.api?.setSetting('micDeviceLabel', value);
+    /* Picking the phone again is the way back into its box. */
+    if (value === PHONE_MIC_LABEL) setPhoneOpen(true);
+  };
+
+  const onMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const rows = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') ?? []);
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === 'ArrowDown' ? (at + 1) % rows.length : (at - 1 + rows.length) % rows.length;
+    rows[next]?.focus();
+  };
+
+  const phoneDot = !practice && saved === PHONE_MIC_LABEL;
+
   return (
-    <label className="tri-header-control tri-header-audio flex shrink-0 items-center gap-1.5 lowercase" title={busy ? 'stop listening to change the audio input' : 'microphone or computer audio'}>
-      <SoundwaveIcon size={12} className="tri-header-icon" />
-      <span className="opacity-70">audio</span>
-      <select
-        value={practice ? PRACTICE_SERMON_DEVICE : saved}
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
         disabled={busy}
-        aria-label="audio input"
-        onChange={(e) => {
-          if (e.target.value === PRACTICE_SERMON_DEVICE) {
-            setPractice(true);
-            return;
-          }
-          setPractice(false);
-          patchSetting('micDeviceLabel', e.target.value);
-          void window.api?.setSetting('micDeviceLabel', e.target.value);
-          if (e.target.value === PHONE_MIC_LABEL) setPhoneOpen(true);
-        }}
-        className="max-w-[11rem] min-w-0 cursor-pointer truncate bg-transparent text-inherit outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`audio input: ${currentLabel || 'system default'}`}
+        title={busy ? 'stop listening to change the audio input' : currentLabel || 'microphone or computer audio'}
+        onClick={() => setOpen((o) => !o)}
+        className="tri-header-control tri-header-audio flex shrink-0 items-center gap-1.5 lowercase"
       >
-        <option value="">system default</option>
-        {inputs.map((label) => (
-          <option key={label} value={label}>
-            {label}
-          </option>
-        ))}
-        {/* Three minutes of scripted preaching through the real engine —
-            for trying every kind of catch without speaking. */}
-        <option value={PRACTICE_SERMON_DEVICE}>{PRACTICE_SERMON_DEVICE}</option>
-        <option value={PHONE_MIC_LABEL}>{phoneLabel}</option>
-      </select>
-      {/* The phone chosen: a dot for its state, and the way back into its box. */}
-      {!practice && saved === PHONE_MIC_LABEL && (
-        <button
-          type="button"
-          aria-label="phone microphone"
-          title={phone.state === 'connected' ? `${phone.phoneName} is connected` : 'connect the phone'}
-          onClick={(e) => { e.preventDefault(); setPhoneOpen(true); }}
-          className="ml-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-        >
+        <SoundwaveIcon size={12} className="tri-header-icon" />
+        <span>audio</span>
+        {current && <span className="opacity-70">{nickname(currentLabel)}</span>}
+        {/* The phone chosen: a dot for its state. */}
+        {phoneDot && (
           <span
-            className="h-2 w-2 rounded-full"
+            aria-hidden
+            className="h-2 w-2 shrink-0 rounded-full"
             style={{ background: phone.state === 'connected' ? 'rgb(var(--tri-go-2))' : phone.state === 'pending' || phone.state === 'waiting' || phone.state === 'connecting' ? 'var(--tri-accent-yellow)' : 'rgb(229 243 242 / 0.3)' }}
           />
-        </button>
+        )}
+        <ChevronDownIcon
+          size={10}
+          className={cx('shrink-0 opacity-70 transition-transform duration-200', open && 'rotate-180')}
+        />
+      </button>
+      {/* The same panel grey and white washes as the app's Select menu. */}
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="audio input"
+          onKeyDown={onMenuKey}
+          className="fixed z-[100] flex min-w-[14rem] flex-col gap-1 p-1.5"
+          style={{
+            ...popupBounds,
+            left: position?.left ?? 0,
+            top: position?.top ?? 0,
+            visibility: position ? 'visible' : 'hidden',
+            borderRadius: '16px',
+            backgroundColor: '#101010',
+            boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
+          }}
+        >
+          {options.map((o) => {
+            const on = o.value === current;
+            return (
+              <button
+                key={o.value || 'default'}
+                type="button"
+                role="menuitemradio"
+                aria-checked={on}
+                onClick={() => choose(o.value)}
+                className={cx(
+                  'flex h-[var(--tri-option-h)] w-full shrink-0 items-center justify-between gap-3 rounded-[10px] px-3.5 text-left text-[length:var(--tri-control-size)] lowercase text-[var(--tri-ink,#e5f3f2)] outline-none transition-[opacity,background-color] duration-150',
+                  on
+                    ? 'bg-[rgb(255_255_255_/_0.07)] font-medium'
+                    : 'opacity-75 hover:bg-[rgb(255_255_255_/_0.05)] hover:opacity-100 focus-visible:bg-[rgb(255_255_255_/_0.05)] focus-visible:opacity-100',
+                )}
+              >
+                <span className="min-w-0 truncate">{o.label}</span>
+                {on && <CheckIcon size={12} className="shrink-0 opacity-80" />}
+              </button>
+            );
+          })}
+        </div>,
+        document.body,
       )}
       <PhoneMicPanel open={phoneOpen} onClose={() => setPhoneOpen(false)} />
-    </label>
+    </>
   );
 }
