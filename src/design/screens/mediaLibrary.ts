@@ -68,14 +68,21 @@ function loadPersistedMedia(): ThemeMedia[] {
   }
 }
 
-function savePersistedMedia(all: ThemeMedia[]): void {
-  if (typeof window === 'undefined') return;
+/*
+ * The whole shelf, one localStorage entry. Says whether it was written: a
+ * write over the quota throws, and swallowed, the cards stayed on screen and
+ * were gone on the next launch with nothing said — an import has to be able
+ * to tell the operator instead.
+ */
+function savePersistedMedia(all: ThemeMedia[]): boolean {
+  if (typeof window === 'undefined') return true;
   try {
     const seedIds = new Set(SEED.map((s) => s.id));
     const customOnly = all.filter((m) => !seedIds.has(m.id));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customOnly));
+    return true;
   } catch {
-    // Ignore storage quota errors
+    return false;
   }
 }
 
@@ -104,13 +111,15 @@ export function removeMedia(id: string): ThemeMedia | undefined {
   return gone;
 }
 
-/** A package copies resources into this laptop's shelf in one update. */
-export function importMedia(media: ThemeMedia[]): void {
-  if (!media.length) return;
+/** A package copies resources into this laptop's shelf in one update.
+    False when the shelf could not be saved (savePersistedMedia). */
+export function importMedia(media: ThemeMedia[]): boolean {
+  if (!media.length) return true;
   const ids = new Set(media.map(item => item.id));
   items = [...media, ...items.filter(item => !ids.has(item.id))];
-  savePersistedMedia(items);
+  const saved = savePersistedMedia(items);
   emit();
+  return saved;
 }
 
 export function getMediaLibrary(): ThemeMedia[] {
@@ -289,6 +298,9 @@ async function eachLimited<T, R>(list: readonly T[], limit: number, run: (item: 
 
 const baseName = (p: string) => p.split(/[\\/]/).pop() || p;
 
+/** The line an import ends on when the shelf could not be saved. */
+const SHELF_FULL = 'the shelf is full — new cards will not be kept after a restart';
+
 export interface LaptopImport {
   /** Every card the pick or drop ended up as, in order — new or already there. */
   cards: ThemeMedia[];
@@ -349,15 +361,22 @@ export async function addFromLaptop({ paths, wanted, onProgress }: {
   /* Posters only for clips new to the shelf; one already there has its own. */
   const clips = files.filter((f) => f.kind === 'video' && !before.has(f.id));
   if (clips.length) onProgress?.(clips.length > 1 ? `reading ${clips.length} clips…` : 'reading the clip…');
-  const probes = await eachLimited(clips, 3, (clip) => probeClip(clip.src));
+  const probes = await eachLimited(clips, 3, async (clip) => {
+    const probe = await probeClip(clip.src);
+    /* The frame as a file beside the clip, not a data: URL on the card: the
+       shelf is one localStorage entry, and ~20 KB a clip fills it (main's
+       saveClipPoster). Without that IPC, or if it fails, inline as before. */
+    const file = probe.poster && api?.saveClipPoster ? await api.saveClipPoster(clip.id, probe.poster).catch(() => null) : null;
+    return file ? { ...probe, poster: file } : probe;
+  });
   const probed = new Map(clips.map((clip, i) => [clip.id, probes[i]]));
   const cards = keepShelf(files.map((f) => fromImported(f, shelfFor(f, wanted), probed.get(f.id))), items);
   /* Already-there cards come to the front too: what was just added is what
      is about to be used, and it should not have to be hunted for. */
-  importMedia(cards);
+  const kept = importMedia(cards);
   if (cards.length) window.dispatchEvent(new Event('trilorah-library-changed'));
-  return {
-    cards,
-    notice: importNotice({ added: cards.filter((c) => !before.has(c.id)), already: cards.filter((c) => before.has(c.id)), skipped, wanted }),
-  };
+  const added = cards.filter((c) => !before.has(c.id));
+  const notice = importNotice({ added, already: cards.filter((c) => before.has(c.id)), skipped, wanted });
+  /* On screen now, but the save failed: said, not found out on Sunday. */
+  return { cards, notice: kept || !added.length ? notice : `${notice} · ${SHELF_FULL}` };
 }

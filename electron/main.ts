@@ -202,7 +202,7 @@ import { DisplayTimingManager } from './engine/displayTimingManager'
 import { processSlides } from './media/ocrProcessor'
 import { MediaMatcher } from './media/mediaMatcher'
 import { searchStock, downloadStock, stockProviders } from './media/stockImages'
-import { importMediaPaths, localPathFromUrl, pickerExtensions } from './media/mediaImport'
+import { importMediaPaths, localPathFromUrl, pickerExtensions, saveClipPoster } from './media/mediaImport'
 import { ServiceAgent } from './engine/serviceAgent'
 import { PostServiceSummary } from './notes/postServiceSummary'
 import {
@@ -2381,6 +2381,8 @@ async function pickMediaPaths(event: Electron.IpcMainInvokeEvent): Promise<{ can
 const mediaDir = () => path.join(app.getPath('userData'), 'media')
 ipcMain.handle('pick-media-paths', (event) => pickMediaPaths(event))
 ipcMain.handle('import-media-files', (_event, paths: unknown) => importMediaPaths(paths, mediaDir()))
+// A clip's card picture as a file, not a data: URL in localStorage (mediaImport.ts).
+ipcMain.handle('save-clip-poster', (_event, id: unknown, dataUrl: unknown) => saveClipPoster(id, dataUrl, mediaDir()))
 
 // The single-file picker older renderer code still calls: the first file of
 // a pick, in the old shape. No longer a blocking copy (see mediaImport.ts).

@@ -254,3 +254,47 @@ export async function importMediaPaths(
   }
   return { items, skipped }
 }
+
+/** A clip's poster is a 320px JPEG (~15 KB); anything near this is not one. */
+export const MAX_POSTER_BYTES = 512 * 1024
+
+/**
+ * A clip's card picture, as a small file beside the clip.
+ *
+ * The renderer draws the frame (only a window can decode video) and used to
+ * keep it on the card as a data: URL — and the whole shelf lives in one
+ * localStorage entry. At ~20 KB a clip, a few folders of clips filled the
+ * quota, the write failed, and every card added after that was gone on the
+ * next launch. As a file, the card holds a URL of a hundred bytes.
+ *
+ * In a folder of its own: the import's dedupe looks for `<hash>.*` in the
+ * media folder, and `<hash>.jpg` there would read as the clip already being
+ * on the shelf. Named after the clip's hash, so a clip added twice has one
+ * poster. Resolves to the local-media:// URL, or null — the caller keeps the
+ * data: URL then, so nothing is worse than before. Never throws.
+ */
+export async function saveClipPoster(id: unknown, dataUrl: unknown, dir: string): Promise<string | null> {
+  const hash = typeof id === 'string' ? /^local:([0-9a-f]{20})$/.exec(id)?.[1] : undefined
+  const prefix = 'data:image/jpeg;base64,'
+  if (!hash || typeof dataUrl !== 'string' || !dataUrl.startsWith(prefix)) return null
+  const bytes = Buffer.from(dataUrl.slice(prefix.length), 'base64')
+  if (!bytes.length || bytes.length > MAX_POSTER_BYTES) return null
+  const folder = path.join(dir, 'posters')
+  const dest = path.join(folder, `${hash}.jpg`)
+  try {
+    await fs.mkdir(folder, { recursive: true })
+    if (!(await fs.stat(dest).catch(() => null))?.size) {
+      const part = path.join(folder, `${hash}.${randomUUID()}.part.jpg`)
+      try {
+        await fs.writeFile(part, bytes)
+        await fs.rename(part, dest)
+      } catch (error) {
+        await fs.unlink(part).catch(() => undefined)
+        throw error
+      }
+    }
+    return fileToDisplayUrl(dest)
+  } catch {
+    return null
+  }
+}

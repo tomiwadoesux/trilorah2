@@ -700,6 +700,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   pickMediaPaths?(): Promise<{ canceled: boolean; paths: string[] }>;
   /** Copies into userData/media, deduped by content (electron/media/mediaImport.ts). Folders open one level. */
   importMediaFiles?(paths: string[]): Promise<import('../../shared/importedMedia').MediaImportResult>;
+  /** A clip's poster (a jpeg data: URL) as a file in userData/media/posters → its local-media:// URL, or null. */
+  saveClipPoster?(id: string, dataUrl: string): Promise<string | null>;
   /** A dropped File's path on disk ('' for one that has none — an image dragged out of a web page). */
   pathForFile?(file: File): string;
   getDisplaysStatus?(): Promise<{ totalDisplays: number; hasExternal: boolean; primary: { id: number; bounds: any }; externals: Array<{ id: number; bounds: any }> }>;

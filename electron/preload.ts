@@ -364,6 +364,7 @@ contextBridge.exposeInMainWorld('api', {
   // call at a time so it can say how far along it is (main.ts, mediaImport.ts).
   pickMediaPaths: () => ipcRenderer.invoke('pick-media-paths'),
   importMediaFiles: (paths: string[]) => ipcRenderer.invoke('import-media-files', paths),
+  saveClipPoster: (id: string, dataUrl: string) => ipcRenderer.invoke('save-clip-poster', id, dataUrl),
   // A file dropped from Finder → its path. File.path is gone since Electron
   // 32; this is its documented replacement, and only a preload can call it.
   pathForFile: (file: File) => {

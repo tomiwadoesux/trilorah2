@@ -116,7 +116,7 @@ import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
 import { addMedia, addFromLaptop, removeMedia, mediaSrc, randomStill, useMediaLibrary, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
 import { finderDropProps, useFinderDrag, type FinderDropProps } from './finderDrop';
-import { finderPaneHint, finderStageHint, finderStagePick, type FinderStageKey } from '../../lib/laptopImport';
+import { finderPaneHint, finderStageHint, finderStagePick, shelfFor, type FinderStageKey } from '../../lib/laptopImport';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, type Proposal } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
@@ -852,9 +852,11 @@ type MediaView = 'themes' | 'media';
 type ChooseBackground = (id: string, where: 'preview' | 'live', how?: 'click' | 'drop' | 'pick') => Promise<string>;
 
 function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettings }: {
-  /** The preview's background — the ring. */
+  /** The preview's background — the ring, in themes only: in media a click
+      stages content, and a ring there would read as that. */
   selected: string;
-  /** The wall's background — the gold "live" tag. */
+  /** The wall's background — the gold "live" tag, on whichever shelf the
+      card sits: a media photo dropped on LIVE is the wall's background too. */
   live: string;
   onChoose: ChooseBackground;
   /** The preview's background was deleted: LiveBody picks another, without
@@ -881,7 +883,11 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
     return () => window.removeEventListener('pointerdown', close);
   }, []);
   const store = (media: ThemeMedia) => {
-    addMedia({ ...media, collection: view });
+    /* A clip goes to media from either view, the way one from the laptop
+       does (shelfFor): on the themes shelf nothing could use it, and a click
+       there would stage it as content from the backgrounds view. */
+    const shelf = shelfFor({ kind: media.kind ?? 'photo' }, view);
+    addMedia({ ...media, collection: shelf });
     setSearchOpen(false);
     /* Picked or added while looking at backgrounds, a still is wanted as one:
        it goes into the preview as well as onto the shelf. */
@@ -889,7 +895,7 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
       void onChoose(media.id, 'preview', 'click').then((said) => setNotice(`added to themes · ${said}`));
       return;
     }
-    setNotice(view === 'themes' ? `added to themes — ${CLIP_NOT_BACKGROUND}` : `added to ${view}`);
+    setNotice(shelf !== view ? `added to ${shelf} — ${CLIP_NOT_BACKGROUND}` : `added to ${view}`);
   };
   /*
    * A card's press. On the drag-bound wrapper, not on the card's button: the
@@ -1032,7 +1038,7 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
       {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
         onClick={() => press(media)} onDoubleClick={() => pressTwice(media)}>
         <MediaCard src={mediaSrc(media)} label={media.label} detail={media.detail} selected={view === 'themes' && selected === media.id} badge={media.kind === 'video' ? 'video' : null}
-          live={view === 'themes' && live === media.id} />
+          live={live === media.id} />
         {/* The card's acts, on the picture, the way a song card carries
             its own. Only something the church added can be deleted; the
             stock washes have no file and come back on the next launch. */}

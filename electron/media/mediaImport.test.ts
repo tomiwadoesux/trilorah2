@@ -12,6 +12,7 @@ import {
   localPathFromUrl,
   mediaKindOf,
   pickerExtensions,
+  saveClipPoster,
 } from './mediaImport'
 
 describe('adding pictures and clips from the laptop', () => {
@@ -144,6 +145,37 @@ describe('adding pictures and clips from the laptop', () => {
     })
     expect('skipped' in broken).toBe(true)
     expect(onShelf()).toEqual([])
+  })
+
+  it('keeps a clip poster as a small file the clip can still be added beside', async () => {
+    const clip = await importMediaFile(write('baptism.mp4', 'clip bytes'), shelf)
+    if (!('item' in clip)) throw new Error('the clip should import')
+    const jpeg = `data:image/jpeg;base64,${Buffer.from('a tiny jpeg').toString('base64')}`
+    const url = await saveClipPoster(clip.item.id, jpeg, shelf)
+    expect(url?.startsWith('local-media://file/')).toBe(true)
+    const file = localPathFromUrl(url ?? '')
+    expect(path.dirname(file)).toBe(path.join(shelf, 'posters'))
+    expect(fs.readFileSync(file, 'utf8')).toBe('a tiny jpeg')
+    /* Saved again: the same file, nothing half-written. */
+    expect(await saveClipPoster(clip.item.id, jpeg, shelf)).toBe(url)
+    expect(fs.readdirSync(path.join(shelf, 'posters'))).toEqual([path.basename(file)])
+    /* The posters folder does not read as the clip being on the shelf twice. */
+    const again = await importMediaFile(write('baptism copy.mp4', 'clip bytes'), shelf)
+    if (!('item' in again)) throw new Error('the clip should import again')
+    expect(again.item.existed).toBe(true)
+    expect(again.item.url).toBe(clip.item.url)
+  })
+
+  it('takes only a jpeg data URL for a card it made, within size', async () => {
+    const id = `local:${'a'.repeat(20)}`
+    const jpeg = `data:image/jpeg;base64,${Buffer.from('x').toString('base64')}`
+    expect(await saveClipPoster('../../etc', jpeg, shelf)).toBeNull()
+    expect(await saveClipPoster(`local:${'a'.repeat(20)}/../x`, jpeg, shelf)).toBeNull()
+    expect(await saveClipPoster(id, 'data:image/png;base64,eA==', shelf)).toBeNull()
+    expect(await saveClipPoster(id, 'file:///etc/passwd', shelf)).toBeNull()
+    expect(await saveClipPoster(id, 42, shelf)).toBeNull()
+    expect(await saveClipPoster(id, `data:image/jpeg;base64,${Buffer.alloc(600 * 1024).toString('base64')}`, shelf)).toBeNull()
+    expect(fs.existsSync(path.join(shelf, 'posters'))).toBe(false)
   })
 
   it('knows which kinds each platform can bring in', () => {
