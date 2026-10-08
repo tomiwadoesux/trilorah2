@@ -91,6 +91,8 @@ import { LibraryBrowser, LibraryPane, LibrarySearch, useLibrarySelection } from 
 import { REFERENCE_CAP_EMS, bookAllowance, referenceColumnWidth, splitReference } from '../../lib/referenceColumn';
 import { catchEntries, queuedIds, spotlightIndex, spotlightItem } from '../../lib/catchSets';
 import { useCatchStore } from '../../stores/catchStore';
+import { useLiveStore } from '../../stores/liveStore';
+import { versionOptions } from '../../../shared/bibleVersions';
 import { CatchPeek, CatchesPane } from './CatchesPane';
 import { ScriptureTravel } from './ScriptureTravel';
 import { chapterOrdinal, liveSpan, passingRows, spanReference, travelShape, type LiveSpan, type ReelRow } from '../../lib/scriptureReel';
@@ -1258,8 +1260,29 @@ function ScripturesBrowser() {
   const engine = useEngine();
   const drag = useDrag();
   const projector = useProjector();
-  const [versions, setVersions] = useState<SelectOption[]>([{ value: 'KJV', label: 'KJV' }]);
-  const [version, setVersion] = useState('KJV');
+  const [versions, setVersions] = useState<SelectOption[]>(() => versionOptions(['KJV']));
+  /*
+   * This service's Bible, not a picker of the library's own. It lives in the
+   * live store (App feeds it from on-version-changed), so it survives the
+   * tab switch that unmounts this browser, follows the preacher's "read it
+   * in the BSB", and the catches read from it too. Choosing one here tells
+   * the engine; the church's saved default is never touched.
+   */
+  const sessionVersion = useLiveStore((s) => s.displayVersion);
+  const version = sessionVersion ?? 'KJV';
+  const setVersion = useCallback((next: string | null) => {
+    // The list answers both pointerdown and click; one choice is one change.
+    if (next && next === useLiveStore.getState().displayVersion) return;
+    if (next) useLiveStore.getState().setDisplayVersion(next);
+    const api = window.api;
+    if (!api?.setSessionVersion) {
+      if (!next) useLiveStore.getState().setDisplayVersion('KJV');
+      return;
+    }
+    void api.setSessionVersion(next).then((using) => {
+      if (typeof using === 'string' && using) useLiveStore.getState().setDisplayVersion(using);
+    }).catch(() => undefined);
+  }, []);
   /* Opened while a verse is live: open on it, not on Genesis. */
   const [startAt] = useState(() => liveSpan(projector.live));
   const [query, setQuery] = useState(() => (startAt ? spanReference(startAt) : ''));
@@ -1272,12 +1295,20 @@ function ScripturesBrowser() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
-  /* Whatever translations the database actually holds — not a guessed list.
-     This one ships KJV, BBE and four non-English versions. */
+  /* Whatever translations the database actually holds — not a guessed list
+     — each with its name beside the code, because "AA APEE BBE" means
+     nothing to a volunteer. Opens on the version the service is using. */
   useEffect(() => {
     window.api?.getAvailableVersions().then((v) => {
-      if (v?.length) setVersions(v.map((code) => ({ value: code, label: code })));
+      if (v?.length) setVersions(versionOptions(v));
     }).catch(() => { /* KJV remains available if the version list fails. */ });
+    if (useLiveStore.getState().displayVersion == null) {
+      void window.api?.getSessionVersion?.().then((using) => {
+        if (typeof using === 'string' && using && useLiveStore.getState().displayVersion == null) {
+          useLiveStore.getState().setDisplayVersion(using);
+        }
+      }).catch(() => undefined);
+    }
   }, []);
 
   /*
@@ -1553,11 +1584,11 @@ function ScripturesBrowser() {
            fields start where their pane's words start. */
         <div className="flex w-full min-w-0 items-center gap-8">
         <div className="flex min-w-0 flex-1 items-center gap-[var(--tri-gap)]">
-          {/* Sized to the longest version code plus the chevron. The database
-              ships KJV, BBE, RVR, APEE, AA and CUV — four characters at most,
-              with a fifth in hand. */}
+          {/* Sized to the longest version code plus the chevron: the codes
+              are four characters at most (APEE), with a fifth in hand. The
+              list opens wider than the trigger so each code has its name. */}
           <div className="w-[68px] shrink-0">
-            <Select options={versions} value={version} onChange={setVersion} />
+            <Select options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
           </div>
           <LibrarySearch disabled={status === 'error' || status === 'no-api' || status === 'empty'}>
           <ScriptureReferenceInput
@@ -1647,7 +1678,7 @@ function ScripturesBrowser() {
           ) : rows.length === 0 ? (
             <ScriptureLibraryEmpty status={status} error={loadError} version={version}
               onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
-              onReset={() => { setQuery(''); setRef(null); setVersion('KJV'); setLoadAttempt((attempt) => attempt + 1); }} />
+              onReset={() => { setQuery(''); setRef(null); setVersion(null); setLoadAttempt((attempt) => attempt + 1); }} />
           ) : (
             rows.map((row, i) => (
               <button
@@ -2913,6 +2944,16 @@ function useServiceLog(stateLabel: string) {
         if (!d?.book || d.operatorPush) return;
         const verse = d.verse == null ? '' : `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `-${d.endVerse}` : ''}`;
         say({ text: `caught ${d.book} ${d.chapter}${verse} — waiting for you` });
+      }),
+    );
+
+    /* A Bible the service asked for that this computer does not have (a
+       default set by a .tri package, a phone naming one): the verses come
+       in another version, and the operator should know which, and why. */
+    off.push(
+      api.onEngineEvent?.('on-bible-notice', (n) => {
+        const text = (n as { text?: unknown } | null)?.text;
+        if (typeof text === 'string' && text) say({ text });
       }),
     );
 

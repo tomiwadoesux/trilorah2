@@ -535,9 +535,11 @@ interface WindowApi extends Partial<TriPackageApi> {
   /* Scripture ------------------------------------------------------ */
   getChapter(bookId: number, chapter: number, version?: string): Promise<ChapterResult>;
   getAvailableVersions(): Promise<string[]>;
+  /** The verses of book chapter:start-end this version has — a number it leaves out is skipped, not a stop. */
+  getVerseRange?(book: string | number, chapter: number, start: number, end: number, version?: string): Promise<{ success: boolean; verses: { verse: number; text: string }[]; version?: string; error?: string }>;
   /** Fullscreen the window this page is in. Resolves to the new state. */
   toggleWindowFullscreen?(): Promise<boolean>;
-  getDbStatus?(): Promise<{ connected: boolean; verses?: number; error?: string }>;
+  getDbStatus?(): Promise<{ connected: boolean; verses?: number; versions?: string[]; error?: string }>;
   searchVerse(book: string, chapter: number, verse: number, version?: string): Promise<VerseSearchResult>;
 
   /* Engine events --------------------------------------------------- */
@@ -683,6 +685,10 @@ interface WindowApi extends Partial<TriPackageApi> {
     matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: 'named' | 'story' | 'meaning' }[];
   }>;
   setDisplayVersion?(version: string): Promise<void>;
+  /** Change this service's Bible (null: back to the church's default). Resolves to the version now in use. */
+  setSessionVersion?(version: string | null): Promise<string>;
+  /** The version catches and the library read from right now. */
+  getSessionVersion?(): Promise<string>;
   getSeasonalTheme?(): Promise<string>;
   getNotesProviderStatus?(): Promise<{ id: string; status: string }>;
   getAvailableLanguages?(): Promise<Array<{ code: string; label: string }>>;

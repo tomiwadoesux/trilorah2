@@ -1312,8 +1312,14 @@ async function loadLibrary() {
     library = await rpc('library');
     const select = $('version');
     const old = select.value;
-    select.replaceChildren(...library.versions.map((v) => h('option', { value: v, text: v })));
-    select.value = library.versions.includes(old) ? old : library.versions.includes('KJV') ? 'KJV' : library.versions[0] || '';
+    /* The code is what fits a 76px picker; its name rides along as the
+       option's title and the picker's spoken label. Opens on the Bible the
+       service is using, not on KJV. */
+    const names = library.versionNames || {};
+    select.replaceChildren(...library.versions.map((v) => h('option', { value: v, text: v, title: names[v] || v })));
+    const using = library.versions.includes(library.version) ? library.version : 'KJV';
+    select.value = library.versions.includes(old) ? old : library.versions.includes(using) ? using : library.versions[0] || '';
+    nameVersion();
     seen.songList = seen.decks = null;
     renderSongList();
     renderDecks();
@@ -1653,7 +1659,13 @@ function eraseReferenceToken() {
 }
 $('reference').addEventListener('beforeinput', (e) => { if (e.inputType === 'deleteContentBackward' && e.cancelable && eraseReferenceToken()) e.preventDefault(); });
 $('reference').oninput = () => { renderReferenceTokens(); clearTimeout(suggestTimer); suggestSequence++; suggestTimer = setTimeout(suggest, 160); };
-$('version').onchange = () => void suggest();
+function nameVersion() {
+  const select = $('version');
+  const name = (library?.versionNames || {})[select.value] || select.value;
+  select.title = name;
+  select.setAttribute('aria-label', name ? `Translation: ${name}` : 'Translation');
+}
+$('version').onchange = () => { nameVersion(); void suggest(); };
 $('reference').onkeydown = (e) => {
   if (e.key === 'Backspace' && eraseReferenceToken()) { e.preventDefault(); return; }
   if (e.key === 'Escape') { $('suggestions').hidden ? closeSearch() : closeSuggestions(); return; }

@@ -7,6 +7,10 @@ import { ChevronDownIcon } from '../icons';
 export interface SelectOption {
   value: string;
   label: string;
+  /** Quieter words beside the label, in the list only: 'WEB' · 'World English Bible'. */
+  hint?: string;
+  /** Listed but not pickable — something the operator should know exists. */
+  disabled?: boolean;
 }
 
 export interface SelectProps {
@@ -17,6 +21,12 @@ export interface SelectProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  /** Keep the options' own capitals. Version codes and Bible names are not
+      control words: 'nkjv' reads as a typo, 'king james version' as a slip. */
+  preserveCase?: boolean;
+  /** The list may be wider than its trigger, so a 68px picker can still
+      name what each choice is. */
+  menuMinWidth?: number;
 }
 
 export const TEXT_EFFECT_OPTIONS: SelectOption[] = [
@@ -38,6 +48,8 @@ export function Select({
   disabled = false,
   placeholder = 'select option',
   className = '',
+  preserveCase = false,
+  menuMinWidth,
 }: SelectProps) {
   const [internalValue, setInternalValue] = useState<string>(controlledValue ?? options[0]?.value ?? '');
   const [isOpen, setIsOpen] = useState(false);
@@ -71,6 +83,7 @@ export function Select({
   };
 
   const handleSelect = (val: string) => {
+    if (options.find((opt) => opt.value === val)?.disabled) return;
     setInternalValue(val);
     onChange?.(val);
     // Keep dropdown open when selecting — only close on outside click or trigger toggle
@@ -102,7 +115,7 @@ export function Select({
   }, [isOpen]);
 
   return (
-    <div ref={containerRef} className={cx('relative flex flex-col gap-2 lowercase w-full max-w-[360px]', className)}>
+    <div ref={containerRef} className={cx('relative flex flex-col gap-2 w-full max-w-[360px]', !preserveCase && 'lowercase', className)}>
       {label && <span className="tri-label text-[var(--tri-ink-muted)]">{label}</span>}
 
       {/* Select Trigger Button */}
@@ -112,6 +125,7 @@ export function Select({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-disabled={disabled || undefined}
+        title={selectedOption?.hint || undefined}
         onClick={handleToggle}
         className={cx(
           /* px-3, not px-3.5: on a pill this narrow the label was sitting a
@@ -186,6 +200,7 @@ export function Select({
             left: position?.left ?? 0, top: position?.top ?? 0,
             visibility: position ? 'visible' : 'hidden',
             width: triggerRef.current?.getBoundingClientRect().width,
+            minWidth: menuMinWidth,
             borderRadius: '16px',
             /*
              * The app's panel grey. Panel paints rgb(255 255 255 / 0.022) over
@@ -204,6 +219,7 @@ export function Select({
                 key={option.value}
                 role="option"
                 aria-selected={isSelected}
+                aria-disabled={option.disabled || undefined}
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   handleSelect(option.value);
@@ -217,13 +233,25 @@ export function Select({
                      menus open feet apart in the rail and ActionMenu's own
                      comment claims it copies this row's type size — which was
                      only true of its padding and height until now. */
-                  'flex shrink-0 h-[var(--tri-option-h)] w-full items-center justify-between px-3.5 rounded-[10px] text-[length:var(--tri-control-size)] lowercase cursor-pointer transition-[opacity,background-color] duration-150 select-none text-[var(--tri-ink,#e5f3f2)]',
-                  isSelected
-                    ? 'font-medium bg-[rgb(255_255_255_/_0.07)]'
-                    : 'opacity-75 hover:opacity-100 hover:bg-[rgb(255_255_255_/_0.05)]',
+                  'flex shrink-0 h-[var(--tri-option-h)] w-full items-center justify-between px-3.5 rounded-[10px] text-[length:var(--tri-control-size)] transition-[opacity,background-color] duration-150 select-none text-[var(--tri-ink,#e5f3f2)]',
+                  !preserveCase && 'lowercase',
+                  option.disabled
+                    ? 'cursor-not-allowed opacity-40'
+                    : isSelected
+                      ? 'cursor-pointer font-medium bg-[rgb(255_255_255_/_0.07)]'
+                      : 'cursor-pointer opacity-75 hover:opacity-100 hover:bg-[rgb(255_255_255_/_0.05)]',
                 )}
               >
-                <span>{option.label}</span>
+                {option.hint ? (
+                  /* The label in a column of its own, so the hints line up
+                     down the list and read as a second column, not a run-on. */
+                  <span className="flex min-w-0 flex-1 items-baseline gap-3">
+                    <span className="w-[3.25em] shrink-0">{option.label}</span>
+                    <span className="min-w-0 truncate font-normal text-[rgb(229_243_242_/_0.55)]">{option.hint}</span>
+                  </span>
+                ) : (
+                  <span>{option.label}</span>
+                )}
               </li>
             );
           })}

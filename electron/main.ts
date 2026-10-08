@@ -49,7 +49,9 @@ import {
 // --- 2026-09 engine additions (IDEAS-BACKLOG.md / BUILD-MAP.md) ---
 import { buildCandidates, candidatesFromQuotes, type Candidate } from './engine/candidates'
 import { AutoModeController } from './engine/autoMode'
-import { VerseDelivery, detectionKey, readVersePreview, type VersePushSource } from './engine/verseDelivery'
+import { VerseDelivery, detectionKey, readVersePreview, readVerseRange, type VersePushSource } from './engine/verseDelivery'
+import { sortVersions, versionLabel } from '../shared/bibleVersions'
+import { chooseVersion } from './data/versionChoice'
 import { CommandLog } from './preachers/commandLog'
 import { VocabularyStore, applyVocabulary, deepgramKeywords } from './preachers/vocabulary'
 import { exportFixturesFromLedger } from './preachers/evalExport'
@@ -152,6 +154,7 @@ ipcMain.handle('mobile-qr', async (_event, url: string) => {
 })
 ipcMain.handle('mobile-verse', (_event, reference: string, version: string, live: boolean) => {
   if (!db || typeof reference !== 'string' || reference.length > 160 || typeof version !== 'string') throw new Error('Invalid reference')
+  version = resolveVersion(version)
   const verse = readVersePreview(db, reference, version)
   if (!verse) throw new Error('That verse or translation is unavailable.')
   if (live) { if (!stageOperatorPush(() => stageVerseReference(reference,version))) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
@@ -671,19 +674,12 @@ const RECONFIGURE_KEYS = new Set([
  *  be rebuilt on language/config changes without re-stating the wiring. */
 const voiceCallbacks: VoiceCommandCallbacks = {
   getDisplayedRef: () => lastDisplayedRef,
-  getAvailableVersions: () => {
-    if (!db) return ['KJV']
-    try {
-      return (db.prepare('SELECT DISTINCT Version FROM bible').all() as { Version: string }[]).map(
-        (r) => r.Version
-      )
-    } catch {
-      return ['KJV']
-    }
-  },
+  getAvailableVersions: () => installedVersions(),
+  /* The preacher's "read it in the NIV" is for this service. It used to
+     overwrite the church's saved default, so one sermon changed every
+     service after it. */
   onVersionSwitch: (version) => {
-    setSetting('displayVersion', version)
-    reEmitCurrentVerseInVersion(version)
+    setSessionVersion(version, true)
   },
   onVerseCorrection: (verse) => {
     const pid = activePreacherId()
@@ -807,6 +803,92 @@ function reEmitCurrentVerseInVersion(version: string): void {
   }
 }
 
+/* ---- Which Bible: the church's default, this service's, what is installed ---- */
+
+/** The codes bible.db holds. The bundled file does not change while the app runs. */
+let installedVersionCache: string[] | null = null
+function installedVersions(): string[] {
+  if (installedVersionCache) return installedVersionCache
+  if (!db) return ['KJV']
+  try {
+    const codes = (db.prepare('SELECT DISTINCT Version FROM bible').all() as { Version: string }[]).map((r) => r.Version)
+    if (!codes.length) return ['KJV']
+    installedVersionCache = sortVersions(codes)
+    return installedVersionCache
+  } catch {
+    return ['KJV']
+  }
+}
+
+/**
+ * The Bible this service reads from when the operator (LIVE's dropdown) or
+ * the preacher ("in the NIV") has changed it; null means the church's saved
+ * default. Never written to settings — Settings promises the default is
+ * "what it goes back to", and finishing a service (or relaunching) is when.
+ */
+let sessionVersion: string | null = null
+/**
+ * When each missing version was last reported. Once in ten minutes, not on
+ * every verse: the log is for the operator, and one line says it.
+ */
+const reportedMissingVersions = new Map<string, number>()
+const MISSING_VERSION_REPEAT_MS = 10 * 60_000
+
+/**
+ * An installed version (versionChoice: the one asked for, else the church's
+ * default, else KJV), saying so in the service log when it had to fall
+ * back. `report` is false for questions (which Bible is on?) so only a
+ * verse actually read in the fallback speaks.
+ */
+function resolveVersion(requested?: unknown, report = true): string {
+  const { version, missing } = chooseVersion(requested, getSetting('displayVersion'), installedVersions())
+  const last = missing ? reportedMissingVersions.get(missing) ?? -Infinity : Infinity
+  if (report && missing && db && Date.now() - last > MISSING_VERSION_REPEAT_MS) {
+    reportedMissingVersions.set(missing, Date.now())
+    // Short: the header's log line is narrow, and this is the part to read.
+    const text = `${missing} isn't installed — using ${version}`
+    console.warn(`📖 ${missing} isn't installed on this computer — verses show in ${versionLabel(version)}`)
+    /* After the verse it was read for: the log shows its newest line, and
+       a "caught …" arriving a moment later would cover the reason. */
+    setTimeout(() => emitEngineEvent('on-bible-notice', { text, requested: missing, using: version }), 0)
+  }
+  return version
+}
+
+/** The version every read uses unless the request names its own. */
+function activeVersion(report = true): string {
+  return resolveVersion(sessionVersion ?? getSetting('displayVersion'), report)
+}
+
+/**
+ * Change this service's Bible (null: back to the church's default).
+ *
+ * `restage` re-reads the verse waiting in preview in the new version — what
+ * the preacher means by "read that in the BSB" straight after a verse. The
+ * LIVE dropdown and the end of a service do not: a catch from minutes ago
+ * coming back as a fresh card would be the engine acting on its own.
+ */
+function setSessionVersion(requested: string | null, restage = false): string {
+  if (requested !== null && !installedVersions().includes(String(requested).toUpperCase())) {
+    resolveVersion(requested) // says so in the service log; the session stays as it was
+    return activeVersion(false)
+  }
+  const next = requested === null ? null : String(requested).toUpperCase()
+  // The same choice twice (a picker answers pointerdown and click) is one change.
+  if (next === sessionVersion && !restage) return activeVersion(false)
+  sessionVersion = next
+  const version = activeVersion(false)
+  console.log(`📖 This service's Bible → ${version}${sessionVersion ? '' : ' (the default)'}`)
+  if (restage) {
+    reEmitCurrentVerseInVersion(version)
+  } else {
+    // A reading in progress carries on in the new version, not the one it was heard in.
+    session.version = undefined
+  }
+  emitVersionChanged(version)
+  return version
+}
+
 const suggestionTracker = new SuggestionTracker()
 let passageMatcher: PassageMatcher | null = null
 const heardWindow = new HeardWindow()
@@ -902,7 +984,7 @@ function withdrawProvisionalRecognition(): void {
 
 const session = new ScriptureSession((display: any) => {
   if (!db) return
-  const displayVersion = display.version || getSetting('displayVersion') || 'KJV'
+  const displayVersion = display.version ? resolveVersion(display.version) : activeVersion()
   const reference = `${display.book} ${display.chapter}:${display.verseStart}-${display.verseEnd}`
   let preview
   try {
@@ -1006,8 +1088,9 @@ const session = new ScriptureSession((display: any) => {
   broadcastState()
 })
 
-function stageVerseReference(reference: string, version = getSetting('displayVersion') || 'KJV'): boolean {
+function stageVerseReference(reference: string, requested?: string): boolean {
   if (!db) return false
+  const version = requested ? resolveVersion(requested) : activeVersion()
   try {
     const preview = readVersePreview(db, reference, version)
     if (!preview) return false
@@ -1367,7 +1450,7 @@ function stageRecognizedPassage(candidate: RecognitionCandidate, heard: string, 
   if (candidate.endVerse && !verseExists(candidate.book, candidate.chapter, candidate.endVerse)) return false
   // A reference existing in another translation is not enough: only accept a
   // suggestion when the entire requested passage can actually be previewed.
-  const version = getSetting('displayVersion') || 'KJV'
+  const version = activeVersion()
   const reference = `${candidate.book} ${candidate.chapter}:${candidate.verse}-${candidate.endVerse ?? candidate.verse}`
   if (!readVersePreview(db, reference, version)) return false
   if (getSetting('falsePositiveFilterEnabled') && transitionDetector && falsePositiveFilter.shouldBlock(
@@ -1652,7 +1735,7 @@ ipcMain.handle('alert-current', () => alerts.current())
 ipcMain.handle('bible-keyword-search', (_event, { query, version, limit }: { query: string; version?: string; limit?: number }) => {
   if (!db) return []
   try {
-    return searchBible(db, String(query ?? ''), { version: version || getSetting('displayVersion') || 'KJV', limit })
+    return searchBible(db, String(query ?? ''), { version: version ? resolveVersion(version) : activeVersion(), limit })
   } catch (error) {
     console.error('Bible keyword search failed:', error)
     return []
@@ -2066,7 +2149,7 @@ ipcMain.handle('find-heard-scripture', async (_event, payload: { text?: string }
   // No text given means "what was just said": words older than the window
   // have expired, so a press long after the sentence finds nothing.
   const words = (typeof payload?.text === 'string' ? payload.text : heardWindow.recent()).split(/\s+/).filter(Boolean).slice(-25)
-  const version = getSetting('displayVersion') || 'KJV'
+  const version = activeVersion()
   const matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: string }[] = []
   for (const hit of await allusionFinder.find(words)) {
     const reference = `${hit.book} ${hit.chapter}:${hit.verse}${hit.endVerse > hit.verse ? `-${hit.endVerse}` : ''}`
@@ -2084,6 +2167,10 @@ ipcMain.handle('set-display-version', (_event, version: string) => {
   return { success: true }
 })
 
+/* This service's Bible: LIVE's dropdown. Re-reads the pending catch, never saved. */
+ipcMain.handle('set-session-version', (_event, version: unknown) =>
+  setSessionVersion(typeof version === 'string' && version ? version : null))
+ipcMain.handle('get-session-version', () => activeVersion(false))
 ipcMain.handle('get-seasonal-theme', () => seasonalThemeId(new Date()))
 
 ipcMain.handle('get-available-languages', () => availableLanguages())
@@ -2279,7 +2366,7 @@ ipcMain.handle('get-db-status', () => {
   if (!db) return { connected: false }
   try {
     const count = (db.prepare('SELECT COUNT(*) as count FROM bible').get() as { count: number }).count
-    return { connected: true, verses: count }
+    return { connected: true, verses: count, versions: installedVersions() }
   } catch (e: any) {
     return { connected: false, error: e?.message }
   }
@@ -2287,7 +2374,7 @@ ipcMain.handle('get-db-status', () => {
 
 ipcMain.handle('get-chapter', (_event, { bookId, chapter, version }) => {
   if (!db) return { success: false, error: 'Database not connected' }
-  const ver = version || 'KJV'
+  const ver = version || activeVersion(false)
   try {
     const verses = db
       .prepare(
@@ -2321,7 +2408,7 @@ ipcMain.handle('search-verse', (_event, { book, chapter, verse, version }) => {
   if (bookId === undefined) {
     return { success: false, error: 'Book not found' }
   }
-  const ver = version || 'KJV'
+  const ver = version || activeVersion(false)
   try {
     const row = db
       .prepare(
@@ -2338,6 +2425,30 @@ ipcMain.handle('search-verse', (_event, { book, chapter, verse, version }) => {
   } catch (error) {
     console.error('SQL Error:', error)
     return { success: false, error: 'Database error' }
+  }
+})
+
+/*
+ * A passage's verses in one read, for the projector and its second line.
+ * The wall used to ask verse by verse and stop at the first number the
+ * version lacks, so WEB Acts 8:36-38 put up 8:36 alone. Same rows, same
+ * gaps, as the preview's readVersePreview (verseDelivery.readVerseRange).
+ */
+ipcMain.handle('get-verse-range', (_event, { book, chapter, start, end, version }) => {
+  if (!db) return { success: false, verses: [], error: 'Database not connected' }
+  const bookId = typeof book === 'number' ? book : resolveBookId(String(book ?? ''))
+  if (bookId === undefined || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end - start > 200) {
+    return { success: false, verses: [] }
+  }
+  /* Exactly the version asked for, no fallback: a second translation that
+     is not installed has no line, rather than repeating the first. */
+  const ver = version ? String(version) : activeVersion(false)
+  try {
+    const verses = readVerseRange(db, bookId, Number(chapter), start, end, ver).filter((row) => row.text.trim())
+    return { success: verses.length > 0, verses, version: ver }
+  } catch (error) {
+    console.error('SQL Error:', error)
+    return { success: false, verses: [], error: 'Database error' }
   }
 })
 
@@ -2650,15 +2761,7 @@ ipcMain.handle('window-toggle-fullscreen', (event) => {
   return next
 })
 
-ipcMain.handle('get-available-versions', () => {
-  if (!db) return ['KJV']
-  try {
-    const rows = db.prepare('SELECT DISTINCT Version FROM bible ORDER BY Version').all() as { Version: string }[]
-    return rows.map((r) => r.Version)
-  } catch {
-    return ['KJV']
-  }
-})
+ipcMain.handle('get-available-versions', () => installedVersions())
 
 let worshipTimeoutHandle: NodeJS.Timeout | null = null
 
@@ -2827,6 +2930,8 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
     })
   }
   if (key === 'outputDisplays' || key === 'outputRoles') notifyOutputsChanged()
+  // A new default reaches LIVE at once unless this service chose its own.
+  if (key === 'displayVersion' && sessionVersion === null) emitVersionChanged(activeVersion(false))
   return true
 })
 
@@ -2924,6 +3029,8 @@ ipcMain.handle(
       serviceAgent.reset()
       recentReview = null
       lastReviewItemId = null
+      // The next service starts on the church's default Bible again.
+      if (sessionVersion !== null) setSessionVersion(null)
       return {
         success: true,
         versesDetected,
@@ -3675,7 +3782,7 @@ app.whenReady().then(() => {
           if (!isListening || !Number.isFinite(verse.confidence) || verse.confidence < 0.9 || verse.confidence > 1 || !db) return
           const segment = transitionDetector?.getCurrentSegment().type
           if (segment === 'prayer' || segment === 'worship' || segment === 'announcements') return
-          const preview = readVersePreview(db, verse.ref, getSetting('displayVersion') || 'KJV')
+          const preview = readVersePreview(db, verse.ref, activeVersion())
           if (!preview || !shouldEmit(`implicit:${verse.ref}`)) return
           // Reuse the same suggestion identity as local passage recognition.
           // A model's own confidence is not a measured accuracy percentage.

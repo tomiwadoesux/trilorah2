@@ -8,6 +8,7 @@ import { SettingRow, seedValues, rowVisible, SCRIPTURE_FACES, type Row } from '.
 import { displayMapFrom, useOutputsStatus } from './dashboard/outputs/fromEngine';
 import { Cloud } from '../../screens/Cloud';
 import { Themes } from '../../screens/Themes';
+import { sortVersions, versionLabel } from '../../../shared/bibleVersions';
 
 /*
  * S-10 — Settings.
@@ -94,7 +95,7 @@ const PAGES: Page[] = [
          here, so the blurb names the common ones and the field accepts
          whatever the transcriber does. */
       { kind: 'text', key: 'asrLanguage', label: 'Speech language', blurb: 'What the transcriber listens for — a language code such as en-US, en-GB, es-ES, es-419, fr-FR, fr-CA, pt-BR, de, it, hi-IN, zh-CN, ko or ja. Usually the same language as the engine above.', value: 'en-US', placeholder: 'en-US' },
-      { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live; this is what it goes back to.', value: 'KJV', options: ['KJV'] },
+      { kind: 'select', key: 'displayVersion', label: 'Default Bible on the projector', blurb: 'What a service starts on. The operator changes the Bible for the moment from the dropdown on Live, or the preacher by asking for another; the next service goes back to this.', value: 'KJV', options: [{ value: 'KJV', label: versionLabel('KJV') }] },
       { kind: 'note', key: 'uiLanguage', text: 'UI language is not built yet — the app is English-only for now. The setting is here so it is not forgotten.' },
     ],
   },
@@ -204,7 +205,8 @@ const PAGES: Page[] = [
       { kind: 'action', key: 'evalExport', label: 'Evaluation set', blurb: 'The corrections as test fixtures — for improving the resolver.', button: 'export corrections', note: 'evals/ · last 3 sept' },
       { kind: 'action', key: 'wipeTranscripts', label: 'Transcripts', blurb: 'Delete every transcript on this computer. Profiles and settings stay.', button: 'wipe transcripts', tone: 'danger' },
       { kind: 'action', key: 'wipeProfiles', label: 'Pastor profiles', blurb: 'Delete every profile and everything it learned. Auto mode starts from nothing.', button: 'wipe profiles', tone: 'danger' },
-      { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: '', state: 'ok', text: 'bible.db · 186,486 verses · 6 versions', advanced: true },
+      /* Filled from get-db-status: a count typed in here went stale the day a Bible was added. */
+      { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: '', state: 'idle', text: 'bible.db', advanced: true },
       { kind: 'action', key: 'rebuildIndex', label: 'Search index', blurb: 'Rebuild if verse search returns nothing for a reference you know exists.', button: 'rebuild', advanced: true },
       { kind: 'action', key: 'openLogs', label: 'Logs', blurb: '', button: 'open logs folder', advanced: true },
       { kind: 'status', key: 'version', label: 'Version', blurb: '', state: 'idle', text: 'trilorah 0.4.1 · up to date', advanced: true },
@@ -271,6 +273,7 @@ function PageBody({ page }: { page: Page }) {
      old hardcoded list offered NKJV and NIV against a database that has
      neither — pick one and every verse on the projector reads "not found". */
   const [versions, setVersions] = useState<string[] | null>(null);
+  const [dbStatus, setDbStatus] = useState<{ connected: boolean; verses?: number; versions?: string[] } | null>(null);
   /* Same rule for the language pack: offering a language the app has no
      pack for means a church picks it and the resolver quietly keeps
      speaking English. The engine knows which packs are installed. */
@@ -280,6 +283,9 @@ function PageBody({ page }: { page: Page }) {
     void window.api?.getAvailableVersions?.().then((v) => {
       if (alive && Array.isArray(v) && v.length) setVersions(v);
     });
+    void window.api?.getDbStatus?.().then((status) => {
+      if (alive && status) setDbStatus(status);
+    }).catch(() => undefined);
     void window.api?.getAvailableLanguages?.().then((l) => {
       if (alive && Array.isArray(l) && l.length) setLanguages(l.map((x) => x.code));
     }).catch(() => undefined);
@@ -293,7 +299,13 @@ function PageBody({ page }: { page: Page }) {
      rather than show a projector that is not plugged in. */
   const outputs = useOutputsStatus(page.rows.some((r) => r.kind === 'displays'));
   const withLiveOptions = (r: Row): Row => {
-    if (r.key === 'displayVersion' && versions && 'options' in r) return { ...r, options: versions };
+    if (r.key === 'displayVersion' && versions && r.kind === 'select') return { ...r, options: sortVersions(versions).map((v) => ({ value: v, label: versionLabel(v) })) };
+    if (r.key === 'dbStatus' && r.kind === 'status' && dbStatus) {
+      const count = dbStatus.versions?.length ?? 0;
+      return dbStatus.connected
+        ? { ...r, state: 'ok', text: `bible.db · ${(dbStatus.verses ?? 0).toLocaleString('en-US')} verses · ${count} ${count === 1 ? 'version' : 'versions'}` }
+        : { ...r, state: 'danger', text: 'bible.db is missing — reinstall Trilorah' };
+    }
     if (r.key === 'engineLanguage' && languages && 'options' in r) return { ...r, options: languages };
     if (r.kind === 'displays' && window.api) return { ...r, displays: outputs ? displayMapFrom(outputs) : [] };
     return r;

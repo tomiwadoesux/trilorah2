@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('api', {
 
   // Get available Bible versions
   getAvailableVersions: () => ipcRenderer.invoke('get-available-versions'),
+  // A passage's verses in one read, gaps and all (the projector and its second line)
+  getVerseRange: (book: string | number, chapter: number, start: number, end: number, version?: string) =>
+    ipcRenderer.invoke('get-verse-range', { book, chapter, start, end, version }),
   toggleWindowFullscreen: () => ipcRenderer.invoke('window-toggle-fullscreen') as Promise<boolean>,
 
   // Bible database health (drives the missing-DB banner)
@@ -281,6 +284,9 @@ contextBridge.exposeInMainWorld('api', {
   // Translation control (also reachable by the preacher's voice)
   setDisplayVersion: (version: string) =>
     ipcRenderer.invoke('set-display-version', version),
+  // This service's Bible (LIVE's dropdown) — never saved over the church's default
+  setSessionVersion: (version: string | null) => ipcRenderer.invoke('set-session-version', version),
+  getSessionVersion: () => ipcRenderer.invoke('get-session-version'),
   getSeasonalTheme: () => ipcRenderer.invoke('get-seasonal-theme'),
   getNotesProviderStatus: () => ipcRenderer.invoke('get-notes-provider-status'),
 

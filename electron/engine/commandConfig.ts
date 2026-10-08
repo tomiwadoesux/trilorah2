@@ -52,6 +52,7 @@ export const DEFAULT_COMMANDS: CommandPhraseConfig = {
   versionPhrases: [
     { phrases: ['new king james version', 'new king james'], code: 'NKJV' },
     { phrases: ['king james version', 'king james', 'authorized version'], code: 'KJV' },
+    { phrases: ['berean standard bible', 'berean standard', 'berean bible'], code: 'BSB' },
     { phrases: ['new international version', 'n i v'], code: 'NIV' },
     { phrases: ['english standard version', 'e s v'], code: 'ESV' },
     { phrases: ['new living translation', 'n l t'], code: 'NLT' },

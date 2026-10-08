@@ -17,7 +17,31 @@ export function sameRef(a: VerseDetection, b: VerseDetection): boolean {
 }
 
 /**
- * Fetch the full text for a detection via searchVerse.
+ * A detection's verses in one read (get-verse-range), the same rows the
+ * operator's preview was built from. A version that leaves a number out
+ * (BSB Mark 9:44, WEB Acts 8:37) just skips it; the old verse-by-verse loop
+ * below stopped at the first gap, so the wall showed half the reading.
+ * Bounded at 30 verses so a misheard "1-150" cannot flood the projector.
+ * Null when there is no range IPC (an older main), so callers fall back.
+ */
+async function readRange(
+  d: VerseDetection,
+  version: string | undefined,
+): Promise<{ verse: number; text: string }[] | null> {
+  const api = window.api;
+  if (!api?.getVerseRange || d.verse == null) return null;
+  const start = d.verse;
+  const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 29) : start;
+  try {
+    const res = await api.getVerseRange(d.book, d.chapter, start, end, version);
+    return res?.success ? res.verses : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetch the full text for a detection.
  * Ranges are joined verse-by-verse (bounded, so a mis-detected "1–150"
  * cannot flood the display). Returns null when the engine is absent or
  * the reference is chapter-only.
@@ -25,6 +49,8 @@ export function sameRef(a: VerseDetection, b: VerseDetection): boolean {
 export async function fetchVerseText(d: VerseDetection): Promise<string | null> {
   const api = window.api;
   if (!api || d.verse == null) return null;
+  const ranged = await readRange(d, d.version);
+  if (ranged) return ranged.length > 0 ? ranged.map((v) => v.text).join(' ') : null;
   const start = d.verse;
   const end = d.endVerse && d.endVerse > start ? Math.min(d.endVerse, start + 29) : start;
   const parts: string[] = [];
@@ -52,6 +78,8 @@ export async function fetchVerseParts(
 ): Promise<{ verse: number; text: string }[]> {
   const api = window.api;
   if (!api || d.verse == null) return [];
+  const ranged = await readRange(d, version ?? d.version);
+  if (ranged) return ranged;
   const start = d.verse;
   /* 30, not 12: a long range is paged now (verseDisplay pageVerses), so the
      bound only has to stop a misheard "1-150" fetching a whole psalm, and the
