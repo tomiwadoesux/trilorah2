@@ -299,7 +299,17 @@ function PageBody({ page }: { page: Page }) {
      rather than show a projector that is not plugged in. */
   const outputs = useOutputsStatus(page.rows.some((r) => r.kind === 'displays'));
   const withLiveOptions = (r: Row): Row => {
-    if (r.key === 'displayVersion' && versions && r.kind === 'select') return { ...r, options: sortVersions(versions).map((v) => ({ value: v, label: versionLabel(v) })) };
+    if (r.key === 'displayVersion' && versions && r.kind === 'select') {
+      const installed = sortVersions(versions).map((v) => ({ value: v, label: versionLabel(v) }));
+      /* A saved default this computer does not have (a .tri package can set
+         one) used to read as a blank "select option". Catches quietly come
+         in the fallback, so this is where the operator learns why: the
+         saved one is listed for what it is, and cannot be picked again. */
+      const saved = typeof values.displayVersion === 'string' ? values.displayVersion : '';
+      return saved && !versions.includes(saved.trim().toUpperCase())
+        ? { ...r, options: [{ value: saved, label: `${saved.trim().toUpperCase()} · not on this computer`, disabled: true }, ...installed] }
+        : { ...r, options: installed };
+    }
     if (r.key === 'dbStatus' && r.kind === 'status' && dbStatus) {
       const count = dbStatus.versions?.length ?? 0;
       return dbStatus.connected
