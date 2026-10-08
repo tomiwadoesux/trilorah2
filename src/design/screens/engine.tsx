@@ -8,7 +8,8 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { buildVerseSlides, PAGE_WORDS, type VerseSlide } from '../../../shared/verseDisplay';
+import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
+import { SLIDE_RULES, fitRules } from '../../lib/slideRules';
 import type { LiveItem, ScreenState } from './projector';
 import type { Spoken } from './transcript/types';
 import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
@@ -78,6 +79,8 @@ interface Detection {
      this is an observation of the implementation. */
   text?: string;
   verses?: { verse: number; text: string }[];
+  /** The operator's own push on its way through the engine's preview. */
+  operatorPush?: boolean;
 }
 
 export interface EngineValue {
@@ -172,26 +175,9 @@ export interface Proposal {
 
 const EngineContext = createContext<EngineValue | null>(null);
 
-/*
- * How a reading becomes slides.
- *
- * These are the renderer-facing options, and they are deliberately NOT the
- * app's saved projector settings: the sandbox has no business rewriting a
- * church's configuration to draw its own preview. One verse per slide with
- * the reference on it is the arrangement a Bible study wants — the reading
- * is walked verse by verse and every slide has to say where it is, because
- * people arrive late and look up.
- */
-export const SLIDE_RULES = {
-  breakOnVerse: true,
-  showVerseNumbers: false,
-  referenceMode: 'each' as const,
-  showTranslation: false,
-  maxCharsPerSlide: 240,
-  /* A range together is pages of whole verses past this, so it can be read
-     on a TV — the same number the wall pages by (src/output.tsx). */
-  maxWordsPerSlide: PAGE_WORDS,
-};
+/* How a reading becomes slides — lib/slideRules, so a plain module can
+   slice a reading the same way without importing this provider. */
+export { SLIDE_RULES, fitRules };
 
 /*
  * How much one slide can hold and still be read from the back row.
@@ -212,22 +198,6 @@ export function wordCount(text: string): number {
 export type Fit = 'fits' | 'tight' | 'too long';
 export function fitOf(words: number): Fit {
   return words <= FIT_WORDS ? 'fits' : words <= TIGHT_WORDS ? 'tight' : 'too long';
-}
-
-/**
- * "Verse four and five" means show four and five — together (owner,
- * 2026-10-07: "Genesis 3 verse 3-5 should show 3-5", and 3-7 likewise).
- *
- * A range is one slide. Fitting it is the screen's job, not a word count's:
- * the wall and the preview shrink the words until they fit, to half size at
- * most, and past that end them with "…" (lib/useFitText). Before, a range
- * past TIGHT_WORDS was walked verse by verse — which is why 3-5 showed 3.
- * Apart is still the operator's to choose, with the preview's
- * together/apart control (`together` false).
- */
-export function fitRules(verses: { text: string }[], together?: boolean) {
-  const keep = together ?? verses.length > 1;
-  return { ...SLIDE_RULES, breakOnVerse: !keep, showVerseNumbers: keep && verses.length > 1 };
 }
 
 /** How many transcript lines to keep. Enough to read back, not a log file. */
@@ -438,6 +408,11 @@ export function EngineProvider({ children }: { children: ReactNode }) {
     off.push(
       api.onVersePreview?.((d: Detection) => {
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
+        /* A push the operator made — a step, a go live, a catch sent — goes
+           through the engine's preview on its way to the wall. It was not
+           heard, so it is not a catch: as one it flashed in the caught pane,
+           raised the strip on the other tabs and joined a set. */
+        if (d.operatorPush) return;
         const reference = referenceOf(d);
         setLatestReference(reference);
 

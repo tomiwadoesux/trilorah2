@@ -89,6 +89,8 @@ interface VerseDetection {
   source?: string;
   isPreview?: boolean;
   version?: string;
+  /** The operator's own push on its way through the preview — not a catch. */
+  operatorPush?: boolean;
 }
 
 /* ------------------------------------------------------------------ */

@@ -37,7 +37,9 @@ function useEngineWiring() {
 
     const subs: ((() => void) | undefined)[] = [
       api.onTranscriptUpdate((text) => live().appendTranscript(text)),
-      api.onVersePreview((d) => showVerse(d, 'preview')),
+      // The operator's own push lands as live a moment later; staging it here
+      // only fetched its words twice.
+      api.onVersePreview((d) => { if (!d.operatorPush) showVerse(d, 'preview'); }),
       api.onVerseDetected((d) => {
         showVerse(d, 'live');
       }),

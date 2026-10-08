@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { VerseSlide } from '../../../shared/verseDisplay';
 import { publishLiveItem } from '../../lib/publishLiveItem';
 import { withdrawRecognizedPreview } from '../../lib/recognitionWithdrawal';
+import { liveKey, spanKey } from '../../lib/liveKey';
 
 /*
  * What is on the projector, and what is about to be.
@@ -109,6 +110,10 @@ interface ProjectorValue {
 
   /** Put something in the preview box. Never reaches the congregation. */
   stage: (item: LiveItem | null) => void;
+  /** Stage an engine catch unless the operator's own pick is in the box, or
+      this reading already is. Decided on the box as it is when React applies
+      it, not as a render saw it — a step's own stage can still be queued. */
+  stageUnlessOperator: (item: LiveItem) => void;
   /** Retract only an automatic preview from this provisional suggestion. */
   withdrawRecognition: (suggestionId: string) => void;
   /** Put something on the projector, staged or not. */
@@ -140,6 +145,14 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const [preview, setPreview] = useState<LiveItem | null>(null);
   const [slide, setSlideIndex] = useState(0);
   const [screen, setScreen] = useState<ScreenState>('live');
+  /*
+   * The live item as of the last set, readable inside a callback, and the
+   * readings this window is pushing right now — counted, because a step and
+   * a double-click can both be under way. Together they are how reflect()
+   * knows the engine's echo of this window's own push from news (liveKey).
+   */
+  const liveRef = useRef<LiveItem | null>(null);
+  const inFlight = useRef(new Map<string, number>());
 
   /* The engine owns the screen state; this panel follows it. A change made
      anywhere else — the phone code going up over a cleared screen, a remote
@@ -149,14 +162,41 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   }), []);
 
   const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
+  const stageUnlessOperator = useCallback((item: LiveItem) => {
+    setPreview((cur) => (cur?.origin === 'operator' ||
+      (cur?.source === 'scripture' && cur.id === item.id && cur.version === item.version) ? cur : item));
+  }, []);
   const withdrawRecognition = useCallback((suggestionId: string) => {
     setPreview(current => withdrawRecognizedPreview(current, suggestionId));
   }, []);
-  const reflect = useCallback((item: LiveItem | null) => { setLive(item); setDelivery(n => n + 1); setSlideIndex(0); }, []);
+  /*
+   * The engine says what is on the wall. Every push this window makes comes
+   * back this way too, a moment before or after send() has set it — and
+   * taken twice, the LIVE words remounted twice and their entrance started
+   * over halfway in: the blink on every "next". So this window's own push,
+   * in flight or just landed, is not news. A push made anywhere else (a
+   * catch sent by reference, another window, a Stream Deck) still is, and a
+   * clear always is.
+   */
+  const reflect = useCallback((item: LiveItem | null) => {
+    if (item && (inFlight.current.has(spanKey(item)) || liveKey(item) === liveKey(liveRef.current))) return;
+    liveRef.current = item;
+    setLive(item); setDelivery(n => n + 1); setSlideIndex(0);
+  }, []);
 
   const send = useCallback(async (item: LiveItem) => {
     await prepareOutput.current?.();
-    const delivered = await publishLiveItem(item);
+    const key = spanKey(item);
+    inFlight.current.set(key, (inFlight.current.get(key) ?? 0) + 1);
+    let delivered: LiveItem;
+    try {
+      delivered = await publishLiveItem(item);
+    } finally {
+      const left = (inFlight.current.get(key) ?? 1) - 1;
+      if (left > 0) inFlight.current.set(key, left);
+      else inFlight.current.delete(key);
+    }
+    liveRef.current = delivered;
     setLive(delivered);
     setDelivery(n => n + 1);
     /* A new reading starts at its first slide. Carrying the old index over
@@ -174,6 +214,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
 
   const clear = useCallback(() => {
     clearWall();
+    liveRef.current = null;
     setLive(null);
     setSlideIndex(0);
   }, []);
@@ -226,6 +267,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       slide,
       screen,
       stage,
+      stageUnlessOperator,
       withdrawRecognition,
       send,
       promote,
@@ -236,7 +278,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       isLive,
       isStaged,
     }),
-    [delivery, beforeSend, live, preview, slide, screen, stage, withdrawRecognition, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
+    [delivery, beforeSend, live, preview, slide, screen, stage, stageUnlessOperator, withdrawRecognition, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
   );
   return <ProjectorContext.Provider value={value}>{children}</ProjectorContext.Provider>;
 }

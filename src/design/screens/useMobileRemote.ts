@@ -37,7 +37,9 @@ export function useMobileRemote() {
       current.current.projector.reflect({source:'media',id:existing?.id || path,label:qr ? 'Congregation QR' : existing?.label || 'Desktop media',path,mediaKind:kind});
     });
     const offContent=api.onLiveContent?.(content=>{
-      current.current.projector.reflect({source:content.kind==='song' ? 'song' : 'presentation',id:content.id || 'desktop-content',label:content.title,title:content.title,section:content.label,lines:content.lines});
+      // A deck slide is a picture: without its path the LIVE pane drew "nothing on the projector".
+      current.current.projector.reflect({source:content.kind==='song' ? 'song' : 'presentation',id:content.id || 'desktop-content',label:content.title,title:content.title,section:content.label,lines:content.lines,
+        ...(content.kind==='slide' && content.path ? {path:content.path,mediaKind:'photo' as const} : {})});
     });
     const offClear=api.onShowCleanBackground(()=>current.current.projector.reflect(null));
     return()=>{offMedia?.();offContent?.();offClear?.();};

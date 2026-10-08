@@ -154,7 +154,7 @@ ipcMain.handle('mobile-verse', (_event, reference: string, version: string, live
   if (!db || typeof reference !== 'string' || reference.length > 160 || typeof version !== 'string') throw new Error('Invalid reference')
   const verse = readVersePreview(db, reference, version)
   if (!verse) throw new Error('That verse or translation is unavailable.')
-  if (live) { if (!stageVerseReference(reference,version)) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
+  if (live) { if (!stageOperatorPush(() => stageVerseReference(reference,version))) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
   return verse
 })
 import { PollEngine, VOTE_WEIGHT_IN_VENUE, VOTE_WEIGHT_REMOTE } from './companion/polls'
@@ -867,6 +867,21 @@ function suggestAllusion(text: string) {
   }).catch(() => undefined)
 }
 let pendingRecognition: ScriptureRecognition | undefined
+/*
+ * An operator's own push stages its verse through the session like a heard
+ * one, so the stage-then-promote round trip and the session's place (for a
+ * spoken "next verse") stay as they are. Without a mark, the windows took
+ * that preview as a catch — a card in the caught pane for the verse the
+ * operator was already putting up — and it ran the candidates, polls and
+ * grace window with the last resolver confidence as if it had been heard.
+ * Only Go live and push-by-reference set it; a queued or typed reference
+ * that merely stages is still a catch.
+ */
+let operatorStaging = false
+function stageOperatorPush(stage: () => boolean): boolean {
+  operatorStaging = true
+  try { return stage() } finally { operatorStaging = false }
+}
 let provisionalRecognition: { candidate: RecognitionCandidate; recognition: ScriptureRecognition } | null = null
 
 function withdrawProvisionalRecognition(): void {
@@ -897,9 +912,10 @@ const session = new ScriptureSession((display: any) => {
     return
   }
   if (!preview) return
+  const operatorPush = operatorStaging
   const detection = verseDelivery.stage({
     ...preview,
-    confidence: lastResolverConfidence,
+    ...(operatorPush ? {} : { confidence: lastResolverConfidence }),
     ...(pendingRecognition ? { recognition: pendingRecognition, source: pendingRecognition.source } : {}),
     // Pass range metadata
     rangeEnd: display.rangeEnd,
@@ -913,7 +929,9 @@ const session = new ScriptureSession((display: any) => {
   // session only ever emits previews (isPreview is hardcoded true there), so
   // in practice this branch is dormant and pushPreviewToLive is the lifter.
   if (!detection.isPreview) screen.onContentPushed()
-  emitVerseDetected(detection)
+  // Marked on the message only: the stored preview may be re-sent later (a
+  // translation switch) and must read as itself then.
+  emitVerseDetected(operatorPush ? { ...detection, operatorPush: true } : detection)
   const refStr = detection.endVerse
     ? `${detection.book} ${detection.chapter}:${detection.verse}-${detection.endVerse}`
     : `${detection.book} ${detection.chapter}:${detection.verse}`
@@ -939,7 +957,7 @@ const session = new ScriptureSession((display: any) => {
     displayedAt: Date.now()
   }
   intentEngine.onReferenceDetected()
-  if (detection.isPreview && detection.text && lastResolverConfidence !== undefined) {
+  if (detection.isPreview && detection.text && lastResolverConfidence !== undefined && !operatorPush) {
     const preacherId = activePreacherId()
     // Ranked candidates: the primary plus ASR-confusion alternates, quote
     // matches and context. Feeds the clash rule, the operator prompt and
@@ -1731,7 +1749,7 @@ ipcMain.on('stop-listening', () => {
 })
 
 ipcMain.on('push-to-live', (_event, reference?: string, version?: string) => {
-  if (reference !== undefined && (typeof reference !== 'string' || !stageVerseReference(reference, version))) return
+  if (reference !== undefined && (typeof reference !== 'string' || !stageOperatorPush(() => stageVerseReference(reference, version)))) return
   pushPreviewToLive('operator')
 })
 
@@ -2782,13 +2800,17 @@ const THEME_KEYS = new Set([
 
 ipcMain.handle('set-setting', (_event, { key, value }) => {
   const previousDisplays = key === 'outputDisplays' ? getSetting('outputDisplays') : null
-  setSetting(key, value)
+  // Every Go live writes the whole look again, about a dozen keys, and each
+  // write repainted every window — an output re-read per key, mid-entrance.
+  // A look that has not changed is not written and not announced.
+  const sameTheme = THEME_KEYS.has(key) && JSON.stringify(getSetting(key)) === JSON.stringify(value)
+  if (!sameTheme) setSetting(key, value)
   // Language / trust-gate changes reconfigure the live engines instantly.
   if (RECONFIGURE_KEYS.has(key) && ledger) {
     applyLanguageAndConfig()
   }
   // Theme changes repaint every output window live.
-  if (THEME_KEYS.has(key)) {
+  if (THEME_KEYS.has(key) && !sameTheme) {
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) win.webContents.send('on-theme-changed')
     })

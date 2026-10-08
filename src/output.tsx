@@ -362,7 +362,9 @@ function OutputSurface() {
       // on-verse-detected. The stage monitor is the one exception: it shows
       // the pending verse as "up next" so the preacher knows it's coming.
       api.onVerseDetected((d) => { restore.invalidate(); display(d, false); }),
-      api.onVersePreview((d) => setUpNext(d)),
+      // An operator's own push passes through the preview on its way up; as
+      // "up next" it flashed "awaiting approval" for the verse already going live.
+      api.onVersePreview((d) => setUpNext(d.operatorPush ? null : d)),
       api.onVerseAutoDismiss(() => { restore.invalidate(); contentRevision++; setVisible(false); }),
       api.onShowCleanBackground(() => {
         restore.invalidate();

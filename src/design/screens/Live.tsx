@@ -2826,8 +2826,10 @@ function useServiceLog(stateLabel: string) {
     );
 
     off.push(
-      api.onVersePreview?.((d: { book?: string; chapter?: number; verse?: number | null; endVerse?: number | null }) => {
-        if (!d?.book) return;
+      api.onVersePreview?.((d: { book?: string; chapter?: number; verse?: number | null; endVerse?: number | null; operatorPush?: boolean }) => {
+        /* The operator's own push passes through the engine's preview on its
+           way to the wall; it was not caught and nobody is waiting. */
+        if (!d?.book || d.operatorPush) return;
         const verse = d.verse == null ? '' : `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `-${d.endVerse}` : ''}`;
         say({ text: `caught ${d.book} ${d.chapter}${verse} — waiting for you` });
       }),
@@ -4625,12 +4627,11 @@ function LiveBody({ state }: { state?: string }) {
     if (!latestProposal || latestProposal.missing || !latestProposal.reference) return;
     if (lastStagedRef.current === latestProposalKey) return;
     lastStagedRef.current = latestProposalKey;
-    if (projector.preview?.origin === 'operator') return;
-    /* Already there — the catches pane stages the next verse of a set itself. */
-    if (projector.preview?.source === 'scripture' && projector.preview.id === latestProposal.reference &&
-      projector.preview.version === latestProposal.version) return;
-
-    projector.stage({
+    /* Never over the operator's own pick, and not again when it is already
+       there (the catches pane stages the next verse of a set itself). Asked
+       of the box as React applies it: this render's projector.preview can be
+       stale by a step's own stage(next), still queued behind it. */
+    projector.stageUnlessOperator({
       source: 'scripture',
       id: latestProposal.reference,
       label: latestProposal.reference,

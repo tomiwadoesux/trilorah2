@@ -18,6 +18,38 @@ describe('scripture Go live delivery', () => {
     const mobileVerse = vi.fn().mockRejectedValue(new Error('Verse unavailable'))
     await expect(publishLiveItem({ source: 'scripture', id: 'verse', label: 'Titus 1:99' }, { mobileVerse } as unknown as Window['api'])).rejects.toThrow('Verse unavailable')
   })
+  it('returns a run of service reference the way the engine names it, sliced, with its own id', async () => {
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'Psalms', chapter: 104, verse: 12, text: 'invented words', version: 'KJV', verses: [{ verse: 12, text: 'invented words' }] })
+    const delivered = await publishLiveItem({ source: 'scripture', id: 'Psalm 104:12', label: 'Psalm 104:12' }, { mobileVerse } as unknown as Window['api'])
+    expect(delivered.id).toBe('Psalm 104:12')
+    expect(delivered.reference).toBe('Psalms 104:12')
+    expect(delivered.version).toBe('KJV')
+    expect(delivered.slides).toHaveLength(1)
+    expect(delivered.slides?.[0].lines[0].text).toContain('invented words')
+  })
+  it("writes the phone's en-dash range with a hyphen", async () => {
+    const verses = [{ verse: 16, text: 'one' }, { verse: 17, text: 'two' }, { verse: 18, text: 'three' }]
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'John', chapter: 3, verse: 16, endVerse: 18, text: 'one two three', version: 'KJV', verses })
+    const delivered = await publishLiveItem({ source: 'scripture', id: 'John 3:16–18@KJV', label: 'John 3:16–18', reference: 'John 3:16–18', version: 'KJV' }, { mobileVerse } as unknown as Window['api'])
+    expect(delivered.reference).toBe('John 3:16-18')
+    expect(delivered.id).toBe('John 3:16–18@KJV')
+  })
+  it('pages a run of service range the way the wall will: by the church layout setting', async () => {
+    const verses = [{ verse: 1, text: 'one' }, { verse: 2, text: 'two' }, { verse: 3, text: 'three' }]
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'Psalms', chapter: 23, verse: 1, endVerse: 3, text: 'one two three', version: 'KJV', verses })
+    const item = { source: 'scripture' as const, id: 'Psalm 23:1-3', label: 'Psalm 23:1-3', reference: 'Psalm 23:1-3', version: 'KJV' }
+    const apart = await publishLiveItem(item, { mobileVerse, getSetting: vi.fn().mockResolvedValue(true) } as unknown as Window['api'])
+    expect(apart.slides).toHaveLength(3)
+    const together = await publishLiveItem(item, { mobileVerse, getSetting: vi.fn().mockResolvedValue(false) } as unknown as Window['api'])
+    expect(together.slides).toHaveLength(1)
+  })
+  it("never replaces the slides the operator chose (a range shown apart stays apart)", async () => {
+    const verses = [{ verse: 4, text: 'one' }, { verse: 5, text: 'two' }]
+    const apart = verses.map((v, i) => ({ lines: [{ version: 'KJV', text: v.text }], reference: `Ruth 1:${v.verse}`, verseStart: v.verse, verseEnd: v.verse, index: i + 1, total: 2 }))
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'Ruth', chapter: 1, verse: 4, endVerse: 5, text: 'one two', version: 'KJV', verses })
+    const delivered = await publishLiveItem({ source: 'scripture', id: 'Ruth 1:4-5', label: 'Ruth 1:4-5', reference: 'Ruth 1:4-5', version: 'KJV', slides: apart }, { mobileVerse } as unknown as Window['api'])
+    expect(delivered.slides).toBe(apart)
+  })
   it('uses the selected translation for a run item that has no stored translation', async () => {
     const mobileVerse = vi.fn().mockResolvedValue({ text: 'scripture', version: 'NIV', verses: [] })
     const getSetting = vi.fn().mockResolvedValue('NIV')

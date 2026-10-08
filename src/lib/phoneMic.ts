@@ -41,7 +41,8 @@ function watchWords(channel: RTCDataChannel): void {
   offWords.forEach((off) => off());
   offWords = [
     api?.onTranscriptLine?.((line) => sendWords({ kind: 'line', text: line.text, final: line.isFinal })) ?? (() => undefined),
-    api?.onVersePreview?.((d) => sendWords({ kind: 'verse', ref: refOf(d), live: false })) ?? (() => undefined),
+    // The operator's own push lands as live a moment later; as a preview the phone flashed "caught" for it.
+    api?.onVersePreview?.((d) => { if (!d.operatorPush) sendWords({ kind: 'verse', ref: refOf(d), live: false }); }) ?? (() => undefined),
     api?.onVerseDetected?.((d) => sendWords({ kind: 'verse', ref: refOf(d), live: true })) ?? (() => undefined),
     api?.onShowCleanBackground?.(() => sendWords({ kind: 'verse', ref: null, live: true })) ?? (() => undefined),
   ];
