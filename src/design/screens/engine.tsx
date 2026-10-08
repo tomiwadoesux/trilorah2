@@ -78,6 +78,9 @@ interface Detection {
      this is an observation of the implementation. */
   text?: string;
   verses?: { verse: number; text: string }[];
+  /** A catch shown first in the bundled fallback, now in the online Bible
+      it was heard in: the version its card is showing (main.ts). */
+  replaces?: string;
 }
 
 export interface EngineValue {
@@ -450,10 +453,16 @@ export function EngineProvider({ children }: { children: ReactNode }) {
            never be one press away from the projector. */
         const missing = /\bnot found\b/i.test(text);
         const kind = catchKind(d.recognition);
+        /* The same catch arriving in its online Bible (main re-reads it once
+           the chapter is here): its card turns into it — same place, same
+           clock running — rather than a second card with a fresh one. Gone
+           already (sent, dismissed, timed out): nothing is put back. */
+        const replaced = d.replaces ? proposalsNow.current.find((x) => x.reference === reference && x.version === d.replaces) : undefined;
+        if (d.replaces && !replaced) return;
         /* Heard again while it waits: same place in its set, fresh clock
            (startProposalClock below). Without this, a reference repeated in
            the sentence's final moved to the end of its set. */
-        const again = proposalsNow.current.find((x) => x.reference === reference && x.version === version && x.kind === kind);
+        const again = replaced ?? proposalsNow.current.find((x) => x.reference === reference && x.version === version && x.kind === kind);
         /* Strictly increasing, so references that land in the same instant
            — the end of one spoken list — keep the order they were said. */
         const arrivedAt = again?.arrivedAt ?? Math.max(Date.now(), lastArrival.current + 1);
@@ -463,7 +472,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           `set-${++setCount.current}`);
         if (kind === 'said' && !again) setTail.current = { group, at: arrivedAt };
         const proposal: Proposal = {
-          id: `${d.recognition?.suggestionId ?? reference}@${version}`,
+          id: replaced?.id ?? `${d.recognition?.suggestionId ?? reference}@${version}`,
           reference,
           version,
           text,
@@ -478,8 +487,13 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           kind,
           group,
           arrivedAt,
-          heard: lastWords(spokenRef.current) || undefined,
+          // A card turned into its online text still says what was heard then.
+          heard: replaced ? replaced.heard : lastWords(spokenRef.current) || undefined,
         };
+        if (replaced) {
+          updateProposals((p) => p.map((x) => (x.id === replaced.id ? proposal : x)));
+          return;
+        }
         updateProposals((p) => [proposal, ...p.filter((x) => x.id !== proposal.id &&
           !(x.reference === proposal.reference && x.version === proposal.version))].slice(0, PROPOSAL_CAP));
         /* Its six seconds start now — or start again, if it was already up. */

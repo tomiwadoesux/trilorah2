@@ -1244,6 +1244,25 @@ function ScripturesBrowser() {
   /* An online Bible's copyright line goes wherever its words are read. */
   const versionRow = rowsByCode[version];
   const onlineVersion = versionRow?.source === 'online';
+  /* "Read it in the default Bible" when an online one cannot load — unless
+     the church's default IS that Bible (Settings offers NIV as a default),
+     where going back to it only fails again: then a Bible on this computer. */
+  const bundledStandIn = rowsByCode.KJV?.source === 'bundled' ? 'KJV'
+    : Object.values(rowsByCode).find((r) => r.source === 'bundled' && r.available)?.code ?? 'KJV';
+  const [savedDefault, setSavedDefault] = useState<string | null>(null);
+  const failedOnline = onlineVersion && status === 'error';
+  useEffect(() => {
+    if (!failedOnline) return;
+    let current = true;
+    void window.api?.getSetting?.('displayVersion').then((saved) => {
+      if (current) setSavedDefault(typeof saved === 'string' && saved ? saved.toUpperCase() : null);
+    }).catch(() => undefined);
+    return () => { current = false; };
+  }, [failedOnline]);
+  const readInDefault = useCallback(async () => {
+    const saved = await window.api?.getSetting?.('displayVersion').catch(() => null);
+    setVersion(typeof saved === 'string' && saved.toUpperCase() === version ? bundledStandIn : null);
+  }, [version, bundledStandIn, setVersion]);
 
   /*
    * What the table is showing: whatever has been named, or Genesis while the
@@ -1619,7 +1638,8 @@ function ScripturesBrowser() {
             <ScriptureLibraryEmpty status={status} error={loadError} version={version}
               onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
               onReset={() => { setQuery(''); setRef(null); setVersion(null); setLoadAttempt((attempt) => attempt + 1); }}
-              onDefaultBible={onlineVersion ? () => setVersion(null) : undefined} />
+              onDefaultBible={onlineVersion ? () => void readInDefault() : undefined}
+              defaultBible={savedDefault === version ? bundledStandIn : undefined} />
           ) : (
             rows.map((row, i) => (
               <button

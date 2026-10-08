@@ -513,7 +513,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   mobileThumbnail(imagePath:string):Promise<string|null>;
   mobileApprove(id:string,allow:boolean): Promise<boolean>;
   mobileQr(url:string): Promise<string>;
-  mobileVerse(reference:string,version:string,live:boolean): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string}>;
+  /** `superseded`: a live press overtaken while its online chapter loaded — main did not put it up. */
+  mobileVerse(reference:string,version:string,live:boolean): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string;superseded?:boolean}>;
   onMobileRequest(callback:(request:{id:string;command:string;args:Record<string,unknown>;deadline:number})=>void): Unsubscribe;
   mobileReply(reply:{id:string;result?:unknown;error?:string}):void;
   remoteGenerateCode():Promise<string|null>;

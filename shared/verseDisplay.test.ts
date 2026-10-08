@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
+import { setVersionCredits } from './bibleVersions'
 import {
   buildVerseSlides,
   formatReference,
@@ -453,5 +454,31 @@ describe('licensed translations always carry their initials', () => {
   it('treats a version it cannot name as licensed, and a blank one as nothing', () => {
     expect(formatReference({ ...REF, version: 'XYZ' }, 1, 1, { showTranslation: false })).toBe('John 3:1 · XYZ')
     expect(formatReference({ ...REF, version: '' }, 1, 1, { showTranslation: false })).toBe('John 3:1')
+  })
+})
+
+describe("an online Bible's copyright line on its slides", () => {
+  afterEach(() => setVersionCredits([]))
+  const NIV = { book: 'John', chapter: 3, version: 'NIV' }
+  const INVENTED = [{ verse: 1, text: 'Invented words one.' }, { verse: 2, text: 'Invented words two.' }]
+
+  it('is on every slide of its words, not only the last', () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented NIV line' }])
+    const slides = buildVerseSlides(NIV, INVENTED, opts({ breakOnVerse: true }))
+    expect(slides).toHaveLength(2)
+    expect(slides.map((s) => s.credit)).toEqual(['Invented NIV line', 'Invented NIV line'])
+  })
+  it('is absent for a bundled Bible, and for an online one main gives no line for', () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented NIV line' }])
+    expect(buildVerseSlides(REF, RANGE, opts())[0]).not.toHaveProperty('credit')
+    expect(buildVerseSlides({ ...NIV, version: 'NKJV' }, INVENTED, opts())[0]).not.toHaveProperty('credit')
+  })
+  it("adds the second translation's line where that translation has words on the slide", () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented NIV line' }, { code: 'NKJV', attribution: 'Invented NKJV line' }])
+    const slides = buildVerseSlides(REF, RANGE, opts({ breakOnVerse: true, secondary: { version: 'NKJV', verses: [{ verse: 16, text: 'Invented second.' }] } }))
+    expect(slides[0].credit).toBe('Invented NKJV line')
+    expect(slides[1]).not.toHaveProperty('credit')
+    const both = buildVerseSlides(NIV, INVENTED, opts({ secondary: { version: 'NKJV', verses: INVENTED } }))
+    expect(both[0].credit).toBe('Invented NIV line · Invented NKJV line')
   })
 })

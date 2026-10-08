@@ -7,6 +7,18 @@ function verse(book = 'Romans'): VersePreview {
 }
 
 describe('VerseDelivery', () => {
+  it('counts every change to the wall, so a press that waited can tell it was overtaken', () => {
+    const delivery = new VerseDelivery()
+    expect(delivery.acts).toBe(0)
+    delivery.stage(verse())
+    expect(delivery.acts).toBe(0) // staging is the operator's preview, not the wall
+    delivery.promote('operator')
+    expect(delivery.acts).toBe(1)
+    delivery.promote('auto mode') // refused: nothing reached the wall
+    expect(delivery.acts).toBe(1)
+    delivery.clearLive() // a song, a picture or a clear took the verse down
+    expect(delivery.acts).toBe(2)
+  })
   it('speech cannot publish even after a verse was manually sent live', () => {
     const delivery = new VerseDelivery()
     delivery.stage(verse())

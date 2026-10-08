@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BIBLE_VERSIONS, VERSION_CODE_RE, requiresInitials, sortVersions, versionHint, versionLabel, versionName, versionOptions,
-  versionRowOptions,
+  BIBLE_VERSIONS, VERSION_CODE_RE, requiresInitials, setVersionCredits, sortVersions, versionCredit, versionHint, versionLabel,
+  versionName, versionOptions, versionRowOptions,
 } from './bibleVersions'
 
 describe('the Bible version catalogue', () => {
@@ -62,5 +62,25 @@ describe('the Bible version catalogue', () => {
       { value: 'TPT', label: 'TPT', hint: 'Invented Passion title · online' },
       { value: 'NKJV', label: 'NKJV', hint: 'needs a YouVersion key', disabled: true },
     ])
+  })
+})
+
+describe("an online Bible's copyright line", () => {
+  it('keeps the line main lists for each online Bible, tidied, and none for the rest', () => {
+    setVersionCredits([
+      { code: 'NIV', attribution: '  Invented copyright\n line for testing.  ' },
+      { code: 'NKJV', attribution: null },
+      { code: 'kjv', attribution: '' },
+    ])
+    expect(versionCredit('NIV')).toBe('Invented copyright line for testing.')
+    expect(versionCredit('niv')).toBe('Invented copyright line for testing.')
+    expect(versionCredit('NKJV')).toBeNull()
+    expect(versionCredit('KJV')).toBeNull()
+    expect(versionCredit(undefined)).toBeNull()
+  })
+  it('forgets a line main no longer lists (a key refused, a Bible withdrawn)', () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented line' }])
+    setVersionCredits([])
+    expect(versionCredit('NIV')).toBeNull()
   })
 })

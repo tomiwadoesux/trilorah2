@@ -11,8 +11,8 @@ describe('scripture Go live delivery', () => {
     const mobileVerse = vi.fn().mockResolvedValue({ text: 'scripture', version: 'KJV', verses: [{ verse: 12, text: 'scripture' }] })
     const delivered = await publishLiveItem({ source: 'scripture', id: 'Psalm 104:12', label: 'Psalm 104:12' }, { mobileVerse } as unknown as Window['api'])
     expect(mobileVerse).toHaveBeenCalledWith('Psalm 104:12', 'KJV', true)
-    expect(delivered.text).toBe('scripture')
-    expect(delivered.reference).toBe('Psalm 104:12')
+    expect(delivered?.text).toBe('scripture')
+    expect(delivered?.reference).toBe('Psalm 104:12')
   })
   it('rejects a failed engine delivery so the operator cannot mark it live', async () => {
     const mobileVerse = vi.fn().mockRejectedValue(new Error('Verse unavailable'))
@@ -24,6 +24,49 @@ describe('scripture Go live delivery', () => {
     await publishLiveItem({ source: 'scripture', id: 'Titus 1:3', label: 'Titus 1:3' }, { mobileVerse, getSetting } as unknown as Window['api'])
     expect(getSetting).toHaveBeenCalledWith('displayVersion')
     expect(mobileVerse).toHaveBeenCalledWith('Titus 1:3', 'NIV', true)
+  })
+  it("reads a run item in this service's Bible before the church's saved default", async () => {
+    const mobileVerse = vi.fn().mockResolvedValue({ text: 'scripture', version: 'BSB', verses: [] })
+    const getSessionVersion = vi.fn().mockResolvedValue('BSB')
+    const getSetting = vi.fn().mockResolvedValue('KJV')
+    await publishLiveItem({ source: 'scripture', id: 'Titus 1:3', label: 'Titus 1:3' }, { mobileVerse, getSessionVersion, getSetting } as unknown as Window['api'])
+    expect(mobileVerse).toHaveBeenCalledWith('Titus 1:3', 'BSB', true)
+    expect(getSetting).not.toHaveBeenCalled()
+  })
+  it('reports a press main dropped as overtaken, so LIVE keeps the newer thing', async () => {
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'John', chapter: 3, verse: 16, text: 'old', version: 'KJV', verses: [{ verse: 16, text: 'old' }], superseded: true })
+    expect(await publishLiveItem({ source: 'scripture', id: 'John 3:16', label: 'John 3:16', version: 'NIV' }, { mobileVerse } as unknown as Window['api'])).toBeNull()
+  })
+})
+
+describe('LIVE shows the words the wall got', () => {
+  const rules = (verses: { text: string }[], together?: boolean) => {
+    const keep = together ?? verses.length > 1
+    return { breakOnVerse: !keep, showVerseNumbers: keep && verses.length > 1, referenceMode: 'each' as const, showTranslation: false }
+  }
+  const staged = {
+    source: 'scripture' as const, id: 'Gen 1:1-2@NIV', label: 'Genesis 1:1-2', reference: 'Genesis 1:1-2', version: 'NIV',
+    verses: [{ verse: 1, text: 'invented one' }, { verse: 2, text: 'invented two' }],
+    slides: [{ lines: [{ version: 'NIV', text: 'staged slide' }], reference: 'Genesis 1:1-2 · NIV', verseStart: 1, verseEnd: 2, index: 1, total: 1 }],
+  }
+  it('keeps the operator\'s slides when main read exactly what was staged', async () => {
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'Genesis', chapter: 1, verse: 1, endVerse: 2, text: 'invented one invented two', version: 'NIV', verses: staged.verses })
+    const delivered = await publishLiveItem(staged, { mobileVerse } as unknown as Window['api'], rules)
+    expect(delivered?.slides).toBe(staged.slides)
+  })
+  it('cuts the fallback\'s words again, the same way, when main could not read the online Bible', async () => {
+    const fallback = [{ verse: 1, text: 'fallback one' }, { verse: 2, text: 'fallback two' }]
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'Genesis', chapter: 1, verse: 1, endVerse: 2, text: 'fallback one fallback two', version: 'KJV', verses: fallback })
+    const delivered = await publishLiveItem(staged, { mobileVerse } as unknown as Window['api'], rules)
+    expect(delivered?.version).toBe('KJV')
+    // Together, as the operator had it: one slide, numbered, in the fallback's own name and words.
+    expect(delivered?.slides).toHaveLength(1)
+    expect(delivered?.slides?.[0].lines[0]).toEqual({ version: 'KJV', text: '1\u2009fallback one 2\u2009fallback two' })
+    expect(delivered?.slides?.[0].reference).toBe('Genesis 1:1-2')
+  })
+  it('drops stale slides rather than show them under another Bible\'s name when it cannot cut them', async () => {
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'Genesis', chapter: 1, verse: 1, endVerse: 2, text: 'x', version: 'KJV', verses: [{ verse: 1, text: 'x' }] })
+    expect((await publishLiveItem(staged, { mobileVerse } as unknown as Window['api']))?.slides).toBeUndefined()
   })
 })
 

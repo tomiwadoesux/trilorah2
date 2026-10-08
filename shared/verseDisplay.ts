@@ -24,11 +24,12 @@
  * Licensed translations (NKJV, NIV, …) carry their initials whatever the
  * theme says: the reference names the version even with "show translation"
  * off, the last slide of a reading always has its reference, and a licensed
- * second translation ends in "(NIV)". Deciding that here, not in the
+ * second translation ends in "(NIV)". An online Bible's words also carry its
+ * copyright line on every slide (`credit`). Deciding that here, not in the
  * projector, is what keeps the operator's preview and the wall identical.
  */
 
-import { requiresInitials } from './bibleVersions'
+import { requiresInitials, versionCredit } from './bibleVersions'
 
 export type ReferenceMode = 'each' | 'last' | 'first' | 'none'
 
@@ -86,6 +87,12 @@ export interface VerseSlide {
   /** 1-based position and total, so the UI can show 'slide 2 of 3'. */
   index: number
   total: number
+  /**
+   * The copyright line of an online Bible whose words are on this slide
+   * (bibleVersions versionCredit) — every slide of it, small at the foot of
+   * the screen. Absent for the bundled Bibles.
+   */
+  credit?: string
 }
 
 export interface VerseRef {
@@ -296,6 +303,9 @@ export function buildVerseSlides(
     /* A licensed reading may not end without saying whose words they were,
        so its last slide keeps the reference whatever referenceMode says. */
     const cited = requiresInitials(ref.version) && i === total - 1
+    /* An online Bible's words carry its copyright line on every slide they
+       are on — the second translation's too, when it has a line here. */
+    const credit = [...new Set(lines.map((line) => versionCredit(line.version)).filter((c): c is string => !!c))].join(' · ')
     return {
       lines,
       reference: showsReference(options.referenceMode, i, total) || cited
@@ -304,7 +314,8 @@ export function buildVerseSlides(
       verseStart: chunk.verseStart,
       verseEnd: chunk.verseEnd,
       index: i + 1,
-      total
+      total,
+      ...(credit ? { credit } : {})
     }
   })
 }

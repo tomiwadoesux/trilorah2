@@ -131,6 +131,33 @@ export interface BibleVersionRow {
   attribution?: string | null
 }
 
+/*
+ * An online Bible's copyright line, wherever its words are shown.
+ *
+ * YouVersion: "When displaying Bible text, always display a Bible
+ * Version's copyright attribution" — the line main lists on each online
+ * row (get-bible-versions). Each window keeps the current lines here
+ * (src/lib/versionCredits.ts follows main's list), and buildVerseSlides
+ * reads them, so the operator's preview, the wall, the stage screen and the
+ * phone carry the same line without every caller passing it along. Only
+ * the online Bibles have one; the bundled ones are public domain.
+ */
+const credits = new Map<string, string>()
+
+/** Replace the known copyright lines with those of `rows` (main's online Bibles). */
+export function setVersionCredits(rows: readonly Pick<BibleVersionRow, 'code' | 'attribution'>[]): void {
+  credits.clear()
+  for (const row of rows) {
+    const line = typeof row.attribution === 'string' ? row.attribution.replace(/\s+/g, ' ').trim() : ''
+    if (row.code && line) credits.set(row.code.toUpperCase(), line)
+  }
+}
+
+/** The copyright line `code`'s text must carry, or null when it needs none. */
+export function versionCredit(code: string | null | undefined): string | null {
+  return code ? credits.get(code.toUpperCase()) ?? null : null
+}
+
 /** Picker rows for the detailed list: the usable ones, then the greyed ones with their reason. */
 export function versionRowOptions(rows: readonly BibleVersionRow[]): { value: string; label: string; hint: string; disabled?: boolean }[] {
   const usable = new Map(rows.filter((r) => r.available).map((r) => [r.code, r]))

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { VerseSlide } from '../../../shared/verseDisplay';
 import { publishLiveItem } from '../../lib/publishLiveItem';
 import { withdrawRecognizedPreview } from '../../lib/recognitionWithdrawal';
+import { fitRules } from './engine';
 
 /*
  * What is on the projector, and what is about to be.
@@ -154,9 +155,15 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   }, []);
   const reflect = useCallback((item: LiveItem | null) => { setLive(item); setDelivery(n => n + 1); setSlideIndex(0); }, []);
 
+  /* Which send is the newest. A verse in an online Bible can wait on its
+     chapter while a later song or verse goes up; when it comes back it must
+     not write over the newer one here (main drops it from the wall too). */
+  const sends = useRef(0);
   const send = useCallback(async (item: LiveItem) => {
+    const sent = ++sends.current;
     await prepareOutput.current?.();
-    const delivered = await publishLiveItem(item);
+    const delivered = await publishLiveItem(item, undefined, fitRules);
+    if (!delivered || sent !== sends.current) return;
     setLive(delivered);
     setDelivery(n => n + 1);
     /* A new reading starts at its first slide. Carrying the old index over

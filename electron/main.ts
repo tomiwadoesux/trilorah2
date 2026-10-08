@@ -159,10 +159,13 @@ ipcMain.handle('mobile-qr', async (_event, url: string) => {
 })
 ipcMain.handle('mobile-verse', async (_event, reference: string, version: string, live: boolean) => {
   if (!db || typeof reference !== 'string' || reference.length > 160 || typeof version !== 'string') throw new Error('Invalid reference')
+  const stillCurrent = live ? startPress() : () => true
   // An online Bible's chapter not kept yet is fetched first (or the fallback is said).
   version = await versionForPress(reference, resolveVersion(version))
   const verse = readVersePreview(bibleFor(version)!, reference, version)
   if (!verse) throw new Error('That verse or translation is unavailable.')
+  // Overtaken while its chapter loaded: the newer thing stays up (the renderer drops it too).
+  if (!stillCurrent()) return { ...verse, superseded: true }
   if (live) { if (!stageVerseReference(reference,version)) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
   return verse
 })
@@ -390,8 +393,11 @@ function broadcastToWindows(channel: string, payload: unknown): void {
     if (!win.isDestroyed()) win.webContents.send(channel, payload)
   })
 }
+/** Every clear, black, logo or restore: half of what a waiting press checks (wallMark). */
+let screenChanges = 0
 const screen = new ScreenStateMachine((state) => {
   console.log(`🖥️ Screen → ${state}`)
+  screenChanges++
   broadcastToWindows('on-screen-state', state)
   broadcastState()
 })
@@ -789,8 +795,13 @@ function pushPreviewToLive(via: VersePushSource): void {
   // Manual display changes do not count as successful recognition.
 }
 
-/** Stage the current reference in a different translation (voice or UI). */
-function reEmitCurrentVerseInVersion(version: string): void {
+/**
+ * Stage the current reference in a different translation (voice or UI).
+ * `replaces` names the version the catch card is showing when this is that
+ * same catch arriving in its online Bible — the card is updated in place,
+ * not joined by a second one (engine.tsx onVersePreview).
+ */
+function reEmitCurrentVerseInVersion(version: string, replaces?: string): void {
   if (!currentPreviewData || !db) return
   try {
     const start = currentPreviewData.verse
@@ -814,8 +825,9 @@ function reEmitCurrentVerseInVersion(version: string): void {
     session.version = version
     session.setCurrentVerseText(preview.text)
     previewRevision++
-    emitVerseDetected(currentPreviewData)
-    emitVersionChanged(version)
+    emitVerseDetected(replaces && replaces !== version ? { ...currentPreviewData, replaces } : currentPreviewData)
+    // The picker follows the service's Bible, not every verse re-read (a phone naming one, a catch upgraded).
+    announceVersion()
   } catch (e) {
     console.error('❌ Version re-emit failed:', e)
   }
@@ -887,6 +899,22 @@ function activeVersion(report = true): string {
   return resolveVersion(sessionVersion ?? getSetting('displayVersion'), report)
 }
 
+/** The Bible LIVE's picker (and the library, which reads from it) was last told. */
+let announcedVersion: string | null = null
+/**
+ * Tell LIVE's picker the Bible this service reads from, when that changed.
+ * Called after everything that can change it — this service's choice, the
+ * saved default, an online Bible coming or going (a refused key, a listing
+ * that drops NIV, the key working again) — so the picker never names a
+ * Bible the reads have quietly left. A verse merely re-read in another one
+ * (a phone naming it, a catch upgraded to its online text) does not move it.
+ */
+function announceVersion(version = activeVersion(false)): void {
+  if (version === announcedVersion) return
+  announcedVersion = version
+  emitVersionChanged(version)
+}
+
 /**
  * Change this service's Bible (null: back to the church's default).
  *
@@ -912,7 +940,7 @@ function setSessionVersion(requested: string | null, restage = false): string {
     // A reading in progress carries on in the new version, not the one it was heard in.
     session.version = undefined
   }
-  emitVersionChanged(version)
+  announceVersion(version)
   return version
 }
 
@@ -960,10 +988,15 @@ function openOnlineBibles(): void {
   }
 }
 
-/** The pickers refresh; a service on a Bible that just went away carries on in the fallback. */
+/**
+ * The pickers refresh. A service on a Bible that just went away — chosen
+ * for this service, or the church's default — carries on in the fallback,
+ * and LIVE's picker says so; when it comes back, the picker goes back too.
+ */
 function onOnlineBiblesChanged(): void {
   emitEngineEvent('on-bible-versions-changed', bibleVersionRows())
-  if (sessionVersion && !installedVersions().includes(sessionVersion)) emitVersionChanged(activeVersion())
+  // Quietly: the service log speaks when a verse is actually read in the fallback.
+  announceVersion()
 }
 
 /** Picker rows: what can be read now, then NKJV and NIV greyed with the reason when they cannot. */
@@ -1031,6 +1064,27 @@ async function versionForPress(reference: string, version: string, timeoutMs = P
   const fallback = bundledFallback(version)
   sayOnlineFallback(version, fallback, result.reason)
   return fallback
+}
+
+/** Changes whenever the wall does: a verse put up or taken down (a song or a picture takes it down first), or the screen state. */
+function wallMark(): string {
+  return `${verseDelivery.acts}:${screenChanges}`
+}
+
+/**
+ * An operator's press that may wait for an online chapter (mobile-verse
+ * with live, push-to-live). While presses were synchronous, IPC order kept
+ * them in order; a press that waits can be overtaken — by a newer press, or
+ * by anything else reaching the wall (a song, a picture, clear, black, a
+ * remote's push). The answer says whether this press is still the newest
+ * act: an overtaken one is dropped, or an old verse would land over the
+ * newer thing.
+ */
+let pressTicket = 0
+function startPress(): () => boolean {
+  const ticket = ++pressTicket
+  const wall = wallMark()
+  return () => ticket === pressTicket && wallMark() === wall
 }
 
 /**
@@ -1144,7 +1198,8 @@ const session = new ScriptureSession((display: any) => {
      and only if nothing has replaced it — when the chapter arrives. */
   let stagedRevision = -1
   const displayVersion = versionForCatch(reference, wanted, () => {
-    if (previewRevision === stagedRevision) reEmitCurrentVerseInVersion(wanted)
+    // The same catch, now in its own Bible: its card is updated, not doubled.
+    if (previewRevision === stagedRevision) reEmitCurrentVerseInVersion(wanted, displayVersion)
   })
   let preview
   try {
@@ -1611,9 +1666,13 @@ function stageRecognizedPassage(candidate: RecognitionCandidate, heard: string, 
   // A reference existing in another translation is not enough: only accept a
   // suggestion when the entire requested passage can actually be previewed.
   const reference = `${candidate.book} ${candidate.chapter}:${candidate.verse}-${candidate.endVerse ?? candidate.verse}`
-  // An online chapter still on its way is checked in the fallback (and fetched meanwhile).
-  const version = versionForCatch(reference, activeVersion())
-  if (!readVersePreview(bibleFor(version)!, reference, version)) return false
+  /* An online chapter not kept yet is checked in the fallback. The session
+     is still handed the Bible the service reads from: it stages the catch
+     in the fallback for now, fetches the chapter, and re-stages the preview
+     when it arrives — handing it the fallback left the catch there. */
+  const version = activeVersion()
+  const readable = readableNow(reference, version) ? version : bundledFallback(version)
+  if (!readVersePreview(bibleFor(readable)!, reference, readable)) return false
   if (getSetting('falsePositiveFilterEnabled') && transitionDetector && falsePositiveFilter.shouldBlock(
     { ...candidate, confidence: strength },
     [...recentTranscriptBuffer, ...heard.toLowerCase().split(/\s+/)].slice(-60),
@@ -1992,16 +2051,15 @@ ipcMain.on('stop-listening', () => {
      testimony, whenever the room gets loud — and ending the service on the
      first stop would take the page down mid-sermon and orphan every chunk
      that followed. The service ends when the operator ends it, or with the
-     app. */
+     app. For the same reason this service's Bible is kept too: end-service
+     (or a relaunch) is what puts the church's default back. */
 })
 
-/** Bumped on every push-to-live press: a press still fetching its chapter is dropped if a newer one came. */
-let pushPress = 0
 ipcMain.on('push-to-live', async (_event, reference?: string, version?: string) => {
-  const press = ++pushPress
+  const stillCurrent = startPress()
   // An online chapter not kept yet is fetched before staging, never drawn directly.
   if (typeof reference === 'string') version = await versionForPress(reference, version ? resolveVersion(version) : activeVersion())
-  if (press !== pushPress) return
+  if (!stillCurrent()) return
   if (reference !== undefined && (typeof reference !== 'string' || !stageVerseReference(reference, version))) return
   pushPreviewToLive('operator')
 })
@@ -3105,8 +3163,8 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
     })
   }
   if (key === 'outputDisplays' || key === 'outputRoles') notifyOutputsChanged()
-  // A new default reaches LIVE at once unless this service chose its own.
-  if (key === 'displayVersion' && sessionVersion === null) emitVersionChanged(activeVersion(false))
+  // A new default reaches LIVE at once unless this service chose its own (announceVersion compares).
+  if (key === 'displayVersion') announceVersion()
   return true
 })
 
@@ -3172,6 +3230,10 @@ ipcMain.handle(
   (_event, opts) => {
     const preacherId = getSetting('activePreacherId')
     if (opts?.preacherId && opts.preacherId !== preacherId) return { success: false, error: 'The active preacher changed. Select their profile before finishing the service.' }
+    /* The next service starts on the church's default Bible again, however
+       this one ends — with no preacher chosen, or after listening already
+       stopped, as much as on the full path below. */
+    if (sessionVersion !== null) setSessionVersion(null)
     if (!serviceAgent || !preacherId) {
       return { success: false, error: 'No active service or preacher' }
     }
@@ -3204,8 +3266,6 @@ ipcMain.handle(
       serviceAgent.reset()
       recentReview = null
       lastReviewItemId = null
-      // The next service starts on the church's default Bible again.
-      if (sessionVersion !== null) setSessionVersion(null)
       return {
         success: true,
         versesDetected,

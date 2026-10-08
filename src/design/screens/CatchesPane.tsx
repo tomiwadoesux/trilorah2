@@ -49,6 +49,12 @@ function whyOf(p: Proposal): string {
   return p.heard ? `“${p.heard}”` : '';
 }
 
+/** An online Bible's copyright line under its words (shared/verseDisplay puts it on the slides). */
+function CatchCredit({ p }: { p: Proposal }) {
+  const credit = p.missing ? undefined : p.slides[0]?.credit;
+  return credit ? <p className="catch-spot__credit" title={credit}>{credit}</p> : null;
+}
+
 function itemOf(p: Proposal, origin: LiveItem['origin'] = 'operator'): LiveItem {
   return {
     source: 'scripture',
@@ -276,6 +282,7 @@ function Spotlight({ entry, clock, leaving, acts }: { entry: CatchEntry<Proposal
       </div>
       <div className="catch-spot__ref">{p.reference}</div>
       <p className="catch-spot__text">{p.missing ? 'not in the bible — nothing to show' : p.text}</p>
+      <CatchCredit p={p} />
       {p.alternates?.length ? (
         <div className="catch-or">
           <span className="catch-meta__dim">or</span>
@@ -319,7 +326,7 @@ function CatchRow({ entry, clock, leaving, acts }: { entry: CatchEntry<Proposal>
       <KindPill kind={p.kind} />
       <span className="catch-row__ref">{p.reference}</span>
       {more > 0 && <span className="catch-meta__dim catch-row__more">+{more} with it</span>}
-      <span className="catch-row__text">{p.missing ? 'not in the bible' : p.text}</span>
+      <span className="catch-row__text" title={p.missing ? undefined : p.slides[0]?.credit}>{p.missing ? 'not in the bible' : p.text}</span>
       <button type="button" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x is-small')} aria-label="dismiss" title="dismiss — the engine misheard"
         onClick={(e) => { e.stopPropagation(); acts.dismiss(entry, p); }}>
         <CloseIcon size={10} />
@@ -506,6 +513,7 @@ function PeekCard({ entry, more, clock, leaving, acts }: { entry: CatchEntry<Pro
         </div>
         <div className="catch-spot__ref">{p.reference}</div>
         <p className="catch-spot__text">{p.missing ? 'not in the bible — nothing to show' : p.text}</p>
+        <CatchCredit p={p} />
         <div className="catch-spot__foot">
           <button type="button" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x')} title="dismiss — the engine misheard" aria-label="dismiss"
             onClick={(e) => { e.stopPropagation(); acts.dismiss(entry, p); }}>
