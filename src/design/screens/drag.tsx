@@ -124,8 +124,14 @@ interface DragValue {
   over: string | null;
   /** Wire onto a row to make it a source. */
   bind: (item: () => DragItem) => SourceBinding;
-  /** Register a segment as somewhere a chip can land. */
-  dropProps: (segmentKey: string) => { 'data-drop-segment': string };
+  /** Register a segment as somewhere a chip can land. `solo` marks a target
+      that takes only the card in hand — see onPointerUp. */
+  dropProps: (segmentKey: string, opts?: { solo?: boolean }) => DropTargetProps;
+}
+
+export interface DropTargetProps {
+  'data-drop-segment': string;
+  'data-drop-solo'?: '';
 }
 
 export interface SourceBinding {
@@ -185,6 +191,9 @@ export function DragProvider({
   /* Set while the gesture is being abandoned, so the pointerup that follows
      does not read as a drop. */
   const dead = useRef(false);
+  /* Whether the target under the pointer is a solo one. A ref beside `over`
+     rather than more state: it is only read at the release. */
+  const overSolo = useRef(false);
 
   const pos = useRef({ x: 0, y: 0 });
 
@@ -223,6 +232,7 @@ export function DragProvider({
     source.current = null;
     setActive(null);
     setOver(null);
+    overSolo.current = false;
     setPointerState('idle');
     /* Text selection is turned off for the length of a carry — once the ring
        closes the pointer is moving with the button down, which is a
@@ -312,6 +322,7 @@ export function DragProvider({
              pointer-events:none, so elementFromPoint sees straight past it. */
           const el = document.elementFromPoint(e.clientX, e.clientY);
           const target = el?.closest('[data-drop-segment]');
+          overSolo.current = !!target?.hasAttribute('data-drop-solo');
           setOver(target?.getAttribute('data-drop-segment') ?? null);
           return;
         }
@@ -353,7 +364,16 @@ export function DragProvider({
         /* `over` is '' on the rail's own backdrop and a key on a segment;
            both are drops. Only null — the pointer was over neither — is a
            miss, so the empty string must not be tested for truthiness. */
-        if (over !== null) {
+        if (over !== null && overSolo.current) {
+          /*
+           * A solo target — a background drop on the themes toggle or a
+           * stage box — takes the one card in hand. The parked chips are
+           * verses and songs waiting for the run; handing them to a
+           * background would lose them, so they stay on the shelf and
+           * their countdown resumes.
+           */
+          onDrop(over, [active]);
+        } else if (over !== null) {
           onDrop(over === '' ? null : over, [...parked.map(stripParked), active]);
           setParked([]);
         }
@@ -483,7 +503,8 @@ export function DragProvider({
   }, []);
 
   const dropProps = useCallback(
-    (segmentKey: string) => ({ 'data-drop-segment': segmentKey }),
+    (segmentKey: string, opts?: { solo?: boolean }): DropTargetProps =>
+      opts?.solo ? { 'data-drop-segment': segmentKey, 'data-drop-solo': '' } : { 'data-drop-segment': segmentKey },
     [],
   );
 

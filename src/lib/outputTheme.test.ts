@@ -14,8 +14,13 @@ describe('preview theme delivery', () => {
   it('transfers the actual selected picture, dimness and blur to the output', () => {
     expect(outputThemeSettings(theme, 'local-media://file/photos/sanctuary.jpg')).toMatchObject({
       defaultBackgroundUrl: 'local-media://file/photos/sanctuary.jpg', overlayOpacity: 0.48, backgroundBlur: 3,
-      backgroundFit: 'cover', backgroundPosition: 'center', verseLayout: 'top', safeMargin: 7,
+      verseLayout: 'top', safeMargin: 7,
     })
+  })
+  it('leaves the fit and position Settings chose alone', () => {
+    const settings = outputThemeSettings(theme, '')
+    expect(settings).not.toHaveProperty('backgroundFit')
+    expect(settings).not.toHaveProperty('backgroundPosition')
   })
   it('preserves centered layout and reference spacing on the projector', () => {
     expect(outputThemeSettings({ ...theme, layout: 'center', safeMargin: 10, refGap: 0.9 }, '')).toMatchObject({
