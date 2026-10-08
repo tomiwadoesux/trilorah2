@@ -12,6 +12,7 @@ import { BOOKS, CHAPTER_COUNTS, bookIdFromName } from '../../lib/books';
 import { parts } from '../../../shared/referenceParts';
 import { editSongCard, songCards } from '../../../shared/songCards';
 import { isTextPosition } from '../../../shared/textPosition';
+import { readingStep } from '../../lib/readingStep';
 
 export function useMobileRemote() {
   const engine = useEngine();
@@ -174,6 +175,9 @@ export function useMobileRemote() {
           const item=p.live; if (!item) throw new Error('Nothing is live.');
           const delta=a.delta===-1 ? -1 : 1;
           if (item.reference) {
+            /* Pages of a long reading first, as on the desktop (readingStep). */
+            const page=readingStep(p.slide,item.slides?.length ?? 0,delta);
+            if (page!==null) { p.setSlide(page); return true; }
             const match=/^(.+) (\d+):(\d+)(?:[–-](\d+))?$/.exec(item.reference);
             if (!match) throw new Error('Select a verse first.');
             const n=Number(delta>0 ? match[4] || match[3] : match[3])+delta;

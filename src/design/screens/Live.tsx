@@ -1,6 +1,8 @@
 import { isEmptyPreview } from '../emptyPreviewMode';
 import { presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
+import { liveKey } from '../../lib/liveKey';
+import { readingStep } from '../../lib/readingStep';
 import { outputThemeSettings } from '../../lib/outputTheme';
 import { CLIP_NOT_BACKGROUND, NO_BACKGROUND, backgroundDropAction, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
 import { toDisplayUrl } from '../../../shared/mediaUrl';
@@ -3989,7 +3991,11 @@ function Stage({
    * cursors is two places to be lost, and what the operator wants from the
    * left box is "what will appear when I press this" — which is slide one.
    */
-  const staged = stageSlide(preview, 0);
+  /* Except when the preview IS what is on the wall (after go live or ‹ ›):
+     then it follows the wall's page, or next would walk the wall through
+     verses 1, 2, 3 of a long reading while the preview sat on verse 1. */
+  const previewOnAir = !!preview && !!live && liveKey(preview) === liveKey(live);
+  const staged = stageSlide(preview, previewOnAir ? Math.min(slide, (preview.slides?.length ?? 1) - 1) : 0);
   const onAir = stageSlide(live, slide);
 
   // Pass the staged identity so a newer speech preview cannot replace it.
@@ -4050,6 +4056,12 @@ function Stage({
       return;
     }
     if (!stagedRef || !preview) return;
+    /* A reading on the wall in pages is stepped page by page first: 1-3 goes
+       1, 2, 3 and only then 4 (readingStep). */
+    if (previewOnAir) {
+      const page = readingStep(slide, live?.slides?.length ?? 0, dir);
+      if (page !== null) { projector.setSlide(page); return; }
+    }
     const bookIndex = BOOKS.indexOf(stagedRef.book);
     const target = dir === 1 ? stagedRef.end + 1 : stagedRef.start - 1;
     if (bookIndex < 0 || target < 1 || !window.api?.getChapter) return;
@@ -4158,8 +4170,8 @@ function Stage({
    * Whether the clip on the wall is paused, as far as this window knows.
    */
   const [videoPaused, setVideoPaused] = useState(false);
-  const liveKey = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
-  useEffect(() => setVideoPaused(false), [liveKey]);
+  const liveId = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
+  useEffect(() => setVideoPaused(false), [liveId]);
 
   /*
    * Is the room reading something the phone code would cover?
