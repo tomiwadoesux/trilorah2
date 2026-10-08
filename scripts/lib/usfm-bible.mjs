@@ -2,8 +2,8 @@ import { inflateRawSync } from 'node:zlib'
 
 export const KJV_USFM_URL = 'https://ebible.org/Scriptures/eng-kjv2006_usfm.zip'
 // Explicit IDs preserve the application's existing 66-book canon/order.
-const CANON = 'GEN EXO LEV NUM DEU JOS JDG RUT 1SA 2SA 1KI 2KI 1CH 2CH EZR NEH EST JOB PSA PRO ECC SNG ISA JER LAM EZK DAN HOS JOL AMO OBA JON MIC NAM HAB ZEP HAG ZEC MAL MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 1TH 2TH 1TI 2TI TIT PHM HEB JAS 1PE 2PE 1JN 2JN 3JN JUD REV'.split(' ')
-const CHAPTER_COUNTS = [50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10, 42, 150, 31, 12, 8, 66, 52, 5, 48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3, 2, 14, 4, 28, 16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6, 4, 3, 1, 13, 5, 5, 3, 5, 1, 1, 1, 22]
+export const CANON = 'GEN EXO LEV NUM DEU JOS JDG RUT 1SA 2SA 1KI 2KI 1CH 2CH EZR NEH EST JOB PSA PRO ECC SNG ISA JER LAM EZK DAN HOS JOL AMO OBA JON MIC NAM HAB ZEP HAG ZEC MAL MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 1TH 2TH 1TI 2TI TIT PHM HEB JAS 1PE 2PE 1JN 2JN 3JN JUD REV'.split(' ')
+export const CHAPTER_COUNTS = [50, 40, 27, 36, 34, 24, 21, 4, 31, 24, 22, 25, 29, 36, 10, 13, 10, 42, 150, 31, 12, 8, 66, 52, 5, 48, 12, 14, 3, 9, 1, 4, 7, 3, 3, 3, 2, 14, 4, 28, 16, 24, 21, 28, 16, 16, 13, 6, 6, 4, 4, 5, 3, 6, 4, 3, 1, 13, 5, 5, 3, 5, 1, 1, 1, 22]
 
 /** Read ordinary stored/deflated ZIPs in memory; never extract archive paths. */
 export function readZipEntries(input) {
@@ -55,7 +55,10 @@ export function parseUsfmBook(input) {
   if (bookId < 0) return []
   const text = input
     .replace(/\\f\s[\s\S]*?\\f\*|\\x\s[\s\S]*?\\x\*/g, '')
-    .replace(/^\\(?:s\d*|d|r|mt\d*|ms\d*|toc\d*|h|id|ide|rem)\s.*$/gm, '')
+    /* A heading line, with or without words after it. `\s` here once let a
+       bare `\d` swallow the newline and the `\v 1` under it (BSB Zechariah
+       12:1 vanished). Spaces and tabs only; the KJV parses byte-identical. */
+    .replace(/^\\(?:s\d*|d|r|mr|ms\d*|mt\d*|qa|sp|toc\d*|h|id|ide|rem)(?:[ \t].*)?$/gm, '')
   const markers = [...text.matchAll(/\\(c|v)\s+(\d+)(?=\s)/g)]
   const rows = []
   let chapter = 0

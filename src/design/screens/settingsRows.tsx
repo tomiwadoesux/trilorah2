@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { cx, Button, Select, Slider, SegmentedControl, CheckIcon } from '../../ui';
+import { cx, Button, Select, Slider, SegmentedControl, CheckIcon, type SelectOption } from '../../ui';
 import { Dot } from './parts';
 
 /*
@@ -51,7 +51,8 @@ export type Row =
   | { kind: 'slider'; key: string; label: string; blurb: string; value: number; min: number; max: number; step?: number; unit?: string; advanced?: boolean; when?: [string, unknown] }
   | { kind: 'text'; key: string; label: string; blurb: string; value: string; placeholder?: string; advanced?: boolean; when?: [string, unknown] }
   | { kind: 'secret'; key: string; label: string; blurb: string; set: boolean; advanced?: boolean; when?: [string, unknown] }
-  | { kind: 'select'; key: string; label: string; blurb: string; value: string; options: string[]; advanced?: boolean; when?: [string, unknown] }
+  /* An option is a bare value, or a value with words for it ('KJV' · 'KJV · King James Version'). */
+  | { kind: 'select'; key: string; label: string; blurb: string; value: string; options: (string | SelectOption)[]; advanced?: boolean; when?: [string, unknown] }
   | { kind: 'segment'; key: string; label: string; blurb: string; value: string; options: string[]; advanced?: boolean; when?: [string, unknown] }
   | { kind: 'action'; key: string; label: string; blurb: string; button: string; tone?: 'default' | 'danger'; note?: string; advanced?: boolean; when?: [string, unknown] }
   | { kind: 'status'; key: string; label: string; blurb: string; state: 'ok' | 'warn' | 'danger' | 'idle'; text: string; advanced?: boolean; when?: [string, unknown] }
@@ -373,9 +374,18 @@ export function SettingRow({
     case 'secret':
       control = <Secret set={row.set} />;
       break;
-    case 'select':
-      control = <Select value={String(value)} options={row.options.map((o) => ({ value: o, label: o }))} onChange={onChange} className="w-[200px]" />;
+    case 'select': {
+      const options = row.options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
+      /* Named options are proper names — a Bible is "KJV · King James
+         Version", not "kjv · king james version" — so they keep their
+         capitals, and get the text field's width in a box of their own
+         (the Select's own w-full would otherwise shrink to the row's
+         120px floor and wrap every name onto two lines). */
+      control = row.options.some((o) => typeof o !== 'string')
+        ? <div className="w-[280px]"><Select value={String(value)} options={options} onChange={onChange} preserveCase menuMinWidth={280} /></div>
+        : <Select value={String(value)} options={options} onChange={onChange} className="w-[200px]" />;
       break;
+    }
     case 'segment':
       control = <SegmentedControl size="sm" value={String(value)} options={row.options.map((o) => ({ id: o, label: o }))} onChange={onChange} className="w-[260px]" />;
       break;

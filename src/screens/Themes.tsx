@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toDisplayUrl } from '../../shared/mediaUrl';
 import { useAppStore } from '../stores/appStore';
+import { sortVersions, versionLabel } from '../../shared/bibleVersions';
 import { Button, EngineNote, Panel, PanelHeader, SectionLabel, TextButton, hasEngine } from '../components/ui';
 
 /**
@@ -202,9 +203,9 @@ export function Themes() {
                 className="text-sm"
               >
                 <option value="">none</option>
-                {versions.filter((v) => v !== settings?.displayVersion).map((v) => (
+                {sortVersions(versions).filter((v) => v !== settings?.displayVersion).map((v) => (
                   <option key={v} value={v}>
-                    {v}
+                    {versionLabel(v)}
                   </option>
                 ))}
               </select>

@@ -21,14 +21,14 @@ export function ScriptureLibraryEmpty({ status, error, version, onRetry, onReset
         line={status === 'empty' ? 'no verses in this chapter' : 'scripture couldn’t load'}
         below={<div className="mt-2 flex max-w-[38ch] flex-col items-center gap-2">
           <p role={status === 'empty' ? 'status' : 'alert'} className="text-[length:var(--tri-size-sm)] leading-relaxed text-white/60 break-words">
-            {error ?? `No verses were found in ${version} for this chapter. Try loading again or return to Genesis in KJV.`}
+            {error ?? `No verses were found in ${version} for this chapter. Try loading again or go back to Genesis in the church’s default Bible.`}
           </p>
           {status === 'error' && <p className="text-[length:var(--tri-size-sm)] text-white/40">
             Try again. If this continues, restart Trilorah.
           </p>}
           <Button label={unavailable ? 'reload app' : 'try again'} icon={<ResetIcon size={14} />}
             onClick={unavailable ? () => window.location.reload() : onRetry} />
-          {status === 'empty' && onReset && <Button label="open Genesis 1 · KJV" onClick={onReset} />}
+          {status === 'empty' && onReset && <Button label="open Genesis 1 · default bible" onClick={onReset} />}
         </div>}
       />
     </div>

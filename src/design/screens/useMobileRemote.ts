@@ -6,6 +6,7 @@ import { useProjector, type LiveItem } from './projector';
 import { useRun } from './run';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { buildVerseSlides } from '../../../shared/verseDisplay';
+import { versionName } from '../../../shared/bibleVersions';
 import { deckPage, type DeckPageSpec } from './deckPage';
 import { BOOKS, CHAPTER_COUNTS, bookIdFromName } from '../../lib/books';
 import { parts } from '../../../shared/referenceParts';
@@ -63,7 +64,8 @@ export function useMobileRemote() {
     }
     async function execute(command: string, a: Record<string,unknown>): Promise<unknown> {
       const {engine:e,projector:p,run:r,media:m} = current.current;
-      const version = command === 'state' ? 'KJV' : text(a.version,20) || String(await api!.getSetting('displayVersion') || 'KJV');
+      /* The phone names its Bible; otherwise it reads in the one the service is using. */
+      const version = command === 'state' ? 'KJV' : text(a.version,20) || String(await (api!.getSessionVersion?.() ?? api!.getSetting('displayVersion')) || 'KJV');
       switch(command) {
         case 'sermon': {
           if (!['start','confirm','not-yet','end'].includes(String(a.action))) throw new Error('Invalid sermon action');
@@ -90,12 +92,13 @@ export function useMobileRemote() {
           return image && image.length<4_000_000 ? image : null;
         }
         case 'library': {
-          const [songs,presentations,versions] = await Promise.all([api!.songs?.list(),decks(),api!.getAvailableVersions()]);
+          const [songs,presentations,versions,using] = await Promise.all([api!.songs?.list(),decks(),api!.getAvailableVersions(),api!.getSessionVersion?.()]);
           const themeKeys=['verseLayout','safeMargin','scriptureFontPreset','defaultFontSize','defaultTextColor','overlayOpacity'];
           const theme=Object.fromEntries(await Promise.all(themeKeys.map(async k=>[k,await api!.getSetting(k)])));
           return {songs:(songs || []).map(s=>({id:s.id,title:s.title,sections:s.sections})),
             decks:presentations.map(d=>({id:d.id,title:d.title,count:d.slides?.length || 0})),theme,
             media:m.filter(x=>x.url).map(x=>({id:x.id,title:x.label,kind:x.kind})),versions,
+            version:using,versionNames:Object.fromEntries(versions.map(v=>[v,versionName(v)])),
             books:BOOKS,run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))}))};
         }
         case 'search': return api!.searchBibleText?.(text(a.query),{version,limit:40}) || [];
