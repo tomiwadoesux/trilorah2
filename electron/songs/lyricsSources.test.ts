@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   parseVideoId,
   pickTrack,
@@ -8,7 +8,17 @@ import {
   eventsToLines,
   extractPlayerResponse
 } from './youtubeCaptions'
-import { toHits, hitKey, failureFrom, type LrclibRecord } from './lyricsSearch'
+import {
+  toHits,
+  hitKey,
+  failureFrom,
+  pickRecord,
+  lyricsPreview,
+  getLyrics,
+  clearLyricsCache,
+  setLyricsClientVersion,
+  type LrclibRecord
+} from './lyricsSearch'
 
 // Every lyric line in this file is invented. Nothing here is from a real song.
 
@@ -146,5 +156,134 @@ describe('failureFrom — never throws across IPC', () => {
   })
   it('names anything else an error, with its message', () => {
     expect(failureFrom(new Error('boom'))).toMatchObject({ ok: false, reason: 'error' })
+  })
+})
+
+describe('pickRecord — the record a song card stands for', () => {
+  const rec = (over: Partial<LrclibRecord>): LrclibRecord =>
+    ({ id: 1, trackName: 'Invented Song', artistName: 'Invented Band', instrumental: false, plainLyrics: 'made up words', ...over }) as LrclibRecord
+
+  it('finds a subtitled title that the search list would fold away', () => {
+    const records = [rec({ id: 1 }), rec({ id: 2, trackName: 'Invented Song (Subtitle Words)' })]
+    expect(toHits(records).map((h) => h.id)).toEqual([1])
+    expect(pickRecord(records, { title: 'Invented Song (Subtitle Words)', artist: 'Invented Band' })?.id).toBe(2)
+  })
+  it('takes the first match in LRCLIB order, skipping instrumentals, empty words and other artists', () => {
+    const records = [
+      rec({ id: 1, instrumental: true }),
+      rec({ id: 2, plainLyrics: '   ' }),
+      rec({ id: 3, artistName: 'Some Other Choir' }),
+      rec({ id: 4 }),
+      rec({ id: 5 })
+    ]
+    expect(pickRecord(records, { title: 'Invented Song', artist: 'Invented Band' })?.id).toBe(4)
+  })
+  it('answers null when nothing is this song', () => {
+    expect(pickRecord([rec({ artistName: 'Some Other Choir' })], { title: 'Invented Song', artist: 'Invented Band' })).toBeNull()
+    expect(pickRecord([], { title: 'Invented Song', artist: 'Invented Band' })).toBeNull()
+  })
+})
+
+describe('lyricsPreview — one polite request per song card', () => {
+  const record = (over: Partial<LrclibRecord> = {}): LrclibRecord => ({
+    id: 77,
+    trackName: 'Invented Song',
+    artistName: 'Invented Band',
+    instrumental: false,
+    plainLyrics: '[Verse 1]\nan invented opening line\nand another made up one',
+    ...over
+  })
+  const reply = (status: number, body: unknown, retryAfter?: string) => ({
+    status,
+    json: async () => body,
+    headers: { get: (name: string) => (name.toLowerCase() === 'retry-after' ? retryAfter ?? null : null) }
+  })
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    clearLyricsCache()
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('answers the id and the opening line, and names itself to LRCLIB', async () => {
+    setLyricsClientVersion('9.9.9')
+    fetchMock.mockResolvedValueOnce(reply(200, [record()]))
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toEqual({ ok: true, id: 77, firstLine: 'an invented opening line' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://lrclib.net/api/search?q=Invented%20Song%20Invented%20Band')
+    expect(init.headers['User-Agent']).toContain('Trilorah v9.9.9')
+    expect(init.headers['User-Agent']).toContain('https://trilorah.com')
+  })
+  it('a hover hears busy at once — no retry', async () => {
+    fetchMock.mockResolvedValue(reply(503, { name: 'ServerOverloaded' }, '1'))
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toMatchObject({ ok: false, reason: 'busy' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('a click waits out one short Retry-After, exactly once', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockResolvedValueOnce(reply(503, null, '1')).mockResolvedValueOnce(reply(200, [record()]))
+    const answer = lyricsPreview('Invented Song', 'Invented Band', { retry: true })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(await answer).toMatchObject({ ok: true, id: 77 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+  it('a click still says busy when the second answer is busy too, or the wait is long', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockResolvedValue(reply(503, null, '1'))
+    const twice = lyricsPreview('Invented Song', 'Invented Band', { retry: true })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(await twice).toMatchObject({ ok: false, reason: 'busy' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(reply(429, null, '30'))
+    expect(await lyricsPreview('Invented Song', 'Invented Band', { retry: true })).toMatchObject({ ok: false, reason: 'busy' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('the click after a hover opens the words without asking LRCLIB again', async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, [record()]))
+    const preview = await lyricsPreview('Invented Song', 'Invented Band')
+    expect(preview.ok).toBe(true)
+    const words = await getLyrics(77)
+    expect(words).toMatchObject({ ok: true, title: 'Invented Song', artist: 'Invented Band' })
+    expect(words.ok && words.lyrics).toContain('an invented opening line')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('joins an identical search already on the wire', async () => {
+    let answer!: (value: unknown) => void
+    fetchMock.mockReturnValueOnce(new Promise((resolve) => { answer = resolve }))
+    const a = lyricsPreview('Invented Song', 'Invented Band')
+    const b = lyricsPreview('Invented Song', 'Invented Band')
+    answer(reply(200, [record()]))
+    expect(await a).toEqual(await b)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('a record with nothing sung in it is not-found, not a card that opens empty', async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, [record({ plainLyrics: '[Intro]\n[Instrumental]\n[Outro]' })]))
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toMatchObject({ ok: false, reason: 'not-found' })
+  })
+  it('passes over a labels-only record for a later whole one of the same song', async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, [record({ id: 5, plainLyrics: '[Intro]\n[Instrumental]' }), record({ id: 6 })]))
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toEqual({ ok: true, id: 6, firstLine: 'an invented opening line' })
+  })
+  it('same title by another artist is not-found', async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, [record({ artistName: 'Some Other Choir' })]))
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toMatchObject({ ok: false, reason: 'not-found' })
+  })
+  it('asks for the base title and first-named artist, and caps what it sends', async () => {
+    fetchMock.mockResolvedValue(reply(200, []))
+    await lyricsPreview('Invented Song (feat. Pretend Singer)', 'Invented Band & Pretend Singer')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://lrclib.net/api/search?q=Invented%20Song%20Invented%20Band')
+    await lyricsPreview('x'.repeat(5000), 'y'.repeat(5000))
+    expect(decodeURIComponent(String(fetchMock.mock.calls[1][0]).split('q=')[1]).length).toBeLessThanOrEqual(401)
+  })
+  it('a dead network is offline', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'))
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toMatchObject({ ok: false, reason: 'offline' })
   })
 })

@@ -537,6 +537,8 @@ contextBridge.exposeInMainWorld('api', {
     discoverChristianSongs: (query: string) => ipcRenderer.invoke('songs-discover', { query }),
     searchLyrics: (query: string) => ipcRenderer.invoke('lyrics-search', { query }),
     getLyrics: (id: number) => ipcRenderer.invoke('lyrics-get', { id }),
+    lyricsPreview: (title: string, artist: string, opts?: { retry?: boolean }) =>
+      ipcRenderer.invoke('lyrics-preview', { title, artist, retry: !!opts?.retry }),
     youtubeCaptions: (url: string) => ipcRenderer.invoke('youtube-captions', { url })
   },
   // Evals (item 25)

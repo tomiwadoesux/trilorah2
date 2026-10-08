@@ -437,6 +437,7 @@ type SongImportResult = import('../../shared/types').SongImportResult;
 type LyricsHit = import('../../electron/songs/lyricsSearch').LyricsHit;
 type LyricsSearchResult = import('../../electron/songs/lyricsSearch').LyricsSearchResult;
 type LyricsGetResult = import('../../electron/songs/lyricsSearch').LyricsGetResult;
+type LyricsPreviewResult = import('../../electron/songs/lyricsSearch').LyricsPreviewResult;
 type YoutubeCaptionsResult = import('../../electron/songs/youtubeCaptions').YoutubeCaptionsResult;
 
 /**
@@ -482,15 +483,23 @@ interface SongsApi {
    * back named in the report rather than dropped, for the operator to settle.
    */
   importCommit(songs: ImportedSong[]): Promise<SongImportResult>;
+  discoverChristianSongs(query: string): Promise<{ ok: true; songs: import('../../shared/christianSongs').ChristianSong[] } | { ok: false; reason: string }>;
   /**
    * LRCLIB search. Never rejects: no connection and no matches both come back
    * as `{ ok: false, reason, message }`, with a `message` fit to show as-is.
    * Hits are already de-duplicated and all have lyrics; at most 25.
    */
-  discoverChristianSongs(query: string): Promise<{ ok: true; songs: import('../../shared/christianSongs').ChristianSong[] } | { ok: false; reason: string }>;
   searchLyrics(query: string): Promise<LyricsSearchResult>;
   /** The words for one hit, as plain text with blank lines between stanzas — feed it to `importText`. */
   getLyrics(id: number): Promise<LyricsGetResult>;
+  /**
+   * One song card's lyrics, in one LRCLIB search: the record a click on the
+   * card opens (`id`, for `getLyrics`, which then answers without the
+   * network) and its opening sung line. Never rejects. `reason: 'busy'` is
+   * LRCLIB overloaded; `retry` waits out one short Retry-After first — for a
+   * click, never for a hover.
+   */
+  lyricsPreview(title: string, artist: string, opts?: { retry?: boolean }): Promise<LyricsPreviewResult>;
   /**
    * Lyrics from a video's captions; takes any YouTube link or a bare id.
    * `trackKind: 'auto'` means speech recognition wrote them: expect wrong
