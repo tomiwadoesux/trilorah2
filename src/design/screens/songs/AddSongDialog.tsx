@@ -401,6 +401,20 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
   const [focus, setFocus] = useState(false);
   const [shown, setShown] = useState(false);
   const wanted = hover || focus;
+  const card = useRef<HTMLElement>(null);
+
+  /* Disabling the focused button (any choice sets `busy`) drops focus to the
+     page. The browser does fire a blur for that, but inside React's commit,
+     where React delivers no events — so onBlur never runs, and the line would
+     stay up through the editor and back. Whenever the cards are disabled or
+     enabled again, ask where focus really is; a disabled button that still
+     reads as focused (the browser has not moved focus off it yet) does not
+     count as holding it. */
+  useEffect(() => {
+    const active = document.activeElement;
+    const held = !!active && !!card.current?.contains(active) && !active.matches(':disabled');
+    if (!held) setFocus(false);
+  }, [busy]);
 
   /* Ask once the pointer or keyboard has rested; stop the moment it leaves —
      or the card does: a card replaced under a resting pointer (a new search,
@@ -430,7 +444,7 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
   const kind = preview?.kind;
   const visible = shown && !!kind && kind !== 'unavailable';
   return (
-    <article className="song-discovery-card"
+    <article ref={card} className="song-discovery-card"
       onPointerEnter={e => { if (e.pointerType !== 'touch') setHover(true); }}
       onPointerLeave={() => setHover(false)}
       onFocus={e => { if ((e.target as HTMLElement).matches?.(':focus-visible')) setFocus(true); }}
