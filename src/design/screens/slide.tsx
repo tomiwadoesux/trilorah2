@@ -8,6 +8,7 @@ import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../sha
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { displayFontFamily } from '../../../shared/displayFont';
 import { useFitText } from '../../lib/useFitText';
+import { backgroundFor } from '../../lib/backgroundDrop';
 
 /*
  * D-23 — the one renderer.
@@ -245,7 +246,9 @@ export function SlideCanvas({
       ? { outline: '1.5px solid var(--tri-accent-yellow)', outlineOffset: 3, borderRadius: 3 }
       : {};
   const library = useMediaLibrary();
-  const media = library.find((item) => item.id === theme.backgroundId) ?? library[0];
+  /* No picture for NO_BACKGROUND, and a themes still — not the newest thing
+     on the shelf — for a background that has gone (lib/backgroundDrop). */
+  const media = backgroundFor(theme.backgroundId, library);
   const { justifyContent, alignItems, textAlign, referenceAbove } = resolveTextPosition(theme.layout);
   const atBottom = !referenceAbove;
   const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, textAlign);

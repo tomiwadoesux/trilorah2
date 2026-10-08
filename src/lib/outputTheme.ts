@@ -4,7 +4,13 @@ import { resolveTextCase } from '../../shared/textCase'
 import { resolveTextSpacing } from '../../shared/textSpacing'
 import { displayFontFamily } from '../../shared/displayFont'
 
-/** Convert the preview's chosen background and controls to output settings. */
+/**
+ * Convert the preview's chosen background and controls to output settings.
+ *
+ * Fit and position are not here on purpose: the preview has no control for
+ * either, so writing 'cover'/'center' on every push only undid what Settings →
+ * Projector text had set, the moment the next verse went up.
+ */
 export function outputThemeSettings(theme: SlideTheme, backgroundUrl: string) {
   return {
     defaultFontFamily: displayFontFamily(theme.font),
@@ -12,8 +18,6 @@ export function outputThemeSettings(theme: SlideTheme, backgroundUrl: string) {
     defaultBackgroundUrl: backgroundUrl,
     overlayOpacity: theme.dimness / 100,
     backgroundBlur: theme.blur,
-    backgroundFit: 'cover',
-    backgroundPosition: 'center',
     verseLayout: theme.layout,
     safeMargin: theme.safeMargin,
     textWidth: clampTextWidth(theme.textWidth, 100 - theme.safeMargin * 2),

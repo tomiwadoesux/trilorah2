@@ -4,6 +4,7 @@ import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { outputRestore } from './lib/outputRestore';
 import { buildVerseSlides, PAGE_WORDS, splitVerseNumbers, type VerseSlide } from '../shared/verseDisplay';
 import { useFitText } from './lib/useFitText';
+import { useBackgroundCrossfade } from './lib/useBackgroundCrossfade';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
 import { cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
@@ -433,6 +434,9 @@ function OutputSurface() {
   const showAlert = alert && (alert.target === 'all' || alert.target === role || (isTimer && alert.target === 'stage'));
   // Stream never paints the theme background: the capture wants alpha.
   const paintBackground = !isStream && theme.backgroundUrl;
+  /* The old picture stays up until the new one has decoded, then the new
+     fades in over it (lib/useBackgroundCrossfade). */
+  const backgroundLayers = useBackgroundCrossfade(paintBackground ? theme.backgroundUrl : '');
   const contentVisible = visible && screen === 'live';
   const nextLabel = upNext ? formatRef(upNext) : queue[0]?.ref ?? null;
   // Clamp rather than wrap: walking past the end of a reading should rest on
@@ -643,11 +647,12 @@ function OutputSurface() {
 
   return (
     <div className={rootClass} style={themedStage}>
-      {paintBackground && (
+      {paintBackground && backgroundLayers.map((layer) => (
         <div
-          className="output-background"
+          key={layer.key}
+          className={layer.entering ? 'output-background output-background-enter' : 'output-background'}
           style={{
-            backgroundImage: cssImageUrl(theme.backgroundUrl),
+            backgroundImage: cssImageUrl(layer.url),
             backgroundSize: theme.backgroundFit === 'fill' ? '100% 100%' : theme.backgroundFit,
             backgroundPosition: theme.backgroundPosition,
             filter: theme.backgroundBlur ? `blur(${theme.backgroundBlur}px)` : undefined,
@@ -656,7 +661,7 @@ function OutputSurface() {
         >
           <div className="output-dim" style={{ opacity: isStage ? 0.75 : theme.overlayOpacity }} />
         </div>
-      )}
+      ))}
       {media && screen === 'live' && (
         <div className="output-media">
           <img src={media} alt="" />
