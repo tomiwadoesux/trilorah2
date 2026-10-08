@@ -50,8 +50,13 @@ import {
 import { buildCandidates, candidatesFromQuotes, type Candidate } from './engine/candidates'
 import { AutoModeController } from './engine/autoMode'
 import { VerseDelivery, detectionKey, readVersePreview, readVerseRange, type VersePushSource } from './engine/verseDelivery'
-import { sortVersions, versionLabel } from '../shared/bibleVersions'
+import { sortVersions, versionLabel, versionName, type BibleVersionRow } from '../shared/bibleVersions'
 import { chooseVersion } from './data/versionChoice'
+import { OnlineBibles, WANTED_ONLINE, failureText, type OnlineFailure } from './data/bibleOnline/onlineBibles'
+import { OnlineBibleCache } from './data/bibleOnline/onlineCache'
+import { YouVersionClient } from './data/bibleOnline/youversionClient'
+import { YOUVERSION_DEFAULTS } from './data/bibleOnline/youversionDefaults'
+import { parseReference } from '../shared/parseReference'
 import { CommandLog } from './preachers/commandLog'
 import { VocabularyStore, applyVocabulary, deepgramKeywords } from './preachers/vocabulary'
 import { exportFixturesFromLedger } from './preachers/evalExport'
@@ -152,10 +157,11 @@ ipcMain.handle('mobile-qr', async (_event, url: string) => {
   const qr = await import('qrcode')
   return qr.toDataURL(url, {width:240,margin:2})
 })
-ipcMain.handle('mobile-verse', (_event, reference: string, version: string, live: boolean) => {
+ipcMain.handle('mobile-verse', async (_event, reference: string, version: string, live: boolean) => {
   if (!db || typeof reference !== 'string' || reference.length > 160 || typeof version !== 'string') throw new Error('Invalid reference')
-  version = resolveVersion(version)
-  const verse = readVersePreview(db, reference, version)
+  // An online Bible's chapter not kept yet is fetched first (or the fallback is said).
+  version = await versionForPress(reference, resolveVersion(version))
+  const verse = readVersePreview(bibleFor(version)!, reference, version)
   if (!verse) throw new Error('That verse or translation is unavailable.')
   if (live) { if (!stageVerseReference(reference,version)) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
   return verse
@@ -790,7 +796,19 @@ function reEmitCurrentVerseInVersion(version: string): void {
     const start = currentPreviewData.verse
     const end = currentPreviewData.endVerse ?? currentPreviewData.verse
     const reference = `${currentPreviewData.book} ${currentPreviewData.chapter}:${start}-${end}`
-    const preview = readVersePreview(db, reference, version)
+    /* An online chapter not kept yet: fetch it, then re-stage this same
+       preview once it is here (if it still is the preview). */
+    if (!readableNow(reference, version)) {
+      const revision = previewRevision
+      const at = chapterOf(reference)!
+      const showing = String(currentPreviewData.version || bundledFallback(version))
+      void onlineBibles!.ensureChapter(version, at.bookId, at.chapter, READ_FETCH_MS).then((result) => {
+        if (!result.ok) sayOnlineFallback(version, showing, result.reason)
+        else if (previewRevision === revision) reEmitCurrentVerseInVersion(version)
+      })
+      return
+    }
+    const preview = readVersePreview(bibleFor(version)!, reference, version)
     if (!preview) return
     currentPreviewData = verseDelivery.stage({ ...currentPreviewData, ...preview })
     session.version = version
@@ -805,9 +823,13 @@ function reEmitCurrentVerseInVersion(version: string): void {
 
 /* ---- Which Bible: the church's default, this service's, what is installed ---- */
 
+/** NKJV, NIV… read from YouVersion through userData/bibles/online-cache.db (see openOnlineBibles). */
+let onlineBibles: OnlineBibles | null = null
+let onlineDb: Database.Database | null = null
+
 /** The codes bible.db holds. The bundled file does not change while the app runs. */
 let installedVersionCache: string[] | null = null
-function installedVersions(): string[] {
+function bundledVersions(): string[] {
   if (installedVersionCache) return installedVersionCache
   if (!db) return ['KJV']
   try {
@@ -818,6 +840,11 @@ function installedVersions(): string[] {
   } catch {
     return ['KJV']
   }
+}
+/** Every Bible a verse can be read in: bible.db's, plus the online ones the build's key unlocks. */
+function installedVersions(): string[] {
+  const online = onlineBibles?.codes() ?? []
+  return online.length ? sortVersions([...bundledVersions(), ...online]) : bundledVersions()
 }
 
 /**
@@ -887,6 +914,147 @@ function setSessionVersion(requested: string | null, restage = false): string {
   }
   emitVersionChanged(version)
   return version
+}
+
+/* ---- Online Bibles (YouVersion): cache-first, never a wait on the wall ---- */
+
+/** How long an operator's press waits for a chapter not kept yet, before it goes out in the fallback. */
+const PRESS_FETCH_MS = 4000
+/** The library and the projector's own reads can wait a little longer. */
+const READ_FETCH_MS = 8000
+
+/**
+ * Open the cache and ask YouVersion (at most daily) what the build's key
+ * unlocks. Nothing here blocks start-up: until the answer comes the online
+ * Bibles are listed greyed ("checking YouVersion…").
+ */
+function openOnlineBibles(): void {
+  if (onlineBibles) return
+  try {
+    const dir = path.join(app.getPath('userData'), 'bibles')
+    fs.mkdirSync(dir, { recursive: true })
+    onlineDb = new Database(path.join(dir, 'online-cache.db'))
+    const cache = new OnlineBibleCache(onlineDb)
+    cache.init()
+    onlineBibles = new OnlineBibles({
+      cache,
+      // A developer's .env.local first, then the key compiled into the build.
+      appKey: () => process.env.YOUVERSION_APP_KEY?.trim() || YOUVERSION_DEFAULTS.appKey,
+      bundled: bundledVersions,
+      makeClient: (appKey) => new YouVersionClient({
+        appKey,
+        // Only a loopback mock may stand in for the real API (safeBaseUrl).
+        baseUrl: process.env.YOUVERSION_API_BASE,
+        userAgent: `Trilorah/${app.getVersion()} (+https://trilorah.com)`,
+      }),
+      onChange: onOnlineBiblesChanged,
+      log: (line) => console.log(line),
+    })
+    void onlineBibles.refresh()
+    // Hourly: drop chapters past their 30 days, and re-ask once the day's listing is old.
+    setInterval(() => { onlineBibles?.purgeStale(); void onlineBibles?.refresh() }, 60 * 60_000).unref()
+  } catch (error) {
+    console.error('❌ Online Bible cache could not open — NKJV/NIV unavailable:', error)
+    onlineBibles = null
+    onlineDb = null
+  }
+}
+
+/** The pickers refresh; a service on a Bible that just went away carries on in the fallback. */
+function onOnlineBiblesChanged(): void {
+  emitEngineEvent('on-bible-versions-changed', bibleVersionRows())
+  if (sessionVersion && !installedVersions().includes(sessionVersion)) emitVersionChanged(activeVersion())
+}
+
+/** Picker rows: what can be read now, then NKJV and NIV greyed with the reason when they cannot. */
+function bibleVersionRows(): { versions: BibleVersionRow[]; online: ReturnType<OnlineBibles['status']> | null } {
+  const rows: BibleVersionRow[] = installedVersions().map((code) => {
+    const online = onlineBibles?.version(code)
+    return online
+      ? { code, name: online.title || versionName(code), source: 'online', available: true, attribution: online.attribution }
+      : { code, name: versionName(code), source: 'bundled', available: true }
+  })
+  for (const code of WANTED_ONLINE) {
+    if (rows.some((r) => r.code === code)) continue
+    rows.push({ code, name: versionName(code), source: 'online', available: false,
+      note: onlineBibles ? onlineBibles.unavailableNote(code) : 'needs a YouVersion key' })
+  }
+  return { versions: rows, online: onlineBibles?.status() ?? null }
+}
+
+/** The database a version's verses are read from: bible.db, or the online cache. */
+function bibleFor(version: string): Database.Database | null {
+  return onlineDb && onlineBibles?.has(version) ? onlineDb : db
+}
+
+/** The one chapter a reference reads from (readVersePreview never crosses chapters). */
+function chapterOf(reference: string): { bookId: number; chapter: number } | null {
+  const parsed = parseReference(reference)
+  const bookId = parsed ? resolveBookId(parsed.bookQuery) : undefined
+  return parsed && bookId !== undefined && Number.isSafeInteger(parsed.chapter) ? { bookId, chapter: parsed.chapter! } : null
+}
+
+/** True when nothing has to be fetched before `reference` can be read in `version`. */
+function readableNow(reference: string, version: string): boolean {
+  if (!onlineBibles?.has(version)) return true
+  const at = chapterOf(reference)
+  return !at || onlineBibles.isCached(version, at.bookId, at.chapter)
+}
+
+/** A Bible that is always here to stand in for an online one: the church's default if it ships, else KJV. */
+function bundledFallback(version: string): string {
+  const bundled = bundledVersions()
+  const saved = String(getSetting('displayVersion') ?? '').toUpperCase()
+  return saved !== version && bundled.includes(saved) ? saved : bundled.includes('KJV') ? 'KJV' : bundled[0] ?? 'KJV'
+}
+
+/** When an online miss was last explained, per version and reason: once a minute is enough for the log. */
+const reportedOnlineMisses = new Map<string, number>()
+function sayOnlineFallback(version: string, fallback: string, reason: OnlineFailure): void {
+  const key = `${version}:${reason}`
+  if (Date.now() - (reportedOnlineMisses.get(key) ?? -Infinity) < 60_000) return
+  reportedOnlineMisses.set(key, Date.now())
+  console.warn(`📖 ${version} chapter unavailable (${failureText(reason)}) — showing ${fallback}`)
+  setTimeout(() => emitEngineEvent('on-bible-notice', { text: `${version}: ${failureText(reason)} — using ${fallback}`, requested: version, using: fallback }), 0)
+}
+
+/**
+ * For an operator's press: wait briefly for an online chapter, then read
+ * it — or the fallback, said in the service log, so the press still puts
+ * words up. The press itself still goes resolve → stage → push.
+ */
+async function versionForPress(reference: string, version: string, timeoutMs = PRESS_FETCH_MS): Promise<string> {
+  if (readableNow(reference, version)) return version
+  const at = chapterOf(reference)!
+  const result = await onlineBibles!.ensureChapter(version, at.bookId, at.chapter, timeoutMs)
+  if (result.ok) return version
+  const fallback = bundledFallback(version)
+  sayOnlineFallback(version, fallback, result.reason)
+  return fallback
+}
+
+/**
+ * For the engine's own staging, which cannot wait: the version readable
+ * now. An online chapter not kept yet is read in the fallback for the
+ * moment and fetched in the background; `onReady` (a PREVIEW re-stage,
+ * never the wall) runs if it arrives.
+ */
+function versionForCatch(reference: string, version: string, onReady?: () => void): string {
+  if (readableNow(reference, version)) return version
+  const at = chapterOf(reference)!
+  const fallback = bundledFallback(version)
+  void onlineBibles!.ensureChapter(version, at.bookId, at.chapter, READ_FETCH_MS).then((result) => {
+    if (result.ok) onReady?.()
+    else sayOnlineFallback(version, fallback, result.reason)
+  })
+  return fallback
+}
+
+/** Library, phone and projector reads: fetch the chapter first if it is online and not kept. */
+async function ensureReadable(version: string, bookId: number, chapter: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!onlineBibles?.has(version)) return { ok: true }
+  const result = await onlineBibles.ensureChapter(version, bookId, chapter, READ_FETCH_MS)
+  return result.ok ? result : { ok: false, error: `${version} couldn’t load — ${failureText(result.reason)}.` }
 }
 
 const suggestionTracker = new SuggestionTracker()
@@ -969,11 +1137,18 @@ function withdrawProvisionalRecognition(): void {
 
 const session = new ScriptureSession((display: any) => {
   if (!db) return
-  const displayVersion = display.version ? resolveVersion(display.version) : activeVersion()
+  const wanted = display.version ? resolveVersion(display.version) : activeVersion()
   const reference = `${display.book} ${display.chapter}:${display.verseStart}-${display.verseEnd}`
+  /* An online Bible's chapter not kept yet: the catch shows now in the
+     bundled fallback, and is re-staged in `wanted` — the preview only,
+     and only if nothing has replaced it — when the chapter arrives. */
+  let stagedRevision = -1
+  const displayVersion = versionForCatch(reference, wanted, () => {
+    if (previewRevision === stagedRevision) reEmitCurrentVerseInVersion(wanted)
+  })
   let preview
   try {
-    preview = readVersePreview(db, reference, displayVersion)
+    preview = readVersePreview(bibleFor(displayVersion)!, reference, displayVersion)
   } catch (e) {
     console.error('❌ DB error:', e)
     return
@@ -989,6 +1164,7 @@ const session = new ScriptureSession((display: any) => {
   })
   currentPreviewData = detection
   previewRevision++
+  stagedRevision = previewRevision
   // Only a LIVE push lifts a CLEAR. This used to run for previews too, so a
   // reference the engine merely HEARD un-cleared the projector — the verse
   // itself stayed off, but the operator's blank screen came back on. The
@@ -1074,7 +1250,9 @@ function stageVerseReference(reference: string, requested?: string): boolean {
   if (!db) return false
   const version = requested ? resolveVersion(requested) : activeVersion()
   try {
-    const preview = readVersePreview(db, reference, version)
+    // The passage must exist; an online chapter still on its way is checked in the fallback.
+    const readable = versionForCatch(reference, version)
+    const preview = readVersePreview(bibleFor(readable)!, reference, readable)
     if (!preview) return false
     if (recentReview && recentReview.preacherId === activePreacherId() && Date.now() - recentReview.ts < 30_000 &&
         recentReview.ref !== `${preview.book} ${preview.chapter}:${preview.verse}`) {
@@ -1432,9 +1610,10 @@ function stageRecognizedPassage(candidate: RecognitionCandidate, heard: string, 
   if (candidate.endVerse && !verseExists(candidate.book, candidate.chapter, candidate.endVerse)) return false
   // A reference existing in another translation is not enough: only accept a
   // suggestion when the entire requested passage can actually be previewed.
-  const version = activeVersion()
   const reference = `${candidate.book} ${candidate.chapter}:${candidate.verse}-${candidate.endVerse ?? candidate.verse}`
-  if (!readVersePreview(db, reference, version)) return false
+  // An online chapter still on its way is checked in the fallback (and fetched meanwhile).
+  const version = versionForCatch(reference, activeVersion())
+  if (!readVersePreview(bibleFor(version)!, reference, version)) return false
   if (getSetting('falsePositiveFilterEnabled') && transitionDetector && falsePositiveFilter.shouldBlock(
     { ...candidate, confidence: strength },
     [...recentTranscriptBuffer, ...heard.toLowerCase().split(/\s+/)].slice(-60),
@@ -1717,7 +1896,10 @@ ipcMain.handle('alert-current', () => alerts.current())
 ipcMain.handle('bible-keyword-search', (_event, { query, version, limit }: { query: string; version?: string; limit?: number }) => {
   if (!db) return []
   try {
-    return searchBible(db, String(query ?? ''), { version: version ? resolveVersion(version) : activeVersion(), limit })
+    /* bible.db's word index: an online Bible has none (its text is only
+       ever a few kept chapters), so its words are looked up in the fallback. */
+    const wanted = version ? resolveVersion(version) : activeVersion()
+    return searchBible(db, String(query ?? ''), { version: onlineBibles?.has(wanted) ? bundledFallback(wanted) : wanted, limit })
   } catch (error) {
     console.error('Bible keyword search failed:', error)
     return []
@@ -1813,7 +1995,13 @@ ipcMain.on('stop-listening', () => {
      app. */
 })
 
-ipcMain.on('push-to-live', (_event, reference?: string, version?: string) => {
+/** Bumped on every push-to-live press: a press still fetching its chapter is dropped if a newer one came. */
+let pushPress = 0
+ipcMain.on('push-to-live', async (_event, reference?: string, version?: string) => {
+  const press = ++pushPress
+  // An online chapter not kept yet is fetched before staging, never drawn directly.
+  if (typeof reference === 'string') version = await versionForPress(reference, version ? resolveVersion(version) : activeVersion())
+  if (press !== pushPress) return
   if (reference !== undefined && (typeof reference !== 'string' || !stageVerseReference(reference, version))) return
   pushPreviewToLive('operator')
 })
@@ -2114,8 +2302,8 @@ ipcMain.on('mic-capture-error', (_event, message) => {
 
 ipcMain.handle('get-verse-queue', () => verseQueue)
 
-ipcMain.handle('show-queued-verse', (_event, ref: string) => {
-  if (typeof ref !== 'string' || !stageVerseReference(ref)) return { success: false }
+ipcMain.handle('show-queued-verse', async (_event, ref: string) => {
+  if (typeof ref !== 'string' || !stageVerseReference(ref, await versionForPress(ref, activeVersion()))) return { success: false }
   const idx = verseQueue.findIndex((q) => q.ref === ref)
   if (idx >= 0) verseQueue.splice(idx, 1)
   emitQueueUpdated(verseQueue)
@@ -2135,9 +2323,10 @@ ipcMain.handle('find-heard-scripture', async (_event, payload: { text?: string }
   const matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: string }[] = []
   for (const hit of await allusionFinder.find(words)) {
     const reference = `${hit.book} ${hit.chapter}:${hit.verse}${hit.endVerse > hit.verse ? `-${hit.endVerse}` : ''}`
-    // Only what the selected translation can actually show.
-    const preview = db ? readVersePreview(db, reference, version) : null
-    if (preview) matches.push({ reference, title: hit.title, text: preview.text, version, evidence: hit.evidence, kind: hit.kind })
+    // Only what the selected translation can actually show (an online one is fetched first).
+    const readable = db ? await versionForPress(reference, version) : version
+    const preview = db ? readVersePreview(bibleFor(readable)!, reference, readable) : null
+    if (preview) matches.push({ reference, title: hit.title, text: preview.text, version: readable, evidence: hit.evidence, kind: hit.kind })
   }
   return { heard: words.join(' '), meaning: allusionFinder.meaning, matches }
 })
@@ -2348,17 +2537,21 @@ ipcMain.handle('get-db-status', () => {
   if (!db) return { connected: false }
   try {
     const count = (db.prepare('SELECT COUNT(*) as count FROM bible').get() as { count: number }).count
-    return { connected: true, verses: count, versions: installedVersions() }
+    // bible.db's own Bibles: the online ones are counted on Settings' "Online Bibles" row.
+    return { connected: true, verses: count, versions: bundledVersions() }
   } catch (e: any) {
     return { connected: false, error: e?.message }
   }
 })
 
-ipcMain.handle('get-chapter', (_event, { bookId, chapter, version }) => {
+ipcMain.handle('get-chapter', async (_event, { bookId, chapter, version }) => {
   if (!db) return { success: false, error: 'Database not connected' }
   const ver = version || activeVersion(false)
+  // An online Bible: the kept chapter, or fetched now — the library says why when it cannot be.
+  const ready = await ensureReadable(ver, Number(bookId), Number(chapter))
+  if (!ready.ok) return { success: false, error: ready.error }
   try {
-    const verses = db
+    const verses = bibleFor(ver)!
       .prepare(
         `
       SELECT Versecount as verse, verse as text
@@ -2384,15 +2577,16 @@ ipcMain.handle('get-chapter', (_event, { bookId, chapter, version }) => {
   }
 })
 
-ipcMain.handle('search-verse', (_event, { book, chapter, verse, version }) => {
+ipcMain.handle('search-verse', async (_event, { book, chapter, verse, version }) => {
   if (!db) return { success: false, error: 'Database not connected' }
   const bookId = resolveBookId(book)
   if (bookId === undefined) {
     return { success: false, error: 'Book not found' }
   }
   const ver = version || activeVersion(false)
+  if (!(await ensureReadable(ver, bookId, Number(chapter))).ok) return { success: false, data: null }
   try {
-    const row = db
+    const row = bibleFor(ver)!
       .prepare(
         `
       SELECT verse as text FROM bible
@@ -2416,7 +2610,7 @@ ipcMain.handle('search-verse', (_event, { book, chapter, verse, version }) => {
  * version lacks, so WEB Acts 8:36-38 put up 8:36 alone. Same rows, same
  * gaps, as the preview's readVersePreview (verseDelivery.readVerseRange).
  */
-ipcMain.handle('get-verse-range', (_event, { book, chapter, start, end, version }) => {
+ipcMain.handle('get-verse-range', async (_event, { book, chapter, start, end, version }) => {
   if (!db) return { success: false, verses: [], error: 'Database not connected' }
   const bookId = typeof book === 'number' ? book : resolveBookId(String(book ?? ''))
   if (bookId === undefined || !Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end - start > 200) {
@@ -2425,8 +2619,9 @@ ipcMain.handle('get-verse-range', (_event, { book, chapter, start, end, version 
   /* Exactly the version asked for, no fallback: a second translation that
      is not installed has no line, rather than repeating the first. */
   const ver = version ? String(version) : activeVersion(false)
+  if (!(await ensureReadable(ver, bookId, Number(chapter))).ok) return { success: false, verses: [] }
   try {
-    const verses = readVerseRange(db, bookId, Number(chapter), start, end, ver).filter((row) => row.text.trim())
+    const verses = readVerseRange(bibleFor(ver)!, bookId, Number(chapter), start, end, ver).filter((row) => row.text.trim())
     return { success: verses.length > 0, verses, version: ver }
   } catch (error) {
     console.error('SQL Error:', error)
@@ -2744,6 +2939,8 @@ ipcMain.handle('window-toggle-fullscreen', (event) => {
 })
 
 ipcMain.handle('get-available-versions', () => installedVersions())
+/* The pickers' rows: names, online or bundled, and NKJV/NIV greyed with the reason until a key unlocks them. */
+ipcMain.handle('get-bible-versions', () => bibleVersionRows())
 
 let worshipTimeoutHandle: NodeJS.Timeout | null = null
 
@@ -3632,6 +3829,7 @@ app.whenReady().then(() => {
         console.error('❌ Database error (design mode):', e)
       }
     }
+    openOnlineBibles()
     createDesignWindow()
     return
   }
@@ -3647,6 +3845,8 @@ app.whenReady().then(() => {
   } else {
     console.error('❌ bible.db not found! Please copy bible.db to the project root or run `npm run bible:build`')
   }
+  // NKJV, NIV… from YouVersion: a local cache, filled only as chapters are needed.
+  openOnlineBibles()
   console.log('🧠 Connecting to ML resolver...')
   connectML(handleMLVerseDetection)
   initAliasLogger()
@@ -3760,7 +3960,8 @@ app.whenReady().then(() => {
           if (!isListening || !Number.isFinite(verse.confidence) || verse.confidence < 0.9 || verse.confidence > 1 || !db) return
           const segment = transitionDetector?.getCurrentSegment().type
           if (segment === 'prayer' || segment === 'worship' || segment === 'announcements') return
-          const preview = readVersePreview(db, verse.ref, activeVersion())
+          const readable = versionForCatch(verse.ref, activeVersion())
+          const preview = readVersePreview(bibleFor(readable)!, verse.ref, readable)
           if (!preview || !shouldEmit(`implicit:${verse.ref}`)) return
           // Reuse the same suggestion identity as local passage recognition.
           // A model's own confidence is not a measured accuracy percentage.

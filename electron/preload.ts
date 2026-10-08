@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Get available Bible versions
   getAvailableVersions: () => ipcRenderer.invoke('get-available-versions'),
+  // The same list with names, online/bundled, and NKJV/NIV greyed with the reason until a YouVersion key unlocks them
+  getBibleVersions: () => ipcRenderer.invoke('get-bible-versions'),
   // A passage's verses in one read, gaps and all (the projector and its second line)
   getVerseRange: (book: string | number, chapter: number, start: number, end: number, version?: string) =>
     ipcRenderer.invoke('get-verse-range', { book, chapter, start, end, version }),
