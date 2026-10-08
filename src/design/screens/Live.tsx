@@ -16,6 +16,7 @@ import { SermonStartControl } from './SermonStartControl';
 import { MicPicker } from '../../components/MicPicker';
 import { MobileRemotePanel } from '../../components/MobileRemotePanel';
 import { ScriptureCatches, ScriptureFindOverlay, StorySearch } from './ScriptureCatches';
+import { useScriptureFindStore } from '../../stores/scriptureFindStore';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
 import { orbStatusDescription, useOrbShape } from '../orb/orbIdle';
@@ -3846,6 +3847,11 @@ function Stage({
      (lib/previewClear). Decided on the press alone: an engine withdrawal or a
      catch replacing the box never reaches the wall. */
   const clearPlan = previewClearPlan({ preview, live, screen, editingTheme });
+  /* The find-scripture answers are up over the preview (ScriptureFindOverlay).
+     The row's controls would act on the verse hidden behind them — the
+     pager even steps the wall — so they stand down until a card is chosen or
+     the answers are closed. */
+  const finding = useScriptureFindStore((s) => !!s.found);
 
   // Preview navigation is an explicit presentation action: both panels and
   // the audience output follow. Selecting a new library item still only stages it.
@@ -4103,8 +4109,8 @@ function Stage({
         }
         controls={
           <>
-            {deckCount > 0 && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
-            {range && (
+            {deckCount > 0 && !finding && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
+            {range && !finding && (
               <Button
                 label={together ? 'separate' : 'together'}
                 tone="ash"
@@ -4121,7 +4127,7 @@ function Stage({
             {/* The staged reading's length, without a cursor to move — it
                 says "this is three screens" before the operator commits to
                 reading it out. */}
-            {(preview?.slides?.length ?? 0) > 1 && (
+            {(preview?.slides?.length ?? 0) > 1 && !finding && (
               <span className="shrink-0 text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.4)]">
                 {preview!.slides!.length} slides
               </span>
@@ -4129,8 +4135,9 @@ function Stage({
             {/* Only with something staged: an empty box, or the themes
                 sample, has nothing to take away — and the LIVE pane's clear
                 is one panel over. Waits out a step or a go live in flight,
-                whose landing would put the words straight back. */}
-            {preview && (
+                whose landing would put the words straight back. Hidden under
+                the find answers, whose own ✕ is the one that means "close". */}
+            {preview && !finding && (
               <Button
                 label=""
                 tone="ash"
@@ -4152,8 +4159,8 @@ function Stage({
             <Button
               label="go live"
               tone="go"
-              disabled={!preview || stepping}
-              title={preview ? `put ${preview.label} on the projector` : 'stage something first'}
+              disabled={!preview || stepping || finding}
+              title={finding ? 'choose a passage above, or close the results (esc)' : preview ? `put ${preview.label} on the projector` : 'stage something first'}
               onClick={goLive}
             />
           </>

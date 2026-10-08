@@ -1,25 +1,41 @@
 /*
- * "Find scripture" answers, drawn over the preview screen.
+ * "Find scripture" answers, over the preview's picture BAND: the pane's full
+ * width, from the top of the picture to the top of the control row.
  *
- * Sizes are in cqw: the preview box is a size container, and the picture is
- * as wide as it, so the cards scale with the screen they sit on instead of
- * with the window.
+ * The veil sits in the picture's wrapper (Live StageBox), which is centred and
+ * narrower than the pane when the library is raised or the window is short,
+ * so the negative left/right stretch it to 100cqw — the StageBox box, the
+ * nearest size container. That is also what the veil's OWN padding and gap
+ * resolve against; it is a container itself (find / size), so everything
+ * inside it is sized in shares of the veil, not of a picture it may be wider
+ * than.
+ *
+ * The layout steps down by the band's real shape — data-tier, from
+ * lib/findTier — and anything a tier still misses scrolls inside the grid
+ * instead of being cut through the middle of a line.
  */
 .find-veil {
-  position: absolute; inset: 0; z-index: 20;
-  display: flex; flex-direction: column; gap: 2.2cqw;
-  padding: 3cqw 3.4cqw 2.6cqw;
-  border-radius: inherit;
+  position: absolute; top: 0; bottom: 0;
+  left: calc((100% - 100cqw) / 2); right: calc((100% - 100cqw) / 2);
+  z-index: 20;
+  container: find / size;
+  overflow: hidden;
+  display: flex; flex-direction: column; gap: clamp(4px, 1.6cqw, 10px);
+  padding: clamp(6px, 2.4cqw, 14px) clamp(8px, 3cqw, 18px);
+  /* The seated picture's own corner (SlideCanvas seated), shape included. */
+  border-radius: calc(var(--tri-radius-surface) - var(--tri-gap));
+  corner-shape: var(--tri-corner);
   background: rgb(4 9 10 / .86);
   backdrop-filter: blur(6px);
   animation: find-veil-in 180ms var(--tri-ease-out) both;
 }
-.find-head { display: flex; align-items: center; gap: 2cqw; min-height: 0; }
+.find-head { flex: none; display: flex; align-items: center; gap: 6px; min-height: 0; }
 .find-heard {
   flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   font-size: clamp(10px, 1.9cqw, 13px); color: var(--tri-ink-muted);
 }
 .find-heard em { font-style: normal; color: var(--tri-ink); }
+.find-pager { flex: none; display: flex; align-items: center; gap: 4px; }
 .find-round {
   display: grid; place-items: center; flex: none;
   width: clamp(22px, 4.4cqw, 30px); aspect-ratio: 1; border-radius: 999px;
@@ -32,13 +48,19 @@
 .find-round:disabled { opacity: .3; }
 .find-grid {
   flex: 1; min-height: 0;
-  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2cqw;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Rows share the band, one row for one or two answers — but never below
+     what a card needs: a miss scrolls rather than clipping a line. */
+  grid-auto-rows: minmax(min-content, 1fr);
+  gap: clamp(4px, 1.6cqw, 10px);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
 }
+.find-grid[data-count='1'] { grid-template-columns: minmax(0, 1fr); }
 .find-card {
   position: relative; min-height: 0; overflow: hidden;
-  display: flex; flex-direction: column; gap: .9cqw;
-  padding: 2.2cqw 2.6cqw; text-align: left;
-  border-radius: clamp(10px, 2.4cqw, 16px);
+  display: flex; flex-direction: column; gap: clamp(2px, 1.2cqh, 6px);
+  padding: clamp(6px, 3cqh, 14px) clamp(8px, 2.4cqw, 16px); text-align: left;
+  border-radius: clamp(8px, 2cqw, 16px);
   border: 1px solid rgb(229 243 242 / .14);
   background: radial-gradient(ellipse at 0 0, rgb(var(--tri-teal-2) / .6), transparent 78%), #141818;
   animation: find-card-in 260ms var(--tri-ease-out) both;
@@ -51,26 +73,52 @@
 .find-card:hover { border-color: var(--tri-accent-yellow); }
 .find-card:active { transform: scale(.985); }
 .find-card:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 2px; }
-.find-ref { font-size: clamp(11px, 2.5cqw, 17px); font-weight: 600; color: var(--tri-ink); line-height: 1.15; }
+/* One line, always: "Matthew / 18:10-13" broken over two read as two things. */
+.find-ref {
+  flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: clamp(11px, 2.5cqw, 17px); font-weight: 600; color: var(--tri-ink); line-height: 1.15;
+}
 .find-title {
+  flex: none;
   font-size: clamp(8px, 1.45cqw, 10px); letter-spacing: .12em; text-transform: uppercase;
   color: rgb(229 243 242 / .45); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .find-text {
-  /* Two whole lines. Letting it fill the card cut a third line in half. */
+  /* Whole lines — two, or what the tier allows below. Letting it fill the
+     card cut the last line in half. */
   flex: none; overflow: hidden;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   font-size: clamp(9px, 1.75cqw, 12px); line-height: 1.5; color: var(--tri-ink-muted);
 }
 .find-go {
   position: absolute; right: 2.2cqw; bottom: 1.6cqw;
+  /* On a short card it lands on the last line of text: a chip of the card's
+     own ground keeps both readable. */
+  padding: 1px 6px; border-radius: 999px; background: rgb(17 20 20 / .94);
   font-size: clamp(8px, 1.45cqw, 10px); letter-spacing: .1em; text-transform: uppercase;
   color: var(--tri-accent-yellow); opacity: 0;
   transition: opacity var(--tri-dur-state) var(--tri-ease-out);
 }
 .find-card:hover .find-go, .find-card:focus-visible .find-go { opacity: 1; }
-.find-foot { display: flex; align-items: center; justify-content: center; gap: 2cqw; }
 .find-count { font-size: clamp(9px, 1.6cqw, 11px); font-variant-numeric: tabular-nums; color: var(--tri-ink-muted); }
+
+/* The tiers (lib/findTier). The reference and the words come first; the
+   story's title line is the first thing a smaller band gives up, then the
+   second line of text. One or two answers on a roomy band are one tall row,
+   which has room to read further into the passage. */
+.find-veil[data-tier='full'] .find-grid:is([data-count='1'], [data-count='2']) .find-text { -webkit-line-clamp: 4; }
+.find-veil[data-tier='compact'] .find-grid:is([data-count='3'], [data-count='4']) .find-title { display: none; }
+.find-veil[data-tier='compact'] .find-grid:is([data-count='3'], [data-count='4']) .find-text { -webkit-line-clamp: 1; }
+.find-veil:is([data-tier='tight'], [data-tier='micro']) .find-title { display: none; }
+/* Micro: a band under 100px. On a wide one (a short window on a big screen)
+   the head and type would still be sized for its width, so they stop at the
+   small end. Gap, not padding, on the veil: the tier is read off the veil's
+   content box, which padding would move and flip the tier back. */
+.find-veil[data-tier='micro'] { gap: 4px; }
+.find-veil[data-tier='micro'] .find-round { width: 22px; }
+.find-veil[data-tier='micro'] .find-ref { font-size: clamp(11px, 2.5cqw, 13px); }
+.find-veil[data-tier='micro'] .find-text { -webkit-line-clamp: 1; font-size: clamp(9px, 1.75cqw, 10px); }
+.find-veil[data-tier='micro'] .find-card { padding-block: 3px; }
 
 @keyframes find-veil-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes find-card-in { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: none; } }
