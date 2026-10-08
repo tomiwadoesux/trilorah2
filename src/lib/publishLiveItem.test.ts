@@ -43,6 +43,16 @@ describe('scripture Go live delivery', () => {
     const together = await publishLiveItem(item, { mobileVerse, getSetting: vi.fn().mockResolvedValue(false) } as unknown as Window['api'])
     expect(together.slides).toHaveLength(1)
   })
+  it('reads every setting before the push, so nothing waits between the wall changing and the LIVE pane', async () => {
+    const order: string[] = []
+    const verses = [{ verse: 1, text: 'one' }, { verse: 2, text: 'two' }]
+    const getSetting = vi.fn(async (key: string) => { order.push(key); return key === 'breakOnVerse' ? true : 'KJV' })
+    const mobileVerse = vi.fn(async () => { order.push('push'); return { book: 'Psalms', chapter: 23, verse: 1, endVerse: 2, text: 'one two', version: 'KJV', verses } })
+    const delivered = await publishLiveItem({ source: 'scripture', id: 'Psalm 23:1-2', label: 'Psalm 23:1-2' }, { mobileVerse, getSetting } as unknown as Window['api'])
+    expect(order.at(-1)).toBe('push')
+    expect(order).toContain('breakOnVerse')
+    expect(delivered.slides).toHaveLength(2)
+  })
   it("never replaces the slides the operator chose (a range shown apart stays apart)", async () => {
     const verses = [{ verse: 4, text: 'one' }, { verse: 5, text: 'two' }]
     const apart = verses.map((v, i) => ({ lines: [{ version: 'KJV', text: v.text }], reference: `Ruth 1:${v.verse}`, verseStart: v.verse, verseEnd: v.verse, index: i + 1, total: 2 }))

@@ -6,7 +6,17 @@ import { fitRules } from './slideRules'
 export async function publishLiveItem(item: LiveItem, api = window.api): Promise<LiveItem> {
   if (!api) return item // Design sandbox has no physical outputs.
   if (item.source === 'scripture') {
-    const selectedVersion = item.version ?? await api.getSetting?.('displayVersion')
+    /* Everything this needs is read BEFORE the push. Once mobileVerse
+       replies the verse is already on the wall, and anything awaited after
+       that lets the projector take news in the gap (a find card's push, a
+       clear by voice) that send() would then paint over with this item. An
+       item that comes without slides (a run of service line) was never sliced
+       by the preview, so the wall slices its range by the church's own layout
+       setting — and the LIVE pane has to page it the same way. */
+    const [selectedVersion, breakOnVerse] = await Promise.all([
+      item.version ?? api.getSetting?.('displayVersion'),
+      item.slides?.length ? undefined : api.getSetting?.('breakOnVerse'),
+    ])
     const version = typeof selectedVersion === 'string' && selectedVersion ? selectedVersion : 'KJV'
     const reading = await api.mobileVerse(item.reference ?? item.label, version, true)
     /* The item comes back the way the engine names it ("Psalms", not the run
@@ -20,12 +30,7 @@ export async function publishLiveItem(item: LiveItem, api = window.api): Promise
       ? `${reading.book} ${reading.chapter}:${reading.verse}${reading.endVerse && reading.endVerse !== reading.verse ? `-${reading.endVerse}` : ''}`
       : item.reference ?? item.label
     const delivered = reading.version ?? version
-    /* An item that comes without slides (a run of service line) was never
-       sliced by the preview, so the wall slices its range by the church's
-       own layout setting — and the LIVE pane has to page it the same way. */
-    const apart = !item.slides?.length && (reading.verses?.length ?? 0) > 1
-      ? await api.getSetting?.('breakOnVerse') === true
-      : false
+    const apart = !item.slides?.length && (reading.verses?.length ?? 0) > 1 && breakOnVerse === true
     const slides = item.slides?.length || !reading.book || !reading.verses?.length
       ? item.slides
       : buildVerseSlides({ book: reading.book, chapter: reading.chapter, version: delivered }, reading.verses, fitRules(reading.verses, apart ? false : undefined))

@@ -44,6 +44,7 @@ describe('previewClearPlan', () => {
     const phone = verse('John 3:16–18', 'KJV', 'John 3:16–18@KJV');
     expect(plan(phone, verse('John 3:16-18', 'KJV'))).toEqual({ unstage: true, clearWall: true });
     expect(plan(verse('Psalm 104:12', 'KJV'), verse('Psalms 104:12', 'KJV'))).toEqual({ unstage: true, clearWall: true });
+    expect(plan(verse('John 3 16', 'KJV'), verse('John 3:16', 'KJV'))).toEqual({ unstage: true, clearWall: true });
   });
 });
 
