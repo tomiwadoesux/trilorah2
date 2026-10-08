@@ -43,7 +43,11 @@ export function shuffleChristianSongs(random = Math.random): ChristianSong[] {
   return songs;
 }
 
+/* NFKD splits an accent off its letter; the marks are then dropped rather
+   than turned into spaces, so "Ònísé" and "Onise" are one word. iTunes and
+   LRCLIB disagree on accents for exactly the Nigerian gospel this list holds. */
 const normalize = (text: string) => text.toLowerCase().normalize('NFKD')
+  .replace(/\p{M}+/gu, '')
   .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 export function filterChristianSongs(songs: ChristianSong[], query: string): ChristianSong[] {
@@ -51,9 +55,55 @@ export function filterChristianSongs(songs: ChristianSong[], query: string): Chr
   return songs.filter(song => words.every(word => normalize(`${song.title} ${song.artist} ${song.category}`).includes(word)));
 }
 
-/** Reject unrelated songs with the same title; allow labelled live versions. */
-export function matchesChristianSong(hit: { title: string; artist: string }, song: ChristianSong): boolean {
-  const title = (value: string) => normalize(value.replace(/\s*[([](?:live|remaster|radio|acoustic)[^)\]]*[)\]]/gi, '').replace(/\s+-\s+(live|remaster|radio|acoustic).*$/i, ''));
-  return title(hit.title) === title(song.title)
-    && normalize(hit.artist).split(' ').join(' ').includes(normalize(song.artist));
+/* A label naming a version or a guest, not a different song: "(Live)",
+   "[Radio Edit]", "(feat. Someone)", "(with Someone)", " - Live at …",
+   " ft. Someone". A subtitle such as "(Where Feet May Fail)" stays — it can
+   be the only thing between two songs of one name. */
+const VERSION_LABEL = /\s*[([](?:live|remaster|radio|acoustic|feat\b|ft\b|featuring\b|with\b)[^)\]]*[)\]]/gi;
+const VERSION_TAIL = /\s+-\s+(?:live|remaster|radio|acoustic|feat\b|ft\b|featuring\b).*$/i;
+const GUEST_TAIL = /\s+(?:feat\.|ft\.|featuring)\s.*$/i;
+
+/** The title without version or guest labels, as typed (not normalised). */
+export function baseSongTitle(title: string): string {
+  return title.replace(VERSION_LABEL, '').replace(VERSION_TAIL, '').replace(GUEST_TAIL, '').trim() || title.trim();
+}
+
+/* Where one credited name ends and the next begins: "A & B", "A, B",
+   "A + B", "A x B", "A and B", "A feat. B". */
+const ARTIST_BREAK = /\s*[&,+]\s*|\s+(?:x|and|feat\.?|ft\.|featuring)\s+/i;
+
+/** The first-named artist: "A & B", "A, B", "A x B", "A and B", "A feat. B" → "A". */
+export function primaryArtist(artist: string): string {
+  return artist.split(ARTIST_BREAK)[0].trim() || artist.trim();
+}
+
+/**
+ * What to ask a lyrics catalogue for. LRCLIB's search wants every word it
+ * is given — one word no record holds and the answer is empty — so
+ * "(feat. Someone)" and a second artist only narrow it to the records that
+ * happen to list them too.
+ */
+export function songSearchTerms(song: { title: string; artist: string }): string {
+  return `${baseSongTitle(song.title)} ${primaryArtist(song.artist)}`.trim();
+}
+
+/**
+ * Reject unrelated songs with the same title; allow labelled live versions,
+ * guest credits and a duet listed under either name.
+ *
+ * The artist check is the guard that matters: two songs of one title are
+ * common in worship, so it never loosens to "shares a word" — "Worship" is
+ * not "Hillsong Worship". It accepts the hit naming the whole artist (the
+ * original rule), the hit being one whole credited name of the artist
+ * ("Elevation Worship" for "A & Elevation Worship"), or the two first-named
+ * artists being the same ("A" for "A feat. B").
+ */
+export function matchesChristianSong(hit: { title: string; artist: string }, song: { title: string; artist: string }): boolean {
+  if (normalize(baseSongTitle(hit.title)) !== normalize(baseSongTitle(song.title))) return false;
+  const found = normalize(hit.artist);
+  const wanted = normalize(song.artist);
+  if (found.includes(wanted)) return true;
+  if (found && song.artist.split(ARTIST_BREAK).some(name => normalize(name) === found)) return true;
+  const lead = normalize(primaryArtist(hit.artist));
+  return !!lead && lead === normalize(primaryArtist(song.artist));
 }
