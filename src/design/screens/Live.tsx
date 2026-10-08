@@ -2,12 +2,12 @@ import { isEmptyPreview } from '../emptyPreviewMode';
 import { presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
 import { outputThemeSettings } from '../../lib/outputTheme';
-import { CLIP_NOT_BACKGROUND, NO_BACKGROUND, backgroundDropAction, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
+import { CLIP_NOT_BACKGROUND, NO_BACKGROUND, backgroundDropAction, backgroundFor, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
 import { toDisplayUrl } from '../../../shared/mediaUrl';
 import { TEXT_WIDTH } from '../../../shared/textWidth';
 import { resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, type TextSpacing } from '../../../shared/textSpacing';
-import { normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
+import { forgetTriMedia, normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
 import { editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
@@ -49,6 +49,7 @@ import {
   GlobeIcon,
   LaptopIcon,
   PlusIcon,
+  ImportIcon,
   PlayIcon,
   PauseIcon,
   slideBackdrop,
@@ -97,7 +98,7 @@ import { chapterOrdinal, liveSpan, passingRows, spanReference, travelShape, type
 import { reducedMotion } from './dashboard/expand';
 import { AddSongDialog, type SongSource } from './songs/AddSongDialog';
 import { SongEditor, type EditorSession } from './songs/SongEditor';
-import { LibraryToolbar } from './LibraryToolbar';
+import { LibraryAction, LibraryToolbar } from './LibraryToolbar';
 import { useSongDrafts } from './songs/useSongDrafts';
 import { NEW_PREFIX, cardsToSections, isNewId, type SongBase, type SongDraft } from '../../../shared/songDraft';
 import './songs/songs.css';
@@ -113,7 +114,9 @@ import {
 } from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
-import { addMedia, removeMedia, mediaSrc, randomStill, useMediaLibrary, videoLength, videoPoster, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
+import { addMedia, addFromLaptop, removeMedia, mediaSrc, randomStill, useMediaLibrary, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
+import { finderDropProps, useFinderDrag, type FinderDropProps } from './finderDrop';
+import { finderPaneHint, finderStageHint, finderStagePick, type FinderStageKey } from '../../lib/laptopImport';
 import { ProjectorProvider, useProjector, type LiveItem } from './projector';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, type Proposal } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
@@ -848,12 +851,16 @@ type MediaView = 'themes' | 'media';
     says what happened (LiveBody's chooseBackground). */
 type ChooseBackground = (id: string, where: 'preview' | 'live', how?: 'click' | 'drop' | 'pick') => Promise<string>;
 
-function MediaBrowser({ selected, live, onChoose, onOpenSettings }: {
+function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettings }: {
   /** The preview's background — the ring. */
   selected: string;
   /** The wall's background — the gold "live" tag. */
   live: string;
   onChoose: ChooseBackground;
+  /** The preview's background was deleted: LiveBody picks another, without
+      leaving this tab (its onSelect used to throw the operator back to
+      verses), and says which. */
+  onBackgroundGone?: () => string | undefined;
   onOpenSettings: () => void;
 }) {
   const [view, setView] = useState<MediaView>('media');
@@ -909,26 +916,94 @@ function MediaBrowser({ selected, live, onChoose, onOpenSettings }: {
   };
   /* What a carried card can be dropped on, said while it is carried. */
   const carried = drag.active?.mediaId ? drag.active : null;
-  const addLocal = async () => {
-    const result = await window.api?.pickMediaFile?.();
-    if (!result?.success || !result.url) return;
-    const url = result.src ?? result.url;
-    const [poster, length] = result.kind === 'video' ? await Promise.all([videoPoster(url), videoLength(url)]) : [undefined, undefined];
-    store({ id: `local:${result.url}`, label: result.name ?? 'media', detail: length ? `${length} · this laptop` : 'this laptop', seed: 4,
-      style: 'smoke', source: 'local', url, poster, kind: result.kind === 'video' ? 'video' : 'photo' });
+  /*
+   * Pictures and clips from this laptop — the picker, or files dropped from
+   * Finder on this pane. They land on the shelf being looked at (a clip
+   * always in media), and the status line says how far along it is and
+   * then how it went: never silent, because an add that did nothing reads
+   * exactly like a broken one.
+   *
+   * In themes, one picture is wanted as a background, so it goes into the
+   * preview too — the same as picking one online there.
+   */
+  const [adding, setAdding] = useState(false);
+  const canAdd = !!(window.api?.pickMediaPaths || window.api?.pickMediaFile);
+  const addHere = async (paths?: string[]) => {
+    const wanted = view;
+    setAdding(true);
+    try {
+      const { cards, notice: said, canceled } = await addFromLaptop({ paths, wanted, onProgress: setNotice });
+      if (canceled) {
+        setNotice('');
+        return;
+      }
+      setSearchOpen(false);
+      const one = cards.length === 1 ? cards[0] : undefined;
+      if (wanted === 'themes' && one && canBeBackground(one)) {
+        setNotice(`${said} · ${await onChoose(one.id, 'preview', 'click')}`);
+        return;
+      }
+      setNotice(said);
+    } finally {
+      setAdding(false);
+    }
+  };
+  const finder = useFinderDrag();
+  const finderHere = finder.active && finder.over === 'media-pane';
+  const dropHere = finderDropProps('media-pane', (paths, count) => {
+    if (paths.length) void addHere(paths);
+    else setNotice(count ? 'drag the files themselves from Finder' : 'nothing to add there');
+  });
+  /*
+   * Off the shelf, and out of the last saved service so it does not come
+   * back on the next launch. The file stays where it is: a run row or a
+   * saved service may still point at it.
+   *
+   * Not the wall's own background — the wall would go on showing a picture
+   * the shelf no longer has, and the LIVE box could not draw it. The
+   * preview's is fine: LiveBody moves the preview to another background.
+   */
+  const remove = (media: ThemeMedia) => {
+    if (media.id === live) {
+      setNotice(`${media.label} is on the wall — put another background up before deleting it`);
+      return;
+    }
+    const gone = removeMedia(media.id);
+    if (!gone) return;
+    void forgetTriMedia(gone.id);
+    window.dispatchEvent(new Event('trilorah-library-changed'));
+    const next = gone.id === selected ? onBackgroundGone?.() : undefined;
+    setNotice(next ? `deleted ${gone.label} · the preview is on ${next} now` : `deleted ${gone.label}`);
   };
   const pill = 'flex h-[35px] min-w-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1';
   const button = 'flex h-[25px] shrink-0 items-center justify-center rounded-full px-3 text-xs transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2';
   return (
-    <div ref={root} className="relative flex h-full min-h-0 flex-col gap-3 px-3" onKeyDown={e => { if (e.key === 'Escape') setSearchOpen(false); }}>
-      <div role="toolbar" aria-label="media library" className="flex shrink-0 items-center gap-2">
+    <div ref={root} className="relative flex h-full min-h-0 flex-col gap-3 px-3" onKeyDown={e => { if (e.key === 'Escape') setSearchOpen(false); }} {...dropHere}>
+      {/* A container, so the add action can drop its words before the row —
+          which does not wrap — runs out of room. */}
+      <div role="toolbar" aria-label="media library" className="@container/mediabar flex shrink-0 items-center gap-2">
         <div className={`${pill} flex-1`}>
-          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" aria-pressed={online} onClick={() => { setOnline(true); setSearchOpen(true); }}><GlobeIcon size={15} /></button>
-          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="search this laptop" aria-pressed={!online} onClick={() => { setOnline(false); setSearchOpen(false); }}><LaptopIcon size={15} /></button>
+          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" title="search online" aria-pressed={online} onClick={() => { setOnline(true); setSearchOpen(true); }}><GlobeIcon size={15} /></button>
+          {/* A filter, not an add: it shows what is already on this laptop's
+              shelf. It used to sit beside the add button and read as one. */}
+          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="show what is on this laptop" title="show what is on this laptop" aria-pressed={!online} onClick={() => { setOnline(false); setSearchOpen(false); }}><LaptopIcon size={15} /></button>
           <span aria-hidden className="mx-1 h-3 w-px bg-white/15" />
           <input type="text" aria-label={`search ${view}`} placeholder={`search ${view}…`} value={query} onFocus={() => online && setSearchOpen(true)} onChange={e => { setQuery(e.target.value); setSearchOpen(online); }} className="min-w-0 flex-1 bg-transparent px-1 text-xs outline-none" />
-          <button type="button" className={button} aria-label="add media from this laptop" disabled={!window.api?.pickMediaFile} onClick={() => void addLocal()}><PlusIcon size={14} /></button>
         </div>
+        {/* Its own control in the library toolbars' material — the slides
+            tab's "import slides" is the same act — rather than a + tucked
+            inside the search field, where it read as part of the search. */}
+        <LibraryAction
+          textClassName="hidden @min-[30rem]/mediabar:inline"
+          action={{
+            id: 'add',
+            label: canAdd ? 'add pictures and clips from this laptop — or drop them here from Finder' : 'adding from the laptop needs the desktop app',
+            text: 'add from laptop',
+            icon: <ImportIcon size={13} />,
+            disabled: !canAdd || adding,
+            onClick: () => void addHere(),
+          }}
+        />
         <div className={pill} role="group" aria-label="library collection">
           {/* The themes toggle takes a carried still: filed under themes and
               previewed. Never a clip — a clip is not a background — and only
@@ -952,6 +1027,7 @@ function MediaBrowser({ selected, live, onChoose, onOpenSettings }: {
       ) : null}
       <div role="status" className="shrink-0 text-xs text-[var(--tri-ink-muted)]">{carried
         ? carried.mediaKind === 'video' ? 'drop on the preview to stage this clip, or into the service' : 'drop on themes, the preview or the live screen to use it as a background'
+        : finder.active ? finderPaneHint(view, finder.kinds, finderHere)
         : notice || (view === 'themes' ? 'click to preview a background · double-click to put it on the wall now' : 'select to preview · drag to themes or into the service')}</div>
       {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
         onClick={() => press(media)} onDoubleClick={() => pressTwice(media)}>
@@ -972,12 +1048,22 @@ function MediaBrowser({ selected, live, onChoose, onOpenSettings }: {
             onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'themes' }); void onChoose(media.id, 'preview', 'pick').then((said) => setNotice(`added to themes · ${said}`)); }}><PaletteIcon size={12} /></button> : null}
           {media.url ? <button type="button" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
             className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
-            onClick={(e) => { e.stopPropagation(); removeMedia(media.id); setNotice(`deleted ${media.label}`); }}><TrashIcon size={12} /></button> : null}
+            onClick={(e) => { e.stopPropagation(); remove(media); }}><TrashIcon size={12} /></button> : null}
         </div> : null}
       </div>)}</MediaGrid> : <div className="min-h-0 flex-1"><EmptyMark w={220} h={220} plain art={<GlobeEmptyArt />}
         line={query && !online ? 'nothing matches' : `no ${view} yet`}
-        hint={query && !online ? 'try another name' : 'add an image or clip to get started'}
-        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add media" icon={<PlusIcon size={13} />} disabled={!window.api?.pickMediaFile} onClick={() => void addLocal()} /><Button label="explore online" onClick={() => { setOnline(true); setSearchOpen(true); }} /></div>} /></div>}
+        hint={query && !online ? 'try another name' : 'add pictures and clips, or drop them here from Finder'}
+        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add from laptop" icon={<ImportIcon size={13} />} disabled={!canAdd || adding} onClick={() => void addHere()} /><Button label="explore online" onClick={() => { setOnline(true); setSearchOpen(true); }} /></div>} /></div>}
+      {/* Files from Finder over this pane: where they will land. Over
+          everything, taking no pointer, so the drop still reaches the pane;
+          a dashed edge, not a glow — the ground stays plain. */}
+      {finderHere ? (
+        <div aria-hidden className="tri-rounded-control pointer-events-none absolute inset-0 z-50 grid place-items-center border border-dashed border-[rgb(229_243_242_/_0.55)] bg-[rgb(0_0_0_/_0.45)]">
+          <span className="tri-label rounded-full px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
+            {finderPaneHint(view, finder.kinds)}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -3796,6 +3882,7 @@ function StageBox({
   onKeyDown,
   onHover,
   drop,
+  files,
 }: {
   label: string;
   tone?: 'default' | 'live';
@@ -3803,9 +3890,12 @@ function StageBox({
   controls: ReactNode;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   onHover?: (over: boolean) => void;
-  /** A carried background can land here: the drag layer's target props,
-      whether the pointer is over it now, and what letting go will do. */
-  drop?: { props: DropTargetProps; over: boolean; hint: string };
+  /** A carried background can land here: the drag layer's target props
+      (none for files from Finder, which `files` takes), whether the pointer
+      is over it now, and what letting go will do. */
+  drop?: { props?: DropTargetProps; over: boolean; hint: string };
+  /** Takes files dragged in from Finder (./finderDrop). */
+  files?: FinderDropProps;
 }) {
   return (
     <Panel
@@ -3829,6 +3919,7 @@ function StageBox({
         /* On this div rather than the Panel, which does not forward
            attributes — the whole box, picture and row, is the target. */
         {...drop?.props}
+        {...files}
         style={
           {
             containerType: 'size',
@@ -3905,6 +3996,7 @@ function Stage({
   sampling,
   onThemeChange,
   say,
+  onFiles,
 }: {
   transition: ReturnType<typeof useTextTransition>;
   previewTheme: ThemeSettings;
@@ -3916,6 +4008,8 @@ function Stage({
   onThemeChange?: (theme: ThemeSettings) => void;
   /** The service log — where a refused act explains itself. */
   say?: (line: { text: string }) => void;
+  /** Files from Finder let go over a box (LiveBody's dropFiles). */
+  onFiles?: (key: FinderStageKey, paths: string[], count: number) => void;
 }) {
   const projector = useProjector();
   const engine = useEngine();
@@ -3932,12 +4026,25 @@ function Stage({
    */
   const drag = useDrag();
   const carried = drag.active?.source === 'media' && drag.active.mediaId ? drag.active : null;
+  /*
+   * Files from Finder land here too — imported (pictures under themes, clips
+   * under media) and then treated exactly as that card dropped here would
+   * be. Same rings, same lines, same refusal: the LIVE box does not light up
+   * for clips, and the cursor says no over it.
+   */
+  const finder = useFinderDrag();
+  const finderDrop = (key: FinderStageKey) => {
+    const hint = finder.active ? finderStageHint(key, finder.kinds) : null;
+    return hint ? { over: finder.over === key, hint } : undefined;
+  };
+  const filesFor = (key: FinderStageKey) =>
+    onFiles ? finderDropProps(key, (paths, count) => onFiles(key, paths, count), (kinds) => finderStageHint(key, kinds) !== null) : undefined;
   const previewDrop = carried
     ? { props: drag.dropProps('stage-preview', { solo: true }), over: drag.over === 'stage-preview', hint: carried.mediaKind === 'video' ? 'stage this clip' : 'preview this background' }
-    : undefined;
-  const liveDrop = carried && carried.mediaKind !== 'video'
-    ? { props: drag.dropProps('stage-live', { solo: true }), over: drag.over === 'stage-live', hint: 'background on the wall now' }
-    : undefined;
+    : finderDrop('stage-preview');
+  const liveDrop = carried
+    ? carried.mediaKind !== 'video' ? { props: drag.dropProps('stage-live', { solo: true }), over: drag.over === 'stage-live', hint: 'background on the wall now' } : undefined
+    : finderDrop('stage-live');
 
   /*
    * Staged readings show their first slide, always.
@@ -4182,6 +4289,7 @@ function Stage({
         onKeyDown={canStep && !editingTheme ? onStepKey : undefined}
         onHover={setOverPreview}
         drop={previewDrop}
+        files={filesFor('stage-preview')}
         canvas={
           <>
             <SlideCanvas seated theme={previewTheme} transition={transition} slide={staged ?? ((editingTheme || sampling) && !preview ? THEME_SAMPLE : null)} empty="nothing staged" guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
@@ -4271,6 +4379,7 @@ function Stage({
         label="live"
         tone={live && !blacked ? 'live' : 'default'}
         drop={liveDrop}
+        files={filesFor('stage-live')}
         canvas={
           <>
           <SlideCanvas
@@ -5008,27 +5117,64 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
    * photo used once as a background is still an announcement photo. What
    * happened is said in the service log, beside the boxes it happened to.
    */
+  const dropMedia = useCallback(async (key: BackgroundDropKey, media: ThemeMedia | undefined): Promise<string> => {
+    const action = backgroundDropAction(key, media);
+    if (!media || action === 'refuse') return media ? CLIP_NOT_BACKGROUND : 'that picture is no longer on the shelf';
+    if (action === 'stage-content') {
+      projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: 'video', origin: 'operator' });
+      return `${media.label} is in preview — ${CLIP_NOT_BACKGROUND}`;
+    }
+    if (key === 'media-themes') addMedia({ ...media, collection: 'themes' });
+    const text = await chooseBackground(media.id, action, 'drop');
+    return key === 'media-themes' ? `added to themes · ${text}` : text;
+  }, [chooseBackground, projector]);
   useEffect(() => {
     if (!backgroundDrop) return;
     backgroundDrop.current = (key, item) => {
-      const media = getMediaLibrary().find((m) => m.id === item.mediaId);
-      const action = backgroundDropAction(key, media);
-      if (!media || action === 'refuse') {
-        say({ text: media ? CLIP_NOT_BACKGROUND : 'that picture is no longer on the shelf' });
-        return;
-      }
-      if (action === 'stage-content') {
-        projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: 'video', origin: 'operator' });
-        say({ text: `${media.label} is in preview — ${CLIP_NOT_BACKGROUND}` });
-        return;
-      }
-      if (key === 'media-themes') addMedia({ ...media, collection: 'themes' });
-      void chooseBackground(media.id, action, 'drop').then((text) => say({ text: key === 'media-themes' ? `added to themes · ${text}` : text }));
+      void dropMedia(key, getMediaLibrary().find((m) => m.id === item.mediaId)).then((text) => say({ text }));
     };
     return () => {
       backgroundDrop.current = null;
     };
-  }, [backgroundDrop, chooseBackground, projector, say]);
+  }, [backgroundDrop, dropMedia, say]);
+
+  /*
+   * Files from Finder let go over the PREVIEW or the LIVE box: onto the
+   * shelf first (pictures under themes, clips under media, anything already
+   * there left where it is), then exactly what dropping that card there
+   * does — the first still, or on the preview a clip when there is none.
+   * One line in the log says both halves.
+   */
+  const dropFiles = useCallback((key: FinderStageKey, paths: string[], count: number) => {
+    if (!paths.length) {
+      say({ text: count ? 'drag the files themselves from Finder' : 'nothing to add there' });
+      return;
+    }
+    void (async () => {
+      /* A picture lands in a blink; a folder of clips does not, and a box
+         that says nothing for ten seconds reads as a drop that missed. So
+         a slow one says it has started — once, to keep the log quiet. */
+      const slow = window.setTimeout(() => say({ text: paths.length > 1 ? `adding ${paths.length}…` : 'adding…' }), 800);
+      const { cards, notice } = await addFromLaptop({ paths, wanted: 'themes' }).finally(() => window.clearTimeout(slow));
+      const pick = finderStagePick(key, cards);
+      if (!pick) {
+        say({ text: notice });
+        return;
+      }
+      /* A clip dropped here is staged, and the import line has already
+         said a clip is not a background — once is enough. */
+      const done = await dropMedia(key, pick);
+      say({ text: `${notice} · ${notice.includes(CLIP_NOT_BACKGROUND) ? done.replace(` — ${CLIP_NOT_BACKGROUND}`, '') : done}` });
+    })();
+  }, [dropMedia, say]);
+
+  /* The preview's background was deleted from the shelf: another themes
+     still, chosen now, so the preview and the next go live agree on it. */
+  const backgroundGone = useCallback(() => {
+    const next = backgroundFor('', getMediaLibrary());
+    setPreviewTheme((prev) => ({ ...prev, backgroundId: next?.id ?? NO_BACKGROUND }));
+    return next?.label;
+  }, []);
 
   return (
     <>
@@ -5186,6 +5332,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               onThemeChange={setPreviewTheme}
               previewTheme={previewTheme}
               liveTheme={liveTheme}
+              onFiles={dropFiles}
 
             />
 
@@ -5226,6 +5373,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                   selected={previewTheme.backgroundId}
                   live={liveTheme.backgroundId}
                   onChoose={chooseBackground}
+                  onBackgroundGone={backgroundGone}
                 />
               ) : null}
               {TABS[tab]?.id === 'online' ? (

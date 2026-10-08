@@ -55,3 +55,27 @@ export function LibraryToolbar({ label, actions, searchActions }: { label: strin
     </div>
   );
 }
+
+/**
+ * One action in this toolbar's material, for a toolbar that is not built
+ * from LibraryToolbar — the media tab's row, which keeps its own search
+ * pill and themes|media toggle. Sized to its words rather than sharing the
+ * row; `textClassName` lets that row drop the words (icon and label stay)
+ * when it gets narrow, because it does not wrap.
+ */
+export function LibraryAction({ action, textClassName }: { action: DockAction; textClassName?: string }) {
+  return (
+    <button
+      type="button"
+      title={action.label}
+      aria-label={action.label}
+      aria-pressed={action.active}
+      disabled={action.disabled}
+      onClick={action.onClick}
+      className={cx(PILL, CONTROL, 'shrink-0 px-3', actionColor(action))}
+    >
+      <span aria-hidden="true" className="flex shrink-0 items-center">{action.icon}</span>
+      <span className={textClassName}>{action.text}</span>
+    </button>
+  );
+}

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { IpcRendererEvent } from 'electron'
 import type { SongPatch } from '../shared/types'
 import type { LiveContent } from '../shared/liveContent'
@@ -360,6 +360,19 @@ contextBridge.exposeInMainWorld('api', {
   // Themes — native background image picker (copies into userData)
   pickBackgroundImage: () => ipcRenderer.invoke('pick-background-image'),
   pickMediaFile: () => ipcRenderer.invoke('pick-media-file'),
+  // Many at once: the dialog names them, then the renderer imports them one
+  // call at a time so it can say how far along it is (main.ts, mediaImport.ts).
+  pickMediaPaths: () => ipcRenderer.invoke('pick-media-paths'),
+  importMediaFiles: (paths: string[]) => ipcRenderer.invoke('import-media-files', paths),
+  // A file dropped from Finder → its path. File.path is gone since Electron
+  // 32; this is its documented replacement, and only a preload can call it.
+  pathForFile: (file: File) => {
+    try {
+      return webUtils.getPathForFile(file)
+    } catch {
+      return ''
+    }
+  },
   getDisplaysStatus: () => ipcRenderer.invoke('get-displays-status'),
   // The connected displays and where each output goes — the outputs card
   // and Settings draw this. Asked again whenever on-outputs-changed fires.

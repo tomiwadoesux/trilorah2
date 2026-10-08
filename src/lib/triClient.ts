@@ -132,6 +132,21 @@ export function applyTriSnapshot(snapshot: TriSnapshot, openService: boolean): v
   window.dispatchEvent(new Event('trilorah-package-imported'));
 }
 
+/**
+ * A card deleted from the shelf, forgotten by the last saved service too.
+ *
+ * restoreTriRenderer (below) puts back any card missing from the shelf on
+ * every LIVE mount, so without this a deleted picture that was in the last
+ * .tri save came back on the next launch.
+ */
+export async function forgetTriMedia(id: string): Promise<void> {
+  const api = window.api;
+  if (!api?.getSetting || !api.setSetting) return;
+  const saved = await api.getSetting('triRendererState').catch(() => undefined) as Partial<TriRendererState> | undefined;
+  if (!saved || !Array.isArray(saved.media) || !saved.media.some(item => item?.id === id)) return;
+  await api.setSetting('triRendererState', { ...saved, media: saved.media.filter(item => item?.id !== id) });
+}
+
 /** Restore only missing local data; this must never overwrite current edits. */
 export async function restoreTriRenderer(): Promise<void> {
   const saved = await window.api?.getSetting('triRendererState') as Partial<TriRendererState> | undefined;

@@ -696,6 +696,12 @@ interface WindowApi extends Partial<TriPackageApi> {
   /** `url` is file:// (what the setting stores); `src` is local-media:// (what an <img> can load). */
   pickBackgroundImage?(): Promise<{ success: boolean; url?: string; src?: string; canceled?: boolean; error?: string }>;
   pickMediaFile?(): Promise<{ success: boolean; url?: string; src?: string; kind?: 'video' | 'photo'; name?: string; canceled?: boolean; error?: string }>;
+  /** The native dialog, many files at once — paths only; nothing is copied yet. */
+  pickMediaPaths?(): Promise<{ canceled: boolean; paths: string[] }>;
+  /** Copies into userData/media, deduped by content (electron/media/mediaImport.ts). Folders open one level. */
+  importMediaFiles?(paths: string[]): Promise<import('../../shared/importedMedia').MediaImportResult>;
+  /** A dropped File's path on disk ('' for one that has none — an image dragged out of a web page). */
+  pathForFile?(file: File): string;
   getDisplaysStatus?(): Promise<{ totalDisplays: number; hasExternal: boolean; primary: { id: number; bounds: any }; externals: Array<{ id: number; bounds: any }> }>;
   getOutputsStatus?(): Promise<OutputsStatus>;
   /** A display came or went, an output opened or closed, or a job or display choice changed. */
