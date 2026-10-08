@@ -198,11 +198,16 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     setLive(item); setDelivery(n => n + 1); setSlideIndex(0);
   }, []);
 
+  /* Which send is the newest. A verse in an online Bible can wait on its
+     chapter while a later song or verse goes up; when it comes back it must
+     not write over the newer one here (main drops it from the wall too). */
+  const sends = useRef(0);
   const send = useCallback(async (item: LiveItem) => {
+    const sent = ++sends.current;
     await prepareOutput.current?.();
     const key = spanKey(item);
     inFlight.current.set(key, (inFlight.current.get(key) ?? 0) + 1);
-    let delivered: LiveItem;
+    let delivered: LiveItem | null;
     try {
       delivered = await publishLiveItem(item);
     } finally {
@@ -210,6 +215,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       if (left > 0) inFlight.current.set(key, left);
       else inFlight.current.delete(key);
     }
+    if (!delivered || sent !== sends.current) return;
     liveRef.current = delivered;
     setLive(delivered);
     setDelivery(n => n + 1);

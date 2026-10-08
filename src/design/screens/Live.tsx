@@ -96,7 +96,7 @@ import { REFERENCE_CAP_EMS, bookAllowance, referenceColumnWidth, splitReference 
 import { catchEntries, queuedIds, spotlightIndex, spotlightItem } from '../../lib/catchSets';
 import { useCatchStore } from '../../stores/catchStore';
 import { useLiveStore } from '../../stores/liveStore';
-import { versionOptions } from '../../../shared/bibleVersions';
+import { versionOptions, versionRowOptions, type BibleVersionRow } from '../../../shared/bibleVersions';
 import { CatchPeek, CatchesPane } from './CatchesPane';
 import { ScriptureTravel } from './ScriptureTravel';
 import { chapterOrdinal, liveSpan, passingRows, spanReference, travelShape, type LiveSpan, type ReelRow } from '../../lib/scriptureReel';
@@ -1393,11 +1393,22 @@ function ScripturesBrowser() {
 
   /* Whatever translations the database actually holds — not a guessed list
      — each with its name beside the code, because "AA APEE BBE" means
-     nothing to a volunteer. Opens on the version the service is using. */
+     nothing to a volunteer. Opens on the version the service is using.
+     NKJV and NIV come from YouVersion: listed greyed, with the reason,
+     until the build's key unlocks them, and the list follows when it does. */
+  const [rowsByCode, setRowsByCode] = useState<Record<string, BibleVersionRow>>({});
   useEffect(() => {
-    window.api?.getAvailableVersions().then((v) => {
+    const api = window.api;
+    const take = (list: { versions?: BibleVersionRow[] } | null | undefined) => {
+      if (!list?.versions?.length) return;
+      setVersions(versionRowOptions(list.versions));
+      setRowsByCode(Object.fromEntries(list.versions.map((r) => [r.code, r])));
+    };
+    if (api?.getBibleVersions) void api.getBibleVersions().then(take).catch(() => undefined);
+    else api?.getAvailableVersions().then((v) => {
       if (v?.length) setVersions(versionOptions(v));
     }).catch(() => { /* KJV remains available if the version list fails. */ });
+    const off = api?.onEngineEvent?.('on-bible-versions-changed', (list) => take(list as { versions?: BibleVersionRow[] }));
     if (useLiveStore.getState().displayVersion == null) {
       void window.api?.getSessionVersion?.().then((using) => {
         if (typeof using === 'string' && using && useLiveStore.getState().displayVersion == null) {
@@ -1405,7 +1416,30 @@ function ScripturesBrowser() {
         }
       }).catch(() => undefined);
     }
+    return () => off?.();
   }, []);
+  /* An online Bible's copyright line goes wherever its words are read. */
+  const versionRow = rowsByCode[version];
+  const onlineVersion = versionRow?.source === 'online';
+  /* "Read it in the default Bible" when an online one cannot load — unless
+     the church's default IS that Bible (Settings offers NIV as a default),
+     where going back to it only fails again: then a Bible on this computer. */
+  const bundledStandIn = rowsByCode.KJV?.source === 'bundled' ? 'KJV'
+    : Object.values(rowsByCode).find((r) => r.source === 'bundled' && r.available)?.code ?? 'KJV';
+  const [savedDefault, setSavedDefault] = useState<string | null>(null);
+  const failedOnline = onlineVersion && status === 'error';
+  useEffect(() => {
+    if (!failedOnline) return;
+    let current = true;
+    void window.api?.getSetting?.('displayVersion').then((saved) => {
+      if (current) setSavedDefault(typeof saved === 'string' && saved ? saved.toUpperCase() : null);
+    }).catch(() => undefined);
+    return () => { current = false; };
+  }, [failedOnline]);
+  const readInDefault = useCallback(async () => {
+    const saved = await window.api?.getSetting?.('displayVersion').catch(() => null);
+    setVersion(typeof saved === 'string' && saved.toUpperCase() === version ? bundledStandIn : null);
+  }, [version, bundledStandIn, setVersion]);
 
   /*
    * What the table is showing: whatever has been named, or Genesis while the
@@ -1430,15 +1464,19 @@ function ScripturesBrowser() {
     let cancelled = false;
     setStatus('loading');
     const at = { bookIndex: target.bookIndex, chapter: target.chapter };
-    loadScriptureChapter(window.api, target.bookIndex, target.chapter, version).then((res) => {
+    const load = () => loadScriptureChapter(window.api, target.bookIndex, target.chapter, version).then((res) => {
       if (cancelled) return;
       setRows(res.data.map((v) => ({ verse: v.id, ref: v.ref, text: v.text })));
       setLoadedFor(at);
       setLoadError(res.error);
       setStatus(res.status);
     });
+    /* An online chapter costs one of the hour's YouVersion requests, so the
+       "John 1" passed on the way to typing "John 14" is not fetched. */
+    const wait = onlineVersion ? setTimeout(load, 300) : (void load(), undefined);
     return () => {
       cancelled = true;
+      clearTimeout(wait);
     };
   }, [target?.bookIndex, target?.chapter, version, loadAttempt]);
 
@@ -1686,7 +1724,9 @@ function ScripturesBrowser() {
           <div className="w-[68px] shrink-0">
             <Select options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
           </div>
-          <LibrarySearch disabled={status === 'error' || status === 'no-api' || status === 'empty'}>
+          {/* An online Bible that could not load is not a broken library: the
+              operator can still type another reference, or change Bible. */}
+          <LibrarySearch disabled={(status === 'error' && !onlineVersion) || status === 'no-api' || status === 'empty'}>
           <ScriptureReferenceInput
             className="min-w-0 flex-1"
             books={BOOK_DATA}
@@ -1774,7 +1814,9 @@ function ScripturesBrowser() {
           ) : rows.length === 0 ? (
             <ScriptureLibraryEmpty status={status} error={loadError} version={version}
               onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
-              onReset={() => { setQuery(''); setRef(null); setVersion(null); setLoadAttempt((attempt) => attempt + 1); }} />
+              onReset={() => { setQuery(''); setRef(null); setVersion(null); setLoadAttempt((attempt) => attempt + 1); }}
+              onDefaultBible={onlineVersion ? () => void readInDefault() : undefined}
+              defaultBible={savedDefault === version ? bundledStandIn : undefined} />
           ) : (
             rows.map((row, i) => (
               <button
@@ -1862,6 +1904,14 @@ function ScripturesBrowser() {
                 )}
               </button>
             ))
+          )}
+          {/* The licence's own words under an online Bible's text (YouVersion:
+              "always display a Bible Version's copyright attribution"). The
+              wall carries the initials (shared/verseDisplay). */}
+          {onlineVersion && rows.length > 0 && !journey && (
+            <p className="px-4 py-3 text-[length:var(--tri-size-xs)] leading-relaxed text-white/40">
+              {versionRow.attribution || `${versionRow.name} (${version})`} · via YouVersion
+            </p>
           )}
         </div>
       </LibraryPane>

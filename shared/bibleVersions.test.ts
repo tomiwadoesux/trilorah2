@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BIBLE_VERSIONS, VERSION_CODE_RE, requiresInitials, sortVersions, versionHint, versionLabel, versionName, versionOptions,
+  BIBLE_VERSIONS, VERSION_CODE_RE, requiresInitials, setVersionCredits, sortVersions, versionCredit, versionHint, versionLabel,
+  versionName, versionOptions, versionRowOptions,
 } from './bibleVersions'
 
 describe('the Bible version catalogue', () => {
@@ -46,5 +47,40 @@ describe('the Bible version catalogue', () => {
   it('keeps every code short enough for the pickers', () => {
     for (const code of Object.keys(BIBLE_VERSIONS)) expect(code).toMatch(VERSION_CODE_RE)
     expect('TOO-LONG').not.toMatch(VERSION_CODE_RE)
+  })
+
+  it('lists online Bibles as such, and greys the ones a key has not unlocked with the reason', () => {
+    const options = versionRowOptions([
+      { code: 'KJV', name: 'King James Version', source: 'bundled', available: true },
+      { code: 'NIV', name: 'Invented NIV title', source: 'online', available: true, attribution: 'Invented copyright' },
+      { code: 'TPT', name: 'Invented Passion title', source: 'online', available: true },
+      { code: 'NKJV', name: 'New King James Version', source: 'online', available: false, note: 'needs a YouVersion key' },
+    ])
+    expect(options).toEqual([
+      { value: 'KJV', label: 'KJV', hint: 'King James Version' },
+      { value: 'NIV', label: 'NIV', hint: 'New International Version · online' },
+      { value: 'TPT', label: 'TPT', hint: 'Invented Passion title · online' },
+      { value: 'NKJV', label: 'NKJV', hint: 'needs a YouVersion key', disabled: true },
+    ])
+  })
+})
+
+describe("an online Bible's copyright line", () => {
+  it('keeps the line main lists for each online Bible, tidied, and none for the rest', () => {
+    setVersionCredits([
+      { code: 'NIV', attribution: '  Invented copyright\n line for testing.  ' },
+      { code: 'NKJV', attribution: null },
+      { code: 'kjv', attribution: '' },
+    ])
+    expect(versionCredit('NIV')).toBe('Invented copyright line for testing.')
+    expect(versionCredit('niv')).toBe('Invented copyright line for testing.')
+    expect(versionCredit('NKJV')).toBeNull()
+    expect(versionCredit('KJV')).toBeNull()
+    expect(versionCredit(undefined)).toBeNull()
+  })
+  it('forgets a line main no longer lists (a key refused, a Bible withdrawn)', () => {
+    setVersionCredits([{ code: 'NIV', attribution: 'Invented line' }])
+    setVersionCredits([])
+    expect(versionCredit('NIV')).toBeNull()
   })
 })

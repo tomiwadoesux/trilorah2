@@ -16,6 +16,16 @@ import { resolveTextCase, type TextCase } from '../shared/textCase';
 import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
 import './output.css';
 import { DISPLAY_FONTS } from '../shared/displayFont';
+import { watchVersionCredits } from './lib/versionCredits';
+
+/**
+ * How long a reading waits for its second translation before going up
+ * without it. A Bible on this computer answers in a few milliseconds; an
+ * online one whose chapter is not kept yet can take seconds, and the wall
+ * should not sit on the bare reference for them — the line joins when it
+ * comes.
+ */
+const SECONDARY_GRACE_MS = 150;
 
 /**
  * The projector / stream / stage window: a transparent surface that fades
@@ -279,11 +289,11 @@ function OutputSurface() {
         const primary = await fetchVerseParts(detection);
         if (primary.length === 0) return;
         const secondaryVersion = opts.secondaryVersion;
-        const secondaryVerses =
+        const secondaryFetch =
           secondaryVersion && secondaryVersion !== (detection.version ?? primaryVersion(settings))
-            ? await fetchVerseParts(detection, secondaryVersion)
-            : [];
-        const slides = buildVerseSlides(
+            ? fetchVerseParts(detection, secondaryVersion)
+            : Promise.resolve([]);
+        const build = (secondaryVerses: { verse: number; text: string }[]) => buildVerseSlides(
           {
             book: detection.book,
             chapter: detection.chapter,
@@ -309,9 +319,20 @@ function OutputSurface() {
                 : null,
           },
         );
-        setShown((current) =>
+        const show = (slides: VerseSlide[]) => setShown((current) =>
           current?.detection === detection ? { ...current, slides } : current,
         );
+        /* The reading goes up with its second line when that answers at
+           once, else without it — and again, same pages, when it arrives. */
+        const quick = await Promise.race([
+          secondaryFetch,
+          new Promise<null>((resolve) => window.setTimeout(() => resolve(null), SECONDARY_GRACE_MS)),
+        ]);
+        show(build(quick ?? []));
+        if (quick === null) {
+          const late = await secondaryFetch;
+          if (late.length > 0) show(build(late));
+        }
       })();
     };
 
@@ -718,6 +739,11 @@ function OutputSurface() {
                   </div>
                 ))}
                 {atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}
+                {/* An online Bible's copyright line (YouVersion's terms): the
+                    last line of the block, small — in the flow, so no layout
+                    can put it under the words. The operator's preview draws
+                    the same. */}
+                {slide.credit && <div className="output-credit">{slide.credit}</div>}
                 {slide.total > 1 && (
                   <div className="output-slide-count">
                     {slide.index} / {slide.total}
@@ -787,6 +813,9 @@ function OutputSurface() {
     </div>
   );
 }
+
+// An online Bible's copyright line, for every slide this window cuts (shared/verseDisplay).
+watchVersionCredits();
 
 const rootEl = document.getElementById('output-root');
 if (rootEl) {

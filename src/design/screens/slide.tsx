@@ -559,6 +559,28 @@ export function SlideCanvas({
                 {slide.reference}
               </p>
             )}
+            {/* An online Bible's copyright line, as the wall sets it
+                (.output-credit): the block's last line, small, on every slide
+                of its words. cqw/cqh are the wall's vw/vh. */}
+            {slide.credit && (
+              <p
+                className="m-0 line-clamp-2"
+                style={{
+                  marginTop: '1.4cqh',
+                  maxWidth: '62cqw',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  fontSize: 'max(6px, 0.9cqw)',
+                  fontWeight: 400,
+                  letterSpacing: '0.01em',
+                  lineHeight: 1.35,
+                  textTransform: 'none',
+                  textWrap: 'pretty',
+                  color: 'rgb(255 255 255 / 0.55)',
+                }}
+              >
+                {slide.credit}
+              </p>
+            )}
           </div>
         ) : screen === 'live' && empty ? (
           /* Not styled like scripture: an empty stage is chrome talking

@@ -62,3 +62,15 @@ when it was fetched and a SHA-256 of its rows are recorded in
 Fetched through bible.helloao.org (eBible's own API) by
 `scripts/build-bible-db.mjs`. Licensed translations (NKJV, NIV, ESV, NLT, NASB,
 AMP) are not bundled.
+
+## Licensed translations through YouVersion
+
+NKJV, NIV and any other Bible the build's app key is licensed for are read
+from the YouVersion Platform API (https://developers.youversion.com), free for
+non-commercial apps under the YouVersion Platform Terms of Use. Their text is
+never bundled: a chapter is fetched when it is first needed and kept on the
+church's computer (`userData/bibles/online-cache.db`) for at most 30 days and
+120 chapters per version, and is deleted at once if the key is refused or a
+version is no longer licensed. Each version's own copyright line, as YouVersion
+supplies it, is shown under its text in the scripture library, and its initials
+follow every quotation on the projector. Code: `electron/data/bibleOnline/`.

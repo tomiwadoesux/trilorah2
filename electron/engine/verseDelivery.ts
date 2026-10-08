@@ -19,6 +19,13 @@ export type VersePushSource = 'operator' | 'remote' | 'operator picked from clas
 export class VerseDelivery {
   preview: VersePreview | null = null
   live: VersePreview | null = null
+  /**
+   * How many times the wall's verse has changed: one put up, or one taken
+   * down (a song, a picture or a clear takes it down first). An operator's
+   * press that waits for an online chapter compares this before and after,
+   * and is dropped when something else reached the wall meanwhile.
+   */
+  acts = 0
 
   stage(verse: VersePreview): VersePreview {
     this.preview = { ...verse, isPreview: true }
@@ -29,11 +36,13 @@ export class VerseDelivery {
     if (source !== 'operator' && source !== 'remote' && source !== 'operator picked from clash') return null
     if (!this.preview?.text.trim() || /\bverse \d+ not found\b/i.test(this.preview.text)) return null
     this.live = { ...this.preview, isPreview: false }
+    this.acts++
     return this.live
   }
 
   clearLive(): void {
     this.live = null
+    this.acts++
   }
 }
 

@@ -6,7 +6,7 @@ import { useProjector, type LiveItem } from './projector';
 import { useRun } from './run';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { buildVerseSlides } from '../../../shared/verseDisplay';
-import { versionName } from '../../../shared/bibleVersions';
+import { versionCredit, versionName } from '../../../shared/bibleVersions';
 import { deckPage, type DeckPageSpec } from './deckPage';
 import { BOOKS, CHAPTER_COUNTS, bookIdFromName } from '../../lib/books';
 import { parts } from '../../../shared/referenceParts';
@@ -51,7 +51,9 @@ export function useMobileRemote() {
     if (!api?.onMobileRequest) return;
     const text = (v: unknown, max=200) => typeof v === 'string' ? v.slice(0,max) : '';
     const index = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 0 ? Number(v) : 0;
-    const publicItem = (item: LiveItem | null) => item && ({source:item.source,id:item.id,label:item.label,reference:item.reference,version:item.version,text:item.text,lines:item.lines});
+    // An online Bible's copyright line travels with its words (YouVersion: "always display" it).
+    const publicItem = (item: LiveItem | null) => item && ({source:item.source,id:item.id,label:item.label,reference:item.reference,version:item.version,text:item.text,lines:item.lines,
+      credit:item.source === 'scripture' ? versionCredit(item.version) ?? undefined : undefined});
     async function decks(): Promise<{id:string;title:string;slides:string[]}[]> {
       const imported=await api!.loadPresentations();
       try {
@@ -62,8 +64,11 @@ export function useMobileRemote() {
     async function verse(reference: string, version: string, live=false): Promise<LiveItem> {
       const d = await api!.mobileVerse(reference,version,live);
       const ref = `${d.book} ${d.chapter}:${d.verse}${d.endVerse ? `–${d.endVerse}` : ''}`;
-      return {source:'scripture',id:`${ref}@${version}`,label:ref,reference:ref,version,text:d.text,verses:d.verses,
-        slides:buildVerseSlides({book:d.book,chapter:d.chapter,version},d.verses,fitRules(d.verses)),origin:'operator'};
+      /* Named for the Bible its words are in: main reads an online chapter
+         that did not come in time in the fallback, and "· NIV" over KJV
+         words would put licensed initials on public-domain text. */
+      return {source:'scripture',id:`${ref}@${d.version}`,label:ref,reference:ref,version:d.version,text:d.text,verses:d.verses,
+        slides:buildVerseSlides({book:d.book,chapter:d.chapter,version:d.version},d.verses,fitRules(d.verses)),origin:'operator'};
     }
     async function execute(command: string, a: Record<string,unknown>): Promise<unknown> {
       const {engine:e,projector:p,run:r,media:m} = current.current;
@@ -84,7 +89,7 @@ export function useMobileRemote() {
           const songMatches = songs.flatMap(song => song.sections.map((section, index) => ({ id: song.id, title: song.title, index, label: section.label, lines: section.lines, score: lyricScore(heard, section.lines.join(' ')) })))
             .filter(match => match.score > 0).sort((a,b) => b.score-a.score).filter((match,index,all) => all.findIndex(other => other.id===match.id)===index).slice(0,4);
           return {sermon,aurora:document.documentElement.dataset.aurora || 'fern',songSearchActive,songMatches,run:r.segments.map(s=>({label:s.label,items:s.items.map(i=>({key:i.key,label:i.label,source:i.source}))})),preview:publicItem(p.preview),live:publicItem(p.live),screen:e.screen,asr:e.asr,asrMessage:e.asrMessage,
-            proposals:e.proposals.map(x=>({id:x.id,reference:x.reference,version:x.version,text:x.text,missing:x.missing,recognition:x.recognition})),
+            proposals:e.proposals.map(x=>({id:x.id,reference:x.reference,version:x.version,text:x.text,missing:x.missing,recognition:x.recognition,credit:versionCredit(x.version) ?? undefined})),
             sharing:!!cloud.activeServiceId,cloudReady:cloud.configured && cloud.signedIn,
             timers};
         }

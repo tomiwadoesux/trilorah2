@@ -113,3 +113,64 @@ export function sortVersions(codes: readonly string[]): string[] {
 export function versionOptions(codes: readonly string[]): { value: string; label: string; hint: string }[] {
   return sortVersions(codes).map((code) => ({ value: code, label: code, hint: versionHint(code) }))
 }
+
+/**
+ * One Bible as the pickers list it (main's get-bible-versions): what it is,
+ * where it comes from, and — for NKJV/NIV before a YouVersion key unlocks
+ * them — why it cannot be picked yet.
+ */
+export interface BibleVersionRow {
+  code: string
+  name: string
+  /** bible.db, or YouVersion through the local cache. */
+  source: 'bundled' | 'online'
+  available: boolean
+  /** Why it is greyed: 'needs a YouVersion key'. */
+  note?: string
+  /** An online Bible's copyright line, shown wherever its text is read. */
+  attribution?: string | null
+}
+
+/*
+ * An online Bible's copyright line, wherever its words are shown.
+ *
+ * YouVersion: "When displaying Bible text, always display a Bible
+ * Version's copyright attribution" — the line main lists on each online
+ * row (get-bible-versions). Each window keeps the current lines here
+ * (src/lib/versionCredits.ts follows main's list), and buildVerseSlides
+ * reads them, so the operator's preview, the wall, the stage screen and the
+ * phone carry the same line without every caller passing it along. Only
+ * the online Bibles have one; the bundled ones are public domain.
+ */
+const credits = new Map<string, string>()
+
+/** Replace the known copyright lines with those of `rows` (main's online Bibles). */
+export function setVersionCredits(rows: readonly Pick<BibleVersionRow, 'code' | 'attribution'>[]): void {
+  credits.clear()
+  for (const row of rows) {
+    const line = typeof row.attribution === 'string' ? row.attribution.replace(/\s+/g, ' ').trim() : ''
+    if (row.code && line) credits.set(row.code.toUpperCase(), line)
+  }
+}
+
+/** The copyright line `code`'s text must carry, or null when it needs none. */
+export function versionCredit(code: string | null | undefined): string | null {
+  return code ? credits.get(code.toUpperCase()) ?? null : null
+}
+
+/** Picker rows for the detailed list: the usable ones, then the greyed ones with their reason. */
+export function versionRowOptions(rows: readonly BibleVersionRow[]): { value: string; label: string; hint: string; disabled?: boolean }[] {
+  const usable = new Map(rows.filter((r) => r.available).map((r) => [r.code, r]))
+  const options: { value: string; label: string; hint: string; disabled?: boolean }[] = sortVersions([...usable.keys()]).map((code) => {
+    const row = usable.get(code)!
+    const name = versionInfo(code) ? versionHint(code) : row.name || code
+    return { value: code, label: code, hint: row.source === 'online' ? `${name} · online` : name }
+  })
+  /* Only the reason beside a greyed code: the list is 300px wide, and
+     "NKJV" needs no name to be recognised — what the operator lacks is why. */
+  for (const row of rows) {
+    if (row.available || usable.has(row.code)) continue
+    options.push({ value: row.code, label: row.code, hint: row.note || 'unavailable', disabled: true })
+  }
+  return options
+}
