@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
 import { SLIDE_RULES, fitRules } from '../../lib/slideRules';
-import type { LiveItem, ScreenState } from './projector';
+import { isScreenState, type LiveItem, type ScreenState } from './projector';
 import type { Spoken } from './transcript/types';
 import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
 import type { ScriptureRecognition } from '../../../shared/types';
@@ -394,7 +394,14 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
     off.push(api.onVoiceCommand?.((event) => setSpoken((s) => confirmTranscriptCommand(s, event))));
 
-    off.push(api.onScreenState?.((s: string) => setScreenState(s as ScreenState)));
+    /* Asked once as well as followed. After a reload this started at 'live'
+       over a held black, and the operator's status read from it. A change
+       heard before the answer lands is newer, so it wins. */
+    let screenHeard = false;
+    off.push(api.onScreenState?.((s: string) => { screenHeard = true; setScreenState(s as ScreenState); }));
+    void api.getScreenState?.()
+      .then((s) => { if (!screenHeard && isScreenState(s)) setScreenState(s); })
+      .catch(() => undefined);
 
     /*
      * A proposal, not a stage.

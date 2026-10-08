@@ -36,6 +36,8 @@ export type Origin = 'operator' | 'engine' | 'auto';
 
 /** Borrowed from the app's own ScreenState — same four words, same meaning. */
 export type ScreenState = 'live' | 'clear' | 'black' | 'logo';
+export const isScreenState = (s: unknown): s is ScreenState =>
+  s === 'live' || s === 'clear' || s === 'black' || s === 'logo';
 
 export interface LiveItem {
   source: LiveSource;
@@ -157,9 +159,21 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   /* The engine owns the screen state; this panel follows it. A change made
      anywhere else — the phone code going up over a cleared screen, a remote
      press — used to leave the LIVE panel drawing the old state. */
-  useEffect(() => window.api?.onScreenState?.((next: string) => {
-    if (next === 'live' || next === 'clear' || next === 'black' || next === 'logo') setScreen(next);
-  }), []);
+  useEffect(() => {
+    const api = window.api;
+    let heard = false;
+    const off = api?.onScreenState?.((next: string) => {
+      if (isScreenState(next)) { heard = true; setScreen(next); }
+    });
+    /* And asked once on mount. A reload (the default menu's Cmd+R ships)
+       started this panel at 'live' over a held black, and the preview's ✕
+       decides from it — it could have turned the black into a clear. A
+       change heard before the answer lands is newer, so it wins. */
+    void api?.getScreenState?.()
+      .then((s) => { if (!heard && isScreenState(s)) setScreen(s); })
+      .catch(() => undefined);
+    return off;
+  }, []);
 
   const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
   const stageUnlessOperator = useCallback((item: LiveItem) => {

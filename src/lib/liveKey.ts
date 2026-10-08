@@ -1,4 +1,5 @@
 import { bookIdFromName } from './books';
+import { parseReference } from '../../shared/parseReference';
 import type { LiveItem } from '../design/screens/projector';
 
 /*
@@ -11,23 +12,29 @@ import type { LiveItem } from '../design/screens/projector';
  * second time and restarted the words' entrance halfway through: the blink
  * an operator sees on every "next". The echo and the push name the same
  * reading differently — "Psalm 104:12" from the run of service, "Psalms
- * 104:12" from the engine, an en dash from the phone, no translation on a run
- * item until the engine picks one — so the key is built from the book's
- * number and the verse numbers, never the spelling.
+ * 104:12" from the engine, an en dash from the phone, "John 3 16" typed into a
+ * run sheet, no translation on a run item until the engine picks one — so the
+ * key is built from the book's number and the verse numbers, never the
+ * spelling. The reference is read with the same parser main resolves the push
+ * with (shared/parseReference), so whatever main put on the wall, this reads
+ * as the same reading as the engine's canonical "John 3:16" echo.
  */
-
-const REFERENCE = /^(.+?)\s+(\d+):(\d+)(?:\s*[-–—]\s*(\d+))?$/;
 
 /** The reading a scripture item covers, or the trimmed text when it is not one. */
 function scriptureSpan(item: LiveItem): string {
   /* The phone's items carry "John 3:16@KJV" as their id. */
   const raw = (item.reference ?? item.id).replace(/@[^@]*$/, '').trim();
-  const m = raw.match(REFERENCE);
-  const book = m ? bookIdFromName(m[1]) : null;
-  if (!m || !book) return `scripture:${raw.replace(/\s*[–—]\s*/g, '-').replace(/\s+/g, ' ').toLowerCase()}`;
-  const first = Number(m[3]);
-  const last = m[4] ? Number(m[4]) : first;
-  return `scripture:${book.id}:${Number(m[2])}:${first}-${last}`;
+  const parsed = parseReference(raw);
+  /* Main refuses a reference without a verse or one cut off mid-type, so
+     there is no reading to name — only the words. */
+  const book = parsed && !parsed.partial && parsed.chapter !== null && parsed.verse !== null
+    ? bookIdFromName(parsed.bookQuery)
+    : null;
+  if (!parsed || !book || parsed.chapter === null || parsed.verse === null) {
+    return `scripture:${raw.replace(/\s*[–—]\s*/g, '-').replace(/\s+/g, ' ').toLowerCase()}`;
+  }
+  const last = parsed.endVerse ?? parsed.verse;
+  return `scripture:${book.id}:${parsed.chapter}:${parsed.verse}-${last}`;
 }
 
 /**

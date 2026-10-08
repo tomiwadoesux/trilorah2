@@ -20,6 +20,7 @@ import { SermonStartControl } from './SermonStartControl';
 import { MicPicker } from '../../components/MicPicker';
 import { MobileRemotePanel } from '../../components/MobileRemotePanel';
 import { ScriptureCatches, ScriptureFindOverlay, StorySearch } from './ScriptureCatches';
+import { useScriptureFindStore } from '../../stores/scriptureFindStore';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
 import { orbStatusDescription, useOrbShape } from '../orb/orbIdle';
@@ -118,7 +119,8 @@ import {
 import { SlidesBrowser } from './presentations';
 import { StockSearch } from './stockSearch';
 import { addMedia, removeMedia, mediaSrc, randomStill, useMediaLibrary, videoLength, videoPoster, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
-import { ProjectorProvider, useProjector, type LiveItem } from './projector';
+import { ProjectorProvider, useProjector, type LiveItem, type ScreenState } from './projector';
+import { previewClearPlan } from '../../lib/previewClear';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, type Proposal } from './engine';
 import { RunProvider, useRun, type RunSegment } from './run';
 import { DragKeyframes, DragProvider, useDrag, type DragItem, type DropTargetProps } from './drag';
@@ -3998,6 +4000,9 @@ function Stage({
   const staged = stageSlide(preview, previewOnAir ? Math.min(slide, (preview.slides?.length ?? 1) - 1) : 0);
   const onAir = stageSlide(live, slide);
 
+  /* A go live on its way. The preview's ✕ waits it out, like a step: a clear
+     taken mid-push is lifted again when the push lands. */
+  const [sending, setSending] = useState(false);
   // Pass the staged identity so a newer speech preview cannot replace it.
   const goLive = async () => {
     if (!preview) return;
@@ -4009,12 +4014,28 @@ function Stage({
          than verses — one, or pages of several (verseDisplay pageVerses). */
       void window.api?.setSetting('breakOnVerse', (preview.slides?.length ?? 0) >= (preview.verses?.length ?? 0));
     }
+    setSending(true);
     try {
       await projector.promote();
     } catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not send to the live screen.' }); }
+    finally { setSending(false); }
   };
 
   const blacked = screen === 'black' || screen === 'logo';
+  /* One way to change the wall's screen state, for the LIVE pane's clear and
+     the preview's ✕ alike: the engine (and through it every output) and this
+     panel, which would otherwise wait for the round trip to redraw. */
+  const setWall = (next: ScreenState) => { engine.setScreen(next); projector.setScreen(next); };
+  /* What the preview's ✕ takes away — the staged item, and the words on the
+     wall too when the preview is showing what the room is reading
+     (lib/previewClear). Decided on the press alone: an engine withdrawal or a
+     catch replacing the box never reaches the wall. */
+  const clearPlan = previewClearPlan({ preview, live, screen, editingTheme });
+  /* The find-scripture answers are up over the preview (ScriptureFindOverlay).
+     The row's controls would act on the verse hidden behind them — the
+     pager even steps the wall — so they stand down until a card is chosen or
+     the answers are closed. */
+  const finding = useScriptureFindStore((s) => !!s.found);
 
   // Preview navigation is an explicit presentation action: both panels and
   // the audience output follow. Selecting a new library item still only stages it.
@@ -4279,8 +4300,8 @@ function Stage({
         }
         controls={
           <>
-            {deckCount > 0 && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
-            {range && (
+            {deckCount > 0 && !finding && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
+            {range && !finding && (
               <Button
                 label={together ? 'separate' : 'together'}
                 tone="ash"
@@ -4297,25 +4318,40 @@ function Stage({
             {/* The staged reading's length, without a cursor to move — it
                 says "this is three screens" before the operator commits to
                 reading it out. */}
-            {(preview?.slides?.length ?? 0) > 1 && (
+            {(preview?.slides?.length ?? 0) > 1 && !finding && (
               <span className="shrink-0 text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.4)]">
                 {preview!.slides!.length} slides
               </span>
             )}
-            {preview && (
+            {/* Only with something staged: an empty box, or the themes
+                sample, has nothing to take away — and the LIVE pane's clear
+                is one panel over. Waits out a step or a go live in flight,
+                whose landing would put the words straight back. Hidden under
+                the find answers, whose own ✕ is the one that means "close". */}
+            {preview && !finding && (
               <Button
                 label=""
                 tone="ash"
                 icon={<CloseIcon size={12} />}
-                title="unstage — take it out of preview"
-                onClick={() => projector.stage(null)}
+                disabled={stepping || sending}
+                title={clearPlan.clearWall
+                  ? 'clear — take it out of preview and off the projector (background stays)'
+                  : 'unstage — take it out of preview'}
+                onClick={() => {
+                  projector.stage(null);
+                  if (!clearPlan.clearWall) return;
+                  setWall('clear');
+                  /* The log keys on what is live, which a clear keeps. Short
+                     enough for the status pill; "restore" is on the LIVE pane. */
+                  say?.({ text: 'words off — background stays' });
+                }}
               />
             )}
             <Button
               label="go live"
               tone="go"
-              disabled={!preview || stepping}
-              title={preview ? `put ${preview.label} on the projector` : 'stage something first'}
+              disabled={!preview || stepping || finding}
+              title={finding ? 'choose a passage above, or close the results (esc)' : preview ? `put ${preview.label} on the projector` : 'stage something first'}
               onClick={goLive}
             />
           </>
@@ -4376,16 +4412,16 @@ function Stage({
               </>
             ) : null}
             {/* Clear drops the words and keeps the picture — the app's own
-                meaning of the word, not a blank screen. */}
+                meaning of the word, not a blank screen. While the wall is
+                cleared it says "restore", the way the phone remote does: the
+                preview's ✕ can clear it too, and the gold LIVE panel stays
+                lit over a wall showing only its background. */}
             <Button
-              label="clear"
+              label={screen === 'clear' ? 'restore' : 'clear'}
               tone="ash"
               disabled={!engine.caps.outputs && !live}
-              title="drop the words, keep the background"
-              onClick={() => {
-                engine.setScreen(screen === 'clear' ? 'live' : 'clear');
-                projector.setScreen(screen === 'clear' ? 'live' : 'clear');
-              }}
+              title={screen === 'clear' ? 'bring the words back' : 'drop the words, keep the background'}
+              onClick={() => setWall(screen === 'clear' ? 'live' : 'clear')}
             />
             {/*
               The companion code, on the wall.

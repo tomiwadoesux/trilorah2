@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button, MicIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, SearchField } from '../../ui';
 import { useEngine } from './engine';
 import { useScriptureFindStore } from '../../stores/scriptureFindStore';
+import { findTier, perPageFor, type FindTier } from '../../lib/findTier';
 import './scriptureFind.css';
-
-const PER_PAGE = 4;
 
 /**
  * "What was that?" — the operator heard an allusion the engine let pass.
@@ -56,7 +55,7 @@ export function ScriptureCatches() {
  * (owner, 2026-10-07). The operator describes a story or half-remembers a
  * line — "abraham offers his son", "the one about the lost sheep" — and the
  * same matchers the button uses look for it. The answers open over the
- * preview, the same four-to-a-page cards as the button's.
+ * preview, the same cards as the button's.
  */
 export function StorySearch() {
   const open = useScriptureFindStore((s) => s.open);
@@ -111,7 +110,35 @@ export function ScriptureFindOverlay() {
   const page = useScriptureFindStore((s) => s.page);
   const setPage = useScriptureFindStore((s) => s.setPage);
   const close = useScriptureFindStore((s) => s.close);
-  const pages = found ? Math.ceil(found.matches.length / PER_PAGE) : 0;
+
+  /*
+   * How many cards fit, from the band the veil actually covers (lib/findTier).
+   * Measured once before the first paint, then followed: the library handle
+   * and the window both reshape the band while the answers are up. The veil's
+   * size comes from its insets, never its content, so the observer cannot
+   * feed itself.
+   */
+  const veilRef = useRef<HTMLDivElement>(null);
+  const [tier, setTier] = useState<FindTier>('full');
+  const isOpen = !!found;
+  useLayoutEffect(() => {
+    const el = veilRef.current;
+    if (!el) return;
+    const cs = getComputedStyle(el);
+    const box = el.getBoundingClientRect();
+    setTier(findTier(
+      box.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight),
+      box.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom),
+    ));
+    const ro = new ResizeObserver(([entry]) => setTier(findTier(entry.contentRect.width, entry.contentRect.height)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isOpen]);
+  const perPage = perPageFor(tier);
+  const pages = found ? Math.ceil(found.matches.length / perPage) : 0;
+  /* Lowering the library on page 2 of 2 makes it one page of four: the page
+     the store remembers is clamped here rather than rendered empty. */
+  const at = Math.min(page, Math.max(0, pages - 1));
 
   useEffect(() => {
     if (!found) return;
@@ -119,8 +146,8 @@ export function ScriptureFindOverlay() {
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
       if (e.key === 'Escape') close();
-      else if (e.key === 'ArrowRight') setPage(Math.min(pages - 1, page + 1));
-      else if (e.key === 'ArrowLeft') setPage(Math.max(0, page - 1));
+      else if (e.key === 'ArrowRight') setPage(Math.min(pages - 1, at + 1));
+      else if (e.key === 'ArrowLeft') setPage(Math.max(0, at - 1));
       else return;
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -128,20 +155,29 @@ export function ScriptureFindOverlay() {
     /* Capture, so this runs before the preview's own arrow-key listeners. */
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [found, page, pages, close, setPage]);
+  }, [found, at, pages, close, setPage]);
 
   if (!found) return null;
-  const shown = found.matches.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
+  const shown = found.matches.slice(at * perPage, at * perPage + perPage);
 
-  return <div className="find-veil" role="dialog" aria-label={found.how === 'typed' ? 'passages found for what was typed' : 'passages found for what was just said'}>
+  return <div ref={veilRef} className="find-veil" data-tier={tier} role="dialog" aria-label={found.how === 'typed' ? 'passages found for what was typed' : 'passages found for what was just said'}>
     <div className="find-head">
       <p className="find-heard" title={found.heard}>{found.how === 'typed' ? 'searched' : 'heard'} <em>“{found.heard.split(' ').slice(-10).join(' ')}”</em></p>
+      {/* In the head, not a row of its own: a foot row cost the cards a line
+          of text on exactly the bands that page. */}
+      {pages > 1 && <div className="find-pager">
+        <button type="button" className="find-round" aria-label="previous passages" title="previous passages ←" disabled={at === 0} onClick={() => setPage(at - 1)}><ChevronLeftIcon size={12} /></button>
+        <span className="find-count">{at + 1} / {pages}</span>
+        <button type="button" className="find-round" aria-label="next passages" title="next passages →" disabled={at >= pages - 1} onClick={() => setPage(at + 1)}><ChevronRightIcon size={12} /></button>
+      </div>}
       <button type="button" className="find-round" aria-label="close" title="close without choosing (Esc)" onClick={close}><CloseIcon size={12} /></button>
     </div>
-    {/* Keyed by page so the cards of a new page rise in like the first did. */}
-    <div className="find-grid" key={page}>
+    {/* Keyed by page so the cards of a new page rise in like the first did.
+        The count lets one or two answers take the whole band. */}
+    <div className="find-grid" key={at} data-count={shown.length}>
       {shown.map((match, i) => <button key={match.reference} type="button" className="find-card" style={{ '--find-i': i } as React.CSSProperties}
-        title={`put ${match.reference} on the projector${match.evidence.length ? ` — matched on: ${match.evidence.join(', ')}` : ''}`}
+        /* The whole passage on hover, since a small band clamps it to a line. */
+        title={`${match.reference}${match.title ? ` — ${match.title}` : ''}\n${match.text}\n\nput it on the projector${match.evidence.length ? ` — matched on: ${match.evidence.join(', ')}` : ''}`}
         onClick={() => { if (engine.pushReference(match.reference, match.version)) close(); }}>
         <span className="find-ref">{match.reference}</span>
         <span className="find-title">{match.title}</span>
@@ -149,10 +185,5 @@ export function ScriptureFindOverlay() {
         <span className="find-go">go live ↗</span>
       </button>)}
     </div>
-    {pages > 1 && <div className="find-foot">
-      <button type="button" className="find-round" aria-label="previous passages" disabled={page === 0} onClick={() => setPage(page - 1)}><ChevronLeftIcon size={12} /></button>
-      <span className="find-count">{page + 1} / {pages}</span>
-      <button type="button" className="find-round" aria-label="next passages" title="next passages →" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}><ChevronRightIcon size={12} /></button>
-    </div>}
   </div>;
 }
