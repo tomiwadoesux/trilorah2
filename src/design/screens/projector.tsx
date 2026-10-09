@@ -29,7 +29,7 @@ import { liveKey, spanKey } from '../../lib/liveKey';
  * cannot reach a congregation.
  */
 
-export type LiveSource = 'scripture' | 'song' | 'media' | 'presentation';
+export type LiveSource = 'scripture' | 'song' | 'media' | 'presentation' | 'background';
 
 /** Who put it there. The operator has to be able to tell. */
 export type Origin = 'operator' | 'engine' | 'auto';
@@ -120,6 +120,8 @@ interface ProjectorValue {
   withdrawRecognition: (suggestionId: string) => void;
   /** Put something on the projector, staged or not. */
   send: (item: LiveItem) => Promise<void>;
+  /** Publish an already-applied background without pushing the staged text theme. */
+  sendBackground: (item: LiveItem & { source: 'background' }) => Promise<void>;
   /** The local half of a push: what was staged becomes what is live. */
   promote: () => Promise<void>;
   clear: () => void;
@@ -193,6 +195,9 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
    * clear always is.
    */
   const reflect = useCallback((item: LiveItem | null) => {
+    // clear-media is also the confirmation echo of a background-only push.
+    // Keeping that marker leaves Go live and the LIVE panel in agreement.
+    if (!item && (liveRef.current?.source === 'background' || [...inFlight.current.keys()].some(key => key.startsWith('background:')))) return;
     if (item && (inFlight.current.has(spanKey(item)) || liveKey(item) === liveKey(liveRef.current))) return;
     liveRef.current = item;
     setLive(item); setDelivery(n => n + 1); setSlideIndex(0);
@@ -202,9 +207,9 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
      chapter while a later song or verse goes up; when it comes back it must
      not write over the newer one here (main drops it from the wall too). */
   const sends = useRef(0);
-  const send = useCallback(async (item: LiveItem) => {
+  const deliver = useCallback(async (item: LiveItem, prepareTheme: boolean) => {
     const sent = ++sends.current;
-    await prepareOutput.current?.();
+    if (prepareTheme) await prepareOutput.current?.();
     const key = spanKey(item);
     inFlight.current.set(key, (inFlight.current.get(key) ?? 0) + 1);
     let delivered: LiveItem | null;
@@ -225,8 +230,11 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     /* Pushing lifts a clear, the way the app's own screen state machine
        does when content arrives — but deliberately NOT a black or a logo.
        Those are held on purpose and only a person lifts them. */
-    setScreen((s) => (s === 'clear' ? 'live' : s));
+    if (item.source !== 'background') setScreen((s) => (s === 'clear' ? 'live' : s));
   }, []);
+
+  const send = useCallback((item: LiveItem) => deliver(item, true), [deliver]);
+  const sendBackground = useCallback((item: LiveItem & { source: 'background' }) => deliver(item, false), [deliver]);
 
   const promote = useCallback(async () => {
     if (preview) await send(preview);
@@ -290,6 +298,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       stageUnlessOperator,
       withdrawRecognition,
       send,
+      sendBackground,
       promote,
       clear,
       setSlide,
@@ -298,7 +307,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       isLive,
       isStaged,
     }),
-    [delivery, beforeSend, live, preview, slide, screen, stage, stageUnlessOperator, withdrawRecognition, send, promote, clear, setSlide, stepSlide, isLive, isStaged],
+    [delivery, beforeSend, live, preview, slide, screen, stage, stageUnlessOperator, withdrawRecognition, send, sendBackground, promote, clear, setSlide, stepSlide, isLive, isStaged],
   );
   return <ProjectorContext.Provider value={value}>{children}</ProjectorContext.Provider>;
 }

@@ -1,3 +1,4 @@
+import { videoSpeed, videoBass } from './backgroundPlayback';
 import type { TriApi, TriRendererState } from '../../shared/triBridge';
 import type { TriCategory, TriSelection, TriSnapshot } from '../../shared/triPackage';
 import { getMediaLibrary, importMedia, type ThemeMedia } from '../design/screens/mediaLibrary';
@@ -47,6 +48,9 @@ export function normalizeTriTheme(value: unknown, fallback: PackageTheme): Packa
   const number = (key: keyof SlideTheme, min: number, max: number) => typeof input[key] === 'number' && Number.isFinite(input[key]) ? Math.max(min, Math.min(max, input[key] as number)) : fallback[key] as number;
   return {
     backgroundId: typeof input.backgroundId === 'string' && input.backgroundId ? input.backgroundId : fallback.backgroundId,
+    ...(input.videoSpeed !== undefined || fallback.videoSpeed !== undefined ? { videoSpeed: videoSpeed(input.videoSpeed ?? fallback.videoSpeed) } : {}),
+    ...(input.videoBass !== undefined || fallback.videoBass !== undefined ? { videoBass: videoBass(input.videoBass ?? fallback.videoBass) } : {}),
+    ...(input.videoSound !== undefined || fallback.videoSound !== undefined ? { videoSound: (input.videoSound ?? fallback.videoSound) === true } : {}),
     dimness: number('dimness', 0, 100), blur: number('blur', 0, 12), shadow: number('shadow', 0, 100),
     size: number('size', -2, 8), verseSize: number('verseSize', -2, 8), refGap: number('refGap', 0, 3), safeMargin: number('safeMargin', 3, 20),
     textWidth: clampTextWidth(input.textWidth, 100 - number('safeMargin', 3, 20) * 2),
@@ -124,9 +128,10 @@ export function applyTriSnapshot(snapshot: TriSnapshot, openService: boolean): v
       window.dispatchEvent(new CustomEvent(TRI_THEME_EVENT, { detail: converted }));
     }
   }
-  const service = snapshot.categories.service?.[0]?.data;
-  if (validRun(service?.segments)) {
-    operatorRunStore.update(previous => openService ? service.segments : [...previous, ...service.segments]);
+  const services = snapshot.categories.service ?? [];
+  if (services.length && services.every(service => validRun(service.data?.segments))) {
+    const segments = services.flatMap(service => service.data.segments);
+    operatorRunStore.update(previous => openService ? segments : [...previous, ...segments]);
   }
   window.dispatchEvent(new Event('presentations-updated'));
   window.dispatchEvent(new Event('trilorah-package-imported'));

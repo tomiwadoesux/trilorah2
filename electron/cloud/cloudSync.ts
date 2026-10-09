@@ -1,8 +1,48 @@
-import { getSupabase, isCloudConfigured } from './supabaseClient'
+import { getSupabase, getPublicSupabase, isCloudConfigured } from './supabaseClient'
+import { transcriptDeliveryHealth, type TranscriptDeliveryHealth } from '../../shared/transcriptDeliveryHealth'
 import { enqueue, size, flush } from './offlineQueue'
 import type { CloudOp } from './offlineQueue'
+import { capitalizeScriptureNames, capitalizeScriptureWords } from '../../shared/normalizeDisplay'
 
 let activeServiceId: string | null = null
+let latestTranscriptAt = 0
+let deliveryGapAt: number | null = null
+let sharingTranscript = false
+let deliveryHealth: TranscriptDeliveryHealth = { state: 'off', checkedAt: 0 }
+let checkingDelivery: Promise<TranscriptDeliveryHealth> | null = null
+
+export function checkTranscriptDelivery(): Promise<TranscriptDeliveryHealth> {
+  const id = activeServiceId
+  if (!id || !latestTranscriptAt || !sharingTranscript) return Promise.resolve({ state: 'off', checkedAt: Date.now() })
+  if (Date.now() - deliveryHealth.checkedAt < 10_000) return Promise.resolve(deliveryHealth)
+  if (checkingDelivery) return checkingDelivery
+  checkingDelivery = (async () => {
+    const client = getPublicSupabase()
+    if (!client) return { state: 'off', checkedAt: Date.now() } as TranscriptDeliveryHealth
+    try {
+      const service = await client.from('services').select('id,is_public,publish_transcript,ended_at').eq('id', id).abortSignal(AbortSignal.timeout(8000)).maybeSingle()
+      if (service.error) throw service.error
+      if (service.data && (!service.data.is_public || !service.data.publish_transcript || service.data.ended_at)) return { state: 'off', checkedAt: Date.now() } as TranscriptDeliveryHealth
+      const rows = await client.from('transcript_chunks').select('timestamp').eq('service_id', id).order('timestamp', { ascending: false }).limit(1).abortSignal(AbortSignal.timeout(8000))
+      if (rows.error) throw rows.error
+      const latest = rows.data?.[0]?.timestamp
+      const at = latest ? Date.parse(latest) : null
+      const publicAt = at != null && Number.isFinite(at) ? at : null
+      if (activeServiceId !== id) return { state: 'off', checkedAt: Date.now() } as TranscriptDeliveryHealth
+      if (publicAt != null && publicAt >= latestTranscriptAt - 30_000) deliveryGapAt = null
+      else deliveryGapAt ??= Date.now()
+      return transcriptDeliveryHealth(latestTranscriptAt, publicAt, Date.now(), deliveryGapAt ?? Date.now())
+    } catch { return { state: 'unavailable', checkedAt: Date.now() } as TranscriptDeliveryHealth }
+  })().then(result => {
+    if (activeServiceId === id) deliveryHealth = result
+    return result
+  }).finally(() => { checkingDelivery = null })
+  return checkingDelivery
+}
+/** Retries queued writes without restarting audio or creating another service. */
+export async function retryPublishing(): Promise<void> {
+  await flush(applyOp)
+}
 /** When this service's transcript clock started — see pushTranscriptChunk. */
 let serviceStartedAt: number | null = null
 let activeAccountId: string | null = null
@@ -126,6 +166,10 @@ export async function startService(
       .single()
     if (error) throw error
     activeServiceId = data.id
+    latestTranscriptAt = 0
+    deliveryGapAt = null
+    sharingTranscript = (opts.isPublic ?? true) && (opts.publishTranscript ?? true)
+    deliveryHealth = { state: 'off', checkedAt: 0 }
     serviceStartedAt = Date.now()
     console.log(`☁️  Service created in cloud: ${activeServiceId}`)
     return { success: true, serviceId: activeServiceId }
@@ -192,15 +236,16 @@ export function pushTranscriptChunk(
 ): void {
   if (!activeServiceId || rehearsal) return
   if (!text.trim()) return
+  latestTranscriptAt = Date.now()
   enqueue({
     table: 'transcript_chunks',
     op: 'insert',
     payload: {
       service_id: activeServiceId,
-      text,
+      text: capitalizeScriptureNames(text),
       is_final: isFinal,
       segment_type: segmentType,
-      words: words && words.length > 0 ? words : null,
+      words: words && words.length > 0 ? capitalizeScriptureWords(words) : null,
       // Where this sits in the service, so a phone watching a stream that is
       // half a minute behind can line the words up with what it is hearing.
       offset_ms: serviceStartedAt ? Date.now() - serviceStartedAt : null,

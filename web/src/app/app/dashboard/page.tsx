@@ -6,6 +6,7 @@ import SignOutButton from "./SignOutButton";
 import FinishSetup from "./FinishSetup";
 import QrCard from "./QrCard";
 import { IconCredits } from '@/components/IconCredits';
+import { ArrowRight } from '@/components/icons';
 
 export const revalidate = 0;
 
@@ -129,9 +130,9 @@ export default async function DashboardPage() {
           </h2>
           <Link
             href="/app/services"
-            className="text-[11px] text-gray-500 hover:text-brand"
+            className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-brand"
           >
-            View all →
+            View all <ArrowRight size={12} />
           </Link>
         </div>
         {services && services.length > 0 ? (

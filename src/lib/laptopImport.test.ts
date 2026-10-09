@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ImportedMedia } from '../../shared/importedMedia';
 import type { ThemeMedia } from '../design/screens/mediaLibrary';
-import { CLIP_NOT_BACKGROUND } from './backgroundDrop';
 import {
   dragKinds,
   finderPaneHint,
@@ -45,10 +44,10 @@ describe('what a file from the laptop becomes', () => {
     expect(fromImported(file({ kind: 'video' }), 'media', { playable: false }).detail).toBe('will not play here');
   });
 
-  it('lands on the shelf being looked at — except a clip, which is never a background', () => {
+  it('keeps both photos and clips on the requested shelf', () => {
     expect(shelfFor({ kind: 'photo' }, 'themes')).toBe('themes');
     expect(shelfFor({ kind: 'photo' }, 'media')).toBe('media');
-    expect(shelfFor({ kind: 'video' }, 'themes')).toBe('media');
+    expect(shelfFor({ kind: 'video' }, 'themes')).toBe('themes');
   });
 });
 
@@ -71,7 +70,7 @@ describe('the line an import ends on', () => {
 
   it('says where a clip went when it was added while looking at themes', () => {
     const line = importNotice({ added: [card(), card(), card({ kind: 'video', label: 'baptism', collection: 'media' })], already: [], skipped: [], wanted: 'themes' });
-    expect(line).toBe(`added 2 to themes and baptism to media — ${CLIP_NOT_BACKGROUND}`);
+    expect(line).toBe('added 2 to themes and baptism to media');
   });
 
   it('says what was already there and what was skipped, grouped by reason', () => {
@@ -104,30 +103,30 @@ describe('a Finder drag over the stage', () => {
     expect(dragKinds([{ kind: 'string', type: 'text/plain' }])).toBe('unknown');
   });
 
-  it('lights the LIVE box for pictures only, as an in-app drag does', () => {
+  it('accepts photos and looping videos in either stage box', () => {
     expect(finderStageHint('stage-live', 'photo')).toBe('add to themes · background on the wall now');
-    expect(finderStageHint('stage-live', 'video')).toBeNull();
-    expect(finderStageHint('stage-preview', 'video')).toBe('add to media · stage this clip');
-    expect(finderStageHint('stage-preview', 'photo')).toBe('add to themes · preview this background');
+    expect(finderStageHint('stage-live', 'video')).toBe('add to themes · looping video on the wall now');
+    expect(finderStageHint('stage-preview', 'video')).toBe('add to themes · looping video in preview');
+    expect(finderStageHint('stage-preview', 'photo')).toBe('add to themes · background in preview');
   });
 
-  it('acts on the first still; on the preview a clip when there is no still', () => {
+  it('uses the first playable background and skips undecodable videos', () => {
     const clip = card({ id: 'c', kind: 'video', collection: 'media' });
     const still = card({ id: 's' });
-    expect(finderStagePick('stage-live', [clip, still])).toBe(still);
-    expect(finderStagePick('stage-live', [clip])).toBeUndefined();
+    expect(finderStagePick('stage-live', [clip, still])).toBe(clip);
+    expect(finderStagePick('stage-live', [clip])).toBe(clip);
     expect(finderStagePick('stage-preview', [clip])).toBe(clip);
     expect(finderStagePick('stage-preview', [card({ id: 'b', kind: 'video', detail: 'will not play here' })])).toBeUndefined();
   });
 
   it('tells the media pane where a drop goes', () => {
     expect(finderPaneHint('media', 'photo')).toBe('drop to add to media');
-    expect(finderPaneHint('themes', 'video')).toBe('drop to add to media — clips are not backgrounds');
+    expect(finderPaneHint('themes', 'video')).toBe('drop to add to themes');
   });
 
   it('lists every target while the files are over something else', () => {
     expect(finderPaneHint('themes', 'photo', false)).toBe('drop here to add to themes · on the preview or the live screen to use it now');
-    expect(finderPaneHint('themes', 'video', false)).toBe('drop here to add to media · on the preview to stage it');
+    expect(finderPaneHint('themes', 'video', false)).toBe('drop here to add to themes · on the preview or the live screen to use it now');
     expect(finderPaneHint('media', 'mixed', false)).toBe('drop here to add to media · on the preview or the live screen to use it now');
   });
 });

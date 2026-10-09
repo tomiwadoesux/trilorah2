@@ -240,7 +240,7 @@ export function ConnectionsTile({
               e.stopPropagation();
               onAdd?.();
             }}
-            className="flex w-full items-center gap-1.5 rounded-[6px] px-1 py-1 text-left transition-colors hover:bg-white/[0.05]"
+            className="flex w-full items-center gap-1.5 rounded-[4px] px-1 py-1 text-left transition-colors hover:bg-white/[0.05]"
             style={{ color: MUTED }}
           >
             <PlusIcon size={11} className="shrink-0" />

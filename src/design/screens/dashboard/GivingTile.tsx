@@ -146,7 +146,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
                     className="flex min-h-0 flex-1 items-center gap-2.5 border-b border-[rgb(255_255_255_/_0.05)] px-0.5 last:border-b-0"
                   >
                     <span
-                      className="grid size-[26px] shrink-0 place-items-center rounded-[8px]"
+                      className="grid size-[26px] shrink-0 place-items-center rounded-[5px]"
                       style={{
                         background: active ? `color-mix(in srgb, ${m.ink} 12%, transparent)` : 'rgb(255 255 255 / 0.035)',
                         boxShadow: `inset 0 0 0 1px ${active ? `color-mix(in srgb, ${m.ink} 30%, transparent)` : 'rgb(255 255 255 / 0.07)'}`,
@@ -190,7 +190,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
                     /* The handle behind the chip, on hover — the one detail
                        worth leaning in for without opening the card. */
                     title={active && value ? String(value) : 'not set up'}
-                    className="rounded-full px-2 py-[2px] text-[length:var(--tri-size-eyebrow)] lowercase transition-[filter] hover:brightness-150"
+                    className="rounded-md px-2 py-[2px] text-[length:var(--tri-size-eyebrow)] lowercase transition-[filter] hover:brightness-150"
                     style={{
                       color: active ? '#8fd3c0' : 'rgb(229 243 242 / 0.3)',
                       boxShadow: `inset 0 0 0 1px ${active ? 'rgb(143 211 192 / 0.35)' : 'rgb(255 255 255 / 0.08)'}`,

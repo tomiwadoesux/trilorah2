@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useServiceNotifications } from './lib/useServiceNotifications';
 import { useAppStore } from './stores/appStore';
 import { useLiveStore } from './stores/liveStore';
 import { fetchVerseText, formatRef } from './lib/verse';
@@ -154,6 +155,7 @@ function useEngineWiring() {
 
 export default function App() {
   useEngineWiring();
+  useServiceNotifications();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">

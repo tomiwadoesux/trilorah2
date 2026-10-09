@@ -7,6 +7,9 @@ import type { TriApi, TriRendererState } from '../../shared/triBridge'
 import { writeTri, inspectTri, extractTri } from './triArchive'
 import { buildTriCatalog, selectTriContent } from './triCatalog'
 import { planTriImport, commitTriImport } from './triImport'
+import { convertForeign, type ConvertedImport } from '../importers/foreignImport'
+import { readRecipes, writeRecipes } from '../importers/recipes'
+import { isColumnChoice, type ForeignAnswers, type ForeignQuestion } from '../../shared/foreignImport'
 
 interface Hooks {
   window: () => BrowserWindow | null
@@ -21,7 +24,14 @@ const selectedIds = (snapshot: TriSnapshot): TriSelection => Object.fromEntries(
 
 export function registerTriPackages(hooks: Hooks) {
   let pendingOpen: string | undefined = process.argv.find(arg => /\.tri$/i.test(arg) && fs.existsSync(arg))
-  const previews = new Map<string, { file: string; manifest: TriManifest }>()
+  const previews = new Map<string, { file: string; manifest: TriManifest; directory?: string; warnings?: string[]; paths?: string[]; questions?: ForeignQuestion[]; answers?: ForeignAnswers }>()
+  const discard = (token: string) => {
+    const preview = previews.get(token)
+    previews.delete(token)
+    if (preview?.directory) fs.rmSync(preview.directory, { recursive: true, force: true })
+  }
+  const makeRoom = () => { if (previews.size >= 4) discard(previews.keys().next().value!) }
+  app.on('will-quit', () => { for (const token of previews.keys()) { try { discard(token) } catch { /* OS temp cleanup remains available. */ } } })
   let operation = Promise.resolve<unknown>(undefined)
   const serial = <T>(run: () => Promise<T>): Promise<T> => {
     const result = operation.then(run, run)
@@ -40,6 +50,31 @@ export function registerTriPackages(hooks: Hooks) {
     return state
   }
   const catalog = (state: TriRendererState) => buildTriCatalog(app.getPath('userData'), hooks.settings(), rendererState(state), hooks.songs(), hooks.records())
+
+  /** Register a converted preview and work out which items start checked. */
+  const stage = (converted: ConvertedImport, paths: string[], answers: ForeignAnswers, token: string) => {
+    try {
+      makeRoom()
+      const warnings = [...converted.warnings]
+      const existing = new Set(hooks.songs().map(song => song.title.trim().toLocaleLowerCase()))
+      const duplicateIds = new Set((converted.manifest.categories.songs ?? []).filter(song => existing.has(song.data.title.trim().toLocaleLowerCase())).map(song => song.id))
+      if (duplicateIds.size) warnings.push(`${duplicateIds.size} song title(s) already exist in your library and are unchecked. Select them to keep another copy. Selecting the run of service also includes its required songs.`)
+      const suggestedSelection = selectedIds(converted.manifest)
+      suggestedSelection.songs = suggestedSelection.songs?.filter(id => !duplicateIds.has(id))
+      if (duplicateIds.size) suggestedSelection.service = []
+      const storedMedia = hooks.settings().triRendererState?.media
+      const mediaHashes = new Set((Array.isArray(storedMedia) ? storedMedia : []).map((item: any) => typeof item.url === 'string' ? /(?:\/|:)([a-f0-9]{64})(?:\.|:)/i.exec(item.url)?.[1] : undefined).filter(Boolean))
+      const duplicateMedia = new Set((converted.manifest.categories.media ?? []).filter(item => mediaHashes.has(/^tri-asset:([a-f0-9]{64}):/.exec(item.data.url)?.[1])).map(item => item.id))
+      if (duplicateMedia.size) {
+        suggestedSelection.media = suggestedSelection.media?.filter(id => !duplicateMedia.has(id))
+        suggestedSelection.service = []
+        warnings.push(`${duplicateMedia.size} media file(s) match a previous package import and are unchecked. Selecting a run or theme also includes the media it needs.`)
+      }
+      if (suggestedSelection.themes) suggestedSelection.themes = suggestedSelection.themes.slice(0, 1)
+      previews.set(token, { ...converted, warnings, paths, answers })
+      return { token, manifest: converted.manifest, title: converted.manifest.title, warnings, suggestedSelection, questions: converted.questions }
+    } catch (error) { fs.rmSync(converted.directory, { recursive: true, force: true }); throw error }
+  }
 
   const api: Omit<TriApi, 'onTriOpenRequested'> = {
     triCatalog: async state => catalog(state),
@@ -83,11 +118,42 @@ export function registerTriPackages(hooks: Hooks) {
         file = result.filePaths[0]
       }
       const manifest = await inspectTri(file)
-      if (previews.size >= 4) previews.delete(previews.keys().next().value!)
+      makeRoom()
       const token = randomUUID()
       previews.set(token, { file, manifest })
       return { token, manifest, path: file, title: manifest.title, warnings: manifest.warnings }
     },
+    triDiscardPreview: token => serial(async () => { discard(token) }),
+    triInspectForeign: () => serial(async () => {
+      const options = { title: 'Import from another app', filters: [{ name: 'Exports, databases, songs and media', extensions: ['*'] }], properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'multiSelections'> }
+      const window = hooks.window()
+      const picked = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+      if (picked.canceled || !picked.filePaths.length) return { canceled: true }
+      const converted = await convertForeign(picked.filePaths, { recipes: readRecipes(app.getPath('userData')) })
+      return stage(converted, picked.filePaths, {}, randomUUID())
+    }),
+    triAnswerForeign: request => serial(async () => {
+      const preview = previews.get(request.token)
+      if (!preview?.paths) throw new Error('Choose the files again before answering.')
+      const answers: ForeignAnswers = { ...(preview.answers ?? {}) }
+      for (const [id, choice] of Object.entries(request.answers ?? {})) {
+        if (!/^[a-f0-9]{64}$/.test(id)) continue
+        if (choice === 'song' || choice === 'note' || choice === 'skip') answers[id] = choice
+        else if (isColumnChoice(choice) && typeof choice.title === 'string' && typeof choice.lyrics === 'string') answers[id] = { title: choice.title.slice(0, 200), lyrics: choice.lyrics.slice(0, 200) }
+      }
+      const userData = app.getPath('userData')
+      const recipes = readRecipes(userData)
+      // Table answers teach this laptop. The structure signature is stored, never any content.
+      for (const question of preview.questions ?? []) {
+        const choice = answers[question.id]
+        if (question.signature && choice !== undefined && choice !== 'note' && (choice === 'skip' || isColumnChoice(choice))) recipes[question.signature] = choice
+      }
+      try { writeRecipes(userData, recipes) } catch { /* Remembering is a convenience; the import still proceeds. */ }
+      const converted = await convertForeign(preview.paths, { answers, recipes })
+      const paths = preview.paths
+      discard(request.token)
+      return stage(converted, paths, answers, request.token)
+    }),
     triImport: request => serial(async () => {
       const preview = previews.get(request.token)
       if (!preview) throw new Error('Open the package again before importing.')
@@ -95,8 +161,13 @@ export function registerTriPackages(hooks: Hooks) {
       if (JSON.stringify(inspected) !== JSON.stringify(preview.manifest)) throw new Error('This package changed after you opened it. Open it again to review its contents.')
       const selected = selectTriContent(inspected, request.selection)
       if (!Object.values(selected.categories).some(items => items?.length)) throw new Error('Choose something to import.')
+      const incoming = (snapshot: TriSnapshot): TriSnapshot => {
+        if (!preview.directory || !snapshot.categories.themes?.length) return snapshot
+        if (snapshot.categories.themes.length > 1) throw new Error('Choose one imported theme at a time. Import the other themes separately.')
+        return { ...snapshot, categories: { ...snapshot.categories, themes: [{ ...snapshot.categories.themes[0], id: 'display' }] } }
+      }
       // Validate all selected data before extracting any assets or changing a library.
-      planTriImport(app.getPath('userData'), selected, hooks.settings(), request.openService)
+      planTriImport(app.getPath('userData'), incoming(selected), hooks.settings(), request.openService)
       const packageRoot = path.resolve(app.getPath('userData'), 'packages')
       let extractedDirectory: string | undefined
       let plan: ReturnType<typeof planTriImport>
@@ -105,7 +176,7 @@ export function registerTriPackages(hooks: Hooks) {
           snapshot: selected, expectedManifest: inspected,
           onExtracted: directory => { extractedDirectory = directory },
         })
-        plan = planTriImport(app.getPath('userData'), snapshot, hooks.settings(), request.openService)
+        plan = planTriImport(app.getPath('userData'), incoming(snapshot), hooks.settings(), request.openService)
         commitTriImport(plan, hooks.settings, hooks.replaceSettings)
       } catch (error) {
         if (extractedDirectory) {
@@ -118,22 +189,23 @@ export function registerTriPackages(hooks: Hooks) {
         throw error
       }
       // Invalidate only libraries. New preacher IDs avoid touching any live preacher's caches.
-      const warnings = [...(inspected.warnings ?? [])]
+      const warnings = [...(inspected.warnings ?? []), ...(preview.warnings ?? [])]
       try { hooks.imported(plan.snapshot) }
       catch (error) { warnings.push(`Content was imported, but a library refresh failed: ${error instanceof Error ? error.message : 'reopen the app to refresh libraries'}`) }
       try {
         if (request.openService && plan.snapshot.categories.service?.length) {
           const complete = Object.entries(inspected.categories).every(([category, items]) => (items ?? []).every(item => selected.categories[category as keyof typeof selected.categories]?.some(chosen => chosen.id === item.id)))
-          update({ triActiveFile: { ...(complete ? { path: preview.file } : {}), title: inspected.title, selection: selectedIds(plan.snapshot) } })
-          if (!complete) warnings.push('You opened part of this package. Save it as a new .tri file to preserve the original package.')
+          update({ triActiveFile: { ...(complete && !preview.directory ? { path: preview.file } : {}), title: inspected.title, selection: selectedIds(plan.snapshot) } })
+          if (preview.directory) warnings.push('Save this imported service as a .tri file to make a portable copy.')
+          else if (!complete) warnings.push('You opened part of this package. Save it as a new .tri file to preserve the original package.')
         }
-        remember(preview.file, inspected.title)
+        if (!preview.directory) remember(preview.file, inspected.title)
       } catch { warnings.push('Content was imported, but file history could not be saved. Use Save As for this service.') }
-      previews.delete(request.token)
-      return { snapshot: plan.snapshot, path: preview.file, title: inspected.title, warnings }
+      try { discard(request.token) } catch { warnings.push('Imported successfully, but the temporary preview could not be removed.') }
+      return { snapshot: plan.snapshot, ...(!preview.directory ? { path: preview.file } : {}), title: inspected.title, warnings }
     }),
   }
-  const channels: Record<keyof typeof api, string> = { triCatalog: 'tri-catalog', triSave: 'tri-save', triInspect: 'tri-inspect', triImport: 'tri-import', triRecent: 'tri-recent', triStatus: 'tri-status', triNew: 'tri-new' }
+  const channels: Record<keyof typeof api, string> = { triCatalog: 'tri-catalog', triSave: 'tri-save', triInspect: 'tri-inspect', triInspectForeign: 'tri-inspect-foreign', triAnswerForeign: 'tri-answer-foreign', triDiscardPreview: 'tri-discard-preview', triImport: 'tri-import', triRecent: 'tri-recent', triStatus: 'tri-status', triNew: 'tri-new' }
   for (const [method, channel] of Object.entries(channels)) ipcMain.handle(channel, async (event, argument) => {
     if (event.sender.id !== hooks.window()?.webContents.id) throw new Error('Open packages from the main Trilorah window.')
     try { return await (api[method as keyof typeof api] as (arg?: any) => Promise<any>)(argument) }

@@ -24,15 +24,19 @@ required once a preacher reaches auto-mode trust.
 
 ## Icons
 
-Solar **Bold** is the universal UI icon family. Use the shared exports from
-`src/ui` for navigation, buttons, menus, and status controls; add new icons to
-`src/ui/icons.tsx` using individual `@solar-icons/react/bold/...` imports.
-Icons inherit `currentColor`, with size controlled by their surrounding control.
-The companion web app uses the same family through `web/src/components/icons.tsx`.
-Keep brand marks and content illustrations as their own assets.
+**Trilorah Cutout** is the UI icon family: 91 original drawings on a 32 × 32
+grid, with named parts and animation pivots. Desktop, web companion, and phone
+remote share the geometry in `shared/cutout/`. Use the existing exports from
+`src/ui` or `web/src/components/icons.tsx`; icons inherit `currentColor` and
+stay still unless motion is explicitly enabled.
 
-Solar artwork is by 480 Design under CC BY 4.0. Settings includes visible
-attribution; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for licenses.
+Browse `design.html?cutout-library` for every icon, actual-size samples, motion
+previews, and individual downloads. Follow [the icon creation guide](docs/CUTOUT-ICONS.md)
+to add a matching drawing, then run `npm run icons:build` to regenerate the SVG
+bundle, parts manifest, sprite, and phone templates. Keep brand marks, real QR
+codes, charts, and content illustrations as their own assets.
+
+Historical third-party icon notices remain in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Setup
 
@@ -77,14 +81,25 @@ Missing local media stops the save with an error. Limits are 2 GiB per package,
 1 GiB per asset, and 16 MiB for the manifest; saves replace the destination only
 after a complete temporary archive has been written.
 
-Native ProPresenter/EasyWorship/OpenLP/FreeShow importers are not included in
-this implementation. Verified extensions, contents and remaining format gaps
-are recorded in [TRI-FORMAT-RESEARCH.md](TRI-FORMAT-RESEARCH.md).
+Use **.tri → Import from another app** to bring in EasyWorship songs and packed
+media, ProPresenter text presentations/bundles/playlists, or PewBeam theme
+properties and transcript exports. Review the supported items and conversion
+notes before importing. Lyrics remain editable; included media is copied into
+managed storage. The original exports are never modified.
+
+EasyWorship schedule order and layouts, ProPresenter effects/automation, and
+advanced PewBeam theme properties are not converted. OpenLP and FreeShow native
+importers are not included. See [FOREIGN-IMPORT.md](FOREIGN-IMPORT.md) for supported
+inputs, exact limitations, and verification; broader format research remains in
+[TRI-FORMAT-RESEARCH.md](TRI-FORMAT-RESEARCH.md).
 
 Validation: `npm run build`, `npm test -- --configLoader runner`, and
 `npx electron scripts/tri-package-smoke.cjs` (after building). The desktop smoke
 test uses an isolated temporary profile and exercises source-independent
 media, song links, preacher learning, layout restoration, and autosave.
+Foreign import checks: `node scripts/foreign-import-smoke.cjs` exercises the
+desktop SQLite runtime; `npx electron scripts/foreign-import-ui-smoke.cjs`
+exercises the actual import screens and portable save after building.
 
 ## Provenance
 

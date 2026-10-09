@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cx } from '../lib/cx';
 import { useNudge } from '../hooks/useNudge';
+import { DISPLAY_FONTS } from '../../../shared/displayFont';
 import { nextTextCase, resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { nextTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
 import './displayFontPicker.css';
@@ -19,7 +20,7 @@ export const DISPLAY_FONT_OPTIONS: DisplayFontOption[] = [
     id: 'default',
     label: 'default',
     sample: 'Aa',
-    fontFamily: 'var(--tri-font, Roboto, sans-serif)',
+    fontFamily: DISPLAY_FONTS.default,
   },
   {
     id: 'serif',
@@ -31,13 +32,13 @@ export const DISPLAY_FONT_OPTIONS: DisplayFontOption[] = [
     id: 'uppercase',
     label: 'uppercase',
     sample: 'AA',
-    fontFamily: 'var(--tri-font, Roboto, sans-serif)',
+    fontFamily: DISPLAY_FONTS.default,
   },
   {
     id: 'spacing',
     label: 'normal',
     sample: 'AA',
-    fontFamily: 'var(--tri-font, Roboto, sans-serif)',
+    fontFamily: DISPLAY_FONTS.default,
   },
 ];
 
@@ -106,12 +107,12 @@ export function DisplayFontPicker({
 
   return (
     <div className={cx('flex min-w-0 flex-col gap-2 lowercase', className)}>
-      <span className="tri-label text-[var(--tri-ink-muted)]">display font</span>
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] items-start gap-x-2.5">
+      <span className="tri-label tri-control-heading text-[var(--tri-ink-muted)]">display font</span>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2px_minmax(0,1fr)] items-start gap-x-2.5">
         <div role="group" aria-label="font choices" className="grid min-w-0 grid-cols-2 gap-3">
           {DISPLAY_FONT_OPTIONS.slice(0, 2).map(renderCard)}
         </div>
-        <span aria-hidden className="h-5 w-px -translate-y-3 self-center bg-white/15" />
+        <span aria-hidden className="h-4 w-0.5 -translate-y-3 self-center rounded-full bg-white/20" />
         <div role="group" aria-label="text controls" className="grid min-w-0 grid-cols-2 gap-3">
           {DISPLAY_FONT_OPTIONS.slice(2).map(renderCard)}
         </div>
@@ -152,7 +153,7 @@ function FontCardItem({
    * square, not a stretched one. OUTER_SIZE is now only the ratio's origin
    * (86x86, square) and the minimum the card will shrink to.
    *
-   * The caption and the selected dash keep their own sizes; the sample
+   * The caption scales within readable bounds; the sample
    * glyph scales with the card (37cqw), because it is the card's content —
    * a big card with a small Aa in it reads as empty, not bigger.
    *
@@ -258,10 +259,12 @@ function FontCardItem({
 
       {/* Subtitle label below (default, serif, uppercase/lowercase) */}
       <span
-        /* Size comes from .tri-label. An sm utility here was dead — see
-           the note in Button. */
         className="tri-label lowercase"
         style={{
+          fontSize: 'clamp(11px, calc(8px + 4cqw), 15px)',
+          fontWeight: 500,
+          lineHeight: 1.4,
+          letterSpacing: '0.01em',
           color: isSelected ? 'var(--tri-ink, #e5f3f2)' : 'var(--tri-ink-muted, rgb(229 243 242 / 0.64))',
           transition: 'color 150ms ease',
         }}

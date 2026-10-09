@@ -1,7 +1,7 @@
 {
   "name": "ai-preacher-assistant",
   "private": true,
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Trilorah — church presentation software with an agentic sermon engine. Beautiful, effortless, intelligent.",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -18,6 +18,7 @@
     "bible:index": "node scripts/build-bible-index.mjs",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "icon": "node scripts/make-icon.mjs",
+    "icons:build": "node --import tsx scripts/build-cutout-icons.mts",
     "dist": "npm run passages:model && npm run build && node scripts/write-service-defaults.mjs && electron-builder; node scripts/write-service-defaults.mjs --restore",
     "dist:dir": "npm run passages:model && npm run build && node scripts/write-service-defaults.mjs && electron-builder --dir; node scripts/write-service-defaults.mjs --restore",
     "eval": "tsx evals/run.ts",
@@ -29,6 +30,7 @@
   },
   "dependencies": {
     "@deepgram/sdk": "4.11.3",
+    "@lucasmarkes/hairline": "0.5.0",
     "@solar-icons/react": "2.3.2",
     "@supabase/supabase-js": "2.103.3",
     "better-sqlite3": "12.5.0",

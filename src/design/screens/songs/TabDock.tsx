@@ -33,7 +33,7 @@ export function TabDock({ actions, label }: { actions: DockAction[]; label: stri
           ['--tri-alpha' as string]: 0.92,
           padding: PAD,
           gap: PAD,
-          borderRadius: 10,
+          borderRadius: 6,
           boxShadow:
             'inset 0 0 0 var(--tri-border) rgb(229 243 242 / 0.12), 0 2px 6px rgb(0 0 0 / 0.16)',
         }}

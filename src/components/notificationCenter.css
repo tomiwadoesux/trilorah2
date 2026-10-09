@@ -1,0 +1,52 @@
+.tri-notification-anchor { position: relative; flex: 1; min-width: 0; isolation: isolate; }
+.tri-notification-back { position: absolute; inset: 0 5px -3px; border-radius: var(--tri-radius-control, 6px); background: #191919; border: 1px solid rgb(229 243 242 / .13); z-index: -1; pointer-events: none; }
+.tri-notification-back-two { inset: 0 10px -6px; z-index: -2; opacity: .6; }
+.tri-live-header .tri-notification-trigger { position: relative; display: flex; align-items: center; gap: 6px; width: 100%; height: 100%; min-height: var(--tri-control-h, 34px); text-align: left; cursor: pointer; background-color: var(--tri-header-bg, #111111); }
+.tri-notification-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tri-notification-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: rgb(229 243 242 / .4); }
+[data-tone='warning'] .tri-notification-dot, [data-tone='info'] .tri-notification-dot { background: var(--tri-accent-yellow, #e4d87a); }
+[data-tone='error'] .tri-notification-dot { background: #eac7c6; }
+[data-tone='resolved'] .tri-notification-dot { background: #8fd3c0; }
+.tri-notification-trigger[data-unread='true'] { box-shadow: inset 0 0 0 1px rgb(228 216 122 / .4); }
+.tri-notification-count { display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 7px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--tri-accent-yellow); background: rgb(228 216 122 / .09); }
+.tri-notification-chevron { opacity: .5; }
+.tri-notification-panel { position: fixed; z-index: 600; width: 390px; max-width: calc(100vw - 24px); max-height: min(620px, calc(100dvh - 24px)); display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; border: 1px solid rgb(229 243 242 / .16); background: #111615; color: var(--tri-ink, #e5f3f2); font-family: var(--tri-font, sans-serif); box-shadow: 0 18px 60px rgb(0 0 0 / .5); transform-origin: top right; transition: opacity 180ms ease, transform 180ms cubic-bezier(.23,1,.32,1); }
+@starting-style { .tri-notification-panel:not([data-keyboard='true']) { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.tri-notification-panel button { cursor: pointer; }
+.tri-notification-panel button:focus-visible, .tri-notification-trigger:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: -2px; }
+.tri-notification-heading { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 10px; }
+.tri-notification-heading, .tri-notification-tabs, .tri-notification-footer { flex: none; }
+.tri-notification-panel[data-empty='true'] .tri-notification-heading { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; }
+.tri-notification-panel[data-empty='true'] .tri-notification-heading > div { grid-column: 2; text-align: center; }
+.tri-notification-panel[data-empty='true'] .tri-notification-heading > button { grid-column: 3; }
+.tri-notification-heading strong { display: block; font-size: 15px; font-weight: 600; }
+.tri-notification-panel[data-empty='true'] .tri-notification-heading strong { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.tri-notification-heading span { display: block; margin-top: 3px; font-size: 12px; color: rgb(229 243 242 / .55); }
+.tri-notification-heading button { width: 32px; height: 32px; border-radius: 9px; font-size: 23px; }
+.tri-notification-tabs { display: flex; gap: 5px; padding: 0 14px 12px; }
+.tri-notification-panel[data-empty='true'] .tri-notification-tabs { justify-content: center; }
+.tri-notification-tabs button { padding: 6px 10px; font-size: 12px; border-radius: 8px; color: rgb(229 243 242 / .55); }
+.tri-notification-tabs button[aria-pressed='true'] { color: var(--tri-ink); background: rgb(229 243 242 / .08); }
+.tri-notification-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 9px 9px; }
+.tri-notification-card { border: 1px solid rgb(229 243 242 / .08); background: rgb(229 243 242 / .025); border-radius: 12px; margin-bottom: 7px; overflow: hidden; }
+.tri-notification-link { display: block; width: 100%; padding: 13px 12px 9px; text-align: left; }
+.tri-notification-card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.4; }
+.tri-notification-card-title strong { flex: 1; font-weight: 550; }
+.tri-notification-card-title > span:last-child { opacity: .4; }
+.tri-notification-detail { display: block; margin: 6px 0 7px 14px; font-size: 12px; line-height: 1.55; color: rgb(229 243 242 / .7); overflow-wrap: anywhere; }
+.tri-notification-meta { display: block; margin-left: 14px; font-size: 10px; color: rgb(229 243 242 / .4); }
+.tri-notification-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 12px 12px 26px; }
+.tri-notification-actions button { border-radius: 7px; padding: 6px 8px; font-size: 11px; background: rgb(228 216 122 / .08); color: var(--tri-accent-yellow, #e4d87a); transition: transform 120ms cubic-bezier(.23,1,.32,1), background-color 120ms ease; }
+.tri-notification-actions button:active:not(:disabled) { transform: scale(.97); }
+.tri-notification-actions button:disabled { opacity: .45; cursor: wait; }
+.tri-notification-actions .tri-notification-dismiss { margin-left: auto; color: rgb(229 243 242 / .45); background: transparent; }
+.tri-notification-feedback { margin: 0 14px 12px 26px; font-size: 12px; line-height: 1.5; }
+.tri-notification-empty { padding: 25px 20px 35px; text-align: center; font-size: 13px; line-height: 1.6; color: rgb(229 243 242 / .6); }
+.tri-notification-empty-state { display: flex; flex-direction: column; align-items: center; padding: 12px 20px 24px; text-align: center; }
+.tri-notification-empty-state.tri-empty-surface::before { content: none; }
+.tri-notification-empty-state__art { flex: none; width: min(160px, 100%); height: clamp(90px, 22dvh, 130px); margin-bottom: 12px; }
+.tri-notification-empty-state h3 { margin: 0; font-size: 15px; font-weight: 550; line-height: 1.4; color: var(--tri-ink, #e5f3f2); }
+.tri-notification-empty-state p { max-width: 260px; margin: 6px 0 0; font-size: 12px; line-height: 1.55; color: rgb(229 243 242 / .55); }
+.tri-notification-footer { margin: 0; padding: 10px 16px; font-size: 10px; color: rgb(229 243 242 / .4); border-top: 1px solid rgb(229 243 242 / .06); }
+@media (hover: hover) { .tri-notification-link:hover, .tri-notification-heading button:hover { background: rgb(229 243 242 / .04); } }
+@media (prefers-reduced-motion: reduce) { .tri-notification-panel, .tri-notification-actions button { transition: none; } .tri-notification-panel { transform: none; } }

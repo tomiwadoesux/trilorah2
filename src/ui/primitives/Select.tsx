@@ -201,7 +201,7 @@ export function Select({
             visibility: position ? 'visible' : 'hidden',
             width: triggerRef.current?.getBoundingClientRect().width,
             minWidth: menuMinWidth,
-            borderRadius: '16px',
+            borderRadius: '8px',
             /*
              * The app's panel grey. Panel paints rgb(255 255 255 / 0.022) over
              * the #0a0a0a canvas; a menu has to be opaque or the rows it covers
@@ -233,7 +233,7 @@ export function Select({
                      menus open feet apart in the rail and ActionMenu's own
                      comment claims it copies this row's type size — which was
                      only true of its padding and height until now. */
-                  'flex shrink-0 h-[var(--tri-option-h)] w-full items-center justify-between px-3.5 rounded-[10px] text-[length:var(--tri-control-size)] transition-[opacity,background-color] duration-150 select-none text-[var(--tri-ink,#e5f3f2)]',
+                  'flex shrink-0 h-[var(--tri-option-h)] w-full items-center justify-between px-3.5 rounded-[6px] text-[length:var(--tri-control-size)] transition-[opacity,background-color] duration-150 select-none text-[var(--tri-ink,#e5f3f2)]',
                   !preserveCase && 'lowercase',
                   option.disabled
                     ? 'cursor-not-allowed opacity-40'

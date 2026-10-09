@@ -54,7 +54,7 @@ export function CallSheetOutputs({ screens, onRole, onOpen, className }: Outputs
             <span className="shrink-0 text-[length:var(--tri-size-xs)] lowercase group-hover/row:hidden" style={{ color: s.windowed ? FAINT : STATE_INK[s.state] }}>
               {s.windowed ? 'windowed' : STATE_WORD[s.state]}
             </span>
-            <span className="hidden shrink-0 gap-px rounded-[6px] bg-white/[0.05] p-px group-hover/row:flex">
+            <span className="hidden shrink-0 gap-px rounded-[4px] bg-white/[0.05] p-px group-hover/row:flex">
               {ROLES.map((r) => (
                 <button
                   key={r}
@@ -64,7 +64,7 @@ export function CallSheetOutputs({ screens, onRole, onOpen, className }: Outputs
                     onRole?.(s.id, r);
                   }}
                   className={cx(
-                    'rounded-[5px] px-1.5 py-px text-[length:var(--tri-size-eyebrow)] lowercase transition-colors',
+                    'rounded-[4px] px-1.5 py-px text-[length:var(--tri-size-eyebrow)] lowercase transition-colors',
                     r === s.role ? 'bg-white/[0.12] text-[var(--tri-ink)]' : 'text-[rgb(229_243_242_/_0.45)] hover:text-[var(--tri-ink)]',
                   )}
                 >

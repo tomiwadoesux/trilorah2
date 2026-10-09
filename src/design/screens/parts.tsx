@@ -142,7 +142,7 @@ export function Panel({
                 <span
                   aria-hidden
                   className={cx(
-                    'grid size-[22px] shrink-0 place-items-center rounded-[7px] bg-[rgb(255_255_255_/_0.05)] text-[rgb(229_243_242_/_0.62)]',
+                    'grid size-[22px] shrink-0 place-items-center rounded-[5px] bg-[rgb(255_255_255_/_0.05)] text-[rgb(229_243_242_/_0.62)]',
                     'shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.08)] transition-[color,box-shadow] duration-300',
                     'group-hover/tile:text-[#8fd3c0] group-hover/tile:shadow-[inset_0_0_0_1px_rgb(143_211_192_/_0.35)]',
                   )}
@@ -257,7 +257,7 @@ export function Pill({
   return (
     <span
       className={cx(
-        'inline-flex shrink-0 items-center rounded-full px-2 py-[3px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.14em]',
+        'inline-flex shrink-0 items-center rounded-md px-2 py-[3px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.14em]',
         tones[tone],
       )}
     >

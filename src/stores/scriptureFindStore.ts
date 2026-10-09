@@ -16,15 +16,15 @@ export interface ScriptureMatch {
 export type FindSource = 'heard' | 'typed';
 
 export const useScriptureFindStore = create<{
-  found: { heard: string; matches: ScriptureMatch[]; how: FindSource } | null;
+  found: { heard: string; matches: ScriptureMatch[]; how: FindSource; original?: string } | null;
   page: number;
-  open: (heard: string, matches: ScriptureMatch[], how?: FindSource) => void;
+  open: (heard: string, matches: ScriptureMatch[], how?: FindSource, original?: string) => void;
   setPage: (page: number) => void;
   close: () => void;
 }>((set) => ({
   found: null,
   page: 0,
-  open: (heard, matches, how = 'heard') => set({ found: { heard, matches, how }, page: 0 }),
+  open: (heard, matches, how = 'heard', original) => set({ found: { heard, matches, how, original }, page: 0 }),
   setPage: (page) => set({ page }),
   close: () => set({ found: null, page: 0 }),
 }));

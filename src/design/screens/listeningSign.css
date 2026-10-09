@@ -1,0 +1,92 @@
+/* A raised gold edge makes the primary action visible even between invitations. */
+.tri-listening-sign {
+  --listening-ink: #ebcd8c;
+  --listening-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  isolation: isolate;
+  transform: translateY(0) scale(1);
+  box-shadow:
+    inset 0 0 0 1px rgb(236 199 121 / 0.3),
+    inset 0 1px 0 rgb(255 232 180 / 0.2),
+    inset 0 -2px 0 rgb(0 0 0 / 0.5),
+    0 3px 0 #050907,
+    0 5px 12px rgb(0 0 0 / 0.25);
+  transition: transform 150ms var(--listening-ease), box-shadow 180ms var(--listening-ease);
+}
+
+.tri-listening-sign__lamp {
+  opacity: 0.4;
+  background: radial-gradient(110% 150% at 50% 0%, rgb(247 200 102 / 0.3), rgb(235 175 66 / 0.08) 58%, transparent 85%);
+  transition: opacity 180ms var(--listening-ease);
+}
+
+/* Only the surface breathes; moving mic bars always mean actual listening. */
+.tri-listening-sign[data-state='idle'] .tri-listening-sign__lamp {
+  animation: tri-listening-invite 5.6s cubic-bezier(0.45, 0, 0.55, 1) 1s infinite;
+}
+@keyframes tri-listening-invite {
+  0%, 65%, 100% { opacity: 0.35; }
+  30% { opacity: 0.85; }
+}
+
+.tri-listening-sign[data-state='connecting'] .tri-listening-sign__lamp {
+  animation: tri-listening-connect 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes tri-listening-connect {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.tri-listening-sign[data-state='listening'],
+.tri-listening-sign[data-state='connecting'] { --listening-ink: #ffe9ae; }
+.tri-listening-sign[data-state='listening'] .tri-listening-sign__lamp { opacity: 1; }
+
+/* A brief reflection follows a pointer hover, then leaves the label unobscured. */
+.tri-listening-sign::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  inset: 0 auto 0 -40%;
+  width: 34%;
+  background: linear-gradient(110deg, transparent, rgb(255 229 170 / 0.12), transparent);
+  opacity: 0;
+  transform: translateX(0);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tri-listening-sign:not(:disabled):hover {
+    --listening-ink: #fff0bf;
+    transform: translateY(-1px);
+    box-shadow: inset 0 0 0 1px rgb(247 208 128 / 0.62), inset 0 1px 0 rgb(255 237 200 / 0.3), 0 4px 0 #050907, 0 6px 18px rgb(0 0 0 / 0.35);
+  }
+  .tri-listening-sign[data-state='idle']:hover .tri-listening-sign__lamp { animation: none; opacity: 0.85; }
+  .tri-listening-sign:not(:disabled):hover::after {
+    opacity: 1;
+    transform: translateX(440%);
+    transition: transform 280ms var(--listening-ease);
+  }
+}
+
+.tri-listening-sign:not(:disabled):active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: inset 0 0 0 1px rgb(247 208 128 / 0.65), inset 0 2px 8px rgb(0 0 0 / 0.35), 0 1px 0 #050907;
+  transition-duration: 90ms;
+}
+
+/* An inset ring remains visible even against the edge of the sidebar. */
+.tri-listening-sign:not(:disabled):focus-visible {
+  --listening-ink: #fff0bf;
+  outline: 2px solid #f1d394;
+  outline-offset: -4px;
+  transform: none;
+  transition: none;
+}
+.tri-listening-sign:focus-visible .tri-listening-sign__lamp { animation: none; opacity: 0.85; }
+.tri-listening-sign:focus-visible::after { display: none; }
+.tri-listening-sign:disabled .tri-listening-sign__lamp { animation: none; opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-listening-sign,
+  .tri-listening-sign *,
+  .tri-listening-sign::after { animation: none !important; transition: none !important; }
+  .tri-listening-sign:not(:disabled):is(:hover, :active) { transform: none; }
+  .tri-listening-sign::after { display: none; }
+}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDuration, formatServiceDate, serviceTitle } from "@/lib/format";
+import { ArrowLeft, ArrowRight } from "@/components/icons";
 
 export const revalidate = 0;
 
@@ -83,9 +84,9 @@ export default async function ServicesPage({
         <div>
           <Link
             href="/app/dashboard"
-            className="text-[11px] text-gray-500 hover:text-brand"
+            className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-brand"
           >
-            ← Dashboard
+            <ArrowLeft size={12} /> Dashboard
           </Link>
           <h1 className="text-2xl font-bold mt-1">Services</h1>
         </div>
@@ -150,9 +151,9 @@ export default async function ServicesPage({
           {page > 1 ? (
             <Link
               href={`/app/services?page=${page - 1}`}
-              className="hover:text-brand"
+              className="inline-flex items-center gap-1 hover:text-brand"
             >
-              ← Newer
+              <ArrowLeft size={12} /> Newer
             </Link>
           ) : (
             <span />
@@ -163,9 +164,9 @@ export default async function ServicesPage({
           {page < totalPages ? (
             <Link
               href={`/app/services?page=${page + 1}`}
-              className="hover:text-brand"
+              className="inline-flex items-center gap-1 hover:text-brand"
             >
-              Older →
+              Older <ArrowRight size={12} />
             </Link>
           ) : (
             <span />

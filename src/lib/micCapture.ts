@@ -9,6 +9,11 @@
 
 import { DEVICE_AND_MIC, PHONE_MIC_LABEL, usesDeviceAudio } from '../../shared/audioInput';
 import { phoneMicStream } from './phoneMic';
+import { useNotificationStore } from '../stores/notificationStore';
+
+function fallbackNotice(device: string) {
+  useNotificationStore.getState().receive({ id: 'audio-fallback', title: 'Audio input changed to system default', detail: `${device} could not be opened. Check which input is receiving sound before continuing.`, severity: 'warning', target: 'audio' });
+}
 
 let ctx: AudioContext | null = null;
 let streams: MediaStream[] = [];
@@ -29,6 +34,7 @@ async function resolveDeviceId(deviceLabel?: string): Promise<string | undefined
       inputs.find((d) => d.label.toLowerCase().includes(wanted)) ??
       inputs.find((d) => wanted.includes(d.label.toLowerCase()) && d.label.length > 3);
     if (!match) {
+      fallbackNotice(deviceLabel);
       console.warn(`mic "${deviceLabel}" not found — falling back to the system default input`);
     }
     return match?.deviceId;
@@ -58,6 +64,7 @@ async function openMicrophone(deviceLabel?: string): Promise<MediaStream> {
     return await navigator.mediaDevices.getUserMedia(constraints(deviceId));
   } catch (e) {
     if (deviceId) {
+      fallbackNotice(deviceLabel || 'The selected microphone');
       // Chosen device unplugged or busy — fall back to the default input
       // rather than leaving the service with no ears at all.
       console.warn('selected mic failed, retrying with the default input:', e);
@@ -99,12 +106,14 @@ export async function startMicCapture(sampleRate: number, deviceLabel?: string):
     // Stop may arrive while a permission prompt or stream request is pending.
     if (ticket !== generation) { release(); return; }
     streams = acquired;
+    useNotificationStore.getState().resolve('audio-input', 'An audio input has opened successfully.');
     ctx = new AudioContext({ sampleRate });
     processor = ctx.createScriptProcessor(4096, 1, 1);
     for (const captured of streams) {
       ctx.createMediaStreamSource(captured).connect(processor);
       captured.getAudioTracks().forEach((track) => track.addEventListener('ended', () => {
         if (ticket !== generation) return;
+        useNotificationStore.getState().receive({ id: 'audio-input', title: 'Audio input disconnected', detail: `${deviceLabel || 'The selected input'} stopped providing audio. Choose an available input or reconnect the device.`, severity: 'error', target: 'audio', actions: [{ kind: 'navigate', target: 'audio', label: 'Choose audio input' }, { kind: 'navigate', target: 'phone', label: 'Try phone audio' }] });
         stopMicCapture();
         window.api?.stopListening();
       }));

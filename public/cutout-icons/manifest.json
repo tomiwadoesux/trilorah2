@@ -1,0 +1,2094 @@
+[
+  {
+    "name": "bible",
+    "label": "Bible",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "cover",
+        "origin": [
+          16,
+          28
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M9 3.5h17.5v25H9l-4.5-4.5V8L9 3.5Zm6.5 4v3h-3v2.5h3v5h2.5v-5h3v-2.5h-3v-3h-2.5ZM9 22v3.5h14.5V22H9Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "microphone",
+    "label": "Microphone",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "capsule",
+        "origin": [
+          16,
+          12
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M13 3.5h6L22 6.5V18l-3 3h-6l-3-3V6.5l3-3Zm.5 4v2h5v-2h-5Zm0 4.5v2h5v-2h-5Z\"/>"
+      },
+      {
+        "name": "stand",
+        "origin": [
+          16,
+          28.5
+        ],
+        "markup": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" d=\"M6.5 15v5L11 24.5h10l4.5-4.5v-5M16 25v3M12 28.5h8\" stroke-width=\"2.5\"/>"
+      }
+    ]
+  },
+  {
+    "name": "songs",
+    "label": "Songs",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "notes",
+        "origin": [
+          24,
+          6
+        ],
+        "motion": "sway",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m12 6.5 15-3v18l-3.5 3.5h-4l-2.5-2.5v-2l3-3h4V10l-9 1.8V25l-3.5 3.5h-4L5 26v-2l3-3h4V6.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "search",
+    "label": "Search",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "lens",
+        "origin": [
+          13.75,
+          13.5
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M9 3.5h9L24 9.5v8L18 23.5H9L3.5 18V9L9 3.5Zm1.5 3.5L7 10.5v6l3.5 3.5h6l4-4v-5l-4-4h-6Z\"/>"
+      },
+      {
+        "name": "handle",
+        "origin": [
+          20,
+          21
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m21.5 20 6.5 6-2.6 2.6-6.5-6Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "media",
+    "label": "Media",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "frame",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M7 4.5h18l4 4v15l-4 4H7l-4-4v-15l4-4Zm12 4v4h4v-4h-4ZM6 22.5l2 2h16l2-2-5-6-4 4-6-7-5 6v3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "settings",
+    "label": "Settings",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "gear",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M13 3h6v4l2 1 3-3 3 3-3 3 1 2h4v6h-4l-1 2 3 3-3 3-3-3-2 1v4h-6v-4l-2-1-3 3-3-3 3-3-1-2H3v-6h4l1-2-3-3 3-3 3 3 2-1V3Zm.5 8L11 13.5v5l2.5 2.5h5l2.5-2.5v-5l-2.5-2.5h-5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "trash",
+    "label": "Delete",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "body",
+        "origin": [
+          16,
+          28
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M7 13.5h18V25l-3 3H10l-3-3V13.5Zm4 2.5v8h3v-8h-3Zm7 0v8h3v-8h-3Z\"/>"
+      },
+      {
+        "name": "lid",
+        "origin": [
+          16,
+          11
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M6 8.5h5V5l2-2h6l2 2v3.5h5V11H6V8.5Zm8-3v3h4v-3h-4Z\" fill-rule=\"evenodd\"/>"
+      }
+    ]
+  },
+  {
+    "name": "reset",
+    "label": "Reset",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "return-arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m11 3-8 8 8 8v-6h8.5l5.5 5.5v3L21.5 25h-10L8 21.5V19H4v4l6 6h13l6-6v-6l-8-8H11V3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "chevron-down",
+    "label": "Chevron down",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "chevron",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m5 11 3-3 8 8 8-8 3 3-11 11L5 11Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "chevron-left",
+    "label": "Chevron left",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "chevron",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m21 5 3 3-8 8 8 8-3 3-11-11L21 5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "chevron-right",
+    "label": "Chevron right",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "chevron",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m11 5 11 11-11 11-3-3 8-8-8-8 3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "chevron-up",
+    "label": "Chevron up",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "chevron",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m5 21 11-11 11 11-3 3-8-8-8 8-3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "pencil",
+    "label": "Edit",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "barrel",
+        "origin": [
+          3,
+          29
+        ],
+        "motion": "sway",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m7.5 18.5 11-11 6 6-11 11-6-6Z\"/>"
+      },
+      {
+        "name": "tip",
+        "origin": [
+          3,
+          29
+        ],
+        "motion": "sway",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m7.75 18.25 6 6L3 29l4.75-10.75Z\"/>"
+      },
+      {
+        "name": "cap",
+        "origin": [
+          3,
+          29
+        ],
+        "motion": "sway",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M20.5 5.5 23 3h2.5L29 6.5V9l-2.5 2.5-6-6Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "plus",
+    "label": "Add",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "plus",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14 5h4v9h9v4h-9v9h-4v-9H5v-4h9V5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "minus",
+    "label": "Remove",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "minus",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M5 14h22v4H5v-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "scan",
+    "label": "Scan",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "corners",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M4 12V7l3-3h5v3H8L7 8v4H4Zm16-8h5l3 3v5h-3V8l-1-1h-4V4Zm8 16v5l-3 3h-5v-3h4l1-1v-4h3ZM12 28H7l-3-3v-5h3v4l1 1h4v3Z\"/>"
+      },
+      {
+        "name": "beam",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "scan",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M9 14.5h14v3H9v-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "grip",
+    "label": "Drag handle",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "grip",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M7.5 3H12l1.5 1.5v4L12 10H7.5L6 8.5v-4L7.5 3ZM20 3h4.5L26 4.5v4L24.5 10H20l-1.5-1.5v-4L20 3ZM7.5 12.5H12l1.5 1.5v4L12 19.5H7.5L6 18v-4l1.5-1.5ZM20 12.5h4.5L26 14v4l-1.5 1.5H20L18.5 18v-4l1.5-1.5ZM7.5 22H12l1.5 1.5v4L12 29H7.5L6 27.5v-4L7.5 22ZM20 22h4.5l1.5 1.5v4L24.5 29H20l-1.5-1.5v-4L20 22Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "check",
+    "label": "Check",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "check",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m4 16 3-3 6 6L25 7l3 3-15 15-9-9Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "history",
+    "label": "History",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "return-ring",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M12 4h10l7 7v10l-7 7H11l-7-7v-5h3v3.5l5.5 5.5h8l5.5-5.5v-7L20.5 7h-7L9 11.5H13V14H3V4h3v6l6-6Z\"/>"
+      },
+      {
+        "name": "hands",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14.5 10h3v5.5l5 3-1.5 2.5-6.5-4V10Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "pause",
+    "label": "Pause",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "left-bar",
+        "origin": [
+          10.5,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M7 5h7v22H7V5Z\"/>"
+      },
+      {
+        "name": "right-bar",
+        "origin": [
+          21.5,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M18 5h7v22h-7V5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "play",
+    "label": "Play",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "triangle",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M8 4 28 16 8 28V4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "stop",
+    "label": "Stop",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "square",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M7 5h18l2 2v18l-2 2H7l-2-2V7l2-2Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "import",
+    "label": "Import",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "frame",
+        "origin": [
+          22,
+          16
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M15 3h10l4 4v18l-4 4H15v-3h8.5l2.5-2.5v-15L23.5 6H15V3Z\"/>"
+      },
+      {
+        "name": "inbound-arrow",
+        "origin": [
+          12,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M3 14h11l-4-4 2.5-2.5L21 16l-8.5 8.5L10 22l4-4H3v-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "export",
+    "label": "Export",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "frame",
+        "origin": [
+          22,
+          16
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M15 3h10l4 4v18l-4 4H15v-3h8.5l2.5-2.5v-15L23.5 6H15V3Z\"/>"
+      },
+      {
+        "name": "outbound-arrow",
+        "origin": [
+          12,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M20 14H9l4-4-2.5-2.5L2 16l8.5 8.5L13 22l-4-4h11v-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "download",
+    "label": "Download",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "tray",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M3 20h3v4.5L7.5 26h17l1.5-1.5V20h3v6l-3 3H6l-3-3v-6Z\"/>"
+      },
+      {
+        "name": "down-arrow",
+        "origin": [
+          16,
+          13
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14 3h4v12l4-4 3 3-9 9-9-9 3-3 4 4V3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "upload",
+    "label": "Upload",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "tray",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M3 20h3v4.5L7.5 26h17l1.5-1.5V20h3v6l-3 3H6l-3-3v-6Z\"/>"
+      },
+      {
+        "name": "up-arrow",
+        "origin": [
+          16,
+          13
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14 23V11l-4 4-3-3 9-9 9 9-3 3-4-4v12h-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "close",
+    "label": "Close",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "cross",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m7 4 9 9 9-9 3 3-9 9 9 9-3 3-9-9-9 9-3-3 9-9-9-9 3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "split",
+    "label": "Split",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "forked-arrows",
+        "origin": [
+          16,
+          20
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M3 3h10v3H8.5l7.5 7.5L23.5 6H19V3h10v10h-3V8.5l-8 8V29h-4V16.5l-8-8V13H3V3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "merge",
+    "label": "Merge",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "merged-arrow",
+        "origin": [
+          16,
+          18
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m7 12 9-9 9 9-3 3-4-4v6.5l9 9-3 3-8-8-8 8-3-3 9-9V11l-4 4-3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "copy",
+    "label": "Copy",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "back-sheet",
+        "origin": [
+          14,
+          15
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M7 3h15l3 3v1h-4.5l-1-1h-11L6 8.5v13L8.5 24v3H7l-4-4V7l4-4Z\"/>"
+      },
+      {
+        "name": "front-sheet",
+        "origin": [
+          20,
+          20
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M15 10h10l4 4v12l-3 3H15l-4-4V14l4-4Zm1 6v3h8v-3h-8Zm0 6v3h8v-3h-8Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "clipboard",
+    "label": "Clipboard",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "board",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M8 6h1.5v7h13V6H24l4 4v15l-4 4H8l-4-4V10l4-4Zm1 10v3h14v-3H9Zm0 6v3h10v-3H9Z\"/>"
+      },
+      {
+        "name": "clip",
+        "origin": [
+          16,
+          8
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M12 5l2-2h4l2 2v5h-8V5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "arrow-right",
+    "label": "Arrow right",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M4 14h16l-7-7 3-3 12 12-12 12-3-3 7-7H4v-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "arrow-left",
+    "label": "Arrow left",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M28 14H12l7-7-3-3L4 16l12 12 3-3-7-7h16v-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "arrow-up",
+    "label": "Arrow up",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "lift",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14 28V12l-7 7-3-3L16 4l12 12-3 3-7-7v16h-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "arrow-down",
+    "label": "Arrow down",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14 4v16l-7-7-3 3 12 12 12-12-3-3-7 7V4h-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "expand",
+    "label": "Expand",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "outward-corners",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M3 3h10v3H6v7H3V3Zm16 0h10v10h-3V6h-7V3Zm10 16v10H19v-3h7v-7h3ZM13 29H3V19h3v7h7v3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "minimize",
+    "label": "Minimize",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "inward-corners",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M5 13h8V5l-2.5 2.5L6 3 3 6l4.5 4.5L5 13Zm22 6h-8v8l2.5-2.5L26 29l3-3-4.5-4.5L27 19Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "undo",
+    "label": "Undo",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "return-arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "sway",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m12 3-9 9 9 9 3-3-4-4h8.5l5.5 5.5V28h4V18l-8-8H11l4-4-3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "redo",
+    "label": "Redo",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "return-arrow",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "sway",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"m20 3 9 9-9 9-3-3 4-4h-8.5L7 19.5V28H3V18l8-8h10l-4-4 3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "more",
+    "label": "More options",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "first-dot",
+        "origin": [
+          7,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M5 14h4v4H5v-4Z\"/>"
+      },
+      {
+        "name": "middle-dot",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M14 14h4v4h-4v-4Z\"/>"
+      },
+      {
+        "name": "last-dot",
+        "origin": [
+          25,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" d=\"M23 14h4v4h-4v-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "sparkle",
+    "label": "Sparkle",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "spark",
+        "origin": [
+          18,
+          18
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"m18 7 3.5 7.5L29 18l-7.5 3.5L18 29l-3.5-7.5L7 18l7.5-3.5Z\"/>"
+      },
+      {
+        "name": "glint",
+        "origin": [
+          7,
+          7
+        ],
+        "motion": "turn",
+        "markup": "<path d=\"m7 3 1.5 2.5L11 7 8.5 8.5 7 11 5.5 8.5 3 7l2.5-1.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "note",
+    "label": "Notes",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "sheet",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M8 3h13l6 6v20H5V6l3-3Zm0 3v20h16V11h-5V6H8Z\"/>"
+      },
+      {
+        "name": "text",
+        "origin": [
+          16,
+          18
+        ],
+        "motion": "scan",
+        "markup": "<path d=\"M11 13h10v3H11Zm0 6h7v3h-7Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "presentation",
+    "label": "Presentation",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "screen",
+        "origin": [
+          16,
+          12.5
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 3h20l3 3v16H3V6l3-3Zm0 3v13h20V6H6Z\"/>"
+      },
+      {
+        "name": "content",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "scan",
+        "markup": "<path d=\"M9 12h3v4H9Zm5.5-3h3v7h-3Zm5.5 1.5h3V16h-3Z\"/>"
+      },
+      {
+        "name": "stand",
+        "origin": [
+          16,
+          22
+        ],
+        "markup": "<path d=\"M14.5 22h3v4H24v3H8v-3h6.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "qr",
+    "label": "QR symbol",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "finder-top-left",
+        "origin": [
+          8,
+          8
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M3 3h10v10H3V3Zm2.5 2.5v5h5v-5h-5Z\"/>"
+      },
+      {
+        "name": "finder-top-right",
+        "origin": [
+          24,
+          8
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M19 3h10v10H19V3Zm2.5 2.5v5h5v-5h-5Z\"/>"
+      },
+      {
+        "name": "finder-bottom-left",
+        "origin": [
+          8,
+          24
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M3 19h10v10H3V19Zm2.5 2.5v5h5v-5h-5Z\"/>"
+      },
+      {
+        "name": "data",
+        "origin": [
+          22.5,
+          22.5
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M16 16h8v3h-5v5h-3Zm10 0h3v8h-3Zm-5 5h3v3h-3Zm-5 5h8v3h-8Zm10 0h3v3h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "operator",
+    "label": "Operator",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "screen",
+        "origin": [
+          16,
+          12.5
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 3h20l3 3v16H3V6l3-3Zm0 3v13h20V6H6Z\"/>"
+      },
+      {
+        "name": "live-arrow",
+        "origin": [
+          16,
+          13
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"m16 8.5 5 5-2 2-1.5-1.5v2.5h-3V14L13 15.5l-2-2Z\"/>"
+      },
+      {
+        "name": "stand",
+        "origin": [
+          16,
+          27.5
+        ],
+        "markup": "<path d=\"M14.5 22h3v4H23v3H9v-3h5.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "dashboard",
+    "label": "Dashboard",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "primary-tile",
+        "origin": [
+          8.75,
+          10.75
+        ],
+        "motion": "press",
+        "markup": "<path d=\"M6 3h8.5v15.5H3V6Z\"/>"
+      },
+      {
+        "name": "top-tile",
+        "origin": [
+          23.25,
+          6.75
+        ],
+        "markup": "<path d=\"M17.5 3H26l3 3v4.5H17.5Z\"/>"
+      },
+      {
+        "name": "bottom-tile",
+        "origin": [
+          8.75,
+          25.25
+        ],
+        "markup": "<path d=\"M3 21.5h11.5V29H6l-3-3Z\"/>"
+      },
+      {
+        "name": "secondary-tile",
+        "origin": [
+          23.25,
+          21.25
+        ],
+        "markup": "<path d=\"M17.5 13.5H29V26l-3 3h-8.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "profile",
+    "label": "Profile",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "head",
+        "origin": [
+          16,
+          9.5
+        ],
+        "motion": "sway",
+        "markup": "<path d=\"M12 3h8l3 3v6l-4 4h-6l-4-4V6Z\"/>"
+      },
+      {
+        "name": "shoulders",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path d=\"M10 19h12l7 7v3H3v-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "globe",
+    "label": "Globe",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "sphere",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26ZM11 7l-4 4 3 3h3l4-3V7h-6ZM9 17l-1 2 2 2v4h3l2-5-2-3H9ZM23 8h-3v5l-2 3v6l2 2 3-3v-4h3v-5l-3-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "laptop",
+    "label": "Laptop",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "screen",
+        "origin": [
+          16,
+          22
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M8 3h16l3 3v16H5V6l3-3Zm0 3v13h16V6H8Z\"/>"
+      },
+      {
+        "name": "content",
+        "origin": [
+          16,
+          12.5
+        ],
+        "motion": "scan",
+        "markup": "<path d=\"M11 10h10v3H11Z\"/>"
+      },
+      {
+        "name": "base",
+        "origin": [
+          16,
+          27
+        ],
+        "markup": "<path d=\"M3 25h9l1 1h6l1-1h9v1l-3 3H6l-3-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "phone",
+    "label": "Phone",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "body",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M11 3h10l3 3v20l-3 3H11l-3-3V6l3-3Zm0 4v18h10V7H11Z\"/>"
+      },
+      {
+        "name": "home",
+        "origin": [
+          16,
+          21
+        ],
+        "motion": "press",
+        "markup": "<path d=\"M14.5 19.5h3v3h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "soundwave",
+    "label": "Sound wave",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "bar-left",
+        "origin": [
+          4.5,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M3 12h3v8H3Z\"/>"
+      },
+      {
+        "name": "bar-mid-left",
+        "origin": [
+          10.25,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M8.75 7h3v18h-3Z\"/>"
+      },
+      {
+        "name": "bar-center",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M14.5 3h3v26h-3Z\"/>"
+      },
+      {
+        "name": "bar-mid-right",
+        "origin": [
+          21.75,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M20.25 7h3v18h-3Z\"/>"
+      },
+      {
+        "name": "bar-right",
+        "origin": [
+          27.5,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M26 12h3v8h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "add-song",
+    "label": "Add song",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "note",
+        "origin": [
+          11,
+          22
+        ],
+        "motion": "sway",
+        "markup": "<path d=\"M11 4h3v19l-4 4H6l-3-3v-3l3-3h5Z\"/>"
+      },
+      {
+        "name": "plus",
+        "origin": [
+          23.5,
+          10.5
+        ],
+        "motion": "turn",
+        "markup": "<path d=\"M22 5h3v4h4v3h-4v4h-3v-4h-4V9h4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "video-play",
+    "label": "Play video",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "frame",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 5h20l3 3v16l-3 3H6l-3-3V8l3-3Zm0 3v16h20V8H6Z\"/>"
+      },
+      {
+        "name": "play",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path d=\"m11 10 11 6-11 6Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "clock",
+    "label": "Clock",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "face",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M10 3h12l7 7v12l-7 7H10l-7-7V10l7-7Zm1.5 3L6 11.5v9l5.5 5.5h9l5.5-5.5v-9L20.5 6h-9Z\"/>"
+      },
+      {
+        "name": "hour-hand",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path d=\"M14.5 14.5H23v3h-8.5Z\"/>"
+      },
+      {
+        "name": "minute-hand",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path d=\"M14.5 8h3v9.5h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "prayer",
+    "label": "Prayer",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "hand-left",
+        "origin": [
+          13,
+          21
+        ],
+        "motion": "sway",
+        "markup": "<path d=\"M11 3h3.5v17.5L7 28H3v-4l5-5v-6Z\"/>"
+      },
+      {
+        "name": "hand-right",
+        "origin": [
+          19,
+          21
+        ],
+        "motion": "sway",
+        "markup": "<path d=\"M17.5 3H21l3 10v6l5 5v4h-4l-7.5-7.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "gift",
+    "label": "Gift",
+    "category": "Giving",
+    "parts": [
+      {
+        "name": "bow",
+        "origin": [
+          16,
+          11
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M5 3h7l4 4 4-4h7v6l-3 3H8L5 9V3Zm3 3v3h6l-3-3H8Zm13 0-3 3h6V6h-3Z\"/>"
+      },
+      {
+        "name": "lid",
+        "origin": [
+          16,
+          14
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"M3 12h11.5v4H3Zm14.5 0H29v4H17.5Z\"/>"
+      },
+      {
+        "name": "base",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path d=\"M5 19h9.5v10H8l-3-3Zm12.5 0H27v7l-3 3h-6.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "cup",
+    "label": "Communion cup",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "bowl",
+        "origin": [
+          16,
+          20
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 3h20v11l-7 7h-6l-7-7V3Zm3 3v6.5l5.5 5.5h3l5.5-5.5V6H9Z\"/>"
+      },
+      {
+        "name": "contents",
+        "origin": [
+          16,
+          13
+        ],
+        "motion": "sway",
+        "markup": "<path d=\"M9 10h14v2.5L17.5 18h-3L9 12.5Z\"/>"
+      },
+      {
+        "name": "stem",
+        "origin": [
+          16,
+          27.5
+        ],
+        "markup": "<path d=\"M14.5 21h3v5H24v3H8v-3h6.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "palette",
+    "label": "Palette",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "palette",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "sway",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M11 3h10l8 8v6l-4 4h-5l-2 2v3l-3 3h-5l-7-7V11l8-8Zm0 4-1 1v2l1 1h2l1-1V8l-1-1h-2Zm8 0-1 1v2l1 1h2l1-1V8l-1-1h-2Zm5 6-1 1v2l1 1h2l1-1v-2l-1-1h-2ZM7 15l-1 1v2l1 1h2l1-1v-2l-1-1H7Zm3 8-1 1v2l1 1h2l1-1v-2l-1-1h-2Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "bank",
+    "label": "Bank",
+    "category": "Giving",
+    "parts": [
+      {
+        "name": "roof",
+        "origin": [
+          16,
+          13
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"m16 3 13 8v3H3v-3Z\"/>"
+      },
+      {
+        "name": "columns",
+        "origin": [
+          16,
+          26
+        ],
+        "markup": "<path d=\"M5 17h3v9H5Zm9.5 0h3v9h-3Zm9.5 0h3v9h-3Z\"/>"
+      },
+      {
+        "name": "foundation",
+        "origin": [
+          16,
+          27.5
+        ],
+        "markup": "<path d=\"M3 26h26v3H3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "link",
+    "label": "Link",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "link-left",
+        "origin": [
+          12,
+          20
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M13 11H9l-6 6v6l6 6h6l6-6v-4h-3v3l-4 4h-4l-4-4v-4l4-4h3Z\"/>"
+      },
+      {
+        "name": "link-right",
+        "origin": [
+          20,
+          12
+        ],
+        "markup": "<path d=\"M19 21h4l6-6V9l-6-6h-6l-6 6v4h3v-3l4-4h4l4 4v4l-4 4h-3Z\"/>"
+      },
+      {
+        "name": "connection",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path d=\"m11 19 8-8 2 2-8 8Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "headphones",
+    "label": "Headphones",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "band",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path d=\"M3 18v-8l7-7h12l7 7v8h-3v-7l-5-5H11l-5 5v7Z\"/>"
+      },
+      {
+        "name": "earcup-left",
+        "origin": [
+          6.5,
+          21
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M3 16h7v13H6l-3-3Z\"/>"
+      },
+      {
+        "name": "earcup-right",
+        "origin": [
+          25.5,
+          21
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M22 16h7v10l-3 3h-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "tuning",
+    "label": "Adjustments",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "tracks",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path d=\"M3 5.5h26v3H3Zm0 9h26v3H3Zm0 9h26v3H3Z\"/>"
+      },
+      {
+        "name": "slider-top",
+        "origin": [
+          12,
+          7
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M10.5 3h3L15 4.5v5L13.5 11h-3L9 9.5v-5Z\"/>"
+      },
+      {
+        "name": "slider-middle",
+        "origin": [
+          22,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M20.5 12h3l1.5 1.5v5L23.5 20h-3L19 18.5v-5Z\"/>"
+      },
+      {
+        "name": "slider-bottom",
+        "origin": [
+          14,
+          25
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M12.5 21h3l1.5 1.5v5L15.5 29h-3L11 27.5v-5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "hand-coins",
+    "label": "Giving",
+    "category": "Giving",
+    "parts": [
+      {
+        "name": "coin",
+        "origin": [
+          19,
+          9.5
+        ],
+        "motion": "lift",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M15 3h7l4 4v5l-4 4h-7l-4-4V7l4-4Zm1.5 3-2.5 2.5v2l2.5 2.5h4l2.5-2.5v-2L20.5 6h-4Z\"/>"
+      },
+      {
+        "name": "hand",
+        "origin": [
+          7,
+          24
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"m3 20 4-4h5l6 4h4l4-3 3 3-7 8H11l-4 1-4-5v-4Zm8 1v3h8v-3h-8Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "calendar",
+    "label": "Calendar",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "body",
+        "origin": [
+          16,
+          17.5
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 6h20l3 3v17l-3 3H6l-3-3V9l3-3Zm0 7v13h20V13H6Z\"/>"
+      },
+      {
+        "name": "binding",
+        "origin": [
+          16,
+          6
+        ],
+        "markup": "<path d=\"M9 3h3v6H9Zm11 0h3v6h-3Z\"/>"
+      },
+      {
+        "name": "days",
+        "origin": [
+          16,
+          19
+        ],
+        "motion": "scan",
+        "markup": "<path d=\"M9 17h4v4H9Zm10 0h4v4h-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "folder",
+    "label": "Folder",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "tab",
+        "origin": [
+          10,
+          11
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"M3 4h9l4 4h10l3 3v3H3Z\"/>"
+      },
+      {
+        "name": "body",
+        "origin": [
+          16,
+          29
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M3 11h26v14l-4 4H3V11Zm3 3v12h17l3-3v-9H6Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "language",
+    "label": "Language",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "latin",
+        "origin": [
+          9,
+          13
+        ],
+        "motion": "lift",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M7.5 3h3L15 22h-3l-1-4H7l-1 4H3L7.5 3ZM9 8l-1.5 7h3L9 8Z\"/>"
+      },
+      {
+        "name": "han",
+        "origin": [
+          23,
+          19
+        ],
+        "markup": "<path d=\"M21.5 8h3v3h-3ZM17 14h12v3H17Zm2 3h3l2 5 5 5-2 2-5-5-3-7Zm6 0h3l-3 7-6 5-2-2 6-5 2-5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "bell",
+    "label": "Notifications",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "bell",
+        "origin": [
+          16,
+          5
+        ],
+        "motion": "sway",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M14.5 3h3v3H21l5 5v9l3 3v2H3v-2l3-3v-9l5-5h3.5V3ZM12 9l-3 3v9h14v-9l-3-3h-8Z\"/>"
+      },
+      {
+        "name": "clapper",
+        "origin": [
+          16,
+          26
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M12 27h8l-2 3h-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "warning",
+    "label": "Warning",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "triangle",
+        "origin": [
+          16,
+          17
+        ],
+        "motion": "pulse",
+        "markup": "<path fill-rule=\"evenodd\" d=\"m16 3 14 25H2L16 3Zm-1.5 8v8h3v-8h-3Zm0 11v3h3v-3h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "info",
+    "label": "Information",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "badge",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M9 3h14l6 6v14l-6 6H9l-6-6V9l6-6Zm5.5 5v3h3V8h-3Zm-2 6v3h2v7h5v-3h-2v-7h-5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "help",
+    "label": "Help",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "badge",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M9 3h14l6 6v14l-6 6H9l-6-6V9l6-6Zm3 5-2 2v3h3v-2h6v3l-4 2v4h3v-2.5l4-2V10l-2-2h-8Zm3 14v3h3v-3h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "cloud",
+    "label": "Cloud",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "cloud",
+        "origin": [
+          16,
+          21
+        ],
+        "motion": "lift",
+        "markup": "<path fill-rule=\"evenodd\" d=\"m13 5-5 5v3H6l-4 4v6l4 4h21l3-3v-8l-4-4h-4V9l-4-4h-5Zm1.5 3h2L19 10.5V15h6l2 2v6l-1 1H7l-2-2v-4l2-2h4v-4.5L14.5 8Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "wifi",
+    "label": "Wi-Fi",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "outer-signal",
+        "origin": [
+          16,
+          26
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M2 9.5 7.5 4h17L30 9.5l-2.5 2.5L23 7.5H9L4.5 12Z\"/>"
+      },
+      {
+        "name": "inner-signal",
+        "origin": [
+          16,
+          26
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"m7 16 5-5h8l5 5-2.5 2.5-4-4h-5l-4 4Z\"/>"
+      },
+      {
+        "name": "dot",
+        "origin": [
+          16,
+          25
+        ],
+        "markup": "<path d=\"m16 21 4 4-4 4-4-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "shield",
+    "label": "Trust",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "shield",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"m16 3 12 4v13l-5 6-7 4-7-4-5-6V7l12-4Zm0 3.5L7 9.5V19l4 4.5 5 3 5-3 4-4.5V9.5l-9-3Z\"/>"
+      },
+      {
+        "name": "check",
+        "origin": [
+          16,
+          17
+        ],
+        "motion": "press",
+        "markup": "<path d=\"m10 15 4 4 7-8 2.5 2-9.25 10-6.5-6Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "lock",
+    "label": "Lock",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "shackle",
+        "origin": [
+          16,
+          14
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"M9 14V7l4-4h6l4 4v7h-3V8.5L17.5 6h-3L12 8.5V14Z\"/>"
+      },
+      {
+        "name": "body",
+        "origin": [
+          16,
+          22
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 13h20v12l-3 3H9l-3-3V13Zm8.5 5v6h3v-6h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "unlock",
+    "label": "Unlock",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "shackle",
+        "origin": [
+          10,
+          14
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"M9 14V7l4-4h6l4 4v3h-3V8.5L17.5 6h-3L12 8.5V14Z\"/>"
+      },
+      {
+        "name": "body",
+        "origin": [
+          16,
+          22
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"M6 13h20v12l-3 3H9l-3-3V13Zm8.5 5v6h3v-6h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "eye",
+    "label": "Show",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "outline",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path fill-rule=\"evenodd\" d=\"m2 16 8-9h12l8 9-8 9H10l-8-9Zm9.5-6L6 16l5.5 6h9l5.5-6-5.5-6h-9Z\"/>"
+      },
+      {
+        "name": "pupil",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"m13 12-1 1v6l1 1h6l1-1v-6l-1-1Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "eye-off",
+    "label": "Hide",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "outline",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path d=\"m3 13 3 3 5.5 6h7l3 3H10l-8-9 1-3ZM11 7h11l8 9-4 4-2-2 2-2-5.5-6H14L11 7Z\"/>"
+      },
+      {
+        "name": "slash",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path d=\"m5 3 24 24-2 2L3 5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "volume",
+    "label": "Volume",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "speaker",
+        "origin": [
+          12,
+          16
+        ],
+        "markup": "<path d=\"M3 11h6l8-7v24l-8-7H3Z\"/>"
+      },
+      {
+        "name": "near-wave",
+        "origin": [
+          18,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"m20 10 4 4v4l-4 4-2-2 3-3v-2l-3-3Z\"/>"
+      },
+      {
+        "name": "far-wave",
+        "origin": [
+          18,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"m25 5 5 7v8l-5 7-2-2 4-6v-6l-4-6Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "volume-off",
+    "label": "Mute volume",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "speaker",
+        "origin": [
+          12,
+          16
+        ],
+        "markup": "<path d=\"M3 11h6l8-7v24l-8-7H3Z\"/>"
+      },
+      {
+        "name": "cross",
+        "origin": [
+          25,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path d=\"m21 10 4 4 4-4 2 2-4 4 4 4-2 2-4-4-4 4-2-2 4-4-4-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "loader",
+    "label": "Loading",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "ring",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "turn",
+        "markup": "<path d=\"M10 3h12l7 7v12l-7 7H10l-7-7V10l4-4 2.5 2.5L6.5 12v8l5.5 5.5h8l5.5-5.5v-8L20 6.5H10Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "microphone-off",
+    "label": "Mute microphone",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "capsule",
+        "origin": [
+          16,
+          12
+        ],
+        "markup": "<path fill=\"currentColor\" stroke=\"none\" fill-rule=\"evenodd\" d=\"M13 3.5h6L22 6.5V18l-3 3h-6l-3-3V6.5l3-3Zm.5 4v2h5v-2h-5Zm0 4.5v2h5v-2h-5Z\"/>"
+      },
+      {
+        "name": "stand",
+        "origin": [
+          16,
+          28.5
+        ],
+        "markup": "<path fill=\"none\" stroke=\"currentColor\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" d=\"M6.5 15v5L11 24.5h10l4.5-4.5v-5M16 25v3M12 28.5h8\" stroke-width=\"2.5\"/>"
+      },
+      {
+        "name": "slash",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path d=\"m4 3 25 25-2 2L2 5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "heart",
+    "label": "Favourite",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "heart",
+        "origin": [
+          16,
+          17
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"M3 8 7 4h6l3 4 3-4h6l4 4v9L16 29 3 17Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "save",
+    "label": "Save",
+    "category": "Actions",
+    "parts": [
+      {
+        "name": "disk",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M4 4h19l5 5v19H4V4Zm6 0v10h12V4H10Zm0 16v5h12v-5H10Z\"/><path d=\"M17 5h3v6h-3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "filter",
+    "label": "Filter",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "funnel",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path d=\"M3 4h26v4l-10 11v8l-6 3V19L3 8V4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "sort",
+    "label": "Sort",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "lines",
+        "origin": [
+          10,
+          16
+        ],
+        "markup": "<path d=\"M3 6h15v3H3ZM3 14h11v3H3ZM3 22h7v3H3Z\"/>"
+      },
+      {
+        "name": "arrow",
+        "origin": [
+          24,
+          16
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M22 5h3v17l3-3 2 2-6.5 7L17 21l2-2 3 3Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "mail",
+    "label": "Message",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "envelope",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path d=\"M3 10.5 16 19l13-8.5V25l-2 2H5l-2-2Z\"/>"
+      },
+      {
+        "name": "flap",
+        "origin": [
+          16,
+          5
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"M3 7 5 5h22l2 2-13 8.5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "users",
+    "label": "People",
+    "category": "Service",
+    "parts": [
+      {
+        "name": "back-person",
+        "origin": [
+          24,
+          16
+        ],
+        "markup": "<path d=\"M22 5h4l3 3v4l-3 3h-4v-3l2-2V8l-2-2ZM24 18h3l3 3v7h-6v-6l-3-3Z\"/>"
+      },
+      {
+        "name": "front-person",
+        "origin": [
+          13,
+          27
+        ],
+        "motion": "lift",
+        "markup": "<path d=\"M10 3h6l4 4v6l-4 4h-6l-4-4V7ZM8 20h10l4 4v5H4v-5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "check-circle",
+    "label": "Success",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "badge",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "press",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M9 3h14l6 6v14l-6 6H9l-6-6V9l6-6Zm-.5 12 6 7.5 10-11-2.5-2-7.5 8.5-3.5-5-2.5 2Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "error-circle",
+    "label": "Error",
+    "category": "Status",
+    "parts": [
+      {
+        "name": "badge",
+        "origin": [
+          16,
+          16
+        ],
+        "motion": "pulse",
+        "markup": "<path fill-rule=\"evenodd\" d=\"M9 3h14l6 6v14l-6 6H9l-6-6V9l6-6Zm2 6L9 11l5 5-5 5 2 2 5-5 5 5 2-2-5-5 5-5-2-2-5 5-5-5Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "connection",
+    "label": "Connect",
+    "category": "Devices",
+    "parts": [
+      {
+        "name": "plug",
+        "origin": [
+          10,
+          12
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M7 3h3v6h3V3h3v6h3v8l-4 4h-3v8H9v-8H6l-3-4V9h4V3Z\"/>"
+      },
+      {
+        "name": "signal",
+        "origin": [
+          23,
+          15
+        ],
+        "motion": "pulse",
+        "markup": "<path d=\"m24 7 5 5v8l-5 5-2-2 4-4v-6l-4-4Z\"/>"
+      }
+    ]
+  },
+  {
+    "name": "external-link",
+    "label": "Open externally",
+    "category": "Navigation",
+    "parts": [
+      {
+        "name": "frame",
+        "origin": [
+          16,
+          16
+        ],
+        "markup": "<path d=\"M4 7h10v3H7v15h15v-7h3v10H4Z\"/>"
+      },
+      {
+        "name": "arrow",
+        "origin": [
+          22,
+          10
+        ],
+        "motion": "slide",
+        "markup": "<path d=\"M18 3h11v11h-3V8l-12 12-2-2L24 6h-6Z\"/>"
+      }
+    ]
+  }
+]

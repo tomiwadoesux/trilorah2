@@ -69,7 +69,7 @@ function Words({ words, pills, arrive }: { words: Word[]; pills: boolean; arrive
             {i > 0 && ' '}
             {run.ref && pills ? (
               <>
-                <span className="rounded-[6px] bg-[color-mix(in_srgb,var(--tri-accent-yellow)_14%,transparent)] px-[5px] py-px">
+                <span className="rounded-[4px] bg-[color-mix(in_srgb,var(--tri-accent-yellow)_14%,transparent)] px-[5px] py-px">
                   {inner}
                 </span>
                 {tail && <span style={{ opacity: lastW.partial ? 0.8 : 1 }}>{tail}</span>}

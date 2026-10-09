@@ -2,6 +2,16 @@ import { expect, it } from 'vitest';
 import { createPersistentRun } from './persistentRun';
 import type { PersistedRun, RunSegment } from '../../shared/operatorRun';
 const run: RunSegment[] = [{key:'sermon-1',type:'sermon',label:'Sermon',items:[{key:'song-1',source:'song',label:'Amazing grace',lines:['Amazing grace']}]}];
+it('reports failed saves without discarding the current run and reports a later recovery', async () => {
+  let fail = true;
+  const events: string[] = [];
+  const store = createPersistentRun({ read: () => null, write: () => { if (fail) throw new Error('disk full'); }, writeDurable: async () => { if (fail) throw new Error('disk full'); }, onSaveError: source => events.push(`failed:${source}`), onSaveSuccess: source => events.push(`saved:${source}`) });
+  store.update(run); await store.flush();
+  expect(store.getSnapshot()).toEqual(run);
+  expect(events).toEqual(['failed:local', 'failed:durable']);
+  fail = false; store.update([...run]); await store.flush();
+  expect(events.slice(-2)).toEqual(['saved:local', 'saved:durable']);
+});
 it('does not overwrite saved data on mount and saves mutations before remount', () => {
   let data: RunSegment[] | PersistedRun = run; let writes = 0;
   const storage = {read:()=>data,write:(value:PersistedRun)=>{data=value;writes++;}};

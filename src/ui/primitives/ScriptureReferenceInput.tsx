@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { cx } from '../lib/cx';
 import { useNudge } from '../hooks/useNudge';
-import { SearchIcon } from '../icons';
+import { SearchOutlineIcon } from '../icons';
 import { parts } from '../../../shared/referenceParts';
 
 /*
@@ -49,7 +49,14 @@ export interface ResolvedReference {
   rangeEnd?: number | null;
 }
 
+export interface ScriptureReferenceInputHandle {
+  focus: () => boolean;
+  /** Start a fresh lookup from a neutral area of the Operator page. */
+  beginTyping: (text: string) => boolean;
+}
+
 export interface ScriptureReferenceInputProps {
+  ref?: Ref<ScriptureReferenceInputHandle>;
   books: ScriptureBook[];
   /**
    * Verses in a given chapter, or undefined when not known yet. Chapter counts
@@ -152,6 +159,7 @@ function viableNumber(digits: string, max: number | undefined): boolean {
 /* ------------------------------------------------------------------ */
 
 export function ScriptureReferenceInput({
+  ref: handleRef,
   books,
   versesInChapter,
   value,
@@ -306,6 +314,27 @@ export function ScriptureReferenceInput({
     }
   };
 
+  useImperativeHandle(handleRef, () => {
+    const focus = () => {
+      const input = inputRef.current;
+      if (!input || input.matches(':disabled') || input.closest('[inert]') || !input.getClientRects().length) return false;
+      input.focus({ preventScroll: true });
+      return input.ownerDocument.activeElement === input;
+    };
+    return {
+      focus,
+      beginTyping: (firstText) => {
+        if (!focus()) return false;
+        // A verse selected earlier should not trap a new book name at its end.
+        setLockedBook(false);
+        setLockedChapter(false);
+        setLockedVerse(false);
+        attempt(firstText);
+        return true;
+      },
+    };
+  });
+
   /** Complete the book name and leave a space, ready for the chapter. */
   const acceptGhost = () => {
     if (!ghost) return;
@@ -409,6 +438,8 @@ export function ScriptureReferenceInput({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter/arrows belong to the composition candidate window until it closes.
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     const plainArrow = !e.shiftKey && !e.metaKey && !e.altKey && !e.ctrlKey;
 
     if (e.key === 'Backspace' && plainArrow) {
@@ -593,7 +624,7 @@ export function ScriptureReferenceInput({
           }
         }}
       >
-        <SearchIcon size={13} className="shrink-0 text-[rgb(229_243_242_/_0.45)]" />
+        <SearchOutlineIcon size={13} className="shrink-0 text-[rgb(229_243_242_/_0.45)]" />
 
         {/* The typed text and its ghost overlay. Native input is transparent with bright caret */}
         <div className="relative min-w-0 flex-1">
@@ -621,7 +652,7 @@ export function ScriptureReferenceInput({
                  scriptures tab. Shares --tri-field-h with the Select beside
                  it and now shares its type size too. */
               'relative z-10 w-full m-0 p-0 bg-transparent text-[length:var(--tri-control-size)] leading-none tracking-normal',
-              'text-transparent caret-white placeholder:text-[rgb(229_243_242_/_0.34)]',
+              'text-transparent caret-white [--tri-caret-color:white] placeholder:text-[rgb(229_243_242_/_0.34)]',
               'focus:outline-none disabled:cursor-not-allowed',
               /* Same as SearchField: index.css underlines every bare input,
                  and that hairline has no business inside a filled box. */

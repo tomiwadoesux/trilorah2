@@ -1,56 +1,155 @@
-import { useEffect, useState } from 'react';
-import { PhoneIcon } from '../ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, CloseIcon } from '../ui';
+import { PhoneConnectionArt } from './PhoneConnectionArt';
+import './mobileRemotePanel.css';
 
-export function MobileRemotePanel() {
-  const [open,setOpen]=useState(false);
-  const [status,setStatus]=useState<Awaited<ReturnType<WindowApi['mobileStatus']>>|null>(null);
-  const [code,setCode]=useState<{code:string;expiresAt:number}|null>(null);
-  const [url,setUrl]=useState('');
-  const [qr,setQr]=useState('');
-  const [error,setError]=useState('');
-  const [needsRestart,setNeedsRestart]=useState(false);
-  const api=window.api;
-  const refresh=async()=>{ if (!api) return; setStatus(await api.mobileStatus()); setCode(await api.mobileCode()); };
-  const reportError=(e:unknown)=>{
-    const message=String(e);
+export interface MobileRemoteIntroProps {
+  onEnable: () => void;
+  disabled?: boolean;
+  busy?: boolean;
+}
+
+/** The initial view is also used by the gallery; it never contacts the backend. */
+export function MobileRemoteIntro({ onEnable, disabled = false, busy = false }: MobileRemoteIntroProps) {
+  return (
+    <div className="mobile-remote-intro" aria-busy={busy || undefined}>
+      <p className="mobile-remote-intro__line">Control the service from your phone.</p>
+      <PhoneConnectionArt variant="remote" />
+      <div className="mobile-remote-intro__action">
+        <Button label={busy ? 'Enabling…' : 'Enable mobile access'} tone="go" disabled={disabled || busy} onClick={onEnable} />
+        <p className="mobile-remote-hint">Keep your phone and this computer on the same Wi-Fi.</p>
+      </div>
+    </div>
+  );
+}
+
+type RemoteAction = 'enable' | 'disable' | 'code' | 'approve' | 'revoke';
+
+export function MobileRemotePanel({ open, onClose, preview = false }: { open: boolean; onClose: () => void; preview?: boolean }) {
+  const [status, setStatus] = useState<Awaited<ReturnType<WindowApi['mobileStatus']>> | null>(null);
+  const [code, setCode] = useState<{ code: string; expiresAt: number } | null>(null);
+  const [url, setUrl] = useState('');
+  const [qr, setQr] = useState('');
+  const [error, setError] = useState('');
+  const [needsRestart, setNeedsRestart] = useState(false);
+  const [pending, setPending] = useState<RemoteAction | null>(null);
+  const actionPending = useRef(false);
+  const api = preview ? undefined : window.api;
+  const busy = pending !== null;
+
+  const refresh = useCallback(async (isCurrent: () => boolean = () => true) => {
+    if (!api) return;
+    const nextStatus = await api.mobileStatus();
+    if (isCurrent()) setStatus(nextStatus);
+    const nextCode = await api.mobileCode();
+    if (isCurrent()) setCode(nextCode);
+  }, [api]);
+
+  const reportError = useCallback((e: unknown) => {
+    const message = String(e);
     if (/No handler registered for ['"]mobile-|mobile\w+ is not a function/.test(message)) {
       setNeedsRestart(true);
       setStatus(null);
       setError('Trilorah needs a full restart to load the mobile backend. Close all Trilorah windows and reopen the app, then enable mobile access. Refreshing this window is not enough.');
     } else setError(message);
-  };
-  useEffect(()=>{
+  }, []);
+
+  useEffect(() => {
     if (!open || needsRestart) return;
-    let disposed=false;
-    let timer:ReturnType<typeof setTimeout>;
-    const poll=async()=>{
-      try { await refresh(); if (!disposed) timer=setTimeout(()=>void poll(),1000); }
-      catch(e) { if (!disposed) reportError(e); }
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        await refresh(() => !disposed);
+        if (!disposed) timer = setTimeout(() => void poll(), 1000);
+      } catch (e) { if (!disposed) reportError(e); }
     };
     void poll();
-    return()=>{disposed=true;clearTimeout(timer);};
-  },[open,needsRestart]);
-  useEffect(()=>{ const next=status?.urls.includes(url) ? url : status?.urls[0] || ''; if(next!==url) setUrl(next); },[status,url]);
-  useEffect(()=>{ setQr(''); if(url) void api?.mobileQr(url).then(setQr).catch(e=>setError(String(e))); },[url]);
-  async function act(fn:()=>Promise<unknown>) { try{setError(''); await fn(); await refresh();}catch(e){reportError(e);} }
-  return <>
-    <button type="button" className="tri-header-control tri-header-remote flex shrink-0 items-center gap-2 lowercase" title="pair a phone as a remote" onClick={()=>setOpen(true)}><PhoneIcon size={12} className="tri-header-icon" />mobile remote</button>
-    {open && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-5" onClick={()=>setOpen(false)}>
-      <section role="dialog" aria-modal="true" aria-label="Mobile remote" className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl border border-neutral-700 bg-[#171918] p-6 text-white shadow-xl" onClick={e=>e.stopPropagation()}>
-        <div className="flex justify-between"><h2 className="text-xl">Mobile remote</h2><button onClick={()=>setOpen(false)} aria-label="Close mobile remote">✕</button></div>
-        <p className="my-3 text-sm text-neutral-300">Connect the phone and this computer to the same trusted Wi-Fi. This QR opens private controls; use Online on the remote for the congregation’s QR.</p>
-        <button disabled={needsRestart || !api || !status} className="rounded bg-white px-4 py-2 text-black disabled:opacity-40" onClick={()=>void act(()=>api!.mobileEnable(!status?.running))}>{status?.running ? 'Turn off mobile access' : 'Enable mobile access'}</button>
-        {status?.running && <>
-          {status.urls.length>0 ? <><label className="my-3 block text-sm">Connection address<select className="mt-1 block w-full rounded bg-neutral-800 p-2" value={url} onChange={e=>setUrl(e.target.value)}>{status.urls.map(u=><option key={u}>{u}</option>)}</select></label>{qr && <img className="mx-auto rounded" width="200" height="200" alt="Scan to open private mobile controls" src={qr}/>}</> : <p className="my-3">No Wi-Fi or Ethernet address found. Connect this computer to the church network.</p>}
-          <div className="my-4 flex items-center justify-between"><button className="rounded border px-3 py-2" onClick={()=>void act(()=>api!.mobileCode(true))}>Generate pairing code</button><strong className="font-mono text-2xl tracking-widest">{code?.code || '———'}</strong></div>
-          <p className="text-xs text-neutral-400">Codes expire after two minutes. Scan, enter the code, then approve the phone below. If the page cannot open, allow Trilorah through Windows Firewall on Private networks and check that guest Wi-Fi does not isolate devices.</p>
-          {status.pending.map(p=><div className="my-3 rounded border border-amber-500 p-3" key={p.id}><p>{p.name} requests control</p><button className="mr-4 py-2 text-green-300" onClick={()=>void act(()=>api!.mobileApprove(p.id,true))}>Approve</button><button onClick={()=>void act(()=>api!.mobileApprove(p.id,false))}>Decline</button></div>)}
-        </>}
-        <h3 className="mt-5 text-sm font-semibold">Paired devices</h3>
-        {status?.devices.length===0 && <p className="text-sm text-neutral-400">No phones paired yet.</p>}
-        {status?.devices.map(d=><div key={d.deviceId} className="flex justify-between border-b border-neutral-700 py-3 text-sm"><span>{d.deviceName}</span><button className="text-red-300" onClick={()=>void act(()=>api!.mobileRevoke(d.deviceId))}>Revoke</button></div>)}
-        {(error || status?.error) && <p role="alert" className="mt-3 text-sm text-red-300">{error || status?.error}</p>}
+    return () => { disposed = true; clearTimeout(timer); };
+  }, [open, needsRestart, refresh, reportError]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    const next = status?.urls.includes(url) ? url : status?.urls[0] || '';
+    if (next !== url) setUrl(next);
+  }, [status, url]);
+
+  useEffect(() => {
+    let disposed = false;
+    setQr('');
+    if (url) void api?.mobileQr(url).then(value => {
+      if (!disposed) setQr(value);
+    }).catch(e => { if (!disposed) setError(String(e)); });
+    return () => { disposed = true; };
+  }, [api, url]);
+
+  async function act(action: RemoteAction, fn: () => Promise<unknown>) {
+    if (actionPending.current) return;
+    actionPending.current = true;
+    setPending(action);
+    try { setError(''); await fn(); await refresh(); }
+    catch (e) { reportError(e); }
+    finally { actionPending.current = false; setPending(null); }
+  }
+
+  const unavailable = needsRestart || !api || !status;
+  const showDevices = !!status?.running || !!status?.devices.length;
+
+  if (!open) return null;
+  return <div className="mobile-remote-scrim" onClick={onClose}>
+      <section role="dialog" aria-modal="true" aria-label="Mobile remote" className="mobile-remote-panel tri-rounded-surface" onClick={event => event.stopPropagation()}>
+        <header className="mobile-remote-heading">
+          <h2>Mobile remote</h2>
+          <button type="button" className="mobile-remote-close" onClick={onClose} aria-label="Close mobile remote"><CloseIcon size={14} /></button>
+        </header>
+
+        {!status?.running ? (
+          <MobileRemoteIntro onEnable={() => void act('enable', () => api!.mobileEnable(true))} disabled={unavailable || busy} busy={pending === 'enable'} />
+        ) : (
+          <div className="mobile-remote-active">
+            <p className="mobile-remote-hint">Scan with your phone on the same Wi-Fi, enter the code, then approve it here.</p>
+            {status.urls.length > 0 ? <>
+              <label className="mobile-remote-address">Connection address
+                <select value={url} onChange={event => setUrl(event.target.value)}>{status.urls.map(address => <option key={address}>{address}</option>)}</select>
+              </label>
+              {qr && <img className="mobile-remote-qr tri-rounded-control" width="200" height="200" alt="Scan to open private mobile controls" src={qr} />}
+            </> : <p className="mobile-remote-hint">No Wi-Fi or Ethernet address found. Connect this computer to the church network.</p>}
+            <div className="mobile-remote-code">
+              <Button label="Generate pairing code" tone="ash" disabled={unavailable || busy} onClick={() => void act('code', () => api!.mobileCode(true))} />
+              <strong>{code?.code || '———'}</strong>
+            </div>
+            <p className="mobile-remote-hint">Codes expire after two minutes. If the page cannot open, allow Trilorah through Windows Firewall on Private networks and check that guest Wi-Fi does not isolate devices.</p>
+            <p className="mobile-remote-hint">This QR opens private controls. Use Online on the remote for the congregation’s QR.</p>
+            {status.pending.map(phone => <div className="mobile-remote-request" key={phone.id}>
+              <p>{phone.name} requests control</p>
+              <div className="mobile-remote-actions">
+                <Button label="Approve" tone="go" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, true))} />
+                <Button label="Decline" tone="ash" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, false))} />
+              </div>
+            </div>)}
+            <div className="mobile-remote-actions mobile-remote-actions--end">
+              <Button label={pending === 'disable' ? 'Turning off…' : 'Turn off mobile access'} tone="ash" disabled={unavailable || busy} onClick={() => void act('disable', () => api!.mobileEnable(false))} />
+            </div>
+          </div>
+        )}
+
+        {showDevices && <section className="mobile-remote-devices" aria-label="Paired devices">
+          <h3>Paired devices</h3>
+          {status?.devices.length === 0 && <p className="mobile-remote-hint">No phones paired yet.</p>}
+          {status?.devices.map(device => <div key={device.deviceId} className="mobile-remote-device">
+            <span>{device.deviceName}</span>
+            <Button label="Revoke" tone="danger" disabled={unavailable || busy} onClick={() => void act('revoke', () => api!.mobileRevoke(device.deviceId))} />
+          </div>)}
+        </section>}
+        {(error || status?.error) && <p role="alert" className="mobile-remote-error">{error || status?.error}</p>}
       </section>
-    </div>}
-  </>;
+    </div>;
 }

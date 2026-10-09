@@ -1,3 +1,4 @@
+import { STARTER_MEDIA } from '../../lib/starterMedia';
 import { isEmptyPreview } from '../emptyPreviewMode';
 import { useSyncExternalStore } from 'react';
 import { slideBackdrop, type BackdropStyle } from '../../ui';
@@ -58,10 +59,13 @@ function loadPersistedMedia(): ThemeMedia[] {
   if (typeof window === 'undefined') return SEED;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SEED;
+    if (!raw) return [...STARTER_MEDIA, ...SEED];
     const custom: ThemeMedia[] = JSON.parse(raw);
     const existingIds = new Set(SEED.map((s) => s.id));
-    const uniqueCustom = custom.filter((c) => !existingIds.has(c.id));
+    const uniqueCustom = custom.filter((c) => !existingIds.has(c.id)).map(item => {
+      const bundled = STARTER_MEDIA.find(starter => starter.id === item.id);
+      return bundled ? { ...item, url: bundled.url } : item;
+    });
     return [...uniqueCustom, ...SEED];
   } catch {
     return SEED;
@@ -136,8 +140,8 @@ export function getMediaLibrary(): ThemeMedia[] {
  * a fair draw would open on a wash most mornings. They are the fallback for
  * a library nobody has added to yet.
  *
- * Never a clip: a video is something you play, not a wallpaper, and the
- * preview would open on a frozen frame of it. And only off the themes
+ * Prefer a still at launch so an unchosen clip does not start playing.
+ * Only choose from the themes
  * shelf: a folder of announcement slides added to media is not a set of
  * backgrounds, and one of them must not open the next morning's preview.
  */

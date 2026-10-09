@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyTriSnapshot, normalizeTriTheme, readTriLocal, selectTriItems, selectedTriCount, TRI_DISPLAY_KEY, TRI_THEME_KEY } from './triClient';
 import type { TriSnapshot } from '../../shared/triPackage';
+import type { RunSegment } from '../../shared/operatorRun';
+import { operatorRunStore } from '../stores/operatorRunStore';
 
 const theme = {
   backgroundId: 'imported-background', dimness: 42, blur: 3, shadow: 77,
@@ -9,7 +11,7 @@ const theme = {
 };
 
 describe('portable package choices', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
   const snapshot: TriSnapshot = { categories: {
     service: [{ id: 'current', label: 'Sunday', data: { segments: [] } }],
     preachers: [{ id: 'guest', label: 'Guest preacher', data: { profile: {} } }],
@@ -72,5 +74,20 @@ describe('portable package choices', () => {
     expect(readTriLocal(TRI_DISPLAY_KEY, {})).toEqual(display);
     expect(readTriLocal(TRI_THEME_KEY, {})).toMatchObject({ ...theme, font: 'default', textCase: 'lowercase', textSpacing: 'airy', dimness: 60, safeMargin: 15, textWidth: 62, layout: 'center', refGap: 2.25 });
     expect(setSetting).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('applies all selected services together when opening is %s', (openService) => {
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() });
+    const local: RunSegment[] = [{ key: 'local', type: 'custom', label: 'Local', items: [] }];
+    let applied = local;
+    const update = vi.spyOn(operatorRunStore, 'update').mockImplementation(change => {
+      applied = typeof change === 'function' ? change(local) : change;
+    });
+    const source: TriSnapshot = { categories: { service: ['First', 'Second'].map(label => ({
+      id: label, label, data: { segments: [{ key: label, type: 'custom', label, items: [] }] },
+    })) } };
+    applyTriSnapshot(source, openService);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(applied.map(segment => segment.label)).toEqual(openService ? ['First', 'Second'] : ['Local', 'First', 'Second']);
   });
 });

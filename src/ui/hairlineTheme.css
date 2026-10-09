@@ -1,0 +1,9 @@
+/* Shared with @lucasmarkes/hairline 0.5.x. Keep our bespoke geometry and motion. */
+.tri-empty-surface, .tri-hairline-theme {
+  --hairline-plate: #111111;
+  --hairline-hi: #ededed;
+  --hairline-edge: #a1a1aa;
+  --hairline-mid: #52525b;
+  --hairline-lo: #27272a;
+  --hairline-stroke: .9;
+}

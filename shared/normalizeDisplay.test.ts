@@ -3,6 +3,8 @@ import {
   DEFAULT_RULES,
   DISPLAY_FILLERS,
   PROPER_NOUNS,
+  capitalizeScriptureNames,
+  capitalizeScriptureWords,
   normalizeForDisplay,
   recoverRaw,
   type BookMatcher,
@@ -411,6 +413,82 @@ describe('normalizeForDisplay — sentence-case, the near misses it must not fir
 
   it('never re-cases a canonical name scripture-ref already emitted', () => {
     expect(display('second Kings chapter two verse nine')).toBe('2 Kings 2:9')
+  })
+})
+
+describe('divine names and titles on transcript surfaces', () => {
+  it('capitalizes divine names without rewriting the sentence', () => {
+    expect(capitalizeScriptureNames('we trust jesus, god, elohim, yahweh, adonai, yeshua and abba.')).toBe(
+      'we trust Jesus, God, Elohim, Yahweh, Adonai, Yeshua and Abba.',
+    )
+    expect(capitalizeScriptureNames('we praise yhwh and jehovah.')).toBe('we praise YHWH and Jehovah.')
+  })
+
+  it('capitalizes full titles, keeping connecting words as spoken', () => {
+    expect(capitalizeScriptureNames('the holy spirit reveals the son of god and god the father.')).toBe(
+      'the Holy Spirit reveals the Son of God and God the Father.',
+    )
+    expect(capitalizeScriptureNames('our heavenly father, the most high, ancient of days and prince of peace.')).toBe(
+      'our Heavenly Father, the Most High, Ancient of Days and Prince of Peace.',
+    )
+    expect(capitalizeScriptureNames('the spirit of the lord, the lamb of god, king of kings and lord of lords.')).toBe(
+      'the Spirit of the Lord, the Lamb of God, King of kings and Lord of lords.',
+    )
+  })
+
+  it('preserves spaces and hyphens in Hebrew divine names', () => {
+    const input = 'el shaddai, el-elyon, el roi, jehovah-jireh and jehovah\t rapha'
+    const expected = 'El Shaddai, El-Elyon, El Roi, Jehovah-Jireh and Jehovah\t Rapha'
+    expect(capitalizeScriptureNames(input)).toBe(expected)
+    expect(capitalizeScriptureNames(input).length).toBe(input.length)
+  })
+
+  it('handles possessives, quotation marks and existing uppercase without changing punctuation', () => {
+    expect(capitalizeScriptureNames('“god’s love,” jesus\' teaching and the holy spirit\'s work; GOD, LORD and JESUS.')).toBe(
+      '“God’s love,” Jesus\' teaching and the Holy Spirit\'s work; GOD, LORD and JESUS.',
+    )
+  })
+
+  it('does not turn ordinary family, spirit or lord wording into divine titles', () => {
+    const ordinary = 'my father told his son about a broken spirit, a holy place and the lord of the manor. do not lord it over others.'
+    expect(capitalizeScriptureNames(ordinary)).toBe(ordinary)
+    expect(display(ordinary)).toBe('My father told his son about a broken spirit, a holy place and the lord of the manor. Do not lord it over others.')
+    expect(capitalizeScriptureNames('the lord of the rings and the lord of the flies')).toBe('the lord of the rings and the lord of the flies')
+  })
+
+  it('matches whole names and does not join titles across punctuation', () => {
+    const ordinary = 'gods, godliness, godly, elohimish, jesús, spirit. of god'
+    expect(capitalizeScriptureNames(ordinary)).toBe('gods, godliness, godly, elohimish, jesús, spirit. of God')
+  })
+
+  it('keeps display spans reversible and length-stable while Scripture is being read', () => {
+    const raw = 'the holy spirit reveals elohim’s son, the prince of peace.'
+    for (const reading of READING_STATES) {
+      const line = normalizeForDisplay(raw, ctx({ reading }))
+      expect(line.text).toBe('The Holy Spirit reveals Elohim’s son, the Prince of Peace.')
+      expect(line.text.length).toBe(raw.length)
+      expect(recoverRaw(line.spans)).toBe(raw)
+      for (const span of line.spans) {
+        expect(raw.slice(span.start, span.end)).toBe(span.raw ?? span.text)
+      }
+    }
+  })
+
+  it('preserves timed word boundaries and metadata while recognizing a title across words', () => {
+    const words = [
+      { w: 'the', s: 1, e: 1.2, speaker: 0 },
+      { w: 'holy', s: 1.2, e: 1.5, speaker: 0 },
+      { w: 'spirit,', s: 1.5, e: 1.9, speaker: 0 },
+      { w: 'elohim’s', s: 2, e: 2.5, speaker: 1 },
+      { w: 'presence.', s: 2.5, e: 3, speaker: 1 },
+    ]
+    const cased = capitalizeScriptureWords(words)
+    expect(cased.map(({ w }) => w)).toEqual(['the', 'Holy', 'Spirit,', 'Elohim’s', 'presence.'])
+    expect(cased.map(({ w: _w, ...timing }) => timing)).toEqual(words.map(({ w: _w, ...timing }) => timing))
+    expect(words[1].w).toBe('holy')
+    expect(cased[0]).toBe(words[0])
+    expect(capitalizeScriptureWords(cased)).toBe(cased)
+    expect(capitalizeScriptureWords([])).toEqual([])
   })
 })
 

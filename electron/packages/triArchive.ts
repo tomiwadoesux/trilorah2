@@ -4,6 +4,8 @@ import { mkdir, open, rename, rm, stat } from 'node:fs/promises'
 import type { FileHandle } from 'node:fs/promises'
 import * as path from 'node:path'
 import type { Readable } from 'node:stream'
+import { Writable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import * as yauzl from 'yauzl'
 import { TRI_CATEGORIES } from '../../shared/triPackage'
 import type { TriAsset, TriManifest, TriSnapshot } from '../../shared/triPackage'
@@ -243,6 +245,14 @@ type OpenPackage = { zip: yauzl.ZipFile; manifest: TriManifest; entries: Map<str
 function entryStream(zip: yauzl.ZipFile, entry: yauzl.Entry): Promise<Readable> {
   return new Promise((resolve, reject) => zip.openReadStream(entry, (error, stream) => error ? reject(error) : resolve(stream)))
 }
+async function consumeEntry(zip: yauzl.ZipFile, entry: yauzl.Entry, consume: (chunk: Buffer) => void | Promise<void>): Promise<void> {
+  // A pipeline finishes reliably in Electron's GUI event loop as well as Node.
+  // Async iteration of yauzl streams can stall at EOF in the desktop runtime.
+  const stream = await entryStream(zip, entry)
+  await pipeline(stream, new Writable({ write(chunk, _encoding, callback) {
+    Promise.resolve().then(() => consume(Buffer.from(chunk))).then(() => callback(), callback)
+  } }))
+}
 async function openPackage(filePath: string): Promise<OpenPackage> {
   const info = await stat(filePath)
   if (info.size > TRI_LIMITS.totalBytes + TRI_LIMITS.manifestBytes + 16 * 1024 ** 2) fail('archive exceeds the size limit')
@@ -278,11 +288,11 @@ async function openPackage(filePath: string): Promise<OpenPackage> {
     if (!manifestEntry) fail('manifest.json is missing')
     const chunks: Buffer[] = []
     let size = 0
-    for await (const chunk of await entryStream(zip, manifestEntry)) {
+    await consumeEntry(zip, manifestEntry, chunk => {
       size += chunk.length
       if (size > TRI_LIMITS.manifestBytes) fail('manifest exceeds the size limit')
       chunks.push(Buffer.from(chunk))
-    }
+    })
     const json = Buffer.concat(chunks)
     if (crc32(json) !== manifestEntry.crc32) fail('manifest checksum failed')
     const manifest = await validateManifest(JSON.parse(json.toString('utf8')))
@@ -301,14 +311,14 @@ async function verifyAssets(pkg: OpenPackage, destination?: string) {
     let size = 0, crc = 0xffffffff
     const output = destination ? await open(path.join(destination, path.basename(asset.entry)), 'wx') : undefined
     try {
-      for await (const chunk of await entryStream(pkg.zip, pkg.entries.get(asset.entry)!)) {
+      await consumeEntry(pkg.zip, pkg.entries.get(asset.entry)!, async chunk => {
         const buffer = Buffer.from(chunk)
         size += buffer.length
         if (size > asset.size) fail('asset exceeds its declared size')
         hash.update(buffer)
         crc = crcUpdate(crc, buffer)
         if (output) await writeAll(output, buffer)
-      }
+      })
       if (size !== asset.size || hash.digest('hex') !== asset.sha256 || ((crc ^ 0xffffffff) >>> 0) !== pkg.entries.get(asset.entry)!.crc32) fail(`checksum failed for ${asset.name}`)
     } finally { await output?.close() }
   }

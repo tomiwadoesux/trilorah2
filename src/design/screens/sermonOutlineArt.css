@@ -1,4 +1,4 @@
-.tri-outline-art { display:block; width:100%; height:100%; overflow:visible; fill:none; color:#ededed; stroke:currentColor; stroke-width:.8; stroke-linecap:round; stroke-linejoin:round; }
+.tri-outline-art { display:block; width:100%; height:100%; overflow:visible; fill:none; color:var(--hairline-hi, #ededed); stroke:currentColor; stroke-width:.8; stroke-linecap:round; stroke-linejoin:round; }
 .tri-outline-art__lines { fill:none; stroke-opacity:.3; stroke-width:.65; }
 .tri-outline-art__fold { transition:transform 750ms cubic-bezier(.32,.72,0,1); }
 .tri-outline-art__fold--left { transform-origin:60px 8px; }

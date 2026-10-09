@@ -44,7 +44,7 @@ export {
 } from './primitives/SegmentedControl';
 export { ArrangeList, type ArrangeOption, type ArrangeListProps } from './primitives/ArrangeList';
 
-export { SettingsIcon, OperatorIcon, DashboardIcon, ProfileIcon, TrashIcon, ResetIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, SearchIcon, PencilIcon, PlusIcon, ScanIcon, SparkleIcon, MediaIcon, NoteIcon, GripIcon, CheckIcon, HistoryIcon, BookIcon, MusicIcon, MicIcon, PlayIcon, PauseIcon, ImportIcon, PresentationIcon, QrIcon, GlobeIcon, LaptopIcon, PhoneIcon, SoundwaveIcon, CloseIcon, SplitIcon, MergeIcon, CopyIcon, ClipboardIcon, AddSongIcon, VideoPlayIcon, ArrowIcon, ClockIcon, PrayerIcon, GiftIcon, CupIcon, PaletteIcon, ExpandIcon, MinimizeIcon, BankIcon, LinkIcon, type IconProps } from './icons';
+export * from './icons';
 
 export { cx, type ClassValue } from './lib/cx';
 export {

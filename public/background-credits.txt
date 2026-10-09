@@ -1,0 +1,22 @@
+Trilorah bundled starter photographs
+
+These photographs are bundled locally; no connection or stock API key is required.
+Original proportions and image files are preserved.
+
+valley.jpg — Yosemite valley — Jon Sullivan — Public domain dedication
+https://commons.wikimedia.org/wiki/File:Yosemite_valley.jpg
+
+waterfall.jpg — Waterfall in forest — Martin Eklund (Teadrinker) — CC0 1.0
+https://commons.wikimedia.org/wiki/File:Waterfall_in_forest.jpg
+
+sunset.jpg — Sunset over the Sea — Deshna Subramanian — CC0 1.0
+https://commons.wikimedia.org/wiki/File:Sunset_over_the_Sea.jpg
+
+mountains.jpg — Yosemite Valley (GeoDIL number - 2513) — Dexter Perkins (GeoDIL) — CC0 1.0
+https://commons.wikimedia.org/wiki/File:Yosemite_Valley_(GeoDIL_number_-_2513).jpg
+
+bay.jpg — Bellingham Bay at sunset — US Environmental Protection Agency — Public domain (US government work)
+https://commons.wikimedia.org/wiki/File:Bellingham_Bay_at_sunset_(4951805993).jpg
+
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+Source and license statements checked 2026-10-08.

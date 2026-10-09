@@ -40,7 +40,7 @@
      Only its fill alpha changes here; the words and icons stay legible. */
   --tri-alpha:.08; --tri-a-mid:.08; --tri-a-edge:.08;
   display:inline-flex; align-items:baseline; gap:6px; max-width:100%; padding:0 6px;
-  border-radius:5px; vertical-align:baseline; color:var(--transcript-ref-color);
+  border-radius:4px; vertical-align:baseline; color:var(--transcript-ref-color);
   background-color:transparent; box-shadow:inset 0 0 0 1px rgb(var(--tri-caution-2) / .12);
   animation:transcript-pill-form 520ms ease-out;
 }

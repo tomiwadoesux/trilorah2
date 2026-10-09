@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ArrowLeft } from "@/components/icons";
 import SermonNotesSections, {
   notesAreEmpty,
   type SermonNotesData,
@@ -122,9 +123,9 @@ export default async function ServiceDetailPage({
       <header className="space-y-2">
         <Link
           href="/app/services"
-          className="text-[11px] text-gray-500 hover:text-brand"
+          className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-brand"
         >
-          ← All services
+          <ArrowLeft size={12} /> All services
         </Link>
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold">

@@ -12,7 +12,7 @@ export function TextTransitionPicker({ value, duration, play, onChange }: {
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <span className="tri-label text-[var(--tri-ink-muted)]">transition</span>
+      <span className="tri-label tri-control-heading text-[var(--tri-ink-muted)]">transition</span>
       <div role="group" aria-label="text transition" className="grid min-w-0 grid-cols-4 gap-3">
         {TEXT_TRANSITIONS.filter(option => option.id !== 'cut').map(option => {
           const selected = value === option.id;

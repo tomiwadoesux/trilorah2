@@ -1,0 +1,19 @@
+/* Opt-in only. Parts share the same SVG-coordinate pivots in React and exports. */
+.tri-cutout-icon { display:inline-block; flex-shrink:0; vertical-align:middle; }
+.tri-cutout-icon[data-animate="true"] [data-motion="lift"] { animation:tri-icon-lift 800ms cubic-bezier(.22,1,.36,1) both; }
+.tri-cutout-icon[data-animate="true"] [data-motion="turn"] { animation:tri-icon-turn 900ms cubic-bezier(.4,0,.2,1) both; }
+.tri-cutout-icon[data-animate="true"] [data-motion="pulse"] { animation:tri-icon-pulse 750ms ease-in-out both; }
+.tri-cutout-icon[data-animate="true"] [data-motion="sway"] { animation:tri-icon-sway 850ms ease-in-out both; }
+.tri-cutout-icon[data-animate="true"] [data-motion="scan"] { animation:tri-icon-scan 900ms cubic-bezier(.4,0,.2,1) both; }
+.tri-cutout-icon[data-animate="true"] [data-motion="press"] { animation:tri-icon-press 650ms cubic-bezier(.22,1,.36,1) both; }
+.tri-cutout-icon[data-animate="true"] [data-motion="slide"] { animation:tri-icon-slide 800ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes tri-icon-lift { 0%,100% { transform:translateY(0); } 45% { transform:translateY(-1.5px); } }
+@keyframes tri-icon-turn { 0% { transform:rotate(0); } 100% { transform:rotate(360deg); } }
+@keyframes tri-icon-pulse { 0%,100% { opacity:1; transform:scale(1); } 45% { opacity:.7; transform:scale(.92); } }
+@keyframes tri-icon-sway { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-7deg); } 65% { transform:rotate(5deg); } }
+@keyframes tri-icon-scan { 0%,100% { transform:translateY(0); } 45% { transform:translateY(6px); } }
+@keyframes tri-icon-press { 0%,100% { transform:scale(1); } 35% { transform:scale(.9); } }
+@keyframes tri-icon-slide { 0%,100% { transform:translateX(0); } 45% { transform:translateX(1.5px); } }
+@media (prefers-reduced-motion:reduce) {
+  .tri-cutout-icon[data-animate="true"] [data-motion] { animation:none!important; transform:none!important; }
+}

@@ -42,7 +42,7 @@ export interface ContextMenuState {
 
 /** Shared with ActionMenu by value; see the note there. */
 const BUBBLE = {
-  borderRadius: '14px',
+  borderRadius: '6px',
   backgroundColor: 'var(--tri-pop)',
   boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
 } as const;
@@ -187,7 +187,7 @@ export function ContextMenu({
   };
 
   const row =
-    'flex shrink-0 w-full items-center gap-2.5 rounded-[10px] px-3.5 text-left lowercase transition-colors h-[var(--tri-option-h)] text-[length:var(--tri-control-size)] outline-none hover:bg-[rgb(255_255_255_/_0.06)] focus-visible:bg-[rgb(255_255_255_/_0.08)]';
+    'flex shrink-0 w-full items-center gap-2.5 rounded-[6px] px-3.5 text-left lowercase transition-colors h-[var(--tri-option-h)] text-[length:var(--tri-control-size)] outline-none hover:bg-[rgb(255_255_255_/_0.06)] focus-visible:bg-[rgb(255_255_255_/_0.08)]';
 
   return createPortal(
     <div

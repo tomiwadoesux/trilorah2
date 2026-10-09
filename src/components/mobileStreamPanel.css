@@ -1,0 +1,22 @@
+.mobile-stream-art {
+  display: grid;
+  place-items: center;
+  width: min(220px, 100%);
+  height: 208px;
+  margin-bottom: 15px;
+  color: var(--hairline-hi, #ededed);
+}
+.mobile-stream-art > svg { width: 100%; height: auto; }
+.mobile-stream-code { width: min(240px, 100%); margin: 8px auto 0; }
+.mobile-stream-code > svg { display: block; width: 100%; height: auto; }
+.mobile-stream-address {
+  max-width: 100%;
+  margin: 16px 0;
+  color: var(--tri-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.mobile-stream-hint { max-width: 30ch; margin-top: 14px; font-size: 11px; opacity: .7; }
+.mobile-stream-message { margin-bottom: 14px; }

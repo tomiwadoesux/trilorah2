@@ -2,21 +2,21 @@
 .song-discovery-label > span:first-child { color: var(--tri-ink); font-weight: 500; }
 .song-discovery-scroll { min-height: 0; flex: 1; overflow-y: auto; padding: 3px; }
 .song-discovery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 14px; }
-.song-discovery-card { min-width: 0; text-align: left; border-radius: 12px; padding: 6px; background: rgb(255 255 255 / .025); border: 1px solid rgb(255 255 255 / .07); transition: background-color 150ms ease; }
+.song-discovery-card { min-width: 0; text-align: left; border-radius: 6px; padding: 6px; background: rgb(255 255 255 / .025); border: 1px solid rgb(255 255 255 / .07); transition: background-color 150ms ease; }
 .song-discovery-card:hover:not(:disabled) { background: rgb(255 255 255 / .07); }
 .song-discovery-select:focus-visible { outline: 2px solid rgb(var(--tri-go-2)); outline-offset: 2px; }
 .song-discovery-select:disabled { opacity: .55; cursor: wait; }
-.song-discovery-art { position: relative; overflow: hidden; border-radius: 8px; aspect-ratio: 1; background: #243638; }
+.song-discovery-art { position: relative; overflow: hidden; border-radius: 5px; aspect-ratio: 1; background: #243638; }
 .song-discovery-art img { width: 100%; height: 100%; object-fit: contain; }
-.song-discovery-category { position: absolute; top: 9px; left: 9px; padding: 3px 7px; border-radius: 20px; background: rgb(0 0 0 / .3); color: #fff; font-size: 9px; }
-.song-discovery-action { position: absolute; bottom: 9px; right: 9px; display: flex; align-items: center; gap: 5px; border-radius: 20px; padding: 5px 8px; background: rgb(0 0 0 / .5); color: #fff; font-size: 10px; }
+.song-discovery-category { position: absolute; top: 9px; left: 9px; padding: 3px 7px; border-radius: 8px; background: rgb(0 0 0 / .3); color: #fff; font-size: 9px; }
+.song-discovery-action { position: absolute; bottom: 9px; right: 9px; display: flex; align-items: center; gap: 5px; border-radius: 8px; padding: 5px 8px; background: rgb(0 0 0 / .5); color: #fff; font-size: 10px; }
 .song-discovery-action--added { background: rgb(var(--tri-go-2) / .9); color: var(--tri-ink-on-bright); font-weight: 600; }
 .song-discovery-title { display: block; padding: 10px 5px 0; color: var(--tri-ink); font-size: 12px; font-weight: 600; line-height: 1.4; }
 .song-discovery-artist { display: block; padding: 4px 5px 8px; color: var(--tri-ink-muted); font-size: 11px; }
 @media (max-width: 620px) { .song-discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .song-discovery-label { flex-wrap: wrap; } }
 @media (prefers-reduced-motion: reduce) { .song-discovery-card { transition: none; } }
 
-.song-discovery-select { display: block; width: 100%; text-align: left; border-radius: 8px; }
+.song-discovery-select { display: block; width: 100%; text-align: left; border-radius: 5px; }
 .song-discovery-store { display: block; padding: 2px 5px 8px; color: var(--tri-ink-muted); font-size: 10px; }
 .song-discovery-store:hover { color: var(--tri-ink); text-decoration: underline; }
 .song-discovery-art-unavailable { display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--tri-ink-muted); font-size: 10px; }

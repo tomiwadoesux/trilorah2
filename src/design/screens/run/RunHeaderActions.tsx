@@ -276,7 +276,7 @@ function ReplaceConfirm({
         left: pos?.left ?? 0,
         top: pos?.top ?? 0,
         visibility: pos ? 'visible' : 'hidden',
-        borderRadius: 14,
+        borderRadius: 6,
         backgroundColor: 'var(--tri-pop)',
         boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
       }}

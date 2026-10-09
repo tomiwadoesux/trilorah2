@@ -47,7 +47,7 @@ function Row({ s, last, onRole }: { s: Screen; last: boolean; onRole?: (id: stri
         type="button"
         onClick={onRole ? () => onRole(s.id) : undefined}
         title="press to re-patch"
-        className="flex min-w-0 basis-0 grow-[5] items-center justify-between gap-2 rounded-[6px] px-2 py-1 text-left transition-colors hover:bg-white/[0.06]"
+        className="flex min-w-0 basis-0 grow-[5] items-center justify-between gap-2 rounded-[4px] px-2 py-1 text-left transition-colors hover:bg-white/[0.06]"
       >
         <span className="min-w-0">
           <span className="block truncate text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">{ROLE_NAME[s.role]}</span>

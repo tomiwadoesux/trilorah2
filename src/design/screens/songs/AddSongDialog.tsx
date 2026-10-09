@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Button, SearchField, SearchIcon, GlobeIcon, ResetIcon, MusicIcon, SparkleIcon, CheckIcon, SegmentedControl, cx } from '../../../ui';
+import { Button, SearchField, SearchIcon, GlobeIcon, ResetIcon, MusicIcon, SparkleIcon, CheckIcon, ExternalLinkIcon, SegmentedControl, cx } from '../../../ui';
 import { splitLyrics } from '../../../../shared/lyricSplit';
 import type { SongBase } from '../../../../shared/songDraft';
 import { FlightPopup } from './FlightPopup';
@@ -469,7 +469,7 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
         <span className="song-discovery-title">{song.title}</span>
         <span className="song-discovery-artist">{song.artist}</span>
       </button>
-      {song.storeUrl && <a className="song-discovery-store" href={song.storeUrl} target="_blank" rel="noopener noreferrer">Download on iTunes ↗</a>}
+      {song.storeUrl && <a className="song-discovery-store" href={song.storeUrl} target="_blank" rel="noopener noreferrer">Download on iTunes <ExternalLinkIcon size={12} /></a>}
     </article>
   );
 }

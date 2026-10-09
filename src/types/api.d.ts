@@ -354,6 +354,7 @@ interface PairedDeviceInfo {
 /* ------------------------------------------------------------------ */
 
 interface CloudStatus {
+  transcriptDelivery?: import('../../shared/transcriptDeliveryHealth').TranscriptDeliveryHealth;
   configured: boolean;
   signedIn: boolean;
   hasAccount?: boolean;
@@ -364,7 +365,7 @@ interface CloudStatus {
   /** Why the service could not be opened on the last Start Listening. */
   serviceError?: string | null;
   /** Writes waiting to reach the cloud, and the last reason one failed. */
-  queue?: { pending: number; lastError: string | null; lastErrorAt: number | null };
+  queue?: { pending: number; lastError: string | null; lastErrorAt: number | null; lastErrorKind?: 'rejected' | 'retryable' | null };
 }
 
 interface CloudOpResult {
@@ -516,6 +517,11 @@ interface SongsApi {
 
 type TriPackageApi = import('../../shared/triBridge').TriApi;
 interface WindowApi extends Partial<TriPackageApi> {
+  getServiceNotices?(): Promise<import('../../shared/serviceNotice').ServiceNotice[]>;
+  onServiceNotice?(callback: (notice: import('../../shared/serviceNotice').ServiceNotice) => void): Unsubscribe;
+  retryPublishing?(): Promise<{ pending: number; lastError: string | null }>;
+  openMicPermissions?(): Promise<{ supported: boolean }>;
+  reportOutputMediaFailure?(kind: 'video' | 'image', failed: boolean): void;
   qrBackground(action:'status'|'choose'|'clear'):Promise<{success:boolean;name?:string|null;canceled?:boolean;error?:string}>;
   mobileStatus(): Promise<{running:boolean; urls:string[]; error:string|null; pending:{id:string;name:string;expiresAt:number}[]; devices:PairedDeviceInfo[]}>;
   mobileEnable(enabled:boolean): Promise<boolean>;
@@ -681,9 +687,10 @@ interface WindowApi extends Partial<TriPackageApi> {
   resolveReviewItem?(id: string, resolution: ReviewResolution, amendedTo?: VerseRef): Promise<void>;
   getVerseQueue?(): Promise<VerseQueueItem[]>;
   showQueuedVerse?(ref: string): Promise<{ success: boolean }>;
-  /** Passages the last words spoken point to, nearest first, eight at most. With no text, searches what was said in the last 45 seconds. `meaning` is false when the sentence model is not installed. */
-  findHeardScripture?(text?: string): Promise<{
+  /** Up to four passages for typed words or recent speech. `meaning` indicates whether the local meaning model is ready. Spelling correction applies only to typed searches. */
+  findHeardScripture?(text?: string, correctTypos?: boolean, spoken?: boolean): Promise<{
     heard: string;
+    corrections?: { from: string; to: string }[];
     meaning: boolean;
     matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: 'named' | 'story' | 'meaning' }[];
   }>;

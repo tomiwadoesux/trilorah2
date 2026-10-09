@@ -9,6 +9,7 @@ import { PRACTICE_SERMON_DEVICE } from '../../shared/practiceSermon';
 import { PHONE_MIC_LABEL } from '../../shared/audioInput';
 import { PhoneMicPanel } from './PhoneMicPanel';
 import { usePhoneMicStore } from '../lib/phoneMic';
+import { useNoticeNavigation } from '../lib/notificationNavigation';
 
 /*
  * Which microphone or computer audio the service is heard through.
@@ -30,7 +31,7 @@ function nickname(label: string) {
   return `${label.slice(0, 7).replace(/[^a-z0-9]+$/i, '')}…`;
 }
 
-export function MicPicker() {
+export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
   const asrStatus = useAppStore((s) => s.asrStatus);
   const settings = useAppStore((s) => s.settings);
   const patchSetting = useAppStore((s) => s.patchSetting);
@@ -63,6 +64,13 @@ export function MicPicker() {
   const setPractice = usePracticeStore((s) => s.setOn);
   /* The phone over Wi-Fi is one more input; choosing it opens its box. */
   const [phoneOpen, setPhoneOpen] = useState(false);
+  const noticeRequest = useNoticeNavigation(s => s.request);
+  useEffect(() => {
+    if (compact) return;
+    const navigation = useNoticeNavigation.getState();
+    if (navigation.target === 'audio') { setOpen(true); navigation.clear(); }
+    if (navigation.target === 'phone') { setPhoneOpen(true); navigation.clear(); }
+  }, [noticeRequest, compact]);
   const phone = usePhoneMicStore((s) => s.status);
   const phoneLabel = phone.state === 'connected' && phone.phoneName ? `phone · ${phone.phoneName}` : 'phone (over wi-fi)';
 
@@ -112,18 +120,22 @@ export function MicPicker() {
     menuRef.current?.querySelector<HTMLButtonElement>('[aria-checked="true"]')?.focus();
   }, [open, placed]);
 
-  const choose = (value: string) => {
+  const choose = async (value: string) => {
     setOpen(false);
     triggerRef.current?.focus();
+    if (value === PHONE_MIC_LABEL) { setPhoneOpen(true); return; }
     if (value === PRACTICE_SERMON_DEVICE) {
+      if (busy) window.api?.stopListening();
       setPractice(true);
       return;
     }
     setPractice(false);
+    await window.api?.setSetting('micDeviceLabel', value);
     patchSetting('micDeviceLabel', value);
-    void window.api?.setSetting('micDeviceLabel', value);
-    /* Picking the phone again is the way back into its box. */
-    if (value === PHONE_MIC_LABEL) setPhoneOpen(true);
+    if (busy && value !== PHONE_MIC_LABEL) {
+      window.api?.stopListening();
+      window.api?.startListening(value || undefined);
+    }
   };
 
   const onMenuKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -142,19 +154,20 @@ export function MicPicker() {
       <button
         ref={triggerRef}
         type="button"
-        disabled={busy}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`audio input: ${currentLabel || 'system default'}`}
-        title={busy ? 'stop listening to change the audio input' : currentLabel || 'microphone or computer audio'}
+        title={busy ? 'change audio input — listening restarts when you select a device' : currentLabel || 'microphone or computer audio'}
         onClick={() => setOpen((o) => !o)}
-        className="tri-header-control tri-header-audio flex shrink-0 items-center gap-1.5 lowercase"
+        className={compact
+          ? 'relative flex h-[var(--tri-field-h)] w-[var(--library-pill-width)] shrink-0 items-center gap-2 rounded-[var(--tri-radius-control)] border border-white/[0.12] bg-[#111111] pl-3 pr-4 text-left text-[length:var(--tri-control-size)] lowercase text-[rgb(229_243_242_/_0.58)] hover:bg-white/[0.04] hover:text-[rgb(229_243_242_/_0.85)]'
+          : 'tri-header-control tri-header-audio flex shrink-0 items-center gap-1.5 lowercase'}
       >
-        <SoundwaveIcon size={12} className="tri-header-icon" />
+        <SoundwaveIcon size={compact ? 14 : 12} className={compact ? "shrink-0 opacity-60" : "tri-header-icon"} />
         <span>audio</span>
-        {current && <span className="opacity-70">{nickname(currentLabel)}</span>}
+        {!compact && current && <span className="opacity-70">{nickname(currentLabel)}</span>}
         {/* The phone chosen: a dot for its state. */}
-        {phoneDot && (
+        {!compact && phoneDot && (
           <span
             aria-hidden
             className="h-2 w-2 shrink-0 rounded-full"
@@ -163,7 +176,7 @@ export function MicPicker() {
         )}
         <ChevronDownIcon
           size={10}
-          className={cx('shrink-0 opacity-70 transition-transform duration-200', open && 'rotate-180')}
+          className={cx('shrink-0 opacity-70 transition-transform duration-200', compact && 'absolute right-1', open && 'rotate-180')}
         />
       </button>
       {/* The same panel grey and white washes as the app's Select menu. */}
@@ -179,11 +192,12 @@ export function MicPicker() {
             left: position?.left ?? 0,
             top: position?.top ?? 0,
             visibility: position ? 'visible' : 'hidden',
-            borderRadius: '16px',
+            borderRadius: '8px',
             backgroundColor: '#101010',
             boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
           }}
         >
+          {busy && <p className="px-3 py-2 text-xs text-neutral-400">Choosing an input restarts listening. Phone audio opens setup first.</p>}
           {options.map((o) => {
             const on = o.value === current;
             return (
@@ -192,9 +206,9 @@ export function MicPicker() {
                 type="button"
                 role="menuitemradio"
                 aria-checked={on}
-                onClick={() => choose(o.value)}
+                onClick={() => { void choose(o.value).catch(() => undefined); }}
                 className={cx(
-                  'flex h-[var(--tri-option-h)] w-full shrink-0 items-center justify-between gap-3 rounded-[10px] px-3.5 text-left text-[length:var(--tri-control-size)] lowercase text-[var(--tri-ink,#e5f3f2)] outline-none transition-[opacity,background-color] duration-150',
+                  'flex h-[var(--tri-option-h)] w-full shrink-0 items-center justify-between gap-3 rounded-[6px] px-3.5 text-left text-[length:var(--tri-control-size)] lowercase text-[var(--tri-ink,#e5f3f2)] outline-none transition-[opacity,background-color] duration-150',
                   on
                     ? 'bg-[rgb(255_255_255_/_0.07)] font-medium'
                     : 'opacity-75 hover:bg-[rgb(255_255_255_/_0.05)] hover:opacity-100 focus-visible:bg-[rgb(255_255_255_/_0.05)] focus-visible:opacity-100',

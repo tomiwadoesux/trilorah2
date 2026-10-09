@@ -222,7 +222,9 @@ export function planTriImport(userData: string, incoming: TriSnapshot, currentSe
     }
     files.set(target, saved)
   }
-  for (const item of categories.service ?? []) {
+  const services = categories.service ?? []
+  const serviceSegments: any[] = []
+  for (const item of services) {
     const segments = array(item.data?.segments, 'run of service')
     for (const segment of segments) {
       if (!object(segment) || typeof segment.type !== 'string' || typeof segment.label !== 'string') throw new Error('Invalid service segment.')
@@ -232,11 +234,19 @@ export function planTriImport(userData: string, incoming: TriSnapshot, currentSe
         queued.key = `tri-${randomUUID()}`
       }
     }
+    serviceSegments.push(...segments)
+  }
+  if (services.length) {
     const existing = currentSettings.operatorRunV1
     const before = Array.isArray(existing) ? existing : existing?.segments ?? []
-    settings.operatorRunV1 = { segments: openService ? segments : [...before, ...segments], updatedAt: Date.now() }
+    settings.operatorRunV1 = { segments: openService ? serviceSegments : [...before, ...serviceSegments], updatedAt: Date.now() }
     // The renderer consumes the incoming portion and appends/replaces its own store.
-    item.id = 'current'
+    // Keep one current-run identity so a subsequent save retains every selection.
+    categories.service = [{
+      ...services[0], id: 'current',
+      label: services.length === 1 ? services[0].label : 'Imported run of service',
+      data: { ...services[0].data, segments: serviceSegments },
+    }]
   }
   return { snapshot, files, settings }
 }

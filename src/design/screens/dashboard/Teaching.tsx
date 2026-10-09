@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
-import { cx, surface, PlusIcon } from '../../../ui';
+import { cx, surface, PlusIcon, CloseIcon } from '../../../ui';
 import { FIELD, Toggle } from '../settingsRows';
 import type { Preacher, SoundsLike } from './preachers';
 import type { PreacherTeaching } from '../../../../shared/preacherLearning';
@@ -50,7 +50,7 @@ function Panel({
   return (
     <section
       className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-w-0 flex-col gap-2.5 px-4 py-3', className)}
-      style={{ borderRadius: 12 }}
+      style={{ borderRadius: 6 }}
     >
       <header className="flex items-center justify-between gap-2">
         <span className="text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
@@ -94,7 +94,7 @@ function AddLine({ placeholder, onAdd }: { placeholder: string; onAdd: (v: strin
         onClick={commit}
         disabled={!value.trim()}
         aria-label="add"
-        className="grid size-[26px] shrink-0 place-items-center rounded-[8px] transition-colors hover:bg-white/[0.08] disabled:opacity-30"
+        className="grid size-[26px] shrink-0 place-items-center rounded-[5px] transition-colors hover:bg-white/[0.08] disabled:opacity-30"
         style={{ color: MUTED, boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.12)' }}
       >
         <PlusIcon size={12} />
@@ -107,7 +107,7 @@ function AddLine({ placeholder, onAdd }: { placeholder: string; onAdd: (v: strin
 function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span
-      className="group/chip inline-flex max-w-full items-center gap-1 rounded-full py-[3px] pl-2.5 pr-1.5 text-[length:var(--tri-size-xs)]"
+      className="group/chip inline-flex max-w-full items-center gap-1 rounded-md py-[3px] pl-2.5 pr-1.5 text-[length:var(--tri-size-xs)]"
       style={{ color: INK_SOFT, boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.12)' }}
     >
       <span className="truncate">{label}</span>
@@ -118,7 +118,7 @@ function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
         className="grid size-[14px] shrink-0 place-items-center rounded-full opacity-0 transition-opacity hover:bg-white/[0.12] focus-visible:opacity-100 group-hover/chip:opacity-100"
         style={{ color: MUTED }}
       >
-        ×
+        <CloseIcon size={10} />
       </button>
     </span>
   );
@@ -160,7 +160,7 @@ function SoundsLikeRow({ row, onRemove }: { row: SoundsLike; onRemove: () => voi
           of anything in a list you can type into. */}
       {row.source === 'learned' && (
         <span
-          className="shrink-0 rounded-full px-1.5 py-px text-[length:var(--tri-size-eyebrow)] lowercase"
+          className="shrink-0 rounded-md px-1.5 py-px text-[length:var(--tri-size-eyebrow)] lowercase"
           style={{ color: MINT, background: 'rgb(143 211 192 / 0.12)' }}
           title="the app worked this out from a correction"
         >
@@ -177,7 +177,7 @@ function SoundsLikeRow({ row, onRemove }: { row: SoundsLike; onRemove: () => voi
         className="grid size-[18px] shrink-0 place-items-center rounded-full opacity-0 transition-opacity hover:bg-white/[0.12] focus-visible:opacity-100 group-hover/row:opacity-100"
         style={{ color: MUTED }}
       >
-        ×
+        <CloseIcon size={12} />
       </button>
     </li>
   );
@@ -260,7 +260,7 @@ export function TeachingPanels({
             onClick={addAlias}
             disabled={!heard.trim() || !means.trim()}
             aria-label="add"
-            className="grid size-[26px] shrink-0 place-items-center rounded-[8px] transition-colors hover:bg-white/[0.08] disabled:opacity-30"
+            className="grid size-[26px] shrink-0 place-items-center rounded-[5px] transition-colors hover:bg-white/[0.08] disabled:opacity-30"
             style={{ color: MUTED, boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.12)' }}
           >
             <PlusIcon size={12} />

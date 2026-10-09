@@ -635,7 +635,7 @@ function DragLayer({
             already is, and arrives with the shake rather than instead of it. */}
         {state === 'refused' && !active && (
           <span
-            className="absolute whitespace-nowrap rounded-[6px] bg-[rgb(0_0_0_/_0.86)] px-2 py-1 text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.82)]"
+            className="absolute whitespace-nowrap rounded-[4px] bg-[rgb(0_0_0_/_0.86)] px-2 py-1 text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.82)]"
             style={{ left: 14, top: 14, animation: 'tri-chip-in 140ms var(--tri-ease-out) both' }}
           >
             hold to drag

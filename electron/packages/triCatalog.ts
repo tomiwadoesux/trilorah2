@@ -8,6 +8,7 @@ import type { TriCategory, TriItem, TriSelection, TriSnapshot } from '../../shar
 export const DISPLAY_KEYS = [
   'textTransition', 'textTransitionMs', 'defaultFontSize', 'defaultFontFamily',
   'defaultFontWeight', 'defaultTextColor', 'overlayOpacity', 'defaultBackgroundUrl',
+  'backgroundVideoSpeed', 'backgroundVideoBass', 'backgroundVideoSound',
   'backgroundBlur', 'backgroundFit', 'backgroundPosition', 'accentId', 'colorMode',
   'uiFont', 'scriptureFontPreset', 'displayVersion', 'secondaryVersion',
   'streamLayout', 'verseLayout', 'safeMargin', 'textWidth', 'textCase', 'textSpacing', 'refScale', 'refGap', 'stageShowClock',

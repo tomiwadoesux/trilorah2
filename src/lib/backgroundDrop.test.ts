@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   NO_BACKGROUND,
   backgroundDropAction,
+  backgroundSrc,
   backgroundFor,
   liveBackgroundNotice,
   previewBackgroundNotice,
@@ -42,11 +43,11 @@ describe('which drop does what', () => {
 
   it.each([
     ['media-themes', 'photo', 'preview'],
-    ['media-themes', 'video', 'refuse'],
+    ['media-themes', 'video', 'preview'],
     ['stage-preview', 'photo', 'preview'],
-    ['stage-preview', 'video', 'stage-content'],
+    ['stage-preview', 'video', 'preview'],
     ['stage-live', 'photo', 'live'],
-    ['stage-live', 'video', 'refuse'],
+    ['stage-live', 'video', 'live'],
   ] as const)('%s with a %s → %s', (key, kind, action) => {
     expect(backgroundDropAction(key, { kind })).toBe(action)
   })
@@ -178,9 +179,9 @@ describe('the picture a theme draws', () => {
     expect(backgroundFor(NO_BACKGROUND, shelf)).toBeUndefined()
   })
 
-  it('falls back to the first themes still — never the newest item, never a clip', () => {
-    expect(backgroundFor('deleted', shelf)?.id).toBe('sea')
-    expect(backgroundFor('clip', shelf)?.id).toBe('sea')
+  it('draws a chosen clip and falls back within the themes shelf', () => {
+    expect(backgroundFor('deleted', shelf)?.id).toBe('clip')
+    expect(backgroundFor('clip', shelf)?.id).toBe('clip')
   })
 })
 
@@ -214,4 +215,11 @@ describe('what the operator is told', () => {
     expect(previewBackgroundNotice(null, 'pick')).toMatch(/media › themes/)
     expect(previewBackgroundNotice({ source: 'presentation' }, 'click')).toMatch(/not behind the picture/)
   })
+})
+
+it('uses the video file instead of its poster for background playback', () => {
+  expect(backgroundSrc(library[0], () => 'data:image/jpeg,poster')).toBe('local-media://file/media/clip.mp4')
+  expect(wallBackgroundMedia('file:///loop.webm').kind).toBe('video')
+  expect(wallUrlToMediaId('local-media://file/media/clip.mp4', library, srcOf)).toBe('clip')
+  expect(backgroundSrc(media({ url: 'file:///animated.gif' }), srcOf)).toBe('local-media://file/animated.gif')
 })

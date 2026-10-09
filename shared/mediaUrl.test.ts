@@ -1,3 +1,4 @@
+import { isVideoUrl } from './mediaUrl'
 import { describe, it, expect } from 'vitest'
 import { cssImageUrl, toDisplayUrl, fileToDisplayUrl } from './mediaUrl'
 
@@ -38,4 +39,11 @@ describe('fileToDisplayUrl — what the operator put on the wall', () => {
     expect(fileToDisplayUrl('local-media://file/Users/a/clip.mp4')).toBe('local-media://file/Users/a/clip.mp4')
     expect(fileToDisplayUrl('https://x.test/clip.mp4')).toBe('https://x.test/clip.mp4')
   })
+})
+
+it('distinguishes looping clips from animated image backgrounds', () => {
+  expect(isVideoUrl('local-media://file/loop.MP4')).toBe(true)
+  expect(isVideoUrl('https://example.test/loop.webm?token=abc')).toBe(true)
+  expect(isVideoUrl('file:///animated.gif')).toBe(false)
+  expect(isVideoUrl('data:video/mp4;base64,AAAA')).toBe(true)
 })

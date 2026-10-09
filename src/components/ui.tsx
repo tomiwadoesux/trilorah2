@@ -125,7 +125,7 @@ export function Pill({
   return (
     <span
       title={title}
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${
+      className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${
         active ? 'border-accent bg-accent text-[var(--color-on-accent)]' : 'border-hairline text-neutral-500'
       }`}
     >

@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { TEXT_POSITIONS, resolveTextPosition, type TextPositionOption } from '../../../shared/textPosition';
 import { cx } from '../lib/cx';
 import { useNudge } from '../hooks/useNudge';
+import { ChevronDownIcon, ChevronUpIcon } from '../icons';
 
 export type { TextPositionOption } from '../../../shared/textPosition';
 
@@ -51,7 +52,7 @@ export function TextPositionPicker({
 
   return (
     <div role="group" aria-labelledby={labelId} className={cx('flex min-w-0 flex-col gap-2 lowercase', className)}>
-      <span id={labelId} className="tri-label text-[var(--tri-ink-muted)]">{label}</span>
+      <span id={labelId} className="tri-label tri-control-heading text-[var(--tri-ink-muted)]">{label}</span>
       <div
         className="grid w-full min-w-0 items-start gap-x-3 gap-y-3"
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
@@ -90,9 +91,7 @@ export function TextPositionPicker({
         className="flex min-h-8 items-center gap-1.5 self-start rounded-sm text-[length:var(--tri-size-xs)] text-[var(--tri-ink-muted)] hover:text-[var(--tri-ink)] active:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tri-accent-yellow)]"
       >
         {expanded ? 'show less' : 'show more'}
-        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" className={expanded ? 'rotate-180' : undefined}>
-          <path d="M2 4h8L6 9z" />
-        </svg>
+        {expanded ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}
       </button>
     </div>
   );
@@ -146,7 +145,8 @@ function PositionGraphic({ id, isSelected }: { id: TextPositionOption; isSelecte
   const textY = position.referenceAbove ? y + 12 : y;
   const referenceY = position.referenceAbove ? y : y + 37;
   const outerInset = 0.75;
-  const outerRadius = 20;
+  /* 5% of the card's width, as --tri-card-round says. */
+  const outerRadius = 8;
   const rimInset = 3.5;
   const guideInset = 12;
   // Concentric curves: moving a frame inward subtracts that inset from its radius.

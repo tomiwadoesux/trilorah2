@@ -12,7 +12,10 @@ export type SlideRules = (verses: VerseText[], together?: boolean) => VerseDispl
  */
 export async function publishLiveItem(item: LiveItem, api = window.api, rules: SlideRules = fitRules): Promise<LiveItem | null> {
   if (!api) return item // Design sandbox has no physical outputs.
-  if (item.source === 'scripture') {
+  if (item.source === 'background') {
+    const result = await api.clearMedia?.();
+    if (!result?.success) throw new Error('The background could not replace the current image. Try again.');
+  } else if (item.source === 'scripture') {
     /* Everything this needs is read BEFORE the push. Once mobileVerse
        replies the verse is already on the wall, and anything awaited after
        that lets the projector take news in the gap (a find card's push, a

@@ -384,8 +384,9 @@ export const PROPER_NOUNS: ReadonlySet<string> = new Set(
     ...BOOK_NAME_WORDS.filter(
       (w) => !AMBIGUOUS_BOOK_WORDS.has(w) && !AMBIGUOUS_GIVEN_NAMES.has(w)
     ),
-    'god', 'lord', 'jesus', 'christ', 'jehovah', 'messiah', 'saviour', 'savior',
-    'holy', 'spirit', 'moses', 'abraham', 'isaac', 'jacob',
+    'god', 'jesus', 'christ', 'jehovah', 'messiah', 'saviour', 'savior',
+    'elohim', 'yahweh', 'adonai', 'yeshua', 'yahshua', 'abba',
+    'moses', 'abraham', 'isaac', 'jacob',
     'david', 'solomon', 'elijah', 'elisha', 'paul',
     'israel', 'judah', 'jerusalem', 'bethlehem', 'egypt',
     'zion', 'calvary', 'galilee', 'nazareth', 'babylon', 'pharaoh', 'satan', 'devil'
@@ -393,11 +394,84 @@ export const PROPER_NOUNS: ReadonlySet<string> = new Set(
 )
 
 /**
- * 'father' and 'son' were in an earlier draft of this list and are deliberately
- * absent: capitalizing them is a theological reading, not orthography — 'my
- * father worked in the mines' and 'his son came home' are the ordinary uses,
- * and the sermon corpus contains far more of those than of the divine sense.
+ * Ambiguous words such as father, son, holy and spirit are only capitalized
+ * inside the explicit divine titles below. A human father or a broken spirit
+ * must not become a divine reference merely because this is a sermon.
  */
+
+const DIVINE_NAMES = [
+  'God', 'Jesus', 'Christ', 'Jehovah', 'Messiah', 'Saviour', 'Savior',
+  'Elohim', 'Yahweh', 'Adonai', 'Yeshua', 'Yahshua', 'Abba', 'YHWH',
+] as const
+
+/** Exact title phrases; small connecting words keep the speaker's casing. */
+const DIVINE_TITLES = [
+  'Holy Spirit', 'Holy Ghost', 'Spirit of God', 'Spirit of the Lord',
+  'Spirit of Christ', 'Spirit of Jesus',
+  'God the Father', 'God the Son', 'God the Holy Spirit',
+  'Heavenly Father', 'Father in heaven',
+  'Son of God', 'Son of Man', 'Lamb of God', 'Lamb that was slain',
+  'Lord God', 'Lord Jesus', 'Lord Christ', 'Lord of hosts', 'Lord of lords',
+  'Lord Almighty', 'Almighty God', 'Almighty Father', 'the Almighty',
+  'the Lord', 'our Lord', 'my Lord', 'O Lord', 'oh Lord', 'is Lord', 'as Lord',
+  'Most High', 'King of kings', 'King of Glory', 'Prince of Peace',
+  'Ancient of Days', 'Alpha and Omega', 'Alpha and the Omega',
+  'El Shaddai', 'El Elyon', 'El Roi', 'El Olam', 'El Gibbor',
+  'Jehovah Jireh', 'Jehovah Rapha', 'Jehovah Nissi', 'Jehovah Shalom',
+  'Jehovah Rohi', 'Jehovah Raah', 'Jehovah Tsidkenu', 'Jehovah Shammah',
+  'Yahweh Jireh', 'Yahweh Rapha', 'Yahweh Nissi', 'Yahweh Shalom',
+  'Yahweh Rohi', 'Yahweh Tsidkenu', 'Yahweh Shammah',
+] as const
+
+const DIVINE_CASING = [...DIVINE_TITLES, ...DIVINE_NAMES].map((title) => ({
+  words: title.split(' '),
+  // Unicode boundaries avoid matching part of a longer name or ordinary word.
+  // Spaces and hyphens are preserved, including names such as Jehovah-Jireh.
+  pattern: new RegExp(
+    `(^|[^\\p{L}\\p{N}_])(${title.split(' ').join('[\\s-]+')})(?=$|[^\\p{L}\\p{N}_])`,
+    'giu',
+  ),
+}))
+
+/**
+ * Display-only casing, usable without enabling filler or citation rewrites.
+ * No word, punctuation or spacing is changed, and recognizer capitals survive.
+ * The closed English title list deliberately does not guess whether a bare
+ * "father", "son" or "spirit" refers to God. Unknown names remain as heard.
+ */
+export function capitalizeScriptureNames(text: string): string {
+  let out = text
+  for (const { words, pattern } of DIVINE_CASING) {
+    out = out.replace(pattern, (match, before: string, phrase: string, offset: number) => {
+      // These familiar secular titles must not acquire devotional capitals.
+      const tail = out.slice(offset + match.length)
+      if (words.join(' ') === 'the Lord' && /^\s+of\s+(?:the\s+)?(?:manor|rings|flies)\b/i.test(tail)) {
+        return match
+      }
+      let wordIndex = 0
+      return before + phrase.replace(/[a-z]+/gi, (word) => {
+        const canonical = words[wordIndex++]
+        return [...word].map((letter, index) => (
+          canonical[index] >= 'A' && canonical[index] <= 'Z' ? letter.toUpperCase() : letter
+        )).join('')
+      })
+    })
+  }
+  return out
+}
+
+/** Apply title context across timed words without changing timing or boundaries. */
+export function capitalizeScriptureWords<T extends { w: string }>(words: T[]): T[] {
+  const original = words.map(({ w }) => w).join(' ')
+  const cased = capitalizeScriptureNames(original)
+  if (cased === original) return words
+  let start = 0
+  return words.map((word) => {
+    const w = cased.slice(start, start + word.w.length)
+    start += word.w.length + 1
+    return w === word.w ? word : { ...word, w }
+  })
+}
 
 // ---------------------------------------------------------- scripture-ref
 
@@ -805,7 +879,7 @@ function capitalizeProperNouns(text: string): string {
       out += word
     }
   }
-  return out
+  return capitalizeScriptureNames(out)
 }
 
 const RULES: Record<RuleId, Rule> = {

@@ -1,38 +1,24 @@
-/*
- * The toolbar, in the app's own material.
- *
- * The strip is bare — the workspace ground is one plain colour and the
- * controls carry the surface (tokens.css: the four-stop gradient whose alpha
- * is the state, the inset hairline, the smoothed corner). A grey slab holding
- * grey boxes read as a mock-up of the app rather than the app; the owner
- * said so (2026-10-07). Each control is one of the system's tones.
- */
+/* Compact controls share the bento cards' dark material; the orb stays bare. */
 .tri-live-header {
-  gap: var(--tri-gap);
+  --tri-view-inset: 2px;
+  --tri-header-tray-h: calc(var(--tri-field-h) + var(--tri-view-inset) * 2);
+  gap: 2px;
   padding: 0;
   border: 0;
   background: transparent;
 }
 
 .tri-live-header .tri-header-control {
-  --tri-alpha: var(--tri-alpha-rest);
-  --tri-a-mid: var(--tri-alpha);
-  --tri-a-edge: var(--tri-alpha);
-  --tri-1: var(--tri-teal-1);
-  --tri-2: var(--tri-teal-2);
-  --tri-3: var(--tri-teal-3);
-  --tri-4: var(--tri-teal-4);
+  --tri-header-bg: #111111;
   --header-stroke: rgb(229 243 242 / var(--tri-stroke-opacity));
-  height: var(--tri-control-h);
-  padding: 0 var(--tri-control-pad-x);
+  height: var(--tri-header-tray-h);
+  padding: 0 calc(var(--tri-control-pad-x) * .75);
+  gap: 6px;
   border: 0;
   border-radius: var(--tri-radius-control);
   corner-shape: var(--tri-corner);
-  background-color: transparent;
-  background-image:
-    radial-gradient(ellipse at 12% 115%, rgb(var(--tri-2) / var(--tri-a-mid)), transparent 62%),
-    radial-gradient(ellipse at 88% -25%, rgb(var(--tri-4) / var(--tri-a-mid)), transparent 64%),
-    radial-gradient(ellipse at 48% 48%, rgb(var(--tri-3) / var(--tri-a-edge)), rgb(var(--tri-1) / var(--tri-a-edge)) 82%);
+  background-color: var(--tri-header-bg);
+  background-image: none;
   box-shadow: inset 0 0 0 var(--tri-border) var(--header-stroke);
   color: var(--tri-ink);
   font-family: var(--tri-font);
@@ -43,8 +29,7 @@
   text-shadow: var(--tri-text-shadow);
   white-space: nowrap;
   transition:
-    --tri-a-mid var(--tri-dur-state) var(--tri-ease-out),
-    --tri-a-edge var(--tri-dur-state-trail) var(--tri-ease-soft) var(--tri-delay-trail),
+    background-color var(--tri-dur-state) var(--tri-ease-out),
     box-shadow var(--tri-dur-state) var(--tri-ease-out),
     color var(--tri-dur-state) var(--tri-ease-out),
     transform var(--tri-dur-press) var(--tri-ease-out);
@@ -56,7 +41,7 @@
 @media (hover: hover) and (pointer: fine) {
   .tri-live-header button.tri-header-control:hover:not(:disabled),
   .tri-live-header label.tri-header-control:hover {
-    --tri-alpha: var(--tri-alpha-hover);
+    --tri-header-bg: #1e1e1e;
     --header-stroke: rgb(229 243 242 / var(--tri-stroke-opacity-hover));
   }
 }
@@ -69,26 +54,25 @@
 }
 .tri-live-header .tri-header-control[aria-pressed='true'],
 .tri-live-header .tri-header-control[aria-expanded='true'] {
-  --tri-alpha: var(--tri-alpha-active);
+  --tri-header-bg: #222222;
 }
 .tri-live-header button.tri-header-control:disabled {
   cursor: not-allowed;
   opacity: 0.4;
 }
 
-/* The view tabs sit in a tray of the run-of-service card's material (#111
-   and its hairline), the width of the rail, so the four icons read as one
-   control lined up with that card below (owner, 2026-10-08). The padding is the inset the pill sits
-   at; the tray is still shorter than the strip at every density. */
+/* The tray fills the sidebar column; compact gaps stay fixed as buttons grow. */
 .tri-header-views {
-  --tri-view-w: calc(var(--tri-control-h) * 1.25);
-  --tri-view-inset: 4px;
+  --tri-view-w: calc(var(--tri-control-h) * 1.125);
+  flex: 1 1 0;
+  width: 100%;
+  max-width: 100%;
   position: relative;
   isolation: isolate;
-  height: calc(var(--tri-control-h) + var(--tri-view-inset) * 2);
+  height: var(--tri-header-tray-h);
   padding: var(--tri-view-inset);
-  justify-content: space-between;
-  gap: 0;
+  justify-content: flex-start;
+  gap: 2px;
   border-radius: calc(var(--tri-radius-control) + var(--tri-view-inset));
   corner-shape: var(--tri-corner);
   background: #111111;
@@ -102,7 +86,7 @@
   inset: var(--tri-view-inset) auto var(--tri-view-inset) 0;
   z-index: 0;
   width: var(--tri-view-pill-w, var(--tri-view-w));
-  border-radius: 8px;
+  border-radius: 5px;
   corner-shape: round;
   background: #333333;
   pointer-events: none;
@@ -120,15 +104,19 @@
   --header-ink: #aaaaaa;
   position: relative;
   z-index: 1;
+  background-color: transparent;
   background-image: none;
   box-shadow: none;
   text-shadow: none;
   width: auto;
+  height: var(--tri-field-h);
   min-width: var(--tri-view-w);
+  flex-grow: 1;
   flex-shrink: 1;
   padding: 0;
+  gap: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 5px;
   corner-shape: round;
   transition: color 300ms ease;
 }
@@ -161,7 +149,7 @@
   width: var(--tri-view-hint-w, 0px);
   padding: 2px 6px;
   border: 1px solid #383838;
-  border-radius: 5px;
+  border-radius: 4px;
   corner-shape: round;
   background: #202020;
   color: #f5f5f5;
@@ -234,7 +222,7 @@
 .tri-header-view-label > span {
   display: block;
   width: max-content;
-  padding-right: var(--tri-control-pad-x);
+  padding-right: calc(var(--tri-control-pad-x) * .75);
   white-space: nowrap;
 }
 /* The name opens inside the pill only after selecting the tab. */

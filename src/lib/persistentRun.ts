@@ -11,6 +11,8 @@ function savedRun(value: unknown): PersistedRun | null {
   return validRun(saved.segments) && Number.isSafeInteger(saved.updatedAt) && saved.updatedAt>=0 ? saved : null;
 }
 interface Storage {
+  onSaveError?: (source: 'local' | 'durable', error: unknown) => void;
+  onSaveSuccess?: (source: 'local' | 'durable') => void;
   read: () => unknown;
   write: (run: PersistedRun) => void;
   readDurable?: () => Promise<unknown>;
@@ -28,11 +30,11 @@ export function createPersistentRun(storage: Storage) {
   let writes = Promise.resolve();
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach(fn => fn());
-  const saveLocal = (next: PersistedRun) => { try { storage.write(next); } catch { /* Keep the current run in memory. */ } };
+  const saveLocal = (next: PersistedRun) => { try { storage.write(next); storage.onSaveSuccess?.('local'); } catch (error) { storage.onSaveError?.('local', error); } };
   const save = () => {
     const next={segments:snapshot,updatedAt};
     saved=next; saveLocal(next);
-    if (storage.writeDurable) writes = writes.then(() => storage.writeDurable!(next)).then(() => undefined, () => undefined);
+    if (storage.writeDurable) writes = writes.then(() => storage.writeDurable!(next)).then(() => { storage.onSaveSuccess?.('durable'); }, error => { storage.onSaveError?.('durable', error); });
   };
   return {
     getSnapshot: () => snapshot,

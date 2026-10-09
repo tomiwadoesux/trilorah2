@@ -10,6 +10,20 @@
   container-type: inline-size;
 }
 .catches-pane.is-empty { height: 100%; padding: 0; }
+/* Keep the quotation marks and their caption together in the panel's center. */
+.catches-pane.is-empty .tri-empty-mark__layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  height: auto;
+  padding: 12px;
+}
+.catches-pane.is-empty .tri-empty-mark__stage {
+  flex: none;
+  height: var(--empty-art-h, 100px);
+  min-height: 0;
+}
 
 .catch-eyebrow {
   margin: 0;
@@ -27,7 +41,7 @@
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 12px 14px 15px;
   background: rgb(255 255 255 / 0.035);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.09);
@@ -51,7 +65,7 @@
   font-size: var(--tri-size-xs);
   padding: 4px 8px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 5px;
   background: none;
   color: rgb(229 243 242 / 0.55);
   box-shadow: inset 0 0 0 1px rgb(229 243 242 / 0.14);
@@ -81,7 +95,7 @@
   font-size: var(--tri-size-xs);
   line-height: 17px;
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 .catch-pill.is-sure { color: rgb(228 216 122); background: rgb(228 216 122 / 0.1); box-shadow: inset 0 0 0 1px rgb(228 216 122 / 0.45); }
@@ -146,7 +160,7 @@
   font-size: var(--tri-size-xs);
   padding: 2px 8px;
   border: 1px dashed rgb(228 216 122 / 0.45);
-  border-radius: 7px;
+  border-radius: 5px;
   background: none;
   color: rgb(228 216 122);
   cursor: pointer;
@@ -171,7 +185,7 @@
   place-items: center;
   width: 30px;
   height: var(--tri-control-h);
-  border-radius: 8px;
+  border-radius: 5px;
   color: rgb(229 243 242 / 0.6);
 }
 .catch-x:hover { color: var(--tri-ink); }
@@ -180,13 +194,13 @@
   min-width: 96px;
   height: var(--tri-control-h);
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: 5px;
   font-size: var(--tri-size);
   text-transform: lowercase;
   color: rgb(228 216 122 / 0.95);
 }
-.catch-x.is-small { width: 24px; height: 24px; border-radius: 7px; }
-.catch-live.is-small { min-width: 0; height: 24px; padding: 0 12px; border-radius: 7px; font-size: var(--tri-size-xs); }
+.catch-x.is-small { width: 24px; height: 24px; border-radius: 5px; }
+.catch-live.is-small { min-width: 0; height: 24px; padding: 0 12px; border-radius: 5px; font-size: var(--tri-size-xs); }
 
 /* Six seconds, draining. */
 .catch-countdown { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgb(255 255 255 / 0.07); pointer-events: none; }
@@ -203,7 +217,7 @@
   gap: 8px;
   min-width: 0;
   padding: 7px 10px 9px;
-  border-radius: 9px;
+  border-radius: 5px;
   background: rgb(255 255 255 / 0.025);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
   cursor: pointer;
@@ -231,7 +245,7 @@
   min-width: 22px;
   height: 18px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: rgb(228 216 122);
   color: #1d1c0e;
   font-size: 11px;

@@ -115,6 +115,20 @@ describe('.tri import planning and commit', () => {
     expect(local.operatorRunV1.segments[0].key).toBe('local')
   })
 
+  it.each([false, true])('retains every selected service in source order when openService is %s', (openService) => {
+    const source: TriSnapshot = { categories: { service: ['First', 'Second'].map(label => ({
+      id: label, label, data: { segments: [{ key: label, type: 'custom', label, items: [] }] },
+    })) } }
+    const local = { operatorRunV1: { segments: [{ key: 'local', type: 'custom', label: 'Local', items: [] }] } }
+    const plan = planTriImport(dir, source, local, openService)
+    expect((plan.settings.operatorRunV1 as any).segments.map((segment: any) => segment.label)).toEqual(openService ? ['First', 'Second'] : ['Local', 'First', 'Second'])
+    expect(plan.snapshot.categories.service).toHaveLength(1)
+    expect(plan.snapshot.categories.service![0].id).toBe('current')
+    expect(plan.snapshot.categories.service![0].data.segments.map((segment: any) => segment.label)).toEqual(['First', 'Second'])
+    expect(source.categories.service).toHaveLength(2)
+    expect(local.operatorRunV1.segments.map(segment => segment.label)).toEqual(['Local'])
+  })
+
   it('stores service record contents in the format the destination reader expects', () => {
     const source = { categories: { records: incoming().categories.records } }
     const plan = planTriImport(dir, source, {}, false)

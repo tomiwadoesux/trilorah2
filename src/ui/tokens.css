@@ -117,15 +117,13 @@
   /* ---------------------------------------------------------------- */
   /* Shape & type                                                     */
   /* ---------------------------------------------------------------- */
-  /* Well past the file's 6/8. The smoothing below reads softer with more
-     radius under it, so the two were raised together.
-
-     Note the control value is a ceiling, not a promise: a radius is clamped
-     to half the box, so on a 32px button 18px draws as 16px and the button
-     is a soft stadium. It is the taller boxes — the 38px field and tab
-     strip, the bars — that actually spend the whole 18. */
-  --tri-radius-control: 18px;
-  --tri-radius-surface: 30px;
+  /* Back near the file's 6/8 (owner, 2026-10-08: "way less rounded,
+     everything"). These had been raised to 18/30, which made every button
+     a stadium and every card a pillow. The px radii hard-coded around the
+     app were cut in the same pass, and Tailwind's rounded-md…3xl scale is
+     cut in index.css. */
+  --tri-radius-control: 6px;
+  --tri-radius-surface: 10px;
 
   /*
    * Figma runs corner smoothing at 100% (iOS) on top of the 6px radius, so
@@ -277,7 +275,7 @@
    * frame between a card's edge and its content. A gap between two boxes and
    * a frame within one box are different jobs and drift apart between tiers.
    */
-  --tri-gap: 6px;
+  --tri-gap: 4px;
   /*
    * Card corners are a PROPORTION of the card, not a pixel size.
    *
@@ -287,17 +285,19 @@
    * cqw (1% of the card's own width) the corner holds its proportion at
    * every size, which is what "the same component" actually means.
    *
-   * The values are the Figma ratios: 22/86 for the font card, 20/108 for the
-   * position card.
+   * These were the Figma ratios, 22/86 for the font card and 20/108 for the
+   * position card; cut to about a third with the rest of the app's corners
+   * (owner, 2026-10-08: "way less rounded").
    */
-  --tri-card-round: 18.5; /* position card, % of its width */
-  --tri-font-card-round: 25.5; /* font card, % of its width */
+  --tri-card-round: 5; /* position card, % of its width */
+  --tri-font-card-round: 7; /* font card, % of its width */
   --tri-handle-h: 16px;
   --tri-handle-h-active: 23px;
 
   /* Same face as the rest of the interface; the literal is the fallback for
      any surface that loads tokens.css without index.css. */
-  --tri-font: 'Roboto', sans-serif;
+  --tri-font: var(--font-ui, 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  --tri-font-heading: var(--font-heading, 'Geist', sans-serif);
   /* Up from the file's 12/10. Figma was drawn at screen-reading distance;
      the operator is at arm's length in a dark booth, often standing. */
   /*
@@ -323,7 +323,7 @@
   /* 1.45, not the old 2.0 — that ratio was set against a 12px label and
      left behind when the type scale went up. */
   --tri-leading: 20px;
-  --tri-tracking: 0.24px;
+  --tri-tracking: 0.01em;
   /* Medium, not regular: at 12–13px over a gradient, regular goes thin. */
   --tri-weight: 500;
 
@@ -402,8 +402,8 @@
 
 /*
  * Alpha is animated per band rather than as one number, so the surface
- * lights up from the inside out: the two middle stops come up first and the
- * dark outer stops follow a beat later. Registering them tells the engine
+ * lights up from the inside out: the center highlight comes up first, then
+ * the corner layers and dark outer stop follow. Registering them tells the engine
  * they are numbers, which is what makes them interpolate at all — an
  * unregistered custom property would jump.
  *
@@ -431,9 +431,9 @@
   --tri-3: var(--tri-teal-3);
   --tri-4: var(--tri-teal-4);
   background-image:
-    radial-gradient(ellipse at 12% 115%, rgb(var(--tri-2) / var(--tri-a-mid)), transparent 62%),
-    radial-gradient(ellipse at 88% -25%, rgb(var(--tri-4) / var(--tri-a-mid)), transparent 64%),
-    radial-gradient(ellipse at 48% 48%, rgb(var(--tri-3) / var(--tri-a-edge)), rgb(var(--tri-1) / var(--tri-a-edge)) 82%);
+    radial-gradient(ellipse at 12% 115%, rgb(var(--tri-2) / var(--tri-a-edge)), transparent 62%),
+    radial-gradient(ellipse at 88% -25%, rgb(var(--tri-4) / var(--tri-a-edge)), transparent 64%),
+    radial-gradient(ellipse at 48% 48%, rgb(var(--tri-3) / var(--tri-a-mid)), rgb(var(--tri-1) / var(--tri-a-edge)) 82%);
   /*
    * Decelerating, and the edges outlast the middle — the light reads as
    * spreading outward rather than as two things switching on. Declared here
@@ -445,6 +445,12 @@
     --tri-a-edge var(--tri-dur-state-trail) var(--tri-ease-soft) var(--tri-delay-trail),
     color var(--tri-dur-state) var(--tri-ease-out),
     transform var(--tri-dur-press) var(--tri-ease-out);
+}
+
+/* Let the center light first, then carry that brightness to the sides. */
+button.tri-surface {
+  --tri-delay-trail: 80ms;
+  --tri-dur-state-trail: 200ms;
 }
 
 /*
@@ -675,6 +681,11 @@
   text-shadow: var(--tri-text-shadow);
 }
 
+.tri-panel-title,
+.tri-control-heading {
+  font-family: var(--tri-font-heading);
+}
+
 /* ------------------------------------------------------------------ */
 /* F-05 — Tiers                                                        */
 /* ------------------------------------------------------------------ */
@@ -701,7 +712,7 @@
  */
 
 [data-density='compact'] {
-  --tri-gap: 6px;
+  --tri-gap: 4px;
   --tri-control-h: 28px;
   --tri-control-pad-x: 10px;
   --tri-size-eyebrow: 9px;
@@ -721,14 +732,14 @@
   --tri-card-w: 95px;
   --tri-handle-h: 14px;
   --tri-handle-h-active: 20px;
-  --tri-radius-control: 16px;
-  --tri-radius-surface: 27px;
+  --tri-radius-control: 5px;
+  --tri-radius-surface: 8px;
 }
 
 /* comfortable is the :root block above — listed here only so the set of
    tiers reads as three things rather than two plus a default. */
 [data-density='comfortable'] {
-  --tri-gap: 6px;
+  --tri-gap: 4px;
   --tri-control-h: 32px;
   --tri-control-pad-x: 12px;
   --tri-size-eyebrow: 10px;
@@ -748,12 +759,12 @@
   --tri-card-w: 108px;
   --tri-handle-h: 16px;
   --tri-handle-h-active: 23px;
-  --tri-radius-control: 18px;
-  --tri-radius-surface: 30px;
+  --tri-radius-control: 6px;
+  --tri-radius-surface: 10px;
 }
 
 [data-density='touch'] {
-  --tri-gap: 7px;
+  --tri-gap: 5px;
   --tri-control-h: 38px;
   --tri-control-pad-x: 16px;
   --tri-size-eyebrow: 11px;
@@ -773,8 +784,8 @@
   --tri-card-w: 128px;
   --tri-handle-h: 19px;
   --tri-handle-h-active: 27px;
-  --tri-radius-control: 21px;
-  --tri-radius-surface: 35px;
+  --tri-radius-control: 7px;
+  --tri-radius-surface: 12px;
 }
 
 :root[data-aurora="iris"] { --tri-teal-1: 19 16 38; --tri-teal-2: 61 44 94; --tri-teal-3: 32 35 64; --tri-teal-4: 66 40 77; }
@@ -797,8 +808,8 @@
 .tri-workspace-aurora {
   background: rgb(var(--tri-teal-1));
 }
-.aurora-choice { display: flex; flex-direction: column; gap: 8px; padding: 5px 5px 9px; border: 1px solid rgb(255 255 255 / .12); border-radius: 14px; font-size: 12px; text-align: center; background: rgb(0 0 0 / .18); }
+.aurora-choice { display: flex; flex-direction: column; gap: 8px; padding: 5px 5px 9px; border: 1px solid rgb(255 255 255 / .12); border-radius: 6px; font-size: 12px; text-align: center; background: rgb(0 0 0 / .18); }
 .aurora-choice[aria-pressed="true"] { border-color: rgb(229 243 242 / .75); background: rgb(255 255 255 / .06); }
 .aurora-choice:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 3px; }
-.aurora-choice-art { display: flex; align-items: flex-end; justify-content: flex-end; height: 76px; padding: 8px; border-radius: 10px; }
+.aurora-choice-art { display: flex; align-items: flex-end; justify-content: flex-end; height: 76px; padding: 8px; border-radius: 6px; }
 @media (hover: hover) { .aurora-choice:hover { border-color: rgb(229 243 242 / .5); } }

@@ -26,7 +26,7 @@
      popover fill, feathered on the left so the words run under it rather
      than being cut off by a box. */
   background: linear-gradient(to right, transparent, var(--tri-pop) 16px);
-  border-radius: 8px;
+  border-radius: 5px;
   opacity: 0;
   transform: translate3d(3px, 0, 0);
   pointer-events: none;

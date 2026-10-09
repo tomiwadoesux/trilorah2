@@ -55,7 +55,7 @@ const INPUT =
   'tri-rounded-control w-full border-0 bg-[rgb(0_0_0_/_0.20)] px-3.5 text-[length:var(--tri-control-size)] text-[var(--tri-ink)] placeholder:text-[rgb(229_243_242_/_0.34)] focus:outline-none focus:shadow-[inset_0_0_0_var(--tri-border)_rgb(var(--tri-go-2)_/_0.45)]';
 
 const CELL_INPUT =
-  'h-[28px] min-w-0 rounded-[8px] border-0 bg-transparent px-2 text-[length:var(--tri-control-size)] text-[var(--tri-ink)] placeholder:text-[rgb(229_243_242_/_0.3)] transition-colors hover:bg-[rgb(0_0_0_/_0.18)] focus:bg-[rgb(0_0_0_/_0.25)] focus:outline-none focus:shadow-[inset_0_0_0_var(--tri-border)_rgb(var(--tri-go-2)_/_0.45)]';
+  'h-[28px] min-w-0 rounded-[5px] border-0 bg-transparent px-2 text-[length:var(--tri-control-size)] text-[var(--tri-ink)] placeholder:text-[rgb(229_243_242_/_0.3)] transition-colors hover:bg-[rgb(0_0_0_/_0.18)] focus:bg-[rgb(0_0_0_/_0.25)] focus:outline-none focus:shadow-[inset_0_0_0_var(--tri-border)_rgb(var(--tri-go-2)_/_0.45)]';
 
 /* time · length · name · type · who · ✕ — one template for the header and
    every row, so the columns cannot drift. */
@@ -196,7 +196,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                     title={row.raw ? `read as: ${row.raw}` : undefined}
                     className={cx(
                       COLS,
-                      'shrink-0 rounded-[10px] px-2 py-[3px] transition-colors',
+                      'shrink-0 rounded-[6px] px-2 py-[3px] transition-colors',
                       flag === 'pick' ? 'bg-[rgb(228_216_122_/_0.07)] shadow-[inset_0_0_0_var(--tri-border)_rgb(228_216_122_/_0.22)]' : 'bg-[rgb(0_0_0_/_0.14)]',
                     )}
                   >
@@ -230,7 +230,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                         setPicker({ key: row.key, x: r.left, y: r.bottom + 4, from: e.currentTarget });
                       }}
                       className={cx(
-                        'flex h-[28px] min-w-0 items-center gap-2 rounded-[8px] px-2 text-left text-[length:var(--tri-control-size)] lowercase transition-colors',
+                        'flex h-[28px] min-w-0 items-center gap-2 rounded-[5px] px-2 text-left text-[length:var(--tri-control-size)] lowercase transition-colors',
                         'hover:bg-[rgb(0_0_0_/_0.18)] focus-visible:bg-[rgb(0_0_0_/_0.25)] focus-visible:outline-none',
                         flag === 'pick' ? 'text-[var(--tri-accent-yellow)]' : 'text-[var(--tri-ink)]',
                       )}
@@ -242,7 +242,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                       {flag === 'check' && (
                         <span
                           title={row.alias ? `matched on “${row.alias}” — worth a look` : 'a guess — worth a look'}
-                          className="shrink-0 rounded-full bg-[rgb(255_255_255_/_0.07)] px-1.5 text-[length:var(--tri-size-eyebrow)] lowercase tracking-wide text-[rgb(229_243_242_/_0.55)]"
+                          className="shrink-0 rounded-md bg-[rgb(255_255_255_/_0.07)] px-1.5 text-[length:var(--tri-size-eyebrow)] lowercase tracking-wide text-[rgb(229_243_242_/_0.55)]"
                         >
                           check
                         </span>
@@ -262,7 +262,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                       onClick={() => setList((prev) => prev.filter((r) => r.key !== row.key))}
                       title="leave this row out"
                       aria-label={`leave ${row.title} out`}
-                      className="grid size-[24px] place-items-center rounded-[7px] text-[rgb(229_243_242_/_0.35)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink-danger)] focus-visible:text-[var(--tri-ink-danger)] focus-visible:outline-none"
+                      className="grid size-[24px] place-items-center rounded-[5px] text-[rgb(229_243_242_/_0.35)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink-danger)] focus-visible:text-[var(--tri-ink-danger)] focus-visible:outline-none"
                     >
                       <TrashIcon size={11} />
                     </button>

@@ -1,0 +1,14 @@
+.tri-phone-mic-panel { max-height:calc(100dvh - 40px); overflow-y:auto; }
+.tri-phone-mic-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; position:relative; min-height:32px; }
+.tri-phone-mic-heading h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.tri-phone-mic-heading[data-empty=true] { justify-content:center; padding:0 32px; }
+.tri-phone-mic-heading button { display:grid; place-items:center; width:32px; height:32px; flex:none; border:1px solid rgb(255 255 255 / .12); border-radius:var(--tri-radius-control, 7px); color:var(--tri-ink-muted); }
+.tri-phone-mic-heading[data-empty=true] button { position:absolute; right:0; top:0; }
+.tri-phone-mic-heading button:focus-visible { outline:2px solid var(--tri-ink); outline-offset:3px; }
+.tri-phone-mic-intro { display:flex; flex-direction:column; align-items:center; text-align:center; padding:6px 0 0; }
+.tri-phone-mic-purpose { margin:6px 0 13px; max-width:30ch; font-size:13px; line-height:1.6; color:var(--tri-ink-muted, #adb4b3); text-wrap:balance; }
+.tri-phone-mic-intro > .tri-phone-connection-art { margin:0 auto 15px; }
+.tri-phone-mic-hint { margin:14px 0 0; max-width:30ch; font-size:11px; line-height:1.6; color:var(--tri-ink-muted, #adb4b3); opacity:.7; text-wrap:balance; }
+.tri-phone-mic-message { margin:0 0 16px; font-size:12px; line-height:1.55; overflow-wrap:anywhere; color:var(--tri-ink-muted, #adb4b3); }
+.tri-phone-mic-message[data-error=true] { color:var(--tri-ink-danger, #eac7c6); }
+@media (hover:hover) and (pointer:fine) { .tri-phone-mic-heading button:hover { color:var(--tri-ink); background:rgb(255 255 255 / .04); } }

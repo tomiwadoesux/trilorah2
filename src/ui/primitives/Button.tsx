@@ -27,6 +27,7 @@ interface ButtonProps {
    * focusable and answers a click with a nudge instead of silence.
    */
   disabled?: boolean;
+  pressed?: boolean;
   title?: string;
   type?: 'button' | 'submit';
   className?: string;
@@ -38,6 +39,7 @@ export function Button({
   icon,
   tone = 'default',
   disabled = false,
+  pressed,
   title,
   type = 'button',
   className = '',
@@ -50,6 +52,7 @@ export function Button({
       // A refused submit must not submit, so the type is neutralised too.
       type={disabled ? 'button' : type}
       aria-disabled={disabled || undefined}
+      aria-pressed={pressed}
       onClick={disabled ? nudge : onClick}
       title={title}
       className={cx(

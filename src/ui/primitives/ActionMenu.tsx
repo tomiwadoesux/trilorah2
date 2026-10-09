@@ -69,7 +69,7 @@ export interface ActionMenuProps {
 
 /** Each group is its own floating surface, so each carries the whole recipe. */
 const BUBBLE = {
-  borderRadius: '14px',
+  borderRadius: '6px',
   backgroundColor: '#101010',
   boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
 } as const;
@@ -151,7 +151,7 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
   const row = cx(
     'flex w-full items-center gap-2.5 px-3.5 text-left lowercase transition-colors',
     'h-[var(--tri-option-h)] text-[length:var(--tri-control-size)] text-[var(--tri-ink,#e5f3f2)]',
-    arranging ? 'rounded-[8px]' : 'rounded-[10px]',
+    arranging ? 'rounded-[5px]' : 'rounded-[6px]',
   );
 
   return (
@@ -188,7 +188,7 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
                 /* Less corner while arranging: the rows inside sit on an 8px
                    radius, and a 14px shell around them read as a capsule
                    holding rectangles. */
-                style={arranging ? { ...BUBBLE, borderRadius: '12px' } : BUBBLE}
+                style={arranging ? { ...BUBBLE, borderRadius: '6px' } : BUBBLE}
               >
                 {/* Only at depth. On the top level there is nowhere to go back
                     to, and a disabled back row would be furniture. */}
@@ -258,7 +258,7 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
                           /* Same type as the list rows above them: a tile is
                              still a menu row, so two sizes inside one bubble
                              stack was the group contradicting itself. */
-                          'rounded-[10px] py-2 text-[length:var(--tri-control-size)] lowercase',
+                          'rounded-[6px] py-2 text-[length:var(--tri-control-size)] lowercase',
                           'text-[var(--tri-ink,#e5f3f2)] transition-colors',
                           'hover:bg-[rgb(255_255_255_/_0.06)]',
                         )}

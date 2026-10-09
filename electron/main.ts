@@ -23,6 +23,8 @@ import {
 } from './emitters'
 import { feedAudioChunk } from './asr/audioBus'
 import { queueHealth } from './cloud/offlineQueue'
+import { retryPublishing, checkTranscriptDelivery } from './cloud/cloudSync'
+import { currentServiceNotices, observeServiceNotices, observeCloudHealth, publishServiceNotice } from './serviceNotices'
 import { longestCommandPhrase } from '../shared/voiceCommandText'
 // In-process TS resolver — drop-in replacement for the lost Python ml/ service
 import {
@@ -247,6 +249,7 @@ import { quotesForNamedPassage } from './engine/recognitionPriority'
 import { PassageMatcher } from './engine/passageMatcher'
 import { SemanticMatcher, loadEmbedder, loadJudge } from './engine/semanticMatcher'
 import { AllusionFinder } from './engine/allusionFinder'
+import { correctSearchSpelling } from './engine/searchSpelling'
 import { HeardWindow } from './engine/heardWindow'
 import { SuggestionTracker, type RecognitionCandidate } from './engine/suggestionTracker'
 import type { ScriptureRecognition } from '../shared/types'
@@ -1123,6 +1126,14 @@ const allusionFinder = new AllusionFinder({ semantic: null, judge: null, detectS
 let allusionFinals: { text: string; at: number }[] = []
 /** Bumped on every reset, so a search that was under way knows it is stale. */
 let storyEpoch = 0
+let spokenSearchEpoch = 0
+
+function resetSpokenSearch() {
+  heardWindow.reset()
+  allusionFinder.names.reset()
+  allusionFinder.sermon.reset()
+  spokenSearchEpoch++
+}
 
 function resetStoryMemory() {
   passageMatcher?.reset()
@@ -1348,6 +1359,7 @@ function stageVerseReference(reference: string, requested?: string): boolean {
 function startASR(deviceLabel?: string) {
   if (soundCheck.active) { emitASRStatus('Finish the sound check before starting a service.'); return }
   if (isListening) return
+  resetSpokenSearch()
   withdrawProvisionalRecognition()
   getQuoteMatcher().reset()
   resetStoryMemory()
@@ -1482,6 +1494,7 @@ function startASR(deviceLabel?: string) {
 
 function stopASR() {
   transitionDetector?.sermonStart.suspend()
+  resetSpokenSearch()
   if (!isListening) return
   ;(activeASR ?? resolveASRProvider(getSetting('asrProvider'))).stop()
   activeASR = null
@@ -1756,6 +1769,17 @@ function notifyOutputsChanged(): void {
   broadcastToWindows('on-outputs-changed', null)
 }
 
+ipcMain.on('output-media-health', (event, data) => {
+  const id = Object.keys(outputWindows).find(key => outputWindows[key]?.webContents === event.sender)
+  if (!id || !data || !['video', 'image'].includes(data.kind) || typeof data.failed !== 'boolean') return
+  publishServiceNotice({
+    id: `output-media:${id}:${data.kind}`,
+    title: `${data.kind === 'video' ? 'Video' : 'Image'} could not load on ${id}`,
+    detail: data.failed ? 'Check that the file is available and supported, then choose it again or replace it in the media library.' : 'The media loaded on this output.',
+    severity: 'error', target: 'media', status: data.failed ? 'active' : 'resolved'
+  })
+})
+
 /** Where this output belongs right now, per the operator's choice and what
  *  is actually plugged in. Read fresh every time: displays come and go, and
  *  so does the setting. */
@@ -1848,6 +1872,14 @@ function createOutputWindow(id: string, title: string) {
   win.on('closed', () => {
     outputWindows[id] = null
     notifyOutputsChanged()
+  })
+  win.webContents.on('render-process-gone', (_event, details) => {
+    if (details.reason === 'clean-exit') return
+    publishServiceNotice({ id: `output-crash:${id}`, title: `${title} stopped responding`, detail: 'The output renderer stopped. Reopen this output and check its display before continuing.', severity: 'error', target: 'displays', actions: [{ kind: 'command', command: 'reopen-output', outputId: id, label: 'Reopen output' }] })
+    if (!win.isDestroyed()) win.destroy()
+  })
+  win.webContents.on('did-finish-load', () => {
+    publishServiceNotice({ id: `output-crash:${id}`, title: `${title} reopened`, detail: 'The output window loaded again.', severity: 'info', target: 'displays', status: 'resolved' })
   })
   outputWindows[id] = win
   notifyOutputsChanged()
@@ -2391,23 +2423,29 @@ ipcMain.handle('show-queued-verse', async (_event, ref: string) => {
 
 /**
  * The operator asks "what was that?". Unlike the auto path this never
- * abstains: every matcher is tried on the last words spoken and the nearest
- * four come back for a person to choose from. Nothing is staged here.
+ * uses the automatic confidence threshold: up to four supported matches
+ * come back for a person to choose from. Nothing is staged here.
  */
-ipcMain.handle('find-heard-scripture', async (_event, payload: { text?: string }) => {
+ipcMain.handle('find-heard-scripture', async (_event, payload: { text?: string; correctTypos?: boolean; spoken?: boolean }) => {
   // No text given means "what was just said": words older than the window
   // have expired, so a press long after the sentence finds nothing.
-  const words = (typeof payload?.text === 'string' ? payload.text : heardWindow.recent()).split(/\s+/).filter(Boolean).slice(-25)
+  const typed = typeof payload?.text === 'string'
+  const spoken = !typed || payload.spoken === true
+  const original = (typed ? payload.text!.slice(0, 2000) : heardWindow.forSearch()).split(/\s+/).filter(Boolean).slice(spoken ? -60 : -25).join(' ')
+  const query = typed && payload.correctTypos !== false ? correctSearchSpelling(original) : { text: original, corrections: [] }
+  const searchEpoch = spokenSearchEpoch
+  const words = query.text.split(/\s+/).filter(Boolean)
   const version = activeVersion()
   const matches: { reference: string; title: string; text: string; version: string; evidence: string[]; kind: string }[] = []
-  for (const hit of await allusionFinder.find(words)) {
+  for (const hit of await allusionFinder.find(words, Date.now(), { spoken })) {
     const reference = `${hit.book} ${hit.chapter}:${hit.verse}${hit.endVerse > hit.verse ? `-${hit.endVerse}` : ''}`
     // Only what the selected translation can actually show (an online one is fetched first).
     const readable = db ? await versionForPress(reference, version) : version
     const preview = db ? readVersePreview(bibleFor(readable)!, reference, readable) : null
     if (preview) matches.push({ reference, title: hit.title, text: preview.text, version: readable, evidence: hit.evidence, kind: hit.kind })
   }
-  return { heard: words.join(' '), meaning: allusionFinder.meaning, matches }
+  if (spoken && searchEpoch !== spokenSearchEpoch) return { heard: '', corrections: [], meaning: allusionFinder.meaning, matches: [] }
+  return { heard: words.join(' '), corrections: query.corrections, meaning: allusionFinder.meaning, matches }
 })
 
 ipcMain.handle('set-display-version', (_event, version: string) => {
@@ -2448,6 +2486,13 @@ ipcMain.on('audio-level', (_event, level: number) => {
 })
 
 ipcMain.handle('get-audio-capture-capabilities', () => ({ deviceAudio: process.platform === 'win32' }))
+
+ipcMain.handle('open-mic-permissions', async () => {
+  const url = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone' : process.platform === 'win32' ? 'ms-settings:privacy-microphone' : null
+  if (!url) return { supported: false }
+  await shell.openExternal(url)
+  return { supported: true }
+})
 
 ipcMain.handle('request-mic-permission', async () => {
   if (process.platform !== 'darwin') return { granted: true }
@@ -3124,6 +3169,9 @@ const THEME_KEYS = new Set([
   'overlayOpacity',
   'defaultBackgroundUrl',
   'backgroundBlur',
+  'backgroundVideoSpeed',
+  'backgroundVideoBass',
+  'backgroundVideoSound',
   'backgroundFit',
   'backgroundPosition',
   'colorMode',
@@ -3340,6 +3388,10 @@ function readCloudIdentity() {
   return value
 }
 
+observeServiceNotices(notice => emitEngineEvent('on-service-notice', notice))
+observeCloudHealth(() => emitEngineEvent('on-cloud-health-changed', null))
+ipcMain.handle('service-notices', () => currentServiceNotices())
+
 ipcMain.handle('cloud-status', async () => {
   if (!isCloudConfigured()) return { configured: false, signedIn: false }
   const identity = await readCloudIdentity().catch(() => ({ signedIn: false, hasAccount: false, email: null }))
@@ -3349,8 +3401,17 @@ ipcMain.handle('cloud-status', async () => {
     activeServiceId: getActiveServiceId(),
     paused: publicSharingPaused,
     serviceError: getActiveServiceId() ? null : cloudServiceError,
-    queue: queueHealth()
+    queue: queueHealth(),
+    transcriptDelivery: await checkTranscriptDelivery()
   }
+})
+
+ipcMain.handle('retry-publishing', async () => {
+  if (publicSharingPaused) throw new Error('Sharing was ended. Open Account & cloud to start sharing again.')
+  if (!getActiveServiceId()) await ensureCloudService()
+  if (!getActiveServiceId()) throw new Error(cloudServiceError || 'Sign in and finish church setup under Account & cloud.')
+  await retryPublishing()
+  return queueHealth()
 })
 
 ipcMain.handle(

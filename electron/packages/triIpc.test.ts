@@ -7,6 +7,7 @@ import type { TriRendererState } from '../../shared/triBridge'
 import type { TriSnapshot } from '../../shared/triPackage'
 import { inspectTri, writeTri } from './triArchive'
 import { registerTriPackages } from './triIpc'
+import { pro6Fixture, zipFixture } from '../importers/fixtures'
 
 const electron = vi.hoisted(() => ({
   paths: {} as Record<string, string>,
@@ -153,6 +154,22 @@ describe('native .tri workflow', () => {
     expect(records[0].data.value.notes).toBe('Retain these notes')
   })
 
+  it('retains all selected services when opening a package and saving it again', async () => {
+    const snapshot = service()
+    snapshot.categories.service!.push({ id: 'second', label: 'Evening', data: { segments: [{ key: 'evening', type: 'custom', label: 'Evening service', items: [] }] } })
+    const opened = await preview(snapshot)
+    const result = await call('tri-import', { token: opened.token, selection: all(opened.manifest), openService: true })
+    expect(result.error).toBeUndefined()
+    expect(result.snapshot.categories.service).toHaveLength(1)
+    const run = result.snapshot.categories.service[0].data.segments
+    expect(run.map((segment: any) => segment.label)).toEqual(['Opening worship', 'Evening service'])
+    expect(settings.operatorRunV1.segments).toEqual(run)
+    expect(settings.triActiveFile.selection.service).toEqual(['current'])
+    const saved = await call('tri-save', { title: 'Sunday', state: { ...state(), run }, selection: settings.triActiveFile.selection })
+    expect(saved.error).toBeUndefined()
+    expect((await inspectTri(saved.path)).categories.service![0].data.segments).toEqual(run)
+  })
+
   it('imports chosen songs without extracting unselected media or changing the active file', async () => {
     const photo = path.join(dir, 'unused.png')
     fs.writeFileSync(photo, 'unused media bytes')
@@ -243,5 +260,108 @@ describe('native .tri workflow', () => {
     const directory = fs.readdirSync(packages)[0]!
     const asset = fs.readdirSync(path.join(packages, directory))[0]!
     expect(fs.readFileSync(path.join(packages, directory, asset), 'utf8')).toBe('welcome media bytes')
+  })
+
+  it('previews a foreign file, flags existing titles, and imports from the frozen preview without activating a temp path', async () => {
+    const file = path.join(dir, 'Sunday.pro6')
+    fs.writeFileSync(file, pro6Fixture)
+    fs.writeFileSync(path.join(electron.paths.userData, 'songs.json'), JSON.stringify({ version: 1, songs: [{ id: 'existing', title: 'Sunday song', sections: [] }], deletedSeeds: [] }))
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [file] })
+    const opened = await call('tri-inspect-foreign', 'propresenter')
+    expect(opened.error).toBeUndefined()
+    expect(opened.suggestedSelection.songs).toEqual([])
+    expect(opened.suggestedSelection.service).toEqual([])
+    expect(opened.warnings.join(' ')).toContain('already exist')
+    expect(imported).not.toHaveBeenCalled()
+    fs.writeFileSync(file, 'source changed after preview')
+    const result = await call('tri-import', { token: opened.token, selection: all(opened.manifest), openService: true })
+    expect(result.error).toBeUndefined()
+    expect(result.path).toBeUndefined()
+    expect(settings.triActiveFile.path).toBeUndefined()
+    expect(settings.triRecentFiles).toBeUndefined()
+    expect(result.snapshot.categories.songs[0].data.sections[0].lines).toEqual(['First line', 'Second line'])
+    const library = JSON.parse(fs.readFileSync(path.join(electron.paths.userData, 'songs.json'), 'utf8'))
+    expect(library.songs).toHaveLength(2)
+    expect(library.songs[0].id).toBe('existing')
+    expect((await call('tri-import', { token: opened.token, selection: all(opened.manifest), openService: false })).error).toContain('Open the package again')
+  })
+
+  it('stages only one imported theme and rejects using a discarded preview', async () => {
+    const file = path.join(dir, 'themes.json')
+    fs.writeFileSync(file, JSON.stringify({ themes: [{ name: 'White', textColor: '#ffffff' }, { name: 'Gold', textColor: '#ffcc00' }] }))
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [file] })
+    const opened = await call('tri-inspect-foreign', 'pewbeam')
+    expect(opened.error).toBeUndefined()
+    expect(opened.suggestedSelection.themes).toHaveLength(1)
+    const invalid = await call('tri-import', { token: opened.token, selection: all(opened.manifest), openService: false })
+    expect(invalid.error).toContain('one imported theme')
+    expect(settings.triThemeDisplay).toBeUndefined()
+    const result = await call('tri-import', { token: opened.token, selection: opened.suggestedSelection, openService: false })
+    expect(result.error).toBeUndefined()
+    expect(settings.triThemeDisplay).toEqual({ defaultTextColor: '#ffffff' })
+    expect(settings.defaultTextColor).toBeUndefined()
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [file] })
+    const next = await call('tri-inspect-foreign', 'pewbeam')
+    await call('tri-discard-preview', next.token)
+    expect((await call('tri-import', { token: next.token, selection: next.suggestedSelection, openService: false })).error).toContain('Open the package again')
+  })
+
+  it('allows a supported ProPresenter 6 playlist bundle through the native picker', async () => {
+    const file = path.join(dir, 'Sunday.pro6plx')
+    fs.writeFileSync(file, zipFixture([{ name: 'Sunday.pro6', data: Buffer.from(pro6Fixture) }]))
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [file] })
+    const opened = await call('tri-inspect-foreign', 'propresenter')
+    expect(opened.error).toBeUndefined()
+    // The picker no longer asks which app the files came from; structure decides.
+    expect(electron.open.mock.calls[0][1].filters[0].extensions).toEqual(['*'])
+    const result = await call('tri-import', { token: opened.token, selection: opened.suggestedSelection, openService: false })
+    expect(result.error).toBeUndefined()
+    expect(result.snapshot.categories.songs[0].data.title).toBe('Sunday song')
+    expect(fs.existsSync(file)).toBe(true)
+  })
+
+  it('asks about a lyric-shaped text file, applies the operator’s answer under the same token, and skips the rest on request', async () => {
+    const lyric = path.join(dir, 'Hymn.txt'), other = path.join(dir, 'Second hymn.txt')
+    const words = 'Line one of a hymn\nLine two of it\n\nLine three here\nLine four as well'
+    fs.writeFileSync(lyric, words); fs.writeFileSync(other, words)
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [lyric, other] })
+    const opened = await call('tri-inspect-foreign')
+    expect(opened.error).toBeUndefined()
+    expect(opened.questions).toHaveLength(2)
+    expect(opened.questions.every((question: any) => question.answer === undefined)).toBe(true)
+    expect(opened.manifest.categories.songs).toBeUndefined()
+    const answered = await call('tri-answer-foreign', { token: opened.token, answers: { [opened.questions[0].id]: 'song' } })
+    expect(answered.error).toBeUndefined()
+    expect(answered.token).toBe(opened.token)
+    expect(answered.manifest.categories.songs.map((song: any) => song.data.title)).toEqual(['Hymn'])
+    expect(answered.questions.find((question: any) => question.id === opened.questions[0].id).answer).toBe('song')
+    const skipped = await call('tri-answer-foreign', { token: opened.token, answers: { [opened.questions[1].id]: 'skip' } })
+    expect(skipped.questions.every((question: any) => question.answer !== undefined)).toBe(true)
+    expect(skipped.manifest.categories.songs).toHaveLength(1)
+    const result = await call('tri-import', { token: opened.token, selection: skipped.suggestedSelection, openService: false })
+    expect(result.error).toBeUndefined()
+    expect(result.snapshot.categories.songs[0].data.sections).toHaveLength(2)
+    // Text answers are per file; nothing is written to the recipe book for them.
+    expect(fs.existsSync(path.join(electron.paths.userData, 'import-recipes.json'))).toBe(true)
+    expect(JSON.parse(fs.readFileSync(path.join(electron.paths.userData, 'import-recipes.json'), 'utf8'))).toEqual({})
+  })
+
+  it('remembers a table answer by structure signature for the next import', async () => {
+    const json = path.join(dir, 'songs.json')
+    fs.writeFileSync(json, JSON.stringify([{ heading: 'Alpha', label: 'Beta', body: 'a\nb', extra: 'c\nd\ne' }, { heading: 'Gamma', label: 'Delta', body: 'e\nf', extra: 'g\nh\ni' }]))
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [json] })
+    const opened = await call('tri-inspect-foreign')
+    const question = opened.questions.find((item: any) => item.kind === 'table' && item.answer === undefined)
+    expect(question.signature).toMatch(/^json:/)
+    const answered = await call('tri-answer-foreign', { token: opened.token, answers: { [question.id]: { title: 'label', lyrics: 'body' } } })
+    expect(answered.manifest.categories.songs.map((song: any) => song.data.title)).toEqual(['Beta', 'Delta'])
+    expect(JSON.parse(fs.readFileSync(path.join(electron.paths.userData, 'import-recipes.json'), 'utf8'))).toEqual({ [question.signature]: { title: 'label', lyrics: 'body' } })
+    await call('tri-discard-preview', opened.token)
+    const again = path.join(dir, 'more-songs.json')
+    fs.writeFileSync(again, JSON.stringify([{ heading: 'x', label: 'Remembered', body: 'p\nq', extra: 'r\ns\nt' }]))
+    electron.open.mockResolvedValueOnce({ canceled: false, filePaths: [again] })
+    const second = await call('tri-inspect-foreign')
+    expect(second.questions[0]).toMatchObject({ answer: { title: 'label', lyrics: 'body' }, remembered: true })
+    expect(second.manifest.categories.songs.map((song: any) => song.data.title)).toEqual(['Remembered'])
   })
 })

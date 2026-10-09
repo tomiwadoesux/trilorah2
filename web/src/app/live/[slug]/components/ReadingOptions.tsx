@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { X } from "@/components/icons";
 
 export interface ReadingAppearance { image: string; size: number; aurora: string }
 const DEFAULT: ReadingAppearance = {image:"",size:21,aurora:"fern"};
@@ -42,7 +43,7 @@ export default function ReadingOptions({churchId,onChange}:{churchId:string;onCh
   return <div className="reading-options">
     <button ref={trigger} className="reading-options-trigger" aria-expanded={open} aria-controls="reading-options-panel" onClick={()=>setOpen(!open)}>Aa <span>Reading options</span></button>
     {open&&<section id="reading-options-panel" aria-label="Reading options" onKeyDown={e=>{if(e.key==='Escape'){setOpen(false);trigger.current?.focus();}}}>
-      <div className="reading-options-heading"><h2>Make yourself comfortable</h2><button onClick={()=>{setOpen(false);trigger.current?.focus();}} aria-label="Close reading options">×</button></div>
+      <div className="reading-options-heading"><h2>Make yourself comfortable</h2><button onClick={()=>{setOpen(false);trigger.current?.focus();}} aria-label="Close reading options"><X size={20}/></button></div>
       <label htmlFor="reading-size">Text size <span>{value.size}px</span></label>
       <input id="reading-size" type="range" min="18" max="30" step="1" value={value.size} onChange={e=>update({...value,size:Number(e.target.value)})}/>
       <fieldset className="reading-colours"><legend>App colour</legend>{['fern','iris','tide','ember','rose'].map(colour=><button key={colour} type="button" data-aurora={colour} aria-pressed={value.aurora===colour} onClick={()=>update({...value,aurora:colour})}>{colour}</button>)}</fieldset>

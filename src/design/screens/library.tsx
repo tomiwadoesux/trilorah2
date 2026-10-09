@@ -88,7 +88,7 @@ export function LibraryPane({
       {header ? (
         <div
           className={cx(
-            'flex shrink-0 items-center gap-4 px-4 py-3',
+            'font-heading flex shrink-0 items-center gap-4 px-4 py-3',
             'text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.18em] text-[rgb(229_243_242_/_0.42)]',
             align === 'center' && 'justify-center',
           )}
@@ -108,6 +108,8 @@ export function LibraryPane({
 export interface LibraryBrowserProps {
   /** Whatever control finds things in this library. */
   search: ReactNode;
+  /** Optional inset for controls that align with the library rail. */
+  searchInset?: string;
   /**
    * Optionally frame the panes when they need a separate boundary inside
    * their parent panel.
@@ -118,12 +120,12 @@ export interface LibraryBrowserProps {
    */
   dock?: ReactNode;
   /** Space between the toolbar, search field, and library contents. */
-  gap?: number;
+  gap?: number | string;
   /** One or more LibraryPane. */
   children: ReactNode;
 }
 
-export function LibraryBrowser({ search, framed = false, dock, gap, children }: LibraryBrowserProps) {
+export function LibraryBrowser({ search, searchInset, framed = false, dock, gap, children }: LibraryBrowserProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]" style={{ gap }}>
       {/*
@@ -138,7 +140,7 @@ export function LibraryBrowser({ search, framed = false, dock, gap, children }: 
       <div className={cx(
         '-mx-3 flex shrink-0 gap-[var(--tri-gap)] px-4',
         dock ? 'flex-col items-stretch' : 'items-center justify-center',
-      )} style={{ gap }}>
+      )} style={{ gap, paddingInline: searchInset }}>
         {dock}
         {search}
       </div>

@@ -55,3 +55,9 @@ export function fileToDisplayUrl(pathOrUrl: string | null | undefined): string {
   const abs = posix.startsWith('/') ? posix : `/${posix}`
   return `local-media://file${abs.split('/').map(encodeURIComponent).join('/').replace(/%3A/gi, ':')}`
 }
+
+/** Imported/downloaded clips retain their extension; GIFs remain animated images. */
+export function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /^data:video\//i.test(url) || /\.(?:mp4|m4v|mov|webm)(?:[?#]|$)/i.test(url);
+}

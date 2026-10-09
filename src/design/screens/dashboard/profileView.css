@@ -1,9 +1,9 @@
 .profile-page { display:flex; width:100%; height:100%; min-height:0; gap:var(--tri-gap); color:var(--tri-ink); }
 .profile-page section.tri-rounded-surface { background:#111; }
 .profile-rail { width:var(--tri-rail-w); min-width:240px; flex-shrink:0; }
-.profile-count { color:#8fd3c0; font-size:11px; font-variant-numeric:tabular-nums; background:#8fd3c010; border-radius:6px; padding:2px 7px; }
+.profile-count { color:#8fd3c0; font-size:11px; font-variant-numeric:tabular-nums; background:#8fd3c010; border-radius:4px; padding:2px 7px; }
 .profile-people { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
-.profile-person { display:flex; align-items:center; gap:12px; width:100%; padding:14px 12px; border:1px solid transparent; border-radius:12px; text-align:left; font-size:var(--tri-size); transition:background 160ms,border-color 160ms; }
+.profile-person { display:flex; align-items:center; gap:12px; width:100%; padding:14px 12px; border:1px solid transparent; border-radius:6px; text-align:left; font-size:var(--tri-size); transition:background 160ms,border-color 160ms; }
 .profile-person:hover { background:#ffffff06; }
 .profile-person--selected { background:#8fd3c00a; border-color:#8fd3c029; }
 .profile-person:focus-visible,.profile-nav button:focus-visible { outline:2px solid #8fd3c0; outline-offset:-2px; }
@@ -31,12 +31,12 @@
 .profile-content > div:not(.profile-learning) { padding:0; overflow:visible; }
 .profile-content > div > .flex.flex-col { gap:var(--tri-gap); }
 .profile-content .grid-cols-6 { grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--tri-gap); }
-.profile-content .grid-cols-6 > div { background:#111; padding:18px 20px; border-radius:var(--tri-radius,12px) !important; gap:10px; }
+.profile-content .grid-cols-6 > div { background:#111; padding:18px 20px; border-radius:var(--tri-radius,6px) !important; gap:10px; }
 .profile-content .grid-cols-6 > div > span:last-child { font-size:28px; font-weight:500; letter-spacing:-.035em; }
 .profile-content section { background:#111; padding:20px; }
 .profile-content footer { padding:10px 8px 16px; flex-wrap:wrap; }
 .profile-learning[hidden] { display:none; }
-.profile-learning section { border-color:#ffffff0d; border-radius:14px; }
+.profile-learning section { border-color:#ffffff0d; border-radius:6px; }
 .profile-form-intro { margin-bottom:24px; }
 .profile-form-intro h2 { font-size:24px; letter-spacing:-.03em; }
 .profile-form-intro p,.profile-help { color:#e5f3f280; font-size:var(--tri-size-xs); line-height:1.7; margin-top:8px; }

@@ -210,7 +210,7 @@ export function ArrangeList({
                * and want to read as things in a list rather than as buttons.
                */
               className={cx(
-                'flex w-full items-center gap-2.5 rounded-[8px] pl-2 pr-3.5 text-left lowercase',
+                'flex w-full items-center gap-2.5 rounded-[5px] pl-2 pr-3.5 text-left lowercase',
                 'h-[var(--tri-option-h)] text-[length:var(--tri-control-size)]',
                 'transition-colors duration-150',
                 dragging
@@ -310,7 +310,7 @@ export function ArrangeList({
           aria-disabled={pickedIds.length === 0 || undefined}
           onClick={() => pickedIds.length && onCommit?.(pickedOptions)}
           className={cx(
-            'mt-1 flex w-full items-center justify-center gap-2 rounded-[8px] lowercase',
+            'mt-1 flex w-full items-center justify-center gap-2 rounded-[5px] lowercase',
             'h-[var(--tri-option-h)] text-[length:var(--tri-control-size)]',
             'transition-colors duration-150',
             pickedIds.length

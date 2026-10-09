@@ -2,6 +2,11 @@
 
 Research date: 2026-10-03. Status: source review and proposed migration inputs. This document does not establish tested compatibility with foreign applications. No real user export samples were available for this review.
 
+Implementation update, 2026-10-08: the first foreign import flow is now implemented.
+See [FOREIGN-IMPORT.md](FOREIGN-IMPORT.md) for actual supported inputs, remaining
+gaps, and verification. The research below is evidence for format handling, not
+a claim of complete application-to-application fidelity.
+
 ## Verified export formats
 
 | Application | File types | What the primary source establishes | Migration limit |

@@ -1,4 +1,5 @@
-import { toDisplayUrl } from '../../shared/mediaUrl'
+import { videoSpeed, videoBass } from './backgroundPlayback'
+import { isVideoUrl, toDisplayUrl } from '../../shared/mediaUrl'
 import { clampTextWidth } from '../../shared/textWidth'
 import { resolveTextCase } from '../../shared/textCase'
 import { resolveTextSpacing } from '../../shared/textSpacing'
@@ -36,30 +37,22 @@ export function isBackgroundDropKey(key: string | null): key is BackgroundDropKe
   return key !== null && (BACKGROUND_DROP_KEYS as readonly string[]).includes(key)
 }
 
-/** A still or a wash. A clip is something you play: the wall paints its
-    background as a CSS image and the panes draw an <img>, so neither can
-    loop one, and its poster would be a frozen frame behind the words. */
+/** Photos, animated images, washes and looping videos can sit behind text. */
 export function canBeBackground(media: Pick<ThemeMedia, 'kind'> | undefined): boolean {
-  return !!media && media.kind !== 'video'
+  return !!media
 }
 
-export type BackgroundAction = 'preview' | 'live' | 'stage-content' | 'refuse'
+/** Background playback must use the clip, never its library thumbnail. */
+export function backgroundSrc(media: ThemeMedia, imageSrc: (media: ThemeMedia) => string): string {
+  return media.kind === 'video' ? toDisplayUrl(media.url) : imageSrc(media)
+}
 
-/**
- * What a media card dropped on a target does.
- *
- *   themes toggle  a still is filed under themes and previewed
- *   PREVIEW        a still is previewed; a clip is staged as content, the
- *                  same as clicking it in the media view — never sent
- *   LIVE           a still goes behind the words on the wall now; a clip is
- *                  refused (the box does not even light up for one)
- */
+export type BackgroundAction = 'preview' | 'live' | 'refuse'
+
+/** Dropping on preview/themes stages a background; LIVE replaces only the backdrop. */
 export function backgroundDropAction(key: BackgroundDropKey, media: Pick<ThemeMedia, 'kind'> | undefined): BackgroundAction {
   if (!media) return 'refuse'
-  const still = canBeBackground(media)
-  if (key === 'stage-preview') return still ? 'preview' : 'stage-content'
-  if (key === 'stage-live') return still ? 'live' : 'refuse'
-  return still ? 'preview' : 'refuse'
+  return key === 'stage-live' ? 'live' : 'preview'
 }
 
 /**
@@ -83,7 +76,7 @@ export function wallUrlToMediaId(
 ): string | undefined {
   const target = toDisplayUrl(url)
   if (!target) return NO_BACKGROUND
-  const matches = (m: ThemeMedia) => canBeBackground(m) && (toDisplayUrl(m.url) === target || srcOf(m) === target)
+  const matches = (m: ThemeMedia) => canBeBackground(m) && (toDisplayUrl(m.url) === target || backgroundSrc(m, srcOf) === target)
   const preferred = prefer ? library.find((m) => m.id === prefer) : undefined
   if (preferred && matches(preferred)) return preferred.id
   return library.find(matches)?.id
@@ -112,7 +105,7 @@ export function wallBackgroundMedia(url: string): ThemeMedia {
     style: 'smoke',
     source: 'local',
     url,
-    kind: 'photo',
+    kind: isVideoUrl(url) ? 'video' : 'photo',
     collection: 'themes',
   }
 }
@@ -133,6 +126,9 @@ export function themeFieldsFromSettings(s: Record<string, unknown>): Partial<Sli
   else if (s.scriptureFontPreset === 'modern-sans') out.font = 'default'
   if (isNumber(s.overlayOpacity)) out.dimness = round2(s.overlayOpacity * 100)
   if (isNumber(s.backgroundBlur)) out.blur = s.backgroundBlur
+  if (s.backgroundVideoSpeed !== undefined) out.videoSpeed = videoSpeed(s.backgroundVideoSpeed)
+  if (s.backgroundVideoBass !== undefined) out.videoBass = videoBass(s.backgroundVideoBass)
+  if (s.backgroundVideoSound !== undefined) out.videoSound = s.backgroundVideoSound === true
   if (isTextPosition(s.verseLayout)) out.layout = s.verseLayout
   else if (s.verseLayout === 'bottom') out.layout = 'bottom-center'
   if (isNumber(s.safeMargin)) out.safeMargin = s.safeMargin
@@ -149,6 +145,9 @@ const WALL_FIELDS: ReadonlyArray<readonly [string, keyof SlideTheme]> = [
   ['scriptureFontPreset', 'font'],
   ['overlayOpacity', 'dimness'],
   ['backgroundBlur', 'blur'],
+  ['backgroundVideoSpeed', 'videoSpeed'],
+  ['backgroundVideoBass', 'videoBass'],
+  ['backgroundVideoSound', 'videoSound'],
   ['verseLayout', 'layout'],
   ['safeMargin', 'safeMargin'],
   ['textWidth', 'textWidth'],
@@ -183,15 +182,7 @@ export function liveThemeFromSettings<T extends SlideTheme>(settings: Record<str
   return { ...current, ...(taken as Partial<SlideTheme>), backgroundId }
 }
 
-/**
- * The picture a theme draws behind its words.
- *
- * NO_BACKGROUND draws none. An id that has left the shelf — deleted, or a
- * clip that was never a background — falls back to the first still on the
- * themes shelf: something a church chose as a background. It used to be
- * the shelf's first item, which is whatever was added last, and that can be
- * an announcement photo or a video's poster.
- */
+/** Keep the chosen background, or fall back within the themes shelf. */
 export function backgroundFor(id: string, library: readonly ThemeMedia[]): ThemeMedia | undefined {
   if (id === NO_BACKGROUND) return undefined
   const chosen = library.find((m) => m.id === id)
@@ -227,7 +218,7 @@ export function liveBackgroundNotice({ screen, live, outputs }: WallState): stri
        keyed over video and wants alpha, and the timer is a clock. */
     if (!open.some((o) => o.role === 'projector' || o.role === 'stage')) return 'set — the stream never shows a background'
   }
-  return screen === 'live' && live ? 'on the wall now — the words stay' : 'on the wall now'
+  return screen === 'live' && live && live.source !== 'background' ? 'on the wall now — the words stay' : 'on the wall now'
 }
 
 /**
@@ -246,7 +237,7 @@ export function previewBackgroundNotice(preview: { source: string } | null, how:
 }
 
 /** A clip asked to be a background. */
-export const CLIP_NOT_BACKGROUND = 'clips play as content, not as backgrounds'
+
 
 /** Shallow, so a settings read that changes nothing re-renders nothing. */
 export function sameTheme(a: object, b: object): boolean {

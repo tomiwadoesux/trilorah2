@@ -4,6 +4,7 @@ import { createPatches } from './dottedSurface';
 import { useEmptyHover } from './useEmptyHover';
 import './dottedSurface.css';
 import './emptyArt.css';
+import '../../ui/hairlineTheme.css';
 
 /*
  * The empty states every panel falls back to — the drawing, the sentence,
@@ -36,7 +37,7 @@ import './emptyArt.css';
  * The sandbox sheet for all of this is D-30 in the design gallery.
  */
 
-const INK = 'rgb(229 243 242)';
+const INK = 'var(--hairline-hi, #ededed)';
 
 /** Shared empty-state texture and card-wide hover motion. */
 export function EmptyMotion({ children, className = '', play = 'hover' }: {
@@ -1125,7 +1126,7 @@ export function EqBars({ size = 14 }: { size?: number }) {
 }
 
 /*
- * The bento's open cue uses the same Solar Bold glyph as other expand
+ * The bento's open cue uses the same Cutout glyph as other expand
  * controls. Scales in on hover, breathes, then scales out on leave.
  */
 export function ExpandCue() {

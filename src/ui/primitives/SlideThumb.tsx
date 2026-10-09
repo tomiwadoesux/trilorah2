@@ -263,7 +263,7 @@ export function SlideThumb({
           <span
             aria-live="polite"
             className={cx(
-              'pointer-events-none absolute bottom-1.5 right-2 z-20 rounded-full px-1.5 py-[2px]',
+              'pointer-events-none absolute bottom-1.5 right-2 z-20 rounded-md px-1.5 py-[2px]',
               'bg-[rgb(0_0_0_/_0.45)] text-[9px] tabular-nums leading-none text-[rgb(255_255_255_/_0.85)] backdrop-blur-sm',
               'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
             )}
@@ -276,7 +276,7 @@ export function SlideThumb({
       {badge && !(pager && pager.count > 1) ? (
         <span
           className={cx(
-            'pointer-events-none absolute bottom-1.5 right-2 z-20 rounded-full px-1.5 py-[2px]',
+            'pointer-events-none absolute bottom-1.5 right-2 z-20 rounded-md px-1.5 py-[2px]',
             'bg-[rgb(0_0_0_/_0.45)] text-[9px] tabular-nums leading-none text-[rgb(255_255_255_/_0.85)] backdrop-blur-sm',
           )}
         >

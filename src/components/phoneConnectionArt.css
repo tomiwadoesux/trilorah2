@@ -1,0 +1,71 @@
+.tri-phone-connection-art {
+  display: block;
+  width: clamp(180px, 21vw, 220px);
+  max-width: 100%;
+  height: auto;
+  flex: none;
+  overflow: visible;
+  color: var(--hairline-hi, #ededed);
+  pointer-events: none;
+}
+
+.tri-phone-connection-art[data-variant="microphone"] {
+  pointer-events: auto;
+}
+
+.tri-phone-connection-art__feed {
+  transform: translateY(0);
+  animation: tri-phone-screen-scroll 20s linear infinite;
+}
+
+/* Four staggered cards form one queue. The exiting card alternates direction;
+   its hidden return stays below the screen while the other cards rise. */
+.tri-phone-connection-art__card {
+  transform: translate(0, var(--remote-rest-y));
+  animation: tri-phone-remote-cards 9.6s cubic-bezier(.77, 0, .175, 1) infinite;
+}
+
+@keyframes tri-phone-remote-cards {
+  0%, 15% { transform: translate(0, 72px); opacity: 1; }
+  20%, 40% { transform: translate(0, 36px); opacity: 1; }
+  45%, 65% { transform: translate(0, 0); opacity: 1; }
+  70% { transform: translate(var(--remote-exit-x), 0); opacity: 0; }
+  70.01%, 90% { transform: translate(0, 108px); opacity: 0; }
+  95%, 100% { transform: translate(0, 72px); opacity: 1; }
+}
+
+.tri-phone-connection-art__bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tri-phone-audio-wave 2s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+
+/* Retain each pulse's playhead while the same strokes become the hover symbol. */
+.tri-phone-connection-art__audio:not([data-audio-state="wave"]) .tri-phone-connection-art__bar {
+  animation-play-state: paused;
+  transform: none !important;
+}
+
+@keyframes tri-phone-audio-wave {
+  0%, 100% { transform: scaleY(.38); }
+  24% { transform: scaleY(.78); }
+  49% { transform: scaleY(.48); }
+  72% { transform: scaleY(1); }
+}
+
+/* Both pages have a 120-unit pitch; the upper page replaces the lower one exactly. */
+@keyframes tri-phone-screen-scroll {
+  to { transform: translateY(120px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tri-phone-connection-art__card {
+    animation: none;
+    transform: translate(0, var(--remote-rest-y));
+  }
+  .tri-phone-connection-art__feed,
+  .tri-phone-connection-art__bar {
+    animation: none;
+    transform: none;
+  }
+}

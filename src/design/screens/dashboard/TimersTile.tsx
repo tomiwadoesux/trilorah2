@@ -754,6 +754,7 @@ export function TimersTile({ className }: { className?: string }) {
 
   return (
     <Expandable
+      notificationTarget="timers"
       className={className}
       title="Service Timers"
       blurb="Set durations, adjust live countdowns, and grant extra time to the preacher."

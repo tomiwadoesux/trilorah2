@@ -1,3 +1,5 @@
+import { BackgroundVideo } from './components/BackgroundVideo';
+import { videoSpeed, videoBass } from './lib/backgroundPlayback';
 import { Fragment, StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
@@ -7,7 +9,8 @@ import { useFitText } from './lib/useFitText';
 import { useBackgroundCrossfade } from './lib/useBackgroundCrossfade';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
-import { cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
+import { isVideoUrl, cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
+import { mediaImageSource } from './lib/mediaImage';
 import type { LiveContent } from '../shared/liveContent';
 import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
 import { resolveTextPosition } from '../shared/textPosition';
@@ -62,6 +65,9 @@ interface Theme {
   color: string;
   backgroundUrl: string;
   backgroundBlur: number;
+  videoSpeed: number;
+  videoBass: number;
+  videoSound: boolean;
   overlayOpacity: number;
   backgroundFit: string;
   backgroundPosition: string;
@@ -109,6 +115,9 @@ const DEFAULT_THEME: Theme = {
   color: '#ffffff',
   backgroundUrl: '',
   backgroundBlur: 0,
+  videoSpeed: 1,
+  videoBass: 0,
+  videoSound: false,
   overlayOpacity: 0.3,
   backgroundFit: 'cover',
   backgroundPosition: 'center',
@@ -151,6 +160,9 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     color: typeof s.defaultTextColor === 'string' && s.defaultTextColor ? s.defaultTextColor : '#ffffff',
     backgroundUrl: toDisplayUrl(typeof s.defaultBackgroundUrl === 'string' ? s.defaultBackgroundUrl : ''),
     backgroundBlur: typeof s.backgroundBlur === 'number' ? Math.max(0, Math.min(40, s.backgroundBlur)) : 0,
+    videoSpeed: videoSpeed(s.backgroundVideoSpeed),
+    videoBass: videoBass(s.backgroundVideoBass),
+    videoSound: s.backgroundVideoSound === true,
     overlayOpacity:
       typeof s.overlayOpacity === 'number' ? Math.min(1, Math.max(0, s.overlayOpacity)) : 0.3,
     backgroundFit: typeof s.backgroundFit === 'string' && s.backgroundFit ? s.backgroundFit : 'cover',
@@ -352,10 +364,8 @@ function OutputSurface() {
         setSong(null);
         setMedia(dataUrl);
       };
-      // Quick slides already contain their image. File reads apply only to
-      // imported slides and other media stored on disk.
-      if (imagePath.startsWith('data:image/')) applyImage(imagePath);
-      else void api.readImageDataUrl(imagePath).then(applyImage).catch(() => undefined);
+      void mediaImageSource(imagePath, path => api.readImageDataUrl(path))
+        .then(applyImage).catch(() => undefined);
     };
 
     const displayContent = (content: LiveContent) => {
@@ -673,19 +683,26 @@ function OutputSurface() {
           key={layer.key}
           className={layer.entering ? 'output-background output-background-enter' : 'output-background'}
           style={{
-            backgroundImage: cssImageUrl(layer.url),
+            backgroundImage: isVideoUrl(layer.url) ? undefined : cssImageUrl(layer.url),
             backgroundSize: theme.backgroundFit === 'fill' ? '100% 100%' : theme.backgroundFit,
             backgroundPosition: theme.backgroundPosition,
             filter: theme.backgroundBlur ? `blur(${theme.backgroundBlur}px)` : undefined,
             transform: theme.backgroundBlur ? 'scale(1.04)' : undefined,
           }}
         >
+          {isVideoUrl(layer.url) && <BackgroundVideo
+            src={layer.url} speed={theme.videoSpeed} bass={theme.videoBass}
+            audible={theme.videoSound && outputId === 'main' && layer.url === theme.backgroundUrl}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: theme.backgroundFit === 'fill' ? 'fill' : theme.backgroundFit === 'contain' ? 'contain' : 'cover', objectPosition: theme.backgroundPosition }}
+            onError={() => window.api?.reportOutputMediaFailure?.('video', true)}
+            onLoadedData={() => window.api?.reportOutputMediaFailure?.('video', false)}
+          />}
           <div className="output-dim" style={{ opacity: isStage ? 0.75 : theme.overlayOpacity }} />
         </div>
       ))}
       {media && screen === 'live' && (
         <div className="output-media">
-          <img src={media} alt="" />
+          <img src={media} alt="" onError={() => window.api?.reportOutputMediaFailure?.('image', true)} onLoad={() => window.api?.reportOutputMediaFailure?.('image', false)} />
         </div>
       )}
       {video && screen === 'live' && (
@@ -699,6 +716,8 @@ function OutputSurface() {
             ref={videoRef}
             key={video}
             src={video}
+            onError={() => window.api?.reportOutputMediaFailure?.('video', true)}
+            onPlaying={() => window.api?.reportOutputMediaFailure?.('video', false)}
             autoPlay
             playsInline
             muted={outputId !== 'main'}

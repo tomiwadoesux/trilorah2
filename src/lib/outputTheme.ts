@@ -1,3 +1,4 @@
+import { videoSpeed, videoBass } from './backgroundPlayback'
 import type { SlideTheme } from '../design/screens/slide'
 import { clampTextWidth } from '../../shared/textWidth'
 import { resolveTextCase } from '../../shared/textCase'
@@ -18,6 +19,9 @@ export function outputThemeSettings(theme: SlideTheme, backgroundUrl: string) {
     defaultBackgroundUrl: backgroundUrl,
     overlayOpacity: theme.dimness / 100,
     backgroundBlur: theme.blur,
+    backgroundVideoSpeed: videoSpeed(theme.videoSpeed),
+    backgroundVideoBass: videoBass(theme.videoBass),
+    backgroundVideoSound: theme.videoSound === true,
     verseLayout: theme.layout,
     safeMargin: theme.safeMargin,
     textWidth: clampTextWidth(theme.textWidth, 100 - theme.safeMargin * 2),

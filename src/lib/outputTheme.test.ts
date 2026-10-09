@@ -3,6 +3,13 @@ import { outputThemeSettings } from './outputTheme'
 
 const theme = { backgroundId: 'selected-photo', dimness: 48, blur: 3, shadow: 65, font: 'default', size: 0, verseSize: 0, refGap: 0.45, layout: 'top', safeMargin: 7 }
 describe('preview theme delivery', () => {
+  it('keeps old video backgrounds muted at normal speed until adjusted', () => {
+    expect(outputThemeSettings(theme, 'clip.webm')).toMatchObject({ backgroundVideoSpeed: 1, backgroundVideoBass: 0, backgroundVideoSound: false });
+  })
+  it('carries speed and real audio settings to the live output', () => {
+    expect(outputThemeSettings({ ...theme, videoSpeed: .5, videoBass: 6, videoSound: true }, 'clip.webm')).toMatchObject({ backgroundVideoSpeed: .5, backgroundVideoBass: 6, backgroundVideoSound: true });
+    expect(outputThemeSettings({ ...theme, videoSpeed: NaN, videoBass: 500 }, '')).toMatchObject({ backgroundVideoSpeed: 1, backgroundVideoBass: 12 });
+  })
   it('sends both font choices to the projector instead of leaving its old preset active', () => {
     expect(outputThemeSettings({ ...theme, font: 'serif' }, '')).toMatchObject({
       scriptureFontPreset: 'display-serif', defaultFontFamily: 'Georgia, "Times New Roman", serif',

@@ -1,6 +1,7 @@
 import type { FastPathAdjustment } from './toolRegistry'
 import type { ImplicitVerseDetection } from './reasoningPrompts'
 import type { NotesUpdate, ReasoningLoop } from './reasoningLoop'
+import { publishServiceNotice } from '../serviceNotices'
 
 /** The exact payload main.ts enqueues from the ASR fan-out. */
 export interface SlowPathChunk {
@@ -17,6 +18,7 @@ export interface SlowPathCallbacks {
 }
 
 export class SlowPathOrchestrator {
+  private failureReported = false
   reasoningLoop: ReasoningLoop
   callbacks: SlowPathCallbacks
   queue: SlowPathChunk[]
@@ -94,6 +96,8 @@ export class SlowPathOrchestrator {
     this.isProcessing = true
     try {
       const result = await this.reasoningLoop.process(batch)
+      if (this.failureReported) publishServiceNotice({ id: 'background-analysis', title: 'Background analysis resumed', detail: 'Background service analysis is responding again.', severity: 'info', target: 'recognition', status: 'resolved' })
+      this.failureReported = false
       for (const adj of result.adjustments) {
         this.callbacks.onAdjustment(adj)
       }
@@ -113,6 +117,8 @@ export class SlowPathOrchestrator {
       }
     } catch (e) {
       console.error('🧠 SlowPath error:', e)
+      if (!this.failureReported) publishServiceNotice({ id: 'background-analysis', title: 'Background service analysis could not finish', detail: 'The latest analysis failed. Check the preacher settings and notes provider. Manual presentation controls remain available.', severity: 'warning', target: 'recognition' })
+      this.failureReported = true
     } finally {
       this.isProcessing = false
     }

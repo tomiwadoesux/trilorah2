@@ -3,6 +3,7 @@ import { AppShellScreen, APP_SHELL_STATES } from './AppShell';
 import { LiveScreen, LIVE_STATES } from './Live';
 import { SettingsScreen, SETTINGS_STATES } from './Settings';
 import { DashboardProtoScreen, DASHBOARD_PROTO_STATES } from './DashboardProto';
+import { PopupsScreen, POPUP_STATES } from './Popups';
 
 /*
  * The Screens surface — the second half of the sandbox.
@@ -63,10 +64,17 @@ export const SCREENS: Screen[] = [
     states: SETTINGS_STATES,
     Component: SettingsScreen,
   },
+  {
+    id: 'S-18',
+    title: 'POPUPS',
+    blurb: 'Every popup in the app as an empty frame at its real size, over the ground it opens on. One state per popup; the facts on each frame are what the code does today. Placeholders for the redesign (owner, 2026-10-08) — nothing inside them yet.',
+    states: POPUP_STATES,
+    Component: PopupsScreen,
+  },
 ];
 
 /** From the inventory: S-01 … S-17. */
-export const SCREEN_TOTAL = 17;
+export const SCREEN_TOTAL = 18;
 
 /** The id itself carries the surface, so no separate route scheme is needed. */
 export function isScreenId(id: string): boolean {

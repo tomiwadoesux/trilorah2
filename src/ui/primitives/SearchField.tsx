@@ -1,5 +1,5 @@
 import { cx } from '../lib/cx';
-import { SearchIcon } from '../icons';
+import { SearchOutlineIcon } from '../icons';
 
 /*
  * A plain search box, at field height.
@@ -18,6 +18,7 @@ export interface SearchFieldProps {
   /** Enter. */
   onSubmit?: (value: string) => void;
   className?: string;
+  ariaLabel?: string;
 }
 
 export function SearchField({
@@ -27,6 +28,7 @@ export function SearchField({
   disabled = false,
   onSubmit,
   className = '',
+  ariaLabel,
 }: SearchFieldProps) {
   return (
     <div
@@ -36,9 +38,10 @@ export function SearchField({
         className,
       )}
     >
-      <SearchIcon size={13} className="shrink-0 text-[rgb(229_243_242_/_0.45)]" />
+      <SearchOutlineIcon size={13} className="shrink-0 text-[rgb(229_243_242_/_0.45)]" />
       <input
         type="text"
+        aria-label={ariaLabel}
         value={value}
         disabled={disabled}
         placeholder={placeholder}

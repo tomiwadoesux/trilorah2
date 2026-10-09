@@ -1,3 +1,4 @@
+import { BackgroundVideo } from '../../components/BackgroundVideo';
 import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { splitVerseNumbers, type VerseSlide } from '../../../shared/verseDisplay';
 import type { TextTransition } from '../../../shared/textTransitions';
@@ -8,7 +9,7 @@ import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../sha
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { displayFontFamily } from '../../../shared/displayFont';
 import { useFitText } from '../../lib/useFitText';
-import { backgroundFor } from '../../lib/backgroundDrop';
+import { backgroundFor, backgroundSrc } from '../../lib/backgroundDrop';
 
 /*
  * D-23 — the one renderer.
@@ -175,6 +176,9 @@ const pctLabel = (v: number) => String(Math.round(v * 10) / 10);
  * what it can be told — the editor is one caller of it, not its owner.
  */
 export interface SlideTheme {
+  videoSpeed?: number;
+  videoBass?: number;
+  videoSound?: boolean;
   backgroundId: string;
   dimness: number;
   blur: number;
@@ -385,12 +389,18 @@ export function SlideCanvas({
         borderRadius: `calc(var(--tri-radius-surface) - var(${seated ? '--tri-gap' : '--tri-card-gap'}))`,
       }}
     >
-      {media && <img
+      {media && (media.kind === 'video' ? <BackgroundVideo
+        key={media.url}
+        src={backgroundSrc(media, mediaSrc)}
+        speed={theme.videoSpeed} bass={theme.videoBass}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ filter: `blur(${theme.blur}px)`, transform: theme.blur > 0 ? 'scale(1.04)' : undefined }}
+      /> : <img
         src={mediaSrc(media)}
         alt=""
         className="absolute inset-0 h-full w-full object-cover"
         style={{ filter: `blur(${theme.blur}px)`, transform: theme.blur > 0 ? 'scale(1.04)' : undefined }}
-      />}
+      />)}
       <span aria-hidden className="absolute inset-0 bg-black" style={{ opacity: theme.dimness / 100 }} />
       {/* Editor-only guide: the projector never draws this line. It makes
           the exact area the safe-margin slider reserves visible here. */}

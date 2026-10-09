@@ -24,5 +24,17 @@ export class HeardWindow {
     return fresh.join(' ').split(/\s+/).filter(Boolean).slice(-maxWords).join(' ')
   }
 
+  /** Search the latest utterance; only carry an immediately preceding fragment.
+   * A topic from half a minute ago must not replace what the operator just heard. */
+  forSearch(now = Date.now()): string {
+    const finals = this.finals.filter(line => now - line.at <= 45_000)
+    const partial = this.partial && now - this.partial.at <= 45_000 ? this.partial : null
+    const latest = partial ?? finals.at(-1)
+    if (!latest) return ''
+    const previous = partial ? finals.at(-1) : finals.at(-2)
+    const carry = latest.text.split(/\s+/).length < 8 && previous && latest.at - previous.at <= 6_000
+    return (carry ? `${previous.text} ${latest.text}` : latest.text).split(/\s+/).slice(-60).join(' ')
+  }
+
   reset(): void { this.finals = []; this.partial = null }
 }

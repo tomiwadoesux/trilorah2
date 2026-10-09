@@ -82,7 +82,7 @@ function RemoveItem({ onClick }: { onClick: () => void }) {
 function ItemMark({ item }: { item: QueueItem }) {
   const glyph = () => {
     if ((item.source === 'media' || item.source === 'presentation') && item.preview) {
-      return <img src={item.preview} alt="" className="size-[18px] rounded-[5px] object-cover" />;
+      return <img src={item.preview} alt="" className="size-[18px] rounded-[4px] object-cover" />;
     }
     if (item.source === 'scripture') return <BookIcon size={12} />;
     if (item.source === 'song') return <MusicIcon size={12} />;
@@ -157,7 +157,7 @@ function QueuedItemRow({
       {...menu.bind}
       data-menu={menu.at ? 'true' : undefined}
       className={cx(
-        'group flex items-center gap-1.5 rounded-[8px] py-[4px] pl-1.5 pr-2 text-[length:var(--tri-size-body)] outline-none transition-colors',
+        'group flex items-center gap-1.5 rounded-[5px] py-[4px] pl-1.5 pr-2 text-[length:var(--tri-size-body)] outline-none transition-colors',
         'bg-[rgb(0_0_0_/_0.14)] text-[rgb(229_243_242_/_0.72)]',
         'focus-visible:bg-[rgb(255_255_255_/_0.07)] data-[menu=true]:bg-[rgb(255_255_255_/_0.07)]',
       )}
@@ -201,7 +201,7 @@ function QueuedItemRow({
           onClick={() => (live ? projector.clear() : putUp())}
           title={live ? 'take it off the projector' : `put this ${isVerse ? 'verse' : item.source} on the projector`}
           className={cx(
-            'shrink-0 rounded-full px-1.5 py-[1px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.12em] transition-all',
+            'shrink-0 rounded-md px-1.5 py-[1px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.12em] transition-all',
             live
               ? 'bg-[rgb(228_216_122_/_0.16)] text-[var(--tri-accent-yellow)]'
               : 'text-[rgb(229_243_242_/_0.4)] opacity-0 hover:text-[var(--tri-accent-yellow)] focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100',
@@ -345,7 +345,7 @@ function SegmentCard({
        * wakes up exactly like every other control and merely sleeps more
        * quietly.
        */
-      style={{ borderRadius: 12, '--tri-alpha-rest': 0.15 } as CSSProperties}
+      style={{ borderRadius: 6, '--tri-alpha-rest': 0.15 } as CSSProperties}
     >
       <div {...menu.pointer} className="relative flex items-center gap-1.5 py-[5px] pl-2.5 pr-[9px]">
         {renaming ? (
@@ -372,7 +372,7 @@ function SegmentCard({
               /* Same size and ink as the label it replaces, on a faint well:
                  the name becomes editable where it stands rather than a box
                  arriving over it. */
-              className="min-w-0 flex-1 rounded-[6px] bg-[rgb(0_0_0_/_0.25)] px-1.5 py-[2px] text-[length:var(--tri-size)] lowercase text-[var(--tri-ink)] outline-none ring-1 ring-[rgb(143_211_192_/_0.35)]"
+              className="min-w-0 flex-1 rounded-[4px] bg-[rgb(0_0_0_/_0.25)] px-1.5 py-[2px] text-[length:var(--tri-size)] lowercase text-[var(--tri-ink)] outline-none ring-1 ring-[rgb(143_211_192_/_0.35)]"
             />
           </div>
         ) : (
@@ -466,7 +466,7 @@ function SegmentCard({
               surface({ tone: 'danger', interactive: true }),
               'flex size-[22px] shrink-0 items-center justify-center text-[var(--tri-ink-danger)]',
             )}
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 5 }}
           >
             <TrashIcon size={11} />
           </button>
@@ -489,7 +489,7 @@ function SegmentCard({
               /* A dashed well, not a sentence adrift: the hint names a drop
                  target, so it is drawn as one — the same shape the card
                  itself takes when a drag is over it. */
-              <li className="grid place-items-center rounded-[8px] border border-dashed border-[rgb(255_255_255_/_0.1)] px-3 py-[7px] text-center text-[length:var(--tri-size-xs)] lowercase leading-snug text-[rgb(229_243_242_/_0.32)]">
+              <li className="grid place-items-center rounded-[5px] border border-dashed border-[rgb(255_255_255_/_0.1)] px-3 py-[7px] text-center text-[length:var(--tri-size-xs)] lowercase leading-snug text-[rgb(229_243_242_/_0.32)]">
                 {EMPTY_SEGMENT_HINT}
               </li>
             ) : (
@@ -571,7 +571,7 @@ const EMPTY_ADD: ActionMenuGroup[] = ADD_MENU.slice(0, 1);
 function RunEmptyActions() {
   const run = useRun();
   return (
-    <div className="mt-3 flex flex-col items-center gap-2">
+    <div className="run-empty-actions mt-3 flex w-full min-w-0 flex-col items-center gap-2">
       <div
         className="flex items-center gap-2"
         style={{ '--tri-control-h': '32px', '--tri-control-pad-x': '11px' } as CSSProperties}

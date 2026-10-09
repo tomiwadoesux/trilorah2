@@ -149,7 +149,7 @@ export function RecentServicesTile({ className, onOpen }: { className?: string; 
                   moving or filling — the ink comes up. */}
               <button
                 type="button"
-                className="group/row flex min-h-0 w-full flex-1 items-center gap-2 rounded-[6px] px-1.5 text-left transition-colors duration-150 hover:bg-[rgb(255_255_255_/_0.04)] focus-visible:bg-[rgb(255_255_255_/_0.04)] focus-visible:outline-none"
+                className="group/row flex min-h-0 w-full flex-1 items-center gap-2 rounded-[4px] px-1.5 text-left transition-colors duration-150 hover:bg-[rgb(255_255_255_/_0.04)] focus-visible:bg-[rgb(255_255_255_/_0.04)] focus-visible:outline-none"
               >
                 <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
                   {/* The date is the row's handle and never elides; the

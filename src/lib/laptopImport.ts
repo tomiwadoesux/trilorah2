@@ -1,6 +1,6 @@
 import type { ImportedMedia, SkippedMedia } from '../../shared/importedMedia';
 import type { ThemeMedia } from '../design/screens/mediaLibrary';
-import { CLIP_NOT_BACKGROUND, canBeBackground } from './backgroundDrop';
+import { canBeBackground } from './backgroundDrop';
 
 /*
  * Pictures and clips from the laptop, on the renderer's side — the pure
@@ -13,13 +13,9 @@ import { CLIP_NOT_BACKGROUND, canBeBackground } from './backgroundDrop';
 
 export type Shelf = 'themes' | 'media';
 
-/**
- * Which shelf a file lands on. The one the operator is looking at — except
- * a clip, which is never a background: filed under themes it would sit
- * where nothing can use it, so it goes to media and the notice says why.
- */
-export function shelfFor(item: Pick<ImportedMedia, 'kind'>, wanted: Shelf): Shelf {
-  return item.kind === 'video' ? 'media' : wanted;
+/** Photos and videos both stay on the shelf the operator chose. */
+export function shelfFor(_item: Pick<ImportedMedia, 'kind'>, wanted: Shelf): Shelf {
+  return wanted;
 }
 
 /** A small stable number from the content hash, so a picture keeps its wash. */
@@ -88,10 +84,10 @@ export interface ImportReport {
  * nothing says why, because "nothing happened" reads exactly like broken.
  *
  *   added sanctuary to themes
- *   added 2 to themes and 1 to media — clips play as content, not as backgrounds
+ *   added 2 to themes and 1 to media
  *   sunday was already in media · skipped notes.pdf — not a picture or clip
  */
-export function importNotice({ added, already, skipped, wanted }: ImportReport): string {
+export function importNotice({ added, already, skipped }: ImportReport): string {
   const parts: string[] = [];
   const by: Record<Shelf, ThemeMedia[]> = { themes: [], media: [] };
   for (const card of added) by[card.collection ?? 'themes'].push(card);
@@ -99,7 +95,6 @@ export function importNotice({ added, already, skipped, wanted }: ImportReport):
   if (shelves.length) {
     const say = (s: Shelf) => `${by[s].length === 1 ? by[s][0].label : by[s].length} to ${s}`;
     let line = `added ${shelves.map(say).join(' and ')}`;
-    if (wanted === 'themes' && by.media.some((c) => c.kind === 'video')) line += ` — ${CLIP_NOT_BACKGROUND}`;
     parts.push(line);
   }
   if (already.length === 1) parts.push(`${already[0].label} was already in ${already[0].collection ?? 'themes'}`);
@@ -133,31 +128,15 @@ export function dragKinds(items: ReadonlyArray<{ kind: string; type: string }>):
 
 export type FinderStageKey = 'stage-preview' | 'stage-live';
 
-/**
- * The line a stage box shows while files from Finder are over it, or null
- * when it does not take them — the LIVE box and a clip, the same refusal an
- * in-app drag gets (a clip is never a background, and nothing but a
- * background goes to the wall by a drop).
- */
+/** Files dropped on a stage box become still or looping backgrounds. */
 export function finderStageHint(key: FinderStageKey, kinds: DragKinds): string | null {
-  if (key === 'stage-live') {
-    if (kinds === 'video') return null;
-    return kinds === 'photo' ? 'add to themes · background on the wall now' : 'add these · the first picture goes on the wall now';
-  }
-  if (kinds === 'photo') return 'add to themes · preview this background';
-  if (kinds === 'video') return 'add to media · stage this clip';
-  return 'add these · preview the first picture';
+  const target = key === 'stage-live' ? 'on the wall now' : 'in preview';
+  return `add to themes · ${kinds === 'video' ? 'looping video' : 'background'} ${target}`;
 }
 
-/**
- * Which of the cards a drop on a stage box acts on: the first still — the
- * same thing an in-app drop of that card does — or, on the preview, the
- * first clip when there is no still. The rest are simply on the shelf.
- */
-export function finderStagePick(key: FinderStageKey, cards: readonly ThemeMedia[]): ThemeMedia | undefined {
-  const still = cards.find((c) => canBeBackground(c));
-  if (still || key === 'stage-live') return still;
-  return cards.find((c) => c.kind === 'video' && c.detail !== 'will not play here');
+/** Pick the first playable background; keep other imported files on the shelf. */
+export function finderStagePick(_key: FinderStageKey, cards: readonly ThemeMedia[]): ThemeMedia | undefined {
+  return cards.find((card) => canBeBackground(card) && card.detail !== 'will not play here');
 }
 
 /**
@@ -166,10 +145,6 @@ export function finderStagePick(key: FinderStageKey, cards: readonly ThemeMedia[
  * stage box most likely — every place that takes them, the way an in-app
  * carried card lists its targets.
  */
-export function finderPaneHint(view: Shelf, kinds: DragKinds, overPane = true): string {
-  const shelf = kinds === 'video' ? 'media' : view;
-  if (overPane) return view === 'themes' && kinds === 'video' ? 'drop to add to media — clips are not backgrounds' : `drop to add to ${shelf}`;
-  return kinds === 'video'
-    ? 'drop here to add to media · on the preview to stage it'
-    : `drop here to add to ${shelf} · on the preview or the live screen to use it now`;
+export function finderPaneHint(view: Shelf, _kinds: DragKinds, overPane = true): string {
+  return overPane ? `drop to add to ${view}` : `drop here to add to ${view} · on the preview or the live screen to use it now`;
 }

@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import type { SegmentType, VerseDetection, VoiceCommandEvent } from '../shared/types'
+import { capitalizeScriptureNames } from '../shared/normalizeDisplay'
 
 let lastRef = ''
 let lastTime = 0
@@ -50,8 +51,9 @@ export function emitTranscript(text: string): void {
  * surface that wants to show a sentence growing and then settling needs this.
  */
 export function emitTranscriptLine(text: string, isFinal: boolean): void {
+  const displayText = capitalizeScriptureNames(text)
   BrowserWindow.getAllWindows().forEach((win) => {
-    if (!win.isDestroyed()) win.webContents.send('on-transcript-line', { text, isFinal })
+    if (!win.isDestroyed()) win.webContents.send('on-transcript-line', { text: displayText, isFinal })
   })
 }
 

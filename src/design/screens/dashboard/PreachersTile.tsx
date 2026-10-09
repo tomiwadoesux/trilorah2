@@ -124,7 +124,7 @@ function Block({ title, right, children, className }: { title: string; right?: R
   return (
     <section
       className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-w-0 flex-col gap-3 px-4 py-3', className)}
-      style={{ borderRadius: 12 }}
+      style={{ borderRadius: 6 }}
     >
       <header className="flex items-baseline justify-between gap-2">
         <span className="text-[calc(var(--tri-size-eyebrow)+1.5px)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.85)]">
@@ -508,7 +508,7 @@ export function AddRow({ initialName, onAdded, onCancel }: { initialName: string
   return (
     <div
       className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex flex-col gap-2 px-3 py-3')}
-      style={{ borderRadius: 12 }}
+      style={{ borderRadius: 6 }}
     >
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -572,7 +572,7 @@ function PreacherRow({
         onClick={open}
         onKeyDown={pressKeys(open)}
         className={cx(
-          'group/p flex cursor-pointer items-center gap-3 rounded-[12px] px-2.5 py-2.5 outline-none transition-colors',
+          'group/p flex cursor-pointer items-center gap-3 rounded-[6px] px-2.5 py-2.5 outline-none transition-colors',
           'hover:bg-white/[0.04] focus-visible:bg-white/[0.05]',
           fresh && 'bg-[rgb(143_211_192_/_0.08)]',
         )}
@@ -606,7 +606,7 @@ function PreacherRow({
             <button
               type="button"
               onClick={() => setActivePreacher(p.id)}
-              className="rounded-full px-2.5 py-1 text-[length:var(--tri-size-xs)] lowercase opacity-0 transition-opacity hover:bg-white/[0.08] focus-visible:opacity-100 group-hover/p:opacity-100"
+              className="rounded-md px-2.5 py-1 text-[length:var(--tri-size-xs)] lowercase opacity-0 transition-opacity hover:bg-white/[0.08] focus-visible:opacity-100 group-hover/p:opacity-100"
               style={{ color: INK_SOFT, boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.14)' }}
             >
               set for today
@@ -816,7 +816,7 @@ export function ProfileBody({
             <div
               key={label}
               className={cx(surface({ tone: 'default', shape: 'panel', wide: true }), 'flex min-w-0 flex-col gap-1 px-3 py-2.5')}
-              style={{ borderRadius: 10 }}
+              style={{ borderRadius: 6 }}
             >
               <span className="truncate text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: MUTED }}>
                 {label}

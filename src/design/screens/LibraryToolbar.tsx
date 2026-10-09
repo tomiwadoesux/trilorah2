@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { cx } from '../../ui';
 import type { DockAction } from './songs/TabDock';
 
-const PILL = 'h-[35px] rounded-full border border-[rgb(229_243_242_/_0.10)] bg-[rgb(229_243_242_/_0.035)]';
+const PILL = 'h-[var(--tri-field-h)] tri-rounded-control border border-[rgb(229_243_242_/_0.10)] bg-[rgb(229_243_242_/_0.035)]';
 const CONTROL = 'inline-flex items-center justify-center gap-2 whitespace-nowrap text-[length:var(--tri-control-size)] font-medium lowercase transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tri-ink)]';
 
 function actionColor(action: DockAction) {
@@ -30,7 +30,7 @@ export function LibraryToolbar({ label, actions, searchActions }: { label: strin
               aria-pressed={action.active}
               disabled={action.disabled}
               onClick={action.onClick}
-              className={cx(CONTROL, 'h-6 w-7 rounded-full', actionColor(action))}
+              className={cx(CONTROL, 'h-6 w-7 rounded-md', actionColor(action))}
             >
               {action.icon}
             </button>

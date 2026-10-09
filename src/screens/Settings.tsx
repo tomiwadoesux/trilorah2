@@ -86,7 +86,7 @@ function SaveProvider({ children }: { children: ReactNode }) {
           often no longer the field being looked at. */}
       {note && (
         <div
-          className={`pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-xs lowercase tracking-wide shadow-lg backdrop-blur ${
+          className={`pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md px-4 py-2 text-xs lowercase tracking-wide shadow-lg backdrop-blur ${
             note.bad
               ? 'bg-red-500/20 text-red-200 ring-1 ring-red-400/40'
               : 'bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/30'

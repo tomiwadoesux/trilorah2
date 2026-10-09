@@ -460,6 +460,7 @@ const NAV_W = 220;
 export function SettingsSurface({ pageId }: { pageId: string }) {
   const [current, setCurrent] = useState(pageId);
   const [query, setQuery] = useState('');
+  useEffect(() => { setCurrent(pageId); setQuery(''); }, [pageId]);
   const page = PAGES.find((p) => p.id === current) ?? PAGES[0];
 
   /* Matches row names and keys too, not just page titles — a church looking

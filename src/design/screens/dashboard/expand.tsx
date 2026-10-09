@@ -1,3 +1,4 @@
+import { useNoticeNavigation } from '../../../lib/notificationNavigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, type Transition } from 'motion/react';
@@ -87,6 +88,7 @@ export function targetBox(shell: HTMLElement, wanted: { w: number; h: number }):
 }
 
 export interface ExpandableProps {
+  notificationTarget?: import('../../../../shared/serviceNotice').NoticeTarget;
   /** The tile as it sits in the grid. Receives the grid's className. */
   tile: (props: { onOpen: () => void; open: boolean }) => ReactNode;
   className?: string;
@@ -121,7 +123,7 @@ interface Flight {
   to: Box;
 }
 
-export function Expandable({ tile, className, title, blurb, children, bodyClassName, size = { w: 720, h: 640 }, glyph = true, ring = true }: ExpandableProps) {
+export function Expandable({ tile, className, title, blurb, children, bodyClassName, size = { w: 720, h: 640 }, glyph = true, ring = true, notificationTarget }: ExpandableProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   /* On screen at all — true from lift-off until the way home has FINISHED,
@@ -149,6 +151,20 @@ export function Expandable({ tile, className, title, blurb, children, bodyClassN
   };
   const liftRef = useRef(lift);
   liftRef.current = lift;
+  const noticeRequest = useNoticeNavigation(s => s.request);
+  const noticeTarget = useNoticeNavigation(s => s.target);
+  useEffect(() => {
+    const navigation = useNoticeNavigation.getState();
+    if (!notificationTarget || navigation.target !== notificationTarget) return;
+    const frame = requestAnimationFrame(() => { liftRef.current(); navigation.clear(); });
+    return () => cancelAnimationFrame(frame);
+  }, [noticeRequest, notificationTarget]);
+
+  useEffect(() => {
+    if (noticeRequest && noticeTarget !== notificationTarget) { setOpen(false); setSettled(false); }
+    // Only new navigation requests close a panel, not target cleanup.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noticeRequest]);
 
   const close = () => {
     /* Home is measured NOW. The tile never left the grid, so its box is
@@ -312,7 +328,7 @@ export function Expandable({ tile, className, title, blurb, children, bodyClassN
                       type="button"
                       onClick={close}
                       title="close (esc)"
-                      className="grid size-[26px] shrink-0 place-items-center rounded-[7px] text-[rgb(229_243_242_/_0.5)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink)]"
+                      className="grid size-[26px] shrink-0 place-items-center rounded-[5px] text-[rgb(229_243_242_/_0.5)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink)]"
                     >
                       <CloseIcon size={12} />
                     </button>

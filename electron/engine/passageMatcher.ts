@@ -143,6 +143,15 @@ export function isContemporaryTalk(speech: string): boolean {
     && !/\b(?:bible|scripture|parable|testament|book of)\b/.test(speech)
 }
 
+/** Known reversed actors/accounts must not be rescued by another retrieval path. */
+export function hasKnownStoryContradiction(text: string): boolean {
+  const speech = normalise(text)
+  return /\bdavid\b.{0,45}\b(?:fled|ran away|ran from|running from)\b.{0,30}\b(?:goliath|giant)\b/.test(speech)
+    || /\b(?:goliath|giant)\b.{0,25}\b(?:killed|slew|beheaded)\b.{0,20}\bdavid\b/.test(speech)
+    || /\bdaniel\b.{0,45}\b(?:thrown|cast|put)\b.{0,30}\bfurnace\b/.test(speech)
+    || /\bjonah\b.{0,35}\b(?:built|building)\b.{0,20}\bark\b/.test(speech)
+}
+
 /**
  * Offline passage retrieval from editor-curated BSB sections and their text.
  * This is lexical/concept retrieval, not an embedding model or a theological
@@ -194,10 +203,7 @@ export class PassageMatcher {
     if (isContemporaryTalk(speech)) return null
     // Guard a few known contradictory retellings. Retrieval is not a claim that
     // arbitrary subject/object relationships have been semantically verified.
-    if (/\bdavid\b.{0,45}\b(?:fled|ran away|ran from|running from)\b.{0,30}\b(?:goliath|giant)\b/.test(speech)
-      || /\b(?:goliath|giant)\b.{0,25}\b(?:killed|slew|beheaded)\b.{0,20}\bdavid\b/.test(speech)
-      || /\bdaniel\b.{0,45}\b(?:thrown|cast|put)\b.{0,30}\bfurnace\b/.test(speech)
-      || /\bjonah\b.{0,35}\b(?:built|building)\b.{0,20}\bark\b/.test(speech)) return null
+    if (hasKnownStoryContradiction(speech)) return null
     const query = tokens(text)
     const corrected = new Map<string, string>()
     for (const word of query) {

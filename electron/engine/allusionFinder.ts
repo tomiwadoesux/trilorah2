@@ -1,5 +1,5 @@
 import { findNamedPassage } from './namedPassages'
-import { isContemporaryTalk, type PassageCandidate } from './passageMatcher'
+import { hasKnownStoryContradiction, isContemporaryTalk, type PassageCandidate } from './passageMatcher'
 import type { Judge, SemanticCandidate, SemanticMatcher } from './semanticMatcher'
 import { NameMemory } from './nameMemory'
 import { SermonContext } from './sermonContext'
@@ -27,6 +27,8 @@ export const JUDGE_LINE = 4.6
  * talk 20 of 20 empty, other non-Scripture 35 of 47).
  */
 export const ASKED_LINE = 0
+/** Spoken lookup needs evidence of the specific passage, not just a related topic. */
+export const SPOKEN_LINE = 2
 
 /** The most the button shows — one page of four, each worth reading (owner, 2026-10-07). */
 export const FIND_LIMIT = 4
@@ -88,9 +90,11 @@ export class AllusionFinder {
     return carried ? [text, `${carried} ${text}`] : [text]
   }
 
-  async find(heardWords: string[], now = Date.now()): Promise<FoundPassage[]> {
-    const words = heardWords.slice(-25)
+  async find(heardWords: string[], now = Date.now(), options: { spoken?: boolean } = {}): Promise<FoundPassage[]> {
+    const words = heardWords.slice(options.spoken ? -60 : -25)
     if (!words.length) return []
+    const sentence = words.join(' ')
+    if (options.spoken && (isPrayerTalk(sentence) || isContemporaryTalk(sentence.toLowerCase()) || hasKnownStoryContradiction(sentence))) return []
     const found: FoundPassage[] = []
     /* Each meaning match keeps the words that found it, for the judge. */
     const byMeaning: { hit: SemanticCandidate; query: string }[] = []
@@ -104,14 +108,17 @@ export class AllusionFinder {
       // The last sentence on its own, and with what led up to it: an allusion
       // is usually one sentence, but its subject is often named in the one before.
       const lead = heard.split(/\s+/).length - words.length
-      const windows = words.length > 14 ? [heard.split(/\s+/).filter((_, i, all) => i < lead || i >= all.length - 14).join(' '), heard] : [heard]
+      const focusedWords = options.spoken ? 25 : 14
+      const windows = words.length > focusedWords
+        ? [heard, heard.split(/\s+/).filter((_, i, all) => i < lead || i >= all.length - focusedWords).join(' ')]
+        : [heard]
       for (const window of windows) for (const hit of await this.parts.semantic.search(window, 8, boost)) byMeaning.push({ hit, query: window })
     }
     const meaning = byMeaning.sort((a, b) => b.hit.score - a.hit.score)
-    const queryOf = new Map<FoundPassage, { query: string; text: string }>()
+    const queryOf = new Map<FoundPassage, { query: string; text: string; confident: boolean }>()
     for (const { hit, query } of meaning) {
       const passage: FoundPassage = { ...hit, kind: 'meaning' }
-      queryOf.set(passage, { query, text: hit.text })
+      queryOf.set(passage, { query, text: hit.text, confident: hit.confident })
       found.push(passage)
     }
     const kept: FoundPassage[] = []
@@ -123,9 +130,14 @@ export class AllusionFinder {
       // stands. A meaning match must get past the judge — on a lower line in
       // the passage being preached, which is evidence the judge cannot see.
       const asked = queryOf.get(hit)
-      if (asked && this.parts.judge) {
-        const line = this.sermon.boost(hit.book, hit.chapter, now) ? SERMON_LINE : ASKED_LINE
-        if (await this.parts.judge(asked.query, asked.text) < line) continue
+      if (asked) {
+        if (this.parts.judge) {
+          const line = options.spoken ? SPOKEN_LINE : this.sermon.boost(hit.book, hit.chapter, now) ? SERMON_LINE : ASKED_LINE
+          const relevance = await this.parts.judge(asked.query, asked.text)
+          if (!Number.isFinite(relevance) || relevance < line) continue
+        } else if (options.spoken && !asked.confident) {
+          continue
+        }
       }
       kept.push(hit)
       if (kept.length === FIND_LIMIT) break

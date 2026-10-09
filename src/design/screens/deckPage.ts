@@ -201,8 +201,7 @@ export interface DeckPageSpec {
   sections: { heading: string; bullets: string[] }[];
 }
 
-/* Keyed by (seed, page) alone: a deck's spec is fixed for the life of the
-   deck, so nothing else can change what a page draws. */
+/* Include the content so edits and decks sharing a theme get their own image. */
 const cache = new Map<string, string>();
 
 /**
@@ -210,7 +209,7 @@ const cache = new Map<string, string>();
  * calls. Page 0 is the title slide; the rest walk the spec's sections.
  */
 export function deckPage(seed: number, page: number, spec: DeckPageSpec): string {
-  const key = `${seed}:${page}`;
+  const key = JSON.stringify([seed, page, spec]);
   let uri = cache.get(key);
   if (!uri) {
     const theme = THEMES[Math.abs(Math.floor(seed)) % THEMES.length];

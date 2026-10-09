@@ -18,6 +18,16 @@ function getSessionStore(): any {
 }
 
 let client: SupabaseClient | null = null
+let publicClient: SupabaseClient | null = null
+
+/** Read checks using the same anonymous access as a congregation's phone. */
+export function getPublicSupabase(): SupabaseClient | null {
+  const cfg = readConfig()
+  if (!cfg) return null
+  return publicClient ??= createClient(cfg.url, cfg.publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  })
+}
 
 interface CloudConfig {
   url: string

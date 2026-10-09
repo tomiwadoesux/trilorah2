@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
+import { Mic, MicOff } from "@/components/icons";
 import { PAIRING_MS, isPhoneMicCode, parsePhoneMicMessage, phoneMicChannel, type PhoneMicMessage } from "@/lib/phoneMicProtocol";
 
 /*
@@ -286,11 +287,7 @@ export default function MicClient() {
           <span className="mic-ring" />
           <span className="mic-ring mic-ring-2" />
           <span className="mic-core">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="3.5" width="6" height="11" rx="3" />
-              <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" />
-              {muted && <path d="M4.5 4.5l15 15" />}
-            </svg>
+            {muted ? <MicOff size={46} /> : <Mic size={46} />}
           </span>
         </div>
         <h1 className="mic-title" role="status" aria-live="polite">{title}</h1>

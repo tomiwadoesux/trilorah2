@@ -224,7 +224,7 @@ const DECK_SEED: Deck[] = [
 interface QuickSlideModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (deck: Deck) => void;
+  onCreate: (deck: Deck) => void | Promise<void>;
   /** A quick slide being edited: its words fill the fields, and Save replaces it. */
   editing?: Deck | null;
 }
@@ -234,12 +234,16 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
   const [subtitle, setSubtitle] = useState('');
   const [bodyText, setBodyText] = useState('');
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const nameOnly = !!editing && (!!editing.paths || editing.pages > 1);
 
   const titleRef = useRef<HTMLInputElement>(null);
   /* Each open starts clean, or on the slide being edited. */
   useEffect(() => {
     if (!isOpen) return;
-    setTitle(editing?.spec.title ?? '');
+    setTitle(nameOnly ? editing!.title : editing?.spec.title ?? '');
+    setError(null);
     setSubtitle(editing?.spec.subtitle ?? '');
     setBodyText(editing?.spec.sections.flatMap((section) => section.bullets).join('\n') ?? '');
     setAlign('center');
@@ -248,14 +252,18 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
     return () => clearTimeout(t);
   }, [isOpen]);
 
-  const handleCreate = () => {
-    if (!title.trim()) return;
+  const handleCreate = async () => {
+    if (!title.trim() || saving) return;
     const bullets = bodyText
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean);
 
-    const newDeck: Deck = {
+    const newDeck: Deck = nameOnly ? {
+      ...editing!,
+      title: title.trim(),
+      spec: { ...editing!.spec, title: editing!.paths ? editing!.spec.title : title.trim() },
+    } : {
       title: title.trim(),
       pages: 1,
       rendered: 1,
@@ -268,8 +276,16 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
       },
     };
 
-    onCreate(newDeck);
-    onClose();
+    setSaving(true);
+    setError(null);
+    try {
+      await onCreate(newDeck);
+      onClose();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not save this slide. Try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const input =
@@ -280,24 +296,25 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
     <FlightPopup
       open={isOpen}
       size={{ w: 520, h: 500 }}
-      label={editing ? 'edit slide' : 'quick slide'}
-      onRequestClose={onClose}
+      label={nameOnly ? 'edit presentation' : editing ? 'edit slide' : 'quick slide'}
+      onRequestClose={() => { if (!saving) onClose(); }}
       header={
         <div>
-          <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">{editing ? 'edit slide' : 'quick slide'}</h2>
+          <h2 className="text-[20px] font-semibold tracking-tight text-[var(--tri-ink)]">{nameOnly ? 'edit presentation' : editing ? 'edit slide' : 'quick slide'}</h2>
           <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">
-            a title, a line under it, and a few points. it joins your decks as a one-page slide.
+            {nameOnly ? editing?.paths ? 'change the library name. to change the slide content, edit the original file and import it again.' : 'change the presentation name. all pages are kept.' : 'a title, a line under it, and a few points. it joins your decks as a one-page slide.'}
           </p>
         </div>
       }
       footer={
         <footer className="flex shrink-0 justify-end px-6 pb-5">
-          <Button label={editing ? 'save slide' : 'create slide'} tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim()} onClick={handleCreate} />
+          <Button label={saving ? 'saving…' : nameOnly ? 'save presentation' : editing ? 'save slide' : 'create slide'} tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim() || saving} onClick={() => void handleCreate()} />
         </footer>
       }
     >
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-4 pt-4">
         <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="title — welcome to church" aria-label="slide title" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
+        {!nameOnly && <>
         <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="line under it (optional) — sunday service · 10:00" aria-label="subtitle" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
         <SegmentedControl
           label="alignment"
@@ -317,6 +334,8 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
           aria-label="points"
           className={cx(input, 'min-h-[88px] flex-1 resize-none py-3 leading-[1.55]')}
         />
+        </>}
+        {error && <p role="alert" className="text-sm text-[var(--tri-ink)]">{error}</p>}
       </div>
     </FlightPopup>
   );
@@ -324,6 +343,7 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
 
 const DECKS = DECK_SEED.map((deck, i) => ({ ...deck, id: `deck-${i}`, seed: i }));
 type LoadedDeck = (typeof DECKS)[number];
+const HIDDEN_DECKS_KEY = 'trilorah_hidden_presentation_decks';
 
 export function SlidesBrowser() {
   const drag = useDrag();
@@ -342,6 +362,7 @@ export function SlidesBrowser() {
   });
 
   const [importedDecks, setImportedDecks] = useState<LoadedDeck[]>([]);
+  const [hiddenDecks, setHiddenDecks] = useState<string[]>(() => readTriLocal(HIDDEN_DECKS_KEY, []));
   useEffect(() => {
     const reload = () => setCustomDecks(readTriLocal<LoadedDeck[]>(TRI_DECKS_KEY, []));
     window.addEventListener(TRI_DECKS_EVENT, reload);
@@ -356,33 +377,41 @@ export function SlidesBrowser() {
     window.addEventListener('presentations-updated', reload);
     return () => window.removeEventListener('presentations-updated', reload);
   }, []);
-  const allDecks = useMemo(() => [...importedDecks, ...customDecks, ...(isEmptyPreview ? [] : DECKS)], [importedDecks, customDecks]);
+  const allDecks = useMemo(() => [...importedDecks, ...customDecks, ...(isEmptyPreview ? [] : DECKS.filter(deck => !hiddenDecks.includes(deck.id) && !customDecks.some(custom => custom.id === deck.id)))], [importedDecks, customDecks, hiddenDecks]);
 
-  const handleCreateQuickDeck = (deck: Deck) => {
+  const handleCreateQuickDeck = async (deck: Deck) => {
+    if (editingDeck && importedDecks.some(item => item.id === editingDeck.id)) {
+      if (!window.api?.loadPresentations || !window.api?.savePresentations) throw new Error('Editing this presentation needs the desktop app.');
+      const current = await window.api.loadPresentations();
+      const result = await window.api.savePresentations(current.map(item => item.id === editingDeck.id ? { ...item, title: deck.title } : item));
+      if (!result?.success) throw new Error(result?.error || 'Could not save this presentation.');
+      setImportedDecks(prev => prev.map(item => item.id === editingDeck.id ? { ...item, title: deck.title } : item));
+      window.dispatchEvent(new Event('presentations-updated'));
+      return;
+    }
     const loaded: LoadedDeck = {
       ...deck,
       id: editingDeck?.id ?? `custom-deck-${Date.now()}`,
       seed: editingDeck?.seed ?? Math.floor(Math.random() * 100),
     };
-    setCustomDecks((prev) => {
-      /* Editing keeps the slide where it was; a new one goes to the front. */
-      const updated = editingDeck ? prev.map((d) => (d.id === loaded.id ? loaded : d)) : [loaded, ...prev];
-      try {
-        localStorage.setItem('trilorah_custom_presentation_decks', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    const updated = customDecks.some(item => item.id === loaded.id)
+      ? customDecks.map(item => item.id === loaded.id ? loaded : item)
+      : [loaded, ...customDecks];
+    localStorage.setItem(TRI_DECKS_KEY, JSON.stringify(updated));
+    setCustomDecks(updated);
     window.dispatchEvent(new Event('trilorah-library-changed'));
   };
 
   /* Off the shelf. An imported deck's page images are the app's own copies,
      so they go with it; a quick slide is only a line in local storage. */
   const removeDeck = async (deck: LoadedDeck) => {
-    if (deck.paths) {
+    if (importedDecks.some(item => item.id === deck.id)) {
       try {
-        await window.api?.deletePresentation({ id: deck.id, slides: deck.paths });
+        const deleted = await window.api?.deletePresentation({ id: deck.id, slides: deck.paths });
+        if (!deleted?.success) throw new Error(deleted?.error || 'Could not delete that presentation.');
         const remaining = ((await window.api?.loadPresentations()) ?? []).filter((d: { id: string }) => d.id !== deck.id);
-        await window.api?.savePresentations(remaining);
+        const saved = await window.api?.savePresentations(remaining);
+        if (!saved?.success) throw new Error(saved?.error || 'Could not save the presentation library.');
       } catch (error) {
         setImportNote(error instanceof Error ? error.message : 'Could not delete that presentation.');
         return;
@@ -390,11 +419,19 @@ export function SlidesBrowser() {
       window.dispatchEvent(new Event('presentations-updated'));
       return;
     }
-    setCustomDecks((prev) => {
-      const updated = prev.filter((d) => d.id !== deck.id);
-      try { localStorage.setItem('trilorah_custom_presentation_decks', JSON.stringify(updated)); } catch {}
-      return updated;
-    });
+    try {
+      if (DECKS.some(item => item.id === deck.id)) {
+        const hidden = [...new Set([...hiddenDecks, deck.id])];
+        localStorage.setItem(HIDDEN_DECKS_KEY, JSON.stringify(hidden));
+        setHiddenDecks(hidden);
+      }
+      const updated = customDecks.filter(item => item.id !== deck.id);
+      localStorage.setItem(TRI_DECKS_KEY, JSON.stringify(updated));
+      setCustomDecks(updated);
+    } catch {
+      setImportNote('Could not save this deletion. Try again.');
+      return;
+    }
     window.dispatchEvent(new Event('trilorah-library-changed'));
   };
 
@@ -464,6 +501,7 @@ export function SlidesBrowser() {
         onCreate={handleCreateQuickDeck}
       />
       <LibraryBrowser
+        searchInset="var(--tri-card-gap)"
         gap={16}
         search={
           searchOpen || allDecks.length === 0 || importNote ? <div ref={searchRow} className="flex min-w-0 flex-1 items-center gap-3">
@@ -543,7 +581,6 @@ export function SlidesBrowser() {
               {matches.map((deck, i) => {
                 const at = pageOf(deck);
                 const ready = deck.rendered > 0;
-                const importing = deck.rendered < deck.pages;
                 const live = sel.isLive(i);
                 const selected = sel.preview === i;
                 const preview = ready ? (deck.paths ? presentationImageSrc(deck.paths[at]) : deckPage(deck.seed, at, deck.spec)) : undefined;
@@ -562,27 +599,6 @@ export function SlidesBrowser() {
                     className="group/card relative pb-3 transition-transform duration-150 ease-out hover:-translate-y-[2px]"
                     style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
                   >
-                    {/* The card's acts, as the song card carries its own. A
-                        quick slide can be edited; a deck from a file can
-                        only be removed. Over the picture, so the caption's
-                        two lines keep their room. */}
-                    {deck.id.startsWith('deck-') ? null : (
-                      <div className="absolute right-2 top-2 z-10 flex items-center gap-1.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/card:opacity-100"
-                        onPointerDown={(e) => e.stopPropagation()}>
-                        {!deck.paths ? (
-                          <button type="button" title={`edit ${deck.title}`} aria-label={`edit ${deck.title}`}
-                            className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
-                            onClick={(e) => { e.stopPropagation(); setEditingDeck(deck); setQuickModalOpen(true); }}>
-                            <PencilIcon size={12} />
-                          </button>
-                        ) : null}
-                        <button type="button" title={`delete ${deck.title}`} aria-label={`delete ${deck.title}`}
-                          className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
-                          onClick={(e) => { e.stopPropagation(); void removeDeck(deck); }}>
-                          <TrashIcon size={12} />
-                        </button>
-                      </div>
-                    )}
                     <SlideThumb
                       index={i}
                       label={deck.title}
@@ -615,17 +631,10 @@ export function SlidesBrowser() {
                       onSend={() => { if (ready) sel.send(i); }}
                     />
 
-                    {/*
-                      Name over what is written inside it — the song card's
-                      two lines exactly, with the artist's slot doing the
-                      same job for a different noun. The name is the file's,
-                      set in the same weight and colour, and it goes gold on
-                      the one card that is on the projector.
-                    */}
-                    <div className="mt-2 px-0.5" title={deck.excerpt ? `${deck.title} — ${deck.excerpt}` : deck.title}>
+                    <div className="mt-2 flex items-center justify-between gap-2 px-0.5" title={deck.title}>
                       <p
                         className={cx(
-                          'truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
+                          'min-w-0 truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
                           live
                             ? 'text-[var(--tri-accent-yellow)]'
                             : selected
@@ -635,22 +644,18 @@ export function SlidesBrowser() {
                       >
                         {deck.title}
                       </p>
-                      {/*
-                        Three things want this line and only one can have it,
-                        so they are ranked by how long they last. A deck that
-                        is still converting says so and counts, because that
-                        is the only line on the card that changes and the
-                        operator is waiting on it. A finished deck gives up
-                        the progress it no longer has and shows its words —
-                        which is what the line is for the rest of the deck's
-                        life. A deck whose OCR has not landed falls back to
-                        its length, which is at least true.
-                      */}
-                      <p className="mt-[2px] truncate text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">
-                        {importing
-                          ? `converting · ${deck.rendered} of ${deck.pages}`
-                          : deck.excerpt || `${deck.pages} slides`}
-                      </p>
+                      <div className="flex shrink-0 items-center gap-1.5" onPointerDown={event => event.stopPropagation()}>
+                        <button type="button" title={`edit ${deck.title}`} aria-label={`edit ${deck.title}`}
+                          className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
+                          onClick={event => { event.stopPropagation(); setEditingDeck(deck); setQuickModalOpen(true); }}>
+                          <PencilIcon size={12} />
+                        </button>
+                        <button type="button" title={`delete ${deck.title}`} aria-label={`delete ${deck.title}`}
+                          className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
+                          onClick={event => { event.stopPropagation(); void removeDeck(deck); }}>
+                          <TrashIcon size={12} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

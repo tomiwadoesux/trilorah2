@@ -97,6 +97,7 @@ function useNotes() {
 export function SermonNotesTile({ className }: { className?: string }) {
   return (
     <Expandable
+      notificationTarget="notes"
       className={className}
       title="Sermon notes"
       glyph={false}

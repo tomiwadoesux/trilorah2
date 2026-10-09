@@ -1,0 +1,21 @@
+.connection-empty-preview { max-width: 1200px; margin: 0 auto; padding: clamp(24px, 5vw, 64px) clamp(20px, 3vw, 40px); color: var(--tri-ink); }
+.connection-empty-preview__heading { margin-bottom: 32px; }
+.connection-empty-preview__heading > span { font-size: 10px; font-weight: 600; letter-spacing: .17em; color: var(--tri-ink-muted); }
+.connection-empty-preview__heading h1 { margin: 12px 0 8px; font-size: clamp(28px, 4vw, 40px); font-weight: 500; line-height: 1.2; letter-spacing: -.035em; }
+.connection-empty-preview__heading p { max-width: 62ch; margin: 0; font-size: 13px; line-height: 1.65; color: var(--tri-ink-muted); }
+.connection-empty-preview__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px; margin-bottom: 16px; border: 1px solid rgb(255 255 255 / .1); border-radius: 10px; background: var(--tri-pop); }
+.connection-empty-preview__toolbar > span { font-size: 11px; color: var(--tri-ink-muted); }
+.connection-empty-preview__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.connection-empty-preview__card { min-width: 0; padding: 24px 18px; background: var(--tri-pop); border: 1px solid rgb(255 255 255 / .1); border-radius: 14px; }
+.connection-empty-preview__card > h2 { margin: 0; min-height: 32px; display: grid; place-items: center; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.connection-empty-preview__card .tri-phone-mic-purpose, .connection-empty-preview__card .mobile-remote-intro__line { min-height: 3.2em; display: grid; align-items: center; }
+.connection-empty-preview__notifications .tri-notification-tabs { justify-content: center; padding: 10px 0 0; }
+.connection-empty-preview__notifications .tri-notification-empty-state { padding: 10px 0 0; }
+.connection-empty-preview__notifications .tri-notification-empty-state__art { height: clamp(140px, 19vw, 188px); width: min(210px, 100%); margin-bottom: 12px; }
+.connection-empty-preview__note { margin: 21px 0 0; text-align: center; font-size: 11px; color: var(--tri-ink-muted); opacity: .7; }
+.connection-empty-preview__feedback { min-height: 1.6em; margin: 20px 0 0; color: var(--tri-ink-muted); font-size: 12px; line-height: 1.6; }
+.connection-empty-preview__card button:focus-visible { outline: 2px solid var(--tri-ink); outline-offset: 3px; }
+@media (max-width: 760px) {
+  .connection-empty-preview__grid { grid-template-columns: minmax(0, 1fr); max-width: 420px; margin-inline: auto; }
+  .connection-empty-preview__card { padding-block: 24px 28px; }
+}

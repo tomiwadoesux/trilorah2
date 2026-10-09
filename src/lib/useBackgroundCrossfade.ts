@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isVideoUrl } from '../../shared/mediaUrl'
 
 /*
  * The wall's background, changed without a dark frame.
@@ -50,12 +51,27 @@ export function useBackgroundCrossfade(url: string): BackgroundLayer[] {
     }
     /* A picture that will not decode still replaces the old one — the CSS
        paints whatever it can of it, which is what happened before this. */
+    if (isVideoUrl(url)) {
+      const clip = document.createElement('video')
+      clip.muted = true
+      clip.preload = 'auto'
+      clip.addEventListener('loadeddata', show, { once: true })
+      clip.addEventListener('error', show, { once: true })
+      clip.src = url
+      clip.load()
+      return () => {
+        gone = true
+        clip.removeEventListener('loadeddata', show)
+        clip.removeEventListener('error', show)
+        clip.removeAttribute('src')
+        clip.load()
+      }
+    }
     const img = new Image()
     img.src = url
     img.decode().then(show, show)
-    return () => {
-      gone = true
-    }
+    return () => { gone = true }
+
   }, [url])
 
   const top = layers[layers.length - 1]

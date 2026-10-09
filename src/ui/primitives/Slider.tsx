@@ -241,7 +241,7 @@ export function Slider({
         the two fight for the same pixels; up here it is always legible and
         reads as what it is — the label's answer.
       */}
-      <div className="tri-label flex min-w-0 items-baseline justify-between gap-2 lowercase select-none">
+      <div className="tri-label tri-control-heading flex min-w-0 items-baseline justify-between gap-2 lowercase select-none">
         {/*
           Both inherit .tri-label's --tri-size from the row above rather than
           setting a size of their own. The label is a control label — every

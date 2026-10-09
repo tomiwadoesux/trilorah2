@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./ui/fonts.css";
 
 /*
  * Design tokens — the entire palette.
@@ -16,15 +17,22 @@
   /* The projector canvas — always black, like the room it lights. */
   --color-canvas: #0a0a0a;
 
-  /*
-   * Roboto is the interface face from Google Fonts for all texts,
-   * except h1, h2 which are headers (leaving h3 blank for now).
-   */
-  --font-ui: 'Roboto', sans-serif;
-  --font-sans: 'Roboto', sans-serif;
+  --font-ui: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: var(--font-ui);
+  --font-heading: var(--font-ui);
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   /* Scripture stays a serif: it is read from a projector, not a screen. */
   --font-scripture: Georgia, "Times New Roman", serif;
+
+  /* Corners, tighter than Tailwind's (owner, 2026-10-08: "way less
+     rounded"). Same steps, about half the curve; see --tri-radius-* in
+     tokens.css for the app's own two. */
+  --radius-md: 4px;
+  --radius-lg: 5px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 10px;
 }
 
 /*
@@ -35,60 +43,32 @@
  */
 :root {
   --font-scripture-weight: 600;
-  --tri-font: 'Roboto', sans-serif;
+  --tri-font: var(--font-ui);
 }
 
 @layer base {
   html {
     background-color: var(--color-paper);
-    font-family: 'Roboto', sans-serif;
+    font-family: var(--font-ui);
+    font-optical-sizing: auto;
   }
 
   body {
     margin: 0;
     background-color: var(--color-paper);
     color: var(--color-ink);
-    font-family: 'Roboto', sans-serif;
+    font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
   }
 
-  /* All texts, except h1 and h2 (headers) and leaving h3 blank for now, use Roboto from Google Fonts */
-  :where(*:not(h1):not(h2):not(h3)) {
-    font-family: 'Roboto', sans-serif;
-  }
-
-  p,
-  span,
-  button,
-  input,
-  select,
-  textarea,
-  label,
-  li,
-  ul,
-  ol,
-  a,
-  th,
-  td,
-  small,
-  strong,
-  b,
-  em,
-  i,
+  /* Nested text inherits its surface's face, including scripture and code. */
+  h1,
+  h2,
+  h3,
   h4,
   h5,
   h6 {
-    font-family: 'Roboto', sans-serif;
-  }
-
-  /* Headers h1 and h2 are preserved (not forced to Roboto) */
-  h1,
-  h2 {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-
-  /* h3 is left blank for now per user instruction */
-  h3 {
+    font-family: var(--font-heading);
   }
 
   /* Every scripture surface, in-app and on the projector sheet. */
@@ -119,6 +99,29 @@
   input::placeholder,
   textarea::placeholder {
     color: color-mix(in srgb, var(--color-ink) 30%, transparent);
+  }
+
+  /* Animate the real insertion caret, only while its editor has focus.
+     caret-animation shipped in Chromium 140 (Electron 39 uses 142).
+     Unsupported browsers keep their native blink. Editors with transparent
+     text overlays set --tri-caret-color to their visible caret color. */
+  @supports (caret-animation: manual) {
+    :where(input, textarea, [contenteditable]):read-write:focus {
+      caret-animation: manual;
+      caret-color: var(--tri-caret-color, currentColor);
+    }
+
+    @media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+      :where(input, textarea, [contenteditable]):read-write:focus {
+        /* 315 ms holds and 210 ms fades make each transition readable. */
+        animation: tri-caret-blink 1.05s ease-in-out infinite;
+      }
+    }
+
+    @keyframes tri-caret-blink {
+      0%, 30%, 100% { caret-color: var(--tri-caret-color, currentColor); }
+      50%, 80% { caret-color: transparent; }
+    }
   }
 
   button {

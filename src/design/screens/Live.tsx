@@ -1,10 +1,22 @@
+import { mediaPreview } from '../../lib/mediaPreview';
+import { useOperatorTyping } from '../../lib/useOperatorTyping';
+import { QrProjectionConfirm } from './QrProjectionConfirm';
+import type { ScriptureReferenceInputHandle } from '../../ui/primitives/ScriptureReferenceInput';
+import { selectBackgroundContent } from '../../lib/backgroundSelection';
+import { videoSpeed, videoBass } from '../../lib/backgroundPlayback';
+import { rearrangeLyrics } from '../../../shared/rearrangeLyrics';
 import { isEmptyPreview } from '../emptyPreviewMode';
+import { NotificationCenter } from '../../components/NotificationCenter';
+import { useNotificationStore } from '../../stores/notificationStore';
+import { useNoticeNavigation } from '../../lib/notificationNavigation';
+import './themesEditor.css';
+import './listeningSign.css';
 import { presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
 import { liveKey } from '../../lib/liveKey';
 import { readingStep } from '../../lib/readingStep';
 import { outputThemeSettings } from '../../lib/outputTheme';
-import { CLIP_NOT_BACKGROUND, NO_BACKGROUND, backgroundDropAction, backgroundFor, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
+import { NO_BACKGROUND, backgroundDropAction, backgroundSrc, backgroundFor, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
 import { toDisplayUrl } from '../../../shared/mediaUrl';
 import { TEXT_WIDTH } from '../../../shared/textWidth';
 import { resolveTextCase, type TextCase } from '../../../shared/textCase';
@@ -14,22 +26,26 @@ import { editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
 import { lyricScore } from '../../lib/songMatch';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Children, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useMobileRemote } from './useMobileRemote';
 import { MicPicker } from '../../components/MicPicker';
-import { MobileRemotePanel } from '../../components/MobileRemotePanel';
-import { ScriptureCatches, ScriptureFindOverlay, StorySearch } from './ScriptureCatches';
+import { MobileMenu } from '../../components/MobileMenu';
+import { ScriptureCatches, ScriptureFindOverlay, ScriptureSearch } from './ScriptureCatches';
 import { useScriptureFindStore } from '../../stores/scriptureFindStore';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
 import { orbStatusDescription, useOrbShape } from '../orb/orbIdle';
 import { LiveTranscript } from './transcript/LiveTranscript';
-import { D27_HEIGHT } from './transcript/StripShell';
+import { OperatorRail } from './OperatorRail';
 import {
   ActionMenu,
   Button,
   cx,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  ExternalLinkIcon,
   CheckIcon,
   CloseIcon,
   AddSongIcon,
@@ -54,7 +70,6 @@ import {
   ImportIcon,
   PlayIcon,
   PauseIcon,
-  slideBackdrop,
   Slider,
   TextPositionPicker,
   ResetIcon,
@@ -77,7 +92,9 @@ import { BOOKS, CHAPTER_COUNTS } from '../../lib/books';
 import { STOCK_PRESETS } from '../../lib/stockPresets';
 import { parseVerse } from '../../lib/scriptureText';
 import { AppShell } from './AppShell';
+import { useArtboard } from './artboard';
 import { DashboardBento } from './dashboard';
+import { useOutputsStatus, saveDisplay } from './dashboard/outputs/fromEngine';
 import { ProfileView } from './dashboard/ProfileView';
 import { SettingsSurface } from './Settings';
 import { ViewEnter } from './viewEnter';
@@ -117,7 +134,7 @@ import {
   type TextTransition,
 } from '../../../shared/textTransitions';
 import { SlidesBrowser } from './presentations';
-import { StockSearch } from './stockSearch';
+import { MediaKindPicker, StockSearch } from './stockSearch';
 import { addMedia, addFromLaptop, removeMedia, mediaSrc, randomStill, useMediaLibrary, getMediaLibrary, type ThemeMedia } from './mediaLibrary';
 import { finderDropProps, useFinderDrag, type FinderDropProps } from './finderDrop';
 import { finderPaneHint, finderStageHint, finderStagePick, shelfFor, type FinderStageKey } from '../../lib/laptopImport';
@@ -181,26 +198,25 @@ const TABS = [
  * height back, which is what it is short of — a verse table, a song list
  * and a slide grid all want more rows, not wider ones.
  *
- * The pills sit together on one panel, the same surface as the browser
- * beside it, so the six read as one control rather than six loose
- * buttons. Each pill is a control — tri-rounded-control, the smoothed 18px
- * corner every field and button has, a soft rounded rect and not a capsule
- * — and the panel's corner is that plus the --tri-card-gap inset, so the
- * two curves stay concentric and no pill corner crowds the panel's. Words
- * are control-sized, with a glyph ahead of each so the column can be
+ * The six are ONE list, not six pills (owner, 2026-10-08, pointing at
+ * Notion's menus): a single group with one hairline round it and a rule
+ * between each row, so the column reads as one control rather than six
+ * loose buttons. The group's corner is the control radius and the panel's
+ * is that plus the --tri-card-gap inset, so the two curves stay concentric.
+ * Words are control-sized, with a glyph ahead of each so the column can be
  * scanned without reading it.
  *
- * The lit pill is ONE surface that slides to the tab chosen, not a fill
- * that blinks off one pill and on at another: the eye follows it, and the
- * old and new tab are never both half-lit. 200ms on a strong ease-out, so
- * it has arrived before the browser below has finished swapping. A switch
- * made from the keyboard jumps instead — arrowing through tabs is repeated
- * and a slide on every press would lag the key. Reduced motion jumps too.
- * Pressing a pill dips it to --tri-press-scale, the press every button gets.
+ * The lit row is ONE fill that slides to the tab chosen, not a fill that
+ * blinks off one row and on at another: the eye follows it, and the old and
+ * new tab are never both half-lit. 200ms on a strong ease-out, so it has
+ * arrived before the browser below has finished swapping. A switch made
+ * from the keyboard jumps instead — arrowing through tabs is repeated and a
+ * slide on every press would lag the key. Reduced motion jumps too. Rows
+ * do not dip on a press: a row that shrank would pull its rules in with it.
  *
- * Every row is --tri-field-h tall with --tri-card-gap between, so where the
- * light sits is arithmetic on the index — nothing is measured, and a change
- * of density moves it with the pills.
+ * Every row is --tri-field-h tall, its rule inside that height, so where
+ * the light sits is arithmetic on the index — nothing is measured, and a
+ * change of density moves it with the rows.
  *
  * The column is as wide as the longest label in bold, reserved by an
  * invisible bold copy under every label, so choosing a tab (which bolds it)
@@ -218,7 +234,32 @@ const TAB_ICONS: Record<string, (p: { size?: number; className?: string }) => Re
   online: GlobeIcon,
 };
 
+/** Intrinsic width shared by the library rail and its compact selectors. */
+function LibraryControlSizer() {
+  return (
+      <span aria-hidden="true" className="invisible col-start-1 row-start-1 grid h-[var(--tri-field-h)] items-center pl-3 pr-4 text-[length:var(--tri-control-size)] font-semibold" style={{ border: 'var(--tri-border) solid transparent' }}>
+        {TABS.map((item) => (
+          <span key={item.id} className="col-start-1 row-start-1 flex items-center gap-2 whitespace-nowrap">
+            <span className="w-[14px] shrink-0" />{item.label}
+          </span>
+        ))}
+      </span>
+  );
+}
+
 function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => void }) {
+  const railRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const rail = railRef.current;
+    const list = rail?.querySelector<HTMLElement>('[role="tablist"]');
+    const workspace = rail?.closest<HTMLElement>('[data-library-workspace]');
+    if (!list || !workspace) return;
+    const syncWidth = () => workspace.style.setProperty('--library-pill-width', `${list.getBoundingClientRect().width}px`);
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, []);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   /* Set by the key handler, cleared by a click: whether this change should
      jump rather than slide. It changes in the same render as the tab, so
@@ -232,8 +273,9 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
   };
   return (
     <nav
+      ref={railRef}
       aria-label="library navigation"
-      className="tri-library-tabs tri-dotted-surface relative min-h-0 min-w-0 shrink-0 overflow-x-hidden overflow-y-auto overscroll-contain"
+      className="tri-library-tabs tri-dotted-surface relative min-h-0 min-w-0 shrink-0 self-start max-h-full overflow-x-hidden overflow-y-auto overscroll-contain"
       style={{
         ...dottedSurfaceStyles.library,
         ...EDGE,
@@ -245,23 +287,19 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
         role="tablist"
         aria-orientation="vertical"
         aria-label="library"
-        className="relative z-10 flex flex-col gap-[var(--tri-card-gap)]"
+        /* A real border keeps the active fill inside the group's edge. */
+        className="relative z-10 flex flex-col overflow-hidden bg-[#111111]"
+        style={{ border: 'var(--tri-border) solid rgb(255 255 255 / 0.12)' }}
       >
         <span
           aria-hidden="true"
           data-library-indicator
           className={cx(
-            'tri-rounded-control pointer-events-none absolute inset-x-0 top-0 z-10 h-[var(--tri-field-h)]',
+            'pointer-events-none absolute inset-x-0 top-0 h-[var(--tri-field-h)] bg-white/[0.07]',
             'transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none',
             jump && 'transition-none',
           )}
-          style={{
-            /* The edge every surface has, and a hairline of light along the
-               top, so the lit pill sits a touch above the others. */
-            boxShadow:
-              'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.2)',
-            transform: `translateY(calc(${tab} * (var(--tri-field-h) + var(--tri-card-gap))))`,
-          }}
+          style={{ transform: `translateY(calc(${tab} * var(--tri-field-h)))` }}
         />
         {TABS.map((t, i) => {
           const Icon = TAB_ICONS[t.id];
@@ -294,13 +332,13 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
                 go(to);
               }}
               className={cx(
-                'tri-rounded-control relative flex h-[var(--tri-field-h)] shrink-0 items-center gap-2 pl-3 pr-4 text-left text-[length:var(--tri-control-size)] lowercase',
-                'transition-[color,background-color,transform] duration-150 ease-out active:scale-[var(--tri-press-scale)]',
+                'relative flex h-[var(--tri-field-h)] shrink-0 items-center gap-2 pl-3 pr-4 text-left text-[length:var(--tri-control-size)] lowercase',
+                'transition-[color,background-color] duration-150 ease-out',
+                i > 0 && 'border-t border-white/[0.08]',
                 on
-                  ? 'bg-white/[0.08] font-semibold text-[var(--tri-ink)]'
-                  : 'bg-[#111111] text-[rgb(229_243_242_/_0.58)] hover:bg-white/[0.05] hover:text-[rgb(229_243_242_/_0.85)]',
+                  ? 'font-semibold text-[var(--tri-ink)]'
+                  : 'text-[rgb(229_243_242_/_0.58)] hover:bg-white/[0.04] hover:text-[rgb(229_243_242_/_0.85)]',
               )}
-              style={{ boxShadow: on ? 'none' : 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.12)' }}
             >
               {Icon && (
                 <Icon
@@ -325,6 +363,9 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
 
 interface ThemeSettings {
   backgroundId: string;
+  videoSpeed?: number;
+  videoBass?: number;
+  videoSound?: boolean;
   dimness: number;
   blur: number;
   shadow: number;
@@ -376,6 +417,9 @@ const OPENING_VERSES: readonly { book: string; chapter: number; verse: number }[
 
 const DEFAULT_THEME: ThemeSettings = {
   backgroundId: 'quiet-sea',
+  videoSpeed: 1,
+  videoBass: 0,
+  videoSound: false,
   dimness: 60,
   blur: 2,
   shadow: 65,
@@ -552,9 +596,11 @@ function ThemesEditor({
   onReset: () => void;
   tx: ReturnType<typeof useTextTransition>;
 }) {
+  const media = useMediaLibrary();
+  const hasVideo = media.find(item => item.id === theme.backgroundId)?.kind === 'video';
 
   return (
-    <div className="grid h-full min-h-0 min-w-0 grid-cols-2 divide-x divide-white/15">
+    <div className="tri-themes-editor grid h-full min-h-0 min-w-0 grid-cols-2">
       <ThemeControls label="text">
         <DisplayFontPicker
           value={theme.font}
@@ -593,8 +639,14 @@ function ThemesEditor({
         <Slider label="dimness" value={theme.dimness} onChange={(dimness) => onChange({ ...theme, dimness })} />
         <Slider label="blur" value={theme.blur} onChange={(blur) => onChange({ ...theme, blur })} min={0} max={12} />
         <p className="text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
-          choose a background in media › themes, or drop a picture on the preview or the live screen
+          choose a background in media › themes, or drop a picture, GIF or video on the preview or the live screen
         </p>
+        {hasVideo && <div className="grid min-w-0 gap-3">
+          <Slider label="video speed" value={videoSpeed(theme.videoSpeed)} min={.25} max={2} step={.25} valueSuffix="×" onChange={(videoSpeed) => onChange({ ...theme, videoSpeed })}/>
+          <Button label={theme.videoSound ? 'background audio on' : 'background audio off'} pressed={!!theme.videoSound} onClick={() => onChange({ ...theme, videoSound: !theme.videoSound })}/>
+          <Slider label="bass boost" value={videoBass(theme.videoBass)} min={0} max={12} step={1} valueSuffix=" dB" disabled={!theme.videoSound} onChange={(videoBass) => onChange({ ...theme, videoBass })}/>
+          <p className="text-xs text-[var(--tri-ink-muted)]">Audio plays on the main live screen. Clips without a soundtrack stay silent.</p>
+        </div>}
         <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} />
         <div className="grid min-w-0 grid-cols-2 gap-x-4">
           <Slider
@@ -800,11 +852,8 @@ function FadeScroller({
 
 function ThemeControls({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <section aria-label={label} className="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden px-4">
-      <h3 className="shrink-0 pt-1 text-[14px] font-bold uppercase tracking-[0.06em] text-[var(--tri-ink)]">
-        {label}
-      </h3>
-      <FadeScroller thumbRight={-9} className="min-h-0 flex-1" contentClassName="flex flex-col gap-4 pb-4 [&>*]:min-w-0 [&>*]:shrink-0">
+    <section aria-label={label} className="tri-theme-controls flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <FadeScroller thumbRight={3} className="min-h-0 flex-1" contentClassName="flex flex-col gap-4 px-4 pb-4 [&>*]:min-w-0 [&>*]:shrink-0">
         {children}
       </FadeScroller>
     </section>
@@ -847,8 +896,7 @@ function ThemeControls({ label, children }: { label: string; children: ReactNode
  * background is a decision made once before the service, and choosing a
  * clip is a thing done to the screen during it.
  *
- * It is also why only themes has a stock search. Nobody downloads their
- * own announcement slide from Pixabay.
+ * Both shelves can browse pictures and videos, locally or online.
  */
 type MediaView = 'themes' | 'media';
 
@@ -871,36 +919,29 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
   onOpenSettings: () => void;
 }) {
   const [view, setView] = useState<MediaView>('media');
+  const [kind, setKind] = useState<'photo' | 'video'>('photo');
   const [online, setOnline] = useState(false);
   const [query, setQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const library = useMediaLibrary();
   const projector = useProjector();
   const drag = useDrag();
   const [notice, setNotice] = useState('');
-  const examples = view === 'themes' ? ['soft gradients', 'clouds', 'water', 'light'] : ['nature', 'people', 'church', 'city'];
-  const shown = library.filter(m => (m.collection ?? 'themes') === view && (online || !m.url || m.source === 'local') &&
+  const shown = library.filter(m => (m.collection ?? 'themes') === view && (m.kind ?? 'photo') === kind && (online || !m.url || m.source === 'local') &&
     (online || `${m.label} ${m.detail}`.toLowerCase().includes(query.trim().toLowerCase())));
-  useEffect(() => {
-    const close = (event: PointerEvent) => { if (!root.current?.contains(event.target as Node)) setSearchOpen(false); };
-    window.addEventListener('pointerdown', close);
-    return () => window.removeEventListener('pointerdown', close);
-  }, []);
   const store = (media: ThemeMedia) => {
-    /* A clip goes to media from either view, the way one from the laptop
-       does (shelfFor): on the themes shelf nothing could use it, and a click
-       there would stage it as content from the backgrounds view. */
+    /* Store on the requested shelf; the themes shelf also plays video backgrounds. */
     const shelf = shelfFor({ kind: media.kind ?? 'photo' }, view);
     addMedia({ ...media, collection: shelf });
-    setSearchOpen(false);
     /* Picked or added while looking at backgrounds, a still is wanted as one:
        it goes into the preview as well as onto the shelf. */
     if (view === 'themes' && canBeBackground(media)) {
       void onChoose(media.id, 'preview', 'click').then((said) => setNotice(`added to themes · ${said}`));
       return;
     }
-    setNotice(shelf !== view ? `added to ${shelf} — ${CLIP_NOT_BACKGROUND}` : `added to ${view}`);
+    const item = mediaPreview(media);
+    if (item) projector.stage(item);
+    setNotice(`added to ${shelf} · in preview`);
   };
   /*
    * A card's press. On the drag-bound wrapper, not on the card's button: the
@@ -920,7 +961,8 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
       void onChoose(media.id, 'preview', 'click').then(setNotice);
       return;
     }
-    if (media.url) projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: media.kind ?? 'photo', origin: 'operator' });
+    const item = mediaPreview(media);
+    if (item) projector.stage(item);
   };
   const pressTwice = (media: ThemeMedia) => {
     if (view === 'themes' && canBeBackground(media)) void onChoose(media.id, 'live').then(setNotice);
@@ -948,11 +990,15 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
         setNotice('');
         return;
       }
-      setSearchOpen(false);
       const one = cards.length === 1 ? cards[0] : undefined;
+      if (one) setKind(one.kind ?? 'photo');
       if (wanted === 'themes' && one && canBeBackground(one)) {
         setNotice(`${said} · ${await onChoose(one.id, 'preview', 'click')}`);
         return;
+      }
+      if (wanted === 'media' && one) {
+        const item = mediaPreview(one);
+        if (item) projector.stage(item);
       }
       setNotice(said);
     } finally {
@@ -986,20 +1032,20 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
     const next = gone.id === selected ? onBackgroundGone?.() : undefined;
     setNotice(next ? `deleted ${gone.label} · the preview is on ${next} now` : `deleted ${gone.label}`);
   };
-  const pill = 'flex h-[35px] min-w-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1';
-  const button = 'flex h-[25px] shrink-0 items-center justify-center rounded-full px-3 text-xs transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2';
+  const pill = 'flex h-[var(--tri-field-h)] min-w-0 items-center gap-1 tri-rounded-control border border-white/10 bg-white/[0.035] p-1';
+  const button = 'flex h-[calc(var(--tri-field-h)-10px)] shrink-0 items-center justify-center rounded-md px-3 text-xs transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2';
   return (
-    <div ref={root} className="relative flex h-full min-h-0 flex-col gap-3 px-3" onKeyDown={e => { if (e.key === 'Escape') setSearchOpen(false); }} {...dropHere}>
+    <div ref={root} className="media-browser relative -mx-3 flex h-full min-h-0 flex-col gap-3 px-[var(--tri-card-gap)]" {...dropHere}>
       {/* A container, so the add action can drop its words before the row —
           which does not wrap — runs out of room. */}
       <div role="toolbar" aria-label="media library" className="@container/mediabar flex shrink-0 items-center gap-2">
         <div className={`${pill} flex-1`}>
-          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" title="search online" aria-pressed={online} onClick={() => { setOnline(true); setSearchOpen(true); }}><GlobeIcon size={15} /></button>
+          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" title="search online" aria-pressed={online} onClick={() => { setOnline(true); }}><GlobeIcon size={15} /></button>
           {/* A filter, not an add: it shows what is already on this laptop's
               shelf. It used to sit beside the add button and read as one. */}
-          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="show what is on this laptop" title="show what is on this laptop" aria-pressed={!online} onClick={() => { setOnline(false); setSearchOpen(false); }}><LaptopIcon size={15} /></button>
+          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="show what is on this laptop" title="show what is on this laptop" aria-pressed={!online} onClick={() => { setOnline(false); }}><LaptopIcon size={15} /></button>
           <span aria-hidden className="mx-1 h-3 w-px bg-white/15" />
-          <input type="text" aria-label={`search ${view}`} placeholder={`search ${view}…`} value={query} onFocus={() => online && setSearchOpen(true)} onChange={e => { setQuery(e.target.value); setSearchOpen(online); }} className="min-w-0 flex-1 bg-transparent px-1 text-xs outline-none" />
+          <input type="text" aria-label={`search ${view}`} placeholder={`search ${view}…`} value={query} onChange={e => { setQuery(e.target.value); }} className="min-w-0 flex-1 bg-transparent px-1 text-xs outline-none" />
         </div>
         {/* Its own control in the library toolbars' material — the slides
             tab's "import slides" is the same act — rather than a + tucked
@@ -1016,31 +1062,23 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
           }}
         />
         <div className={pill} role="group" aria-label="library collection">
-          {/* The themes toggle takes a carried still: filed under themes and
-              previewed. Never a clip — a clip is not a background — and only
-              the card in hand, so parked verses are not lost (solo). */}
-          {(['themes','media'] as const).map(value => <button key={value} type="button" {...(value === 'themes' && carried && carried.mediaKind !== 'video' ? drag.dropProps('media-themes', { solo: true }) : {})}
+          {/* Only the carried media is used as a background; parked run items stay put. */}
+          {(['themes','media'] as const).map(value => <button key={value} type="button" {...(value === 'themes' && carried ? drag.dropProps('media-themes', { solo: true }) : {})}
             className={`${button} ${view === value || (value === 'themes' && drag.over === 'media-themes') ? 'bg-white/15 text-[var(--tri-ink)]' : 'text-[var(--tri-ink-muted)]'}`}
             aria-pressed={view === value} onClick={() => { setView(value); setNotice(''); }}>{value}</button>)}
         </div>
       </div>
-      {online && searchOpen ? (
-        <div role="region" aria-label="online search suggestions" style={{ maxHeight: 'calc(100% - 44px)' }} className="absolute inset-x-3 top-11 z-40 flex flex-col gap-3 overflow-y-auto rounded-2xl border border-white/15 bg-[#141719] p-4 shadow-2xl">
-          <div className="flex items-center justify-between gap-3"><span className="text-xs text-[var(--tri-ink-muted)]">{view === 'themes' ? 'backgrounds for readable text' : 'images and clips · search your own words'}</span><button type="button" className={button} onClick={() => setSearchOpen(false)} aria-label="close search"><CloseIcon size={12} /></button></div>
-          <div className="grid grid-cols-4 gap-2">{examples.map((word,index) => <button key={word} type="button" onClick={() => setQuery(word)} className="overflow-hidden rounded-xl border border-white/10 text-left hover:bg-white/5">
-            <img alt="" src={slideBackdrop(index + 1, index % 2 ? 'smoke' : 'facets')} className="aspect-[3/1] w-full object-cover" />
-            <span className="block px-2 py-2 text-xs">{word}</span>
-          </button>)}</div>
-          {/* In the panel's own flow, so the example backgrounds scroll
-              away with the results instead of holding the top. */}
-          <div className="min-h-[240px]"><StockSearch searchQuery={query} searchMode={view} onPick={store} onOpenSettings={onOpenSettings} flow /></div>
+      <MediaKindPicker value={kind} onChange={setKind} />
+      {online ? (
+        <div className="min-h-0 flex-1">
+          <StockSearch searchQuery={query} searchMode={view} mediaKind={kind} onPick={store} onOpenSettings={onOpenSettings} />
         </div>
-      ) : null}
-      <div role="status" className="shrink-0 text-xs text-[var(--tri-ink-muted)]">{carried
-        ? carried.mediaKind === 'video' ? 'drop on the preview to stage this clip, or into the service' : 'drop on themes, the preview or the live screen to use it as a background'
+      ) : <>
+      <div role="status" className="media-browser__notice shrink-0 text-xs text-[var(--tri-ink-muted)]">{carried
+        ? 'drop on themes, the preview or the live screen to use it as a background'
         : finder.active ? finderPaneHint(view, finder.kinds, finderHere)
         : notice || (view === 'themes' ? 'click to preview a background · double-click to put it on the wall now' : 'select to preview · drag to themes or into the service')}</div>
-      {shown.length ? <MediaGrid>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
+      {shown.length ? <MediaGrid key={`${view}-${kind}-${query}`}>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
         onClick={() => press(media)} onDoubleClick={() => pressTwice(media)}>
         <MediaCard src={mediaSrc(media)} label={media.label} detail={media.detail} selected={view === 'themes' && selected === media.id} badge={media.kind === 'video' ? 'video' : null}
           live={live === media.id} />
@@ -1062,15 +1100,16 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
             onClick={(e) => { e.stopPropagation(); remove(media); }}><TrashIcon size={12} /></button> : null}
         </div> : null}
       </div>)}</MediaGrid> : <div className="min-h-0 flex-1"><EmptyMark w={220} h={220} plain art={<GlobeEmptyArt />}
-        line={query && !online ? 'nothing matches' : `no ${view} yet`}
+        line={query && !online ? 'nothing matches' : `no ${kind === 'video' ? 'videos' : 'pictures'} in ${view} yet`}
         hint={query && !online ? 'try another name' : 'add pictures and clips, or drop them here from Finder'}
-        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add from laptop" icon={<ImportIcon size={13} />} disabled={!canAdd || adding} onClick={() => void addHere()} /><Button label="explore online" onClick={() => { setOnline(true); setSearchOpen(true); }} /></div>} /></div>}
+        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add from laptop" icon={<ImportIcon size={13} />} disabled={!canAdd || adding} onClick={() => void addHere()} /><Button label="explore online" onClick={() => { setOnline(true); }} /></div>} /></div>}
+      </>}
       {/* Files from Finder over this pane: where they will land. Over
           everything, taking no pointer, so the drop still reaches the pane;
           a dashed edge, not a glow — the ground stays plain. */}
       {finderHere ? (
         <div aria-hidden className="tri-rounded-control pointer-events-none absolute inset-0 z-50 grid place-items-center border border-dashed border-[rgb(229_243_242_/_0.55)] bg-[rgb(0_0_0_/_0.45)]">
-          <span className="tri-label rounded-full px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
+          <span className="tri-label rounded-md px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
             {finderPaneHint(view, finder.kinds)}
           </span>
         </div>
@@ -1079,16 +1118,23 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
   );
 }
 
-/** The grid both views share, so a card cannot drift between them. */
+/** Five-card pages preserve each picture's original proportions. */
 function MediaGrid({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="grid min-h-0 auto-rows-min grid-cols-4 gap-x-3 gap-y-4 overflow-y-auto px-1"
-      style={{ paddingBottom: 'var(--tri-gap)' }}
-    >
-      {children}
+  const cards = Children.toArray(children);
+  const pages = Array.from({ length: Math.ceil(cards.length / 5) }, (_, i) => cards.slice(i * 5, i * 5 + 5));
+  const rail = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
+  const move = (index: number) => rail.current?.scrollTo({ left: index * rail.current.clientWidth, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  return <div className="media-carousel flex min-h-0 flex-1 flex-col gap-2">
+    <div className="media-carousel__rail min-h-0 flex-1" ref={rail} onScroll={event => setAt(Math.round(event.currentTarget.scrollLeft / event.currentTarget.clientWidth))} role="region" aria-label="Media carousel" tabIndex={0}>
+      {pages.map((page, i) => <div key={i} className="media-carousel__page" role="group" aria-label={`Media page ${i + 1} of ${pages.length}`}><div className="media-carousel__bento">{page}</div></div>)}
     </div>
-  );
+    {pages.length > 1 && <div className="flex shrink-0 items-center justify-end gap-2">
+      <Button label="previous" disabled={at === 0} onClick={() => move(at - 1)}/>
+      <span className="text-xs text-white/50">{at + 1} / {pages.length}</span>
+      <Button label="next" disabled={at >= pages.length - 1} onClick={() => move(at + 1)}/>
+    </div>}
+  </div>;
 }
 
 function MediaCard({
@@ -1114,15 +1160,15 @@ function MediaCard({
     <button
       type="button"
       aria-pressed={selected}
-      className="group/card block w-full pb-3 text-left transition-transform duration-150 ease-out hover:-translate-y-[2px]"
-      style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
+      aria-label={`${label} — ${detail}`}
+      className="media-picture-card group/card relative block w-full overflow-hidden text-left tri-rounded-control"
     >
-      <span className="tri-rounded-control relative block overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
+      <span className="tri-rounded-control relative block overflow-hidden">
         {/* Not natively draggable: the browser's own image drag starts on the
             first move, cancels the pointer the drag layer is following, and
             the card never leaves the shelf — nor do the parked chips survive
             the cancel. */}
-        <img src={src} alt="" draggable={false} className="h-full w-full object-cover transition-transform duration-200 group-hover/card:scale-[1.03]" />
+        <img src={src} alt="" draggable={false} className="block h-auto w-full" />
         {/*
           A scrim under the badge, not a box around it. The badge sits on
           whatever the picture happens to be at that corner — a bright sky
@@ -1184,7 +1230,7 @@ function MediaCard({
           </span>
         ) : null}
       </span>
-      <span className="mt-2 block px-0.5">
+      <span className="media-picture-caption">
         <span className={cx('block truncate text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors', selected ? 'text-[var(--tri-accent-yellow)]' : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]')}>
           {label}
         </span>
@@ -1351,7 +1397,7 @@ function ReferenceParts({ reference }: { reference: string }) {
   );
 }
 
-function ScripturesBrowser() {
+function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<ScriptureReferenceInputHandle | null> }) {
   const engine = useEngine();
   const drag = useDrag();
   const projector = useProjector();
@@ -1710,24 +1756,21 @@ function ScripturesBrowser() {
         '--scripture-book-w': refColumn.book === null ? 'none' : `${refColumn.book}px`,
       } as CSSProperties) : undefined}>
     <LibraryBrowser
+      searchInset="var(--tri-card-gap)"
       search={
-        /* Split where the panes below split: the reference field over the
-           Bible, the story field over what was caught. The 32px gap is each
-           pane's 16px inset on either side of the line between them, so both
-           fields start where their pane's words start. */
-        <div className="flex w-full min-w-0 items-center gap-8">
+        /* Keep the rail inset, with extra room between the two searches. */
+        <div className="flex w-full min-w-0 items-center gap-[calc(3*var(--tri-gap))]">
         <div className="flex min-w-0 flex-1 items-center gap-[var(--tri-gap)]">
-          {/* Sized to the longest version code plus the chevron: the codes
-              are four characters at most (APEE), with a fifth in hand. The
-              list opens wider than the trigger so each code has its name. */}
-          <div className="w-[68px] shrink-0">
-            <Select options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
+          <div className="relative grid shrink-0" style={{ width: 'var(--library-pill-width, max-content)' }}>
+            <LibraryControlSizer />
+            <Select className="!absolute inset-0" options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
           </div>
           {/* An online Bible that could not load is not a broken library: the
               operator can still type another reference, or change Bible. */}
           <LibrarySearch disabled={(status === 'error' && !onlineVersion) || status === 'no-api' || status === 'empty'}>
           <ScriptureReferenceInput
-            className="min-w-0 flex-1"
+            ref={searchRef}
+            className="scripture-reference-search min-w-0 flex-1"
             books={BOOK_DATA}
             versesInChapter={versesInChapter}
             value={query}
@@ -1786,7 +1829,7 @@ function ScripturesBrowser() {
           </LibrarySearch>
         </div>
         <div className="flex min-w-0 flex-1 items-center">
-          <StorySearch />
+          <ScriptureSearch />
         </div>
         </div>
       }
@@ -1916,7 +1959,7 @@ function ScripturesBrowser() {
       </LibraryPane>
       {/* Everything the engine catches lands here, beside the Bible it came
           from — see CatchesPane. */}
-      <LibraryPane title={<span>caught</span>}><CatchesPane /></LibraryPane>
+      <LibraryPane header={false}><CatchesPane /></LibraryPane>
     </LibraryBrowser>
     </div>
   );
@@ -2351,6 +2394,7 @@ function SongGrid({
 
   return (
     <LibraryBrowser
+      searchInset="var(--tri-card-gap)"
       gap={16}
       search={
         searchOpen || songs.length === 0 ? <div ref={searchRow} className="min-w-0 flex-1">
@@ -2479,7 +2523,7 @@ function SongGrid({
                   <button type="button" className="song-sheet" onClick={() => onOpen(song.id)} aria-label={`open ${song.title}`}>
                     <span className="song-sheet-section">{verse.label}</span>
                     <span className="song-sheet-lines">{shown[0].lines.map((line, n) => <span key={n}>{line}</span>)}</span>
-                    <span className="song-sheet-arrow" aria-hidden>↗</span>
+                    <ExternalLinkIcon size={16} className="song-sheet-arrow" />
                   </button>
 
                   {/*
@@ -2649,13 +2693,23 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
     } catch (error) { setProblem(error instanceof Error ? error.message : 'Could not save the lyrics.'); }
     finally { setSaving(false); }
   };
+  const rearrange = async () => {
+    setSaving(true); setProblem(null);
+    try {
+      const sections = rearrangeLyrics(song.verses);
+      if (!await onSave({ title: song.title, author: song.author, sections })) throw new Error('The rearranged lyrics could not be saved. Try again.');
+      setEditing(null);
+    } catch (error) { setProblem(error instanceof Error ? error.message : 'Could not rearrange the lyrics.'); }
+    finally { setSaving(false); }
+  };
   const at = cards.findIndex(card => projector.isLive('song', card.id));
   const next = cards.length ? cards[(at + 1) % cards.length] : null;
   return <LibraryBrowser framed search={null}>
     <LibraryPane scroll={false} title={<button type="button" onClick={onBack} title="back to the song library" className="flex min-w-0 items-center gap-2 text-left">
       <ChevronDownIcon size={11} className="rotate-90"/><span>{song.title}</span><span className="font-normal text-white/40">{song.author}</span>
-    </button>} footer={<div className="flex items-center gap-3 px-3 pb-2">
+    </button>} footer={<div className="flex flex-wrap items-center gap-3 px-3 pb-2">
       <span className="min-w-0 flex-1 text-xs text-white/45">{at < 0 ? `${cards.length} lyric cards` : `${cards[at].label} · live`}</span>
+      <Button label={saving ? 'saving…' : 'rearrange'} disabled={saving || editing !== null} title="Regroup imported lyric cards into balanced slides, keeping named verses and choruses" onClick={() => void rearrange()}/>
       {next && <Button label={at < 0 ? 'go live' : 'next lyrics'} tone="gold" icon={<PlayIcon size={12}/>} onClick={() => void send(next)}/>}
     </div>}>
       <div className="flex h-full min-h-0 flex-col">
@@ -2751,7 +2805,7 @@ function SongSearchTile() {
 function CatchActions() {
   return (
     <div
-      className="catch-actions mx-auto mb-3 grid w-full max-w-[300px] shrink-0 grid-cols-2 gap-2"
+      className="catch-actions mb-3 grid w-full shrink-0 grid-cols-2 gap-[var(--tri-gap)]"
       style={{ '--tri-control-h': '54px', '--tri-control-pad-x': '8px' } as CSSProperties}
     >
       <style>{`
@@ -2817,7 +2871,7 @@ function SegmentAdd({ seg, size = 22 }: { seg: RunSegment; size?: number }) {
             surface({ tone: 'gold', interactive: true }),
             'flex shrink-0 items-center justify-center text-[rgb(228_216_122_/_0.92)]',
           )}
-          style={{ width: size, height: size, borderRadius: 8 }}
+          style={{ width: size, height: size, borderRadius: 5 }}
         >
           <PlusIcon size={11} />
         </button>
@@ -2965,7 +3019,7 @@ interface LogEntry extends LogSeed {
 
 /* One way out, worded once. Every confidence failure ends here: the
    engine has stopped being worth trusting, so stop trusting it. */
-const SWITCH_TO_MANUAL = { label: 'switch to manual' } as const;
+const SWITCH_TO_MANUAL = { label: 'review speech settings' } as const;
 
 /**
  * What each state says the moment the engine enters it. Not every state
@@ -3140,6 +3194,9 @@ function useServiceLog(stateLabel: string) {
  */
 function useCompanionQr(live: boolean, say?: (e: { text: string }) => void, qrLive = false) {
   const [qrUp, setQrUp] = useState(false);
+  const [confirmQr, setConfirmQr] = useState(false);
+  const showingQr = useRef(false);
+  const confirmationKey = 'trilorah.qrProjection.skipConfirmation';
 
   useEffect(() => {
     const api = window.api;
@@ -3157,6 +3214,30 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void, qrLi
     if (live) setQrUp(false);
   }, [live]);
 
+  useEffect(() => {
+    if (live || qrUp || qrLive) setConfirmQr(false);
+  }, [live, qrUp, qrLive]);
+
+  const showQr = useCallback(() => {
+    // Recheck the wall when Yes is pressed: another control may have changed it.
+    if (live || qrUp || qrLive || showingQr.current) return;
+    if (!window.api?.showQr) {
+      say?.({ text: 'the phone code needs the engine — it cannot be shown from here' });
+      return;
+    }
+    showingQr.current = true;
+    void window.api
+      .showQr()
+      .then((res) => {
+        if (res?.success) setQrUp(true);
+        /* Main's own message names two settings keys. The operator needs the
+           sentence that says where to go, not which keys were empty. */
+        else say?.({ text: "companion isn't set up yet — add your public web address and account in Settings" });
+      })
+      .catch(() => say?.({ text: "couldn't show the phone code — try again" }))
+      .finally(() => { showingQr.current = false; });
+  }, [live, qrUp, qrLive, say]);
+
   const toggleQr = useCallback(() => {
     if (live) {
       say?.({ text: 'clear the projector first — the phone code only goes onto an empty screen' });
@@ -3171,18 +3252,23 @@ function useCompanionQr(live: boolean, say?: (e: { text: string }) => void, qrLi
       say?.({ text: 'the phone code needs the engine — it cannot be shown from here' });
       return;
     }
-    void window.api
-      .showQr()
-      .then((res) => {
-        if (res?.success) setQrUp(true);
-        /* Main's own message names two settings keys. The operator needs the
-           sentence that says where to go, not which keys were empty. */
-        else say?.({ text: "companion isn't set up yet — add your public web address and account in Settings" });
-      })
-      .catch(() => say?.({ text: "couldn't show the phone code — try again" }));
-  }, [live, qrUp, qrLive, say]);
+    if (showingQr.current) return;
+    let skipConfirmation = false;
+    try { skipConfirmation = localStorage.getItem(confirmationKey) === 'true'; } catch { /* Ask when preferences are unavailable. */ }
+    if (skipConfirmation) showQr();
+    else setConfirmQr(true);
+  }, [live, qrUp, qrLive, say, showQr]);
 
-  return { qrUp, toggleQr };
+  const confirmProjection = (dontShowAgain: boolean) => {
+    setConfirmQr(false);
+    if (live || qrUp || qrLive) return;
+    if (dontShowAgain) {
+      try { localStorage.setItem(confirmationKey, 'true'); } catch { /* Still allow this confirmed projection. */ }
+    }
+    showQr();
+  };
+
+  return { qrUp, toggleQr, confirmQr, confirmProjection, discardProjection: () => setConfirmQr(false) };
 }
 
 /*
@@ -3536,49 +3622,6 @@ function DigitalClockBento() {
   );
 }
 
-function ServiceLogBar({
-  entries,
-  onAction,
-  className,
-  style,
-}: {
-  entries: LogEntry[];
-  onAction: () => void;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  const latest = entries[entries.length - 1];
-  const text = latest?.text ?? 'system ready';
-  const hasAction = Boolean(latest?.action);
-
-  return (
-    <div
-      className={cx(
-        'tri-header-control tri-header-log relative flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden lowercase',
-        className,
-      )}
-      data-attention={hasAction || undefined}
-      style={style}
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="tri-header-status-dot h-1.5 w-1.5 shrink-0 rounded-full" />
-        <span className="min-w-0 truncate tracking-wide text-[rgb(229_243_242_/_0.85)]">
-          {text}
-        </span>
-      </div>
-      {hasAction && (
-        <button
-          type="button"
-          onClick={onAction}
-          className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium text-[var(--tri-accent-yellow)] underline underline-offset-2 transition-colors hover:text-white"
-        >
-          {latest.action?.label ?? 'switch to manual'}
-        </button>
-      )}
-    </div>
-  );
-}
-
 /** The rise, and the row that fades in at the bottom of it. */
 function ServiceLogKeyframes() {
   return (
@@ -3604,105 +3647,9 @@ function ServiceLogKeyframes() {
   );
 }
 
-/*
- * The service's on-switch, back on the screen and wired this time.
- *
- * It sat in the rail as a box the size of a card for a while, above the one
- * region that is ever news, and it was the wrong shape for what it does: a
- * service starts once. On the bar it is a control the width of its own word,
- * beside the orb that reports what starting it did — which is where the
- * operator looks when they want to know whether the engine is hearing
- * anything.
- *
- * It reports what it CAN do as well as what it is doing. Under DESIGN_MODE=1
- * the database answers and the services are skipped, so the button would be
- * a switch attached to nothing; it says so instead of failing quietly.
- */
-function ListenControl() {
-  const engine = useEngine();
-  const { caps, asr, level } = engine;
-  const on = asr === 'listening' || asr === 'connecting';
-
-  const label = !caps.bridge
-    ? 'no engine'
-    : asr === 'connecting'
-      ? 'connecting…'
-      : asr === 'listening'
-        ? 'listening'
-        : asr === 'error'
-          ? "can't listen — see why"
-          : 'start listening';
-
-  return (
-    <button
-      type="button"
-      disabled={!caps.bridge}
-      onClick={() => engine.listen(!on)}
-      aria-pressed={on}
-      data-error={asr === 'error' || undefined}
-      title={
-        caps.bridge
-          ? on
-            ? 'stop listening'
-            : 'start listening for the service'
-          : 'no engine in this window — run the app with SANDBOX=1'
-      }
-      className="tri-header-control tri-header-listen flex shrink-0 items-center gap-2 lowercase"
-    >
-      <MicIcon size={12} className="tri-header-icon" />
-      {label}
-      {/*
-        The level, as four rising bars rather than a number.
-        
-        A mic that is open but hearing nothing is the most damaging failure
-        on this screen and the hardest to notice, because everything else
-        looks correct. A meter answers "is sound arriving" at a glance, which
-        a status word cannot.
-      */}
-      {on && (
-        <span aria-hidden className="flex items-end gap-[2px]">
-          {[0, 1, 2, 3].map((n) => (
-            <span
-              key={n}
-              className="w-[2px] rounded-full bg-[#8fd3c0] transition-[height,opacity] duration-150"
-              style={{
-                height: 3 + n * 2,
-                opacity: level > n * 12 ? 0.9 : 0.18,
-              }}
-            />
-          ))}
-        </span>
-      )}
-    </button>
-  );
-}
-
-/* ---------------------------------------------------------------------------
- * ON AIR — the main action, as the studio's sign.
- *
- * Start listening is the act that opens the service, so it wears the weight
- * a radio station's sign carries, in the card at the foot of the rail. A
- * real sign is a housing with letters cut into the face: dark, the letters
- * are still faintly there — an unlit sign is how a sign says off, it never
- * says "off air" — and lit, the lamp is BEHIND them, hottest above centre,
- * bleeding past the box. Gold, because gold is already the app's "now,
- * look here" colour. While the engine connects it flickers like a warming
- * tube: catches, drops, catches. Chosen 2026-09-27 over a console switch,
- * a bare wordmark and a transport key — and it carries those two's hardware
- * on its housing at the owner's ask: the switch's pilot lamp and the key's
- * mic glyph, at the left edge.
- *
- * It is real: press = start/stop listening, same wiring as the header's
- * ListenControl.
- *
- * It is the card, not a button inside one: it fills its grid cell and wears
- * the panel radius, so it sits in the bento on the same footing as the run
- * of service above it rather than as a box inside a box with a rim of dead
- * space round it, and exactly as tall as the transcript ticker it shares
- * the foot of the window with. The mic marking travels with the lettering
- * as one centred object; there is no pilot lamp, because the lit sign IS
- * the lamp.
- * ------------------------------------------------------------------------- */
+/* The rail's primary action. A gentle idle glow invites a press; only the
+   listening state gets a moving microphone meter. The engine owns start/stop,
+   and the footer keeps the same dimensions as the transcript beside it. */
 
 /** Machined-surface grain, so the housing reads as material, not fill. */
 const GRAIN =
@@ -3710,19 +3657,21 @@ const GRAIN =
 
 const verseHintSession = createVerseHintSession();
 
-const SIGN_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)';
-
-function OnAirSign() {
+function ListeningSign() {
   const engine = useEngine();
   const on = engine.asr === 'listening' || engine.asr === 'connecting';
   const connecting = engine.asr === 'connecting';
   const disabled = !engine.caps.bridge;
+  const state = disabled ? 'disabled' : connecting ? 'connecting' : on ? 'listening' : engine.asr === 'error' ? 'error' : 'idle';
 
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={() => engine.listen(!on)}
+      aria-pressed={on}
+      aria-label={on ? 'Stop listening' : 'Start listening'}
+      data-state={state}
       title={
         disabled
           ? 'no engine in this window — run the app with SANDBOX=1'
@@ -3730,33 +3679,21 @@ function OnAirSign() {
             ? 'stop listening'
             : 'start listening for the service'
       }
-      className="group relative flex w-full shrink-0 cursor-pointer select-none items-center justify-center overflow-hidden tri-rounded-surface transition-transform active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-40"
+      className="tri-listening-sign relative flex w-full shrink-0 cursor-pointer select-none items-center justify-center overflow-hidden tri-rounded-surface disabled:cursor-not-allowed disabled:opacity-40"
       style={{
         /* Exactly as tall as the transcript ticker beside it: the two share
            the foot of the window, so a sign even a pixel off reads as a
            misalignment rather than as two objects on one line. Same token,
            so they keep agreeing across density. */
-        height: D27_HEIGHT,
-        transitionDuration: '120ms',
-        transitionTimingFunction: SIGN_EASE,
-        background: `${GRAIN}, linear-gradient(180deg, #131817 0%, #0b0e0d 100%)`,
-        boxShadow: on
-          ? 'inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -10px 22px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6), 0 0 34px rgb(255 190 60 / 0.13)'
-          : 'inset 0 1px 0 rgb(255 255 255 / 0.07), inset 0 -10px 22px rgb(0 0 0 / 0.55), 0 1px 2px rgb(0 0 0 / 0.6)',
+        height: 'var(--operator-footer-h)',
+        containerType: 'inline-size',
+        backgroundImage: `${GRAIN}, linear-gradient(180deg, #29271e 0%, #191b16 50%, #101410 100%)`,
       }}
     >
-      {/* The lamp, behind the face. Off it does not exist. */}
+      {/* The invitation stays behind the label, keeping it steady and readable. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-0 tri-rounded-surface transition-opacity"
-        style={{
-          transitionDuration: '260ms',
-          transitionTimingFunction: SIGN_EASE,
-          opacity: on ? 1 : 0,
-          background:
-            'radial-gradient(120% 115% at 50% 20%, rgb(240 186 66 / 0.30) 0%, rgb(240 186 66 / 0.10) 46%, transparent 72%)',
-          animation: connecting ? 'tri-sign-flicker 1.4s steps(1) infinite' : undefined,
-        }}
+        className="tri-listening-sign__lamp pointer-events-none absolute inset-0 tri-rounded-surface"
       />
 
       {/*
@@ -3768,29 +3705,26 @@ function OnAirSign() {
         marking sits on the same optical line as the type, so it travels with
         it — one object, centred as a whole.
       */}
-      <span className="relative flex flex-col items-center gap-[3px]">
-        {/* The trailing letter-space of the last R is real width, so the
+      <span className="relative z-[1] flex items-center">
+        {/* The trailing letter-space of the last letter is real width, so the
             pair would hang right of centre. Half of it is taken back here
-            rather than on the word, which keeps the mic-to-O gap honest. */}
+            rather than on the word, which keeps the mic-to-text gap honest. */}
         <span
-          className="flex items-baseline gap-[0.3em]"
-          style={{ fontSize: 18, marginRight: '0.23em' }}
+          className="flex items-center gap-[0.3em]"
+          style={{ fontSize: 'clamp(8px, 4.5cqi, 16px)', lineHeight: 1, marginRight: '0.23em', whiteSpace: 'nowrap' }}
         >
           <span
             aria-hidden
-            className="transition-colors"
+            className="flex shrink-0 items-center justify-center transition-colors"
             style={{
               transitionDuration: '260ms',
-              /* On the caps' baseline, then nudged to the optical middle of
-                 the letterform: a glyph box's centre is not a cap's centre. */
-              transform: 'translateY(1px)',
-              color: on ? 'rgb(255 214 130 / 0.92)' : 'rgb(214 180 118 / 0.82)',
+              color: 'var(--listening-ink)',
               filter: on ? 'drop-shadow(0 0 6px rgb(255 190 60 / 0.55))' : undefined,
             }}
           >
             {/* While the room is being heard the mark is a meter, not a
                 mic — a moving glyph on this sign always means a live mic. */}
-            {engine.asr === 'listening' ? <EqBars size={14} /> : <MicIcon size={14} />}
+            {engine.asr === 'listening' ? <EqBars size={12} /> : <MicIcon size={12} />}
           </span>
           <span
             className="font-extrabold uppercase transition-colors"
@@ -3802,52 +3736,16 @@ function OnAirSign() {
                  letter-space so the pair centres true. */
               letterSpacing: '0.46em',
               textIndent: '0.46em',
-              color: on ? '#ffe9ae' : 'rgb(214 180 118 / 0.82)',
+              color: 'var(--listening-ink)',
               textShadow: on
                 ? '0 0 5px rgb(255 214 90 / 0.9), 0 0 16px rgb(255 190 60 / 0.5), 0 0 40px rgb(255 170 40 / 0.28)'
                 : 'none',
             }}
           >
-            on air
-          </span>
-        </span>
-        {/*
-          Engraved on the housing, not printed on the light — and only while
-          the sign is dark. Lit, it says nothing: a sign that is on is the
-          whole message, and "press to end" under a live ON AIR reads as an
-          instruction to kill the service.
-        */}
-        {(
-          <span
-            className="text-[9.5px] lowercase tracking-[0.08em]"
-            style={{
-              color: 'rgb(229 243 242 / 0.8)',
-              textShadow: '0 1px 0 rgb(0 0 0 / 0.7)',
-            }}
-          >
             {on ? 'stop listening' : 'start listening'}
           </span>
-        )}
-        {connecting && (
-          <span
-            className="text-[9.5px] lowercase tracking-[0.08em]"
-            style={{ color: 'rgb(229 243 242 / 0.38)', textShadow: '0 1px 0 rgb(0 0 0 / 0.7)' }}
-          >
-            warming up…
-          </span>
-        )}
+        </span>
       </span>
-      {/* A warming tube does not fade in — it catches, drops, catches. */}
-      <style>{`
-        @keyframes tri-sign-flicker {
-          0% { opacity: 0.15 } 7% { opacity: 0.8 } 11% { opacity: 0.3 }
-          22% { opacity: 1 } 30% { opacity: 0.45 } 42% { opacity: 1 }
-          70% { opacity: 0.85 } 100% { opacity: 1 }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          [style*='tri-sign-flicker'] { animation: none !important; }
-        }
-      `}</style>
     </button>
   );
 }
@@ -3978,8 +3876,56 @@ function parseStagedRef(reference?: string): { book: string; chapter: number; st
  * no air between. The min() is what is left for the short-window case, where
  * the browser's floor squeezes the stage and the picture has to give.
  */
+function PreviewScreenPicker() {
+  const outputs = useOutputsStatus();
+  const [screenError, setScreenError] = useState('');
+  const [routing, setRouting] = useState(false);
+  const mainOutput = outputs?.outputs.find((output) => output.id === 'main');
+  const chosenScreen = mainOutput?.disabled ? 'none' : mainOutput?.chosenDisplayId == null ? 'automatic' : String(mainOutput.chosenDisplayId);
+  const screenChoices = [
+    { id: 'automatic', label: 'automatic' },
+    ...(outputs?.displays.map((display) => ({ id: String(display.id), label: `${display.name}${display.primary ? ' · this computer' : ''}` })) ?? []),
+    { id: 'none', label: 'no screen — off' },
+  ];
+  return (
+    <div
+      className="relative grid shrink-0"
+      style={{ marginLeft: 'calc(var(--tri-card-gap) - var(--tri-gap))' }}
+    >
+      <LibraryControlSizer />
+        <ActionMenu
+          className="!absolute inset-0 w-full [&>span]:w-full"
+          groups={[{ items: screenChoices.map((choice) => ({ ...choice, icon: choice.id === chosenScreen ? <CheckIcon size={14} /> : undefined })) }]}
+          onSelect={(choice) => {
+            if (routing || !outputs) return;
+            setRouting(true);
+            setScreenError('');
+            void saveDisplay('main', choice.id === 'automatic' ? null : choice.id === 'none' ? 'none' : Number(choice.id))
+              .catch(() => setScreenError('Could not change screen. Try again.'))
+              .finally(() => setRouting(false));
+          }}
+          trigger={
+            <button
+              type="button"
+              disabled={!outputs || routing}
+              aria-label="screens — choose where the preview goes live"
+              title={screenError || (!outputs ? 'Screen selection is available in the desktop app' : `Go live to: ${screenChoices.find((choice) => choice.id === chosenScreen)?.label ?? 'automatic'}`)}
+              className="relative flex h-[var(--tri-field-h)] w-full items-center gap-2 rounded-[var(--tri-radius-control)] border border-white/[0.12] bg-[#111111] pl-3 pr-4 text-left text-[length:var(--tri-control-size)] lowercase text-[rgb(229_243_242_/_0.58)] hover:bg-white/[0.04] hover:text-[rgb(229_243_242_/_0.85)] disabled:opacity-50"
+            >
+              <PresentationIcon size={14} className="shrink-0 opacity-60" />
+              <span>screens</span>
+              <ChevronDownIcon size={10} className="absolute right-1 top-1/2 -translate-y-1/2" />
+            </button>
+          }
+        />
+        {screenError && <span role="alert" className="absolute left-0 top-full z-10 block w-40 rounded bg-[#111111] px-2 py-1 text-[length:var(--tri-size-xs)] text-red-300">{screenError}</span>}
+    </div>
+  );
+}
+
 function StageBox({
   label,
+  screenPicker,
   tone = 'default',
   canvas,
   controls,
@@ -3989,6 +3935,7 @@ function StageBox({
   files,
 }: {
   label: string;
+  screenPicker?: ReactNode;
   tone?: 'default' | 'live';
   canvas: ReactNode;
   controls: ReactNode;
@@ -4062,7 +4009,7 @@ function StageBox({
                   at the same centre, and a line laid over a verse reads as
                   neither. */}
               {drop.over ? (
-                <span className="tri-label rounded-full px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
+                <span className="tri-label rounded-md px-3 py-1.5 lowercase text-[var(--tri-ink)]" style={{ backgroundColor: 'rgb(0 0 0 / 0.78)' }}>
                   {drop.hint}
                 </span>
               ) : null}
@@ -4073,13 +4020,19 @@ function StageBox({
             edge exactly as the picture sits off its top, and whatever height
             a 16:9 picture could not use falls between the two as air rather
             than being split into two unequal margins. */}
-        <div className="flex min-h-[var(--stage-row)] w-full flex-1 items-end justify-between gap-2">
+        <div className={cx('stage-footer flex min-h-[var(--stage-row)] w-full flex-1 flex-wrap items-end gap-[var(--tri-gap)]', screenPicker ? 'justify-start' : 'justify-between')}>
           {/* Level with the controls' own text rather than the row's floor,
               and stepped in so the word clears the panel's corner curve. */}
-          <span className="tri-label flex h-[var(--tri-control-h)] shrink-0 items-center pl-2.5 lowercase text-[var(--tri-ink-muted)]">
-            {label}
-          </span>
-          <div className="flex min-w-0 items-center gap-[var(--tri-gap)]">{controls}</div>
+          <div className="flex shrink-0 items-center gap-[var(--tri-gap)]">
+            {screenPicker}
+            {!screenPicker && <span className="tri-label flex h-[var(--tri-control-h)] shrink-0 items-center pl-2.5 lowercase text-[var(--tri-ink-muted)]">
+              {label}
+            </span>}
+          </div>
+          <div className={cx('stage-footer-actions flex min-w-0 flex-wrap items-center gap-[var(--tri-gap)]', !screenPicker && 'ml-auto')}>
+            {screenPicker && <span aria-hidden="true" className="h-3 w-px shrink-0 bg-white/20" />}
+            {controls}
+          </div>
         </div>
       </div>
     </Panel>
@@ -4097,7 +4050,6 @@ function Stage({
   previewTheme,
   liveTheme,
   editingTheme,
-  sampling,
   onThemeChange,
   say,
   onFiles,
@@ -4106,9 +4058,6 @@ function Stage({
   previewTheme: ThemeSettings;
   liveTheme: ThemeSettings;
   editingTheme?: boolean;
-  /** A background was just chosen: an empty preview shows sample words over
-      it, so there is something to judge the picture against. */
-  sampling?: boolean;
   onThemeChange?: (theme: ThemeSettings) => void;
   /** The service log — where a refused act explains itself. */
   say?: (line: { text: string }) => void;
@@ -4144,10 +4093,10 @@ function Stage({
   const filesFor = (key: FinderStageKey) =>
     onFiles ? finderDropProps(key, (paths, count) => onFiles(key, paths, count), (kinds) => finderStageHint(key, kinds) !== null) : undefined;
   const previewDrop = carried
-    ? { props: drag.dropProps('stage-preview', { solo: true }), over: drag.over === 'stage-preview', hint: carried.mediaKind === 'video' ? 'stage this clip' : 'preview this background' }
+    ? { props: drag.dropProps('stage-preview', { solo: true }), over: drag.over === 'stage-preview', hint: 'preview this background' }
     : finderDrop('stage-preview');
   const liveDrop = carried
-    ? carried.mediaKind !== 'video' ? { props: drag.dropProps('stage-live', { solo: true }), over: drag.over === 'stage-live', hint: 'background on the wall now' } : undefined
+    ? { props: drag.dropProps('stage-live', { solo: true }), over: drag.over === 'stage-live', hint: 'background on the wall now' }
     : finderDrop('stage-live');
 
   /*
@@ -4327,13 +4276,14 @@ function Stage({
     const timer = setTimeout(() => setHintPass(0), hint.remaining);
     return () => { clearTimeout(timer); setHintPass(0); };
   }, [preview?.id]);
-  const [stageScale, setStageScale] = useState(1);
+  const [stageScale, setStageScale] = useState(STAGE_SCALE_MIN);
   /* The handle between the pictures and the library is a press first: one
      press lifts the library (the pictures at their smallest), the next
      puts it back. A drag still sets any size in between; `moved` tells a
      drag's release from a press, and the height only animates for a press. */
   const resizeStart = useRef<{ y: number; scale: number; moved: boolean } | null>(null);
   const [resizing, setResizing] = useState(false);
+  const suppressResizeClick = useRef(false);
   const libraryRaised = stageScale < (STAGE_SCALE_MIN + STAGE_SCALE_FULL) / 2;
   const canStep = !editingTheme && (!!stagedRef || deckCount > 1 || preview?.source === 'song');
   useEffect(() => {
@@ -4369,7 +4319,7 @@ function Stage({
    */
   const qrLive = live?.source === 'media' && /trilorah-companion-qr/.test(live.path ?? '');
   const wallBusy = !!live && !qrLive && screen === 'live';
-  const { qrUp, toggleQr } = useCompanionQr(wallBusy, say, qrLive);
+  const { qrUp, toggleQr, confirmQr, confirmProjection, discardProjection } = useCompanionQr(wallBusy, say, qrLive);
 
   return (
     /*
@@ -4388,25 +4338,14 @@ function Stage({
      * short for the browser's floor; see the grid in LiveBody.
      */
     <div
-      className="flex min-h-0 flex-col"
-      style={
-        {
-          containerType: 'inline-size',
-          '--tri-control-h': '26px',
-          /* What the row under the picture needs: its controls, and the
-             gutter between them and the picture. */
-          '--stage-row': 'calc(var(--tri-control-h) + var(--tri-gap))',
-          '--stage-scale': stageScale,
-        } as React.CSSProperties
-      }
+      className="relative flex min-h-0 flex-col"
+      style={{ ...STAGE_VARS, containerType: 'inline-size', '--stage-scale': stageScale } as React.CSSProperties}
     >
+    {confirmQr && <QrProjectionConfirm onDiscard={discardProjection} onConfirm={confirmProjection} />}
     <div
       className="flex min-h-0 gap-[var(--tri-gap)]"
       style={{
-        height:
-          /* panel width = half the row less half the gap between the two;
-             picture width = that less the inset each side. */
-          'calc(((100cqw - var(--tri-gap)) / 2 - 2 * var(--tri-gap)) * 9 / 16 * var(--stage-scale) + var(--stage-row) + 2 * var(--tri-gap))',
+        height: STAGE_HEIGHT,
         transition: resizing || prefersReducedMotion() ? undefined : 'height 280ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
@@ -4419,16 +4358,18 @@ function Stage({
       */}
       <StageBox
         label="preview"
+        screenPicker={<><PreviewScreenPicker /><MicPicker compact /></>}
         onKeyDown={canStep && !editingTheme ? onStepKey : undefined}
         onHover={setOverPreview}
         drop={previewDrop}
         files={filesFor('stage-preview')}
         canvas={
           <>
-            <SlideCanvas seated theme={previewTheme} transition={transition} slide={staged ?? ((editingTheme || sampling) && !preview ? THEME_SAMPLE : null)} empty="nothing staged" guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
+            <SlideCanvas seated theme={previewTheme} transition={transition} slide={staged ?? (editingTheme && (!preview || preview.source === 'background') ? THEME_SAMPLE : null)} empty={preview?.source === 'background' ? null : "nothing staged"} guide={editingTheme} onSafeMargin={editingTheme ? (safeMargin) => onThemeChange?.({ ...previewTheme, safeMargin }) : undefined} safeRange={SAFE_MARGIN} onRefGap={editingTheme ? (refGap) => onThemeChange?.({ ...previewTheme, refGap }) : undefined} refGapRange={REF_GAP} />
             {/* Pictures have no words for the canvas to draw — the phone code
                 and media-library photos showed as "nothing" here. */}
             {(preview?.source === 'presentation' || (preview?.source === 'media' && preview.mediaKind !== 'video')) && preview.path && <img src={presentationImageSrc(preview.path)} alt={preview.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
+            {preview?.source === 'media' && preview.mediaKind === 'video' && preview.path && <video key={preview.path} src={toDisplayUrl(preview.path)} aria-label={preview.label} autoPlay muted playsInline className="absolute inset-0 h-full w-full object-contain bg-black" />}
             {/*
               The verse before and the verse after, with nothing drawn.
 
@@ -4449,7 +4390,7 @@ function Stage({
                   disabled={stepping || (deckCount ? deckIndex <= 0 : !!stagedRef && stagedRef.start <= 1)}
                   onClick={() => step(-1)}
                   className="verse-step verse-step--previous absolute inset-y-0 left-0 w-1/2 disabled:cursor-default"
-                >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--previous"><span>‹</span>previous</span>}</button>
+                >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--previous"><span><ChevronLeftIcon size={20} /></span>previous</span>}</button>
                 <button
                   type="button"
                   aria-label={deckCount ? "next slide" : "next verse"}
@@ -4457,7 +4398,7 @@ function Stage({
                   title="next — show on both screens →"
                   onClick={() => step(1)}
                   className="verse-step verse-step--next absolute inset-y-0 right-0 w-1/2"
-                >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--next"><span>›</span>next</span>}</button>
+                >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--next"><span><ChevronRightIcon size={20} /></span>next</span>}</button>
               </>
             )}
             <ScriptureFindOverlay />
@@ -4488,17 +4429,13 @@ function Stage({
                 {preview!.slides!.length} slides
               </span>
             )}
-            {/* Only with something staged: an empty box, or the themes
-                sample, has nothing to take away — and the LIVE pane's clear
-                is one panel over. Waits out a step or a go live in flight,
-                whose landing would put the words straight back. Hidden under
-                the find answers, whose own ✕ is the one that means "close". */}
-            {preview && !finding && (
+            {/* Keep the four footer controls in place even when preview is empty. */}
               <Button
                 label=""
                 tone="ash"
-                icon={<CloseIcon size={12} />}
-                disabled={stepping || sending}
+                className="[--tri-control-h:var(--tri-field-h)] w-[var(--tri-field-h)] shrink-0"
+                icon={<CloseIcon size={14} />}
+                disabled={!preview || finding || stepping || sending}
                 title={clearPlan.clearWall
                   ? 'clear — take it out of preview and off the projector (background stays)'
                   : 'unstage — take it out of preview'}
@@ -4511,10 +4448,11 @@ function Stage({
                   say?.({ text: 'words off — background stays' });
                 }}
               />
-            )}
             <Button
               label="go live"
               tone="go"
+              icon={<PlayIcon size={16} />}
+              className="stage-go-live [--tri-control-h:var(--tri-field-h)] min-w-[var(--library-pill-width)] shrink-0"
               disabled={!preview || stepping || finding}
               title={finding ? 'choose a passage above, or close the results (esc)' : preview ? `put ${preview.label} on the projector` : 'stage something first'}
               onClick={goLive}
@@ -4536,9 +4474,10 @@ function Stage({
             transition={{ ...transition, play: projector.delivery * 1000 + slide }}
             slide={onAir}
             screen={screen}
-            empty="nothing on the projector"
+            empty={live?.source === 'background' ? null : "nothing on the projector"}
           />
           {(live?.source === 'presentation' || (live?.source === 'media' && live.mediaKind !== 'video')) && live.path && screen === 'live' && <img src={presentationImageSrc(live.path)} alt={live.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
+          {live?.source === 'media' && live.mediaKind === 'video' && live.path && screen === 'live' && <video key={live.path} src={toDisplayUrl(live.path)} aria-label={live.label} autoPlay muted playsInline className="absolute inset-0 h-full w-full object-contain bg-black" />}
           </>
         }
         controls={
@@ -4627,29 +4566,42 @@ function Stage({
         }
       />
     </div>
+    <div className="stage-resizer-track">
     <button type="button"
       aria-label={libraryRaised ? 'lower the library' : 'raise the library'}
       title={libraryRaised ? 'lower the library — drag to set any size' : 'raise the library — drag to set any size'}
       aria-pressed={libraryRaised}
-      className={cx('stage-resizer', libraryRaised && 'is-raised')}
-      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setStageScale((v) => clampStageScale(v + (e.key === 'ArrowUp' ? -.05 : .05))); } }}
-      onPointerDown={(e) => { resizeStart.current = { y: e.clientY, scale: stageScale, moved: false }; e.currentTarget.setPointerCapture(e.pointerId); }}
+      className={cx('stage-resizer', libraryRaised && 'is-raised', resizing && 'is-resizing')}
+      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setResizing(true); setStageScale((v) => clampStageScale(v + (e.key === 'ArrowUp' ? -.05 : .05))); } }}
+      onPointerDown={(e) => { if (e.button !== 0) return; suppressResizeClick.current = false; resizeStart.current = { y: e.clientY, scale: stageScale, moved: false }; e.currentTarget.setPointerCapture(e.pointerId); }}
       onPointerMove={(e) => {
         const start = resizeStart.current;
         if (!start) return;
+        if ((e.buttons & 1) === 0) { resizeStart.current = null; setResizing(false); return; }
         if (!start.moved && Math.abs(e.clientY - start.y) < 4) return;
         if (!start.moved) { start.moved = true; setResizing(true); }
         setStageScale(clampStageScale(start.scale + (e.clientY - start.y) / 400));
       }}
-      onPointerUp={() => { setResizing(false); }}
-      onPointerCancel={() => { resizeStart.current = null; setResizing(false); }}
-      onClick={() => {
-        /* A drag's release also lands here as a click; only a press toggles. */
-        const dragged = resizeStart.current?.moved;
+      onPointerUp={() => {
+        suppressResizeClick.current = !!resizeStart.current?.moved;
         resizeStart.current = null;
-        if (dragged) return;
+        setResizing(false);
+      }}
+      onLostPointerCapture={() => { resizeStart.current = null; setResizing(false); }}
+      onPointerCancel={() => { resizeStart.current = null; suppressResizeClick.current = true; setResizing(false); }}
+      onClick={(e) => {
+        /* A drag's release also lands here as a click; only a press toggles. */
+        const dragged = suppressResizeClick.current;
+        suppressResizeClick.current = false;
+        if (dragged && e.detail !== 0) return;
+        setResizing(e.detail === 0);
         setStageScale(libraryRaised ? STAGE_SCALE_FULL : STAGE_SCALE_MIN);
-      }}><span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 14.5V3.5M4.5 8 9 3.5 13.5 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg></span></button>
+      }}>
+        <span className="stage-resizer-button">
+          {libraryRaised ? <ChevronDownIcon size={12} /> : <ChevronUpIcon size={12} />}
+        </span>
+      </button>
+    </div>
     </div>
   );
 }
@@ -4660,6 +4612,43 @@ const STAGE_SCALE_MIN = 0.55;
 const STAGE_SCALE_FULL = 1;
 const STAGE_SCALE_MAX = 1.15;
 const clampStageScale = (v: number) => Math.max(STAGE_SCALE_MIN, Math.min(STAGE_SCALE_MAX, v));
+
+/* A real divider row keeps the handle clear of both cards and library controls. */
+const STAGE_HANDLE_H = '24px';
+const STAGE_VARS = {
+  '--stage-handle-h': STAGE_HANDLE_H,
+  '--tri-control-h': '26px',
+  /* What the row under the picture needs: its controls, and the
+     gutter between them and the picture. */
+  '--stage-row': 'calc(var(--stage-control-rows, 1) * (max(var(--tri-control-h), var(--tri-field-h)) + var(--tri-gap)))',
+} as React.CSSProperties;
+/* panel width = half the row less half the gap between the two;
+   picture width = that less the inset each side. */
+const STAGE_HEIGHT =
+  'calc(((100cqw - var(--tri-gap)) / 2 - 2 * var(--tri-gap)) * 9 / 16 * var(--stage-scale) + var(--stage-row) + 2 * var(--tri-gap))';
+
+/*
+ * The stage as it stands at its natural size, drawn by nobody.
+ *
+ * It holds the operator grid's stage row open, so the line the rail's
+ * lower card starts on stays where it is when the handle raises the
+ * library: only the right-hand column goes up (owner, 2026-10-08). The
+ * real stage and the library flow over it in one column.
+ */
+function StageSizer() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none invisible min-h-0 overflow-hidden"
+      style={{ ...STAGE_VARS, containerType: 'inline-size', '--stage-scale': 1, gridArea: '1 / 1' } as React.CSSProperties}
+    >
+      <div style={{ height: `calc(${STAGE_HEIGHT} + ${STAGE_HANDLE_H})` }} />
+    </div>
+  );
+}
+
+/* The browser's least height — the grid's third row holds it. */
+const BROWSER_FLOOR = 'var(--operator-browser-floor, min(190px, 36vh))';
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
@@ -4715,6 +4704,7 @@ type BackgroundDropHandler = (key: BackgroundDropKey, item: DragItem) => void;
 /* Inside the providers, so the screen itself can read the run — the rail and
    the browser are both in here and both need it. */
 function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: React.MutableRefObject<BackgroundDropHandler | null> }) {
+  const viewport = useArtboard();
   useMobileRemote();
   const textTransition = useTextTransition();
   const [tab, setTab] = useState(0);
@@ -4794,7 +4784,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
        that has left the shelf, or a clip — leaves the wall's picture alone:
        this used to fall back to themeLibrary[0], whatever was added last,
        which could be an announcement photo or a video's poster. */
-    const url = chosen === NO_BACKGROUND ? '' : media ? mediaSrc(media) : null;
+    const url = chosen === NO_BACKGROUND ? '' : media ? backgroundSrc(media, mediaSrc) : null;
     const appearance = readTriLocal<Record<string, unknown>>(TRI_DISPLAY_KEY, {});
     const settings: Record<string, unknown> = { ...appearance, ...outputThemeSettings(previewTheme, url ?? ''),
       ...(typeof appearance.backgroundFit === 'string' ? { backgroundFit: appearance.backgroundFit } : {}),
@@ -4900,35 +4890,34 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
    * background) keeps it. 'live' also puts it on the wall now, and ONLY the
    * background: one setting, which repaints the picture and leaves the words
    * where they are — dimness, type and layout still wait for go live,
-   * because changing those moves words people are reading. Clips are never
-   * backgrounds; the wall paints a still.
+   * because changing those moves words people are reading. Standalone media
+   * is replaced so it cannot keep covering the chosen background.
    *
    * Resolves to a sentence saying what happened, including when nobody will
    * see it yet (lib/backgroundDrop).
    */
-  const [sampling, setSampling] = useState(false);
-  /* The sample words are for an EMPTY preview; anything staged ends them. */
-  useEffect(() => setSampling(false), [projector.preview]);
   const projectorNow = useRef(projector);
   projectorNow.current = projector;
   const chooseBackground = useCallback<ChooseBackground>(async (id, where, how = 'drop') => {
     const media = getMediaLibrary().find((m) => m.id === id);
     if (!media) return 'that background is no longer on the shelf';
-    if (!canBeBackground(media)) return CLIP_NOT_BACKGROUND;
     setPreviewTheme((prev) => (prev.backgroundId === id ? prev : { ...prev, backgroundId: id }));
+    const nextPreview = selectBackgroundContent(projectorNow.current.preview, media);
+    if (nextPreview !== projectorNow.current.preview) projectorNow.current.stage(nextPreview);
     if (where === 'preview') {
-      setSampling(true);
-      return previewBackgroundNotice(projectorNow.current.preview, how);
+      return previewBackgroundNotice(nextPreview, how);
     }
-    const url = mediaSrc(media);
+    const url = backgroundSrc(media, mediaSrc);
     wallBg.current = toDisplayUrl(url);
     setLiveTheme((prev) => (prev.backgroundId === id ? prev : { ...prev, backgroundId: id }));
     const api = window.api;
+    if (api) await api.setSetting('defaultBackgroundUrl', url);
+    const nextLive = selectBackgroundContent(projectorNow.current.live, media);
+    if (nextLive.source === 'background') await projectorNow.current.sendBackground({ ...nextLive, source: 'background' });
     if (!api) return 'no engine here — only this window changed';
-    await api.setSetting('defaultBackgroundUrl', url);
     const status = await api.getOutputsStatus?.().catch(() => undefined);
-    const { screen, live } = projectorNow.current;
-    return liveBackgroundNotice({ screen, live, outputs: status?.outputs });
+    const { screen } = projectorNow.current;
+    return liveBackgroundNotice({ screen, live: nextLive, outputs: status?.outputs });
   }, []);
 
   /*
@@ -5049,24 +5038,8 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
   const [pinned, setPinned] = useState<string | null>(stripLabel);
   useEffect(() => setPinned(stripLabel), [stripLabel]);
 
-  /*
-   * Silence, timed.
-   *
-   * An open microphone hearing nothing looks exactly like an open
-   * microphone, which is why this is the failure that gets found late. Eight
-   * seconds is past any natural pause in preaching and well short of the
-   * length that would make the warning useless.
-   */
-  const [quiet, setQuiet] = useState(false);
-  useEffect(() => {
-    if (engine.asr !== 'listening') {
-      setQuiet(false);
-      return;
-    }
-    setQuiet(false);
-    const t = window.setTimeout(() => setQuiet(true), 8000);
-    return () => window.clearTimeout(t);
-  }, [engine.asr, engine.level]);
+  // The orb and notifications use the same measured no-input condition.
+  const quiet = useNotificationStore(s => s.entries.some(e => e.id === 'audio-signal' && e.status === 'active'));
 
   const derived = engineState(engine, projector.live, projector.preview, quiet);
   /*
@@ -5092,7 +5065,27 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
         );
 
   const [view, setView] = useState<ViewMode>(isEmptyPreview ? 'dashboard' : 'operator');
+  const operatorRoot = useRef<HTMLDivElement>(null);
+  const scriptureSearch = useRef<ScriptureReferenceInputHandle>(null);
+  const skipOperatorEntryFocus = useRef(false);
+  useOperatorTyping({ enabled: view === 'operator', root: operatorRoot, search: scriptureSearch, revealSearch: () => setTab(SCRIPTURES_TAB), skipNextEntryFocus: skipOperatorEntryFocus });
   const [settingsPage, setSettingsPage] = useState('S-10a');
+  const noticeRequest = useNoticeNavigation(s => s.request);
+  useEffect(() => {
+    const target = useNoticeNavigation.getState().target;
+    if (!target) return;
+    const settings: Record<string, string> = { speech: 'S-10b', displays: 'S-10f', cloud: 'S-10l', language: 'S-10c', recognition: 'S-10d', storage: 'S-10m' };
+    if (settings[target]) { setSettingsPage(settings[target]); setView('settings'); useNoticeNavigation.getState().clear(); }
+    else if (target === 'connections' || target === 'notes' || target === 'timers') setView('dashboard');
+    else if (target === 'media' || target === 'songs' || target === 'slides' || target === 'run') {
+      // Follow the requested destination once, including Run's own focus.
+      // Typing from a neutral area still opens the scripture search later.
+      if (view !== 'operator') skipOperatorEntryFocus.current = true;
+      setView('operator');
+      if (target !== 'run') setTab(Math.max(0, TABS.findIndex(t => t.id === target)));
+      if (target !== 'run') useNoticeNavigation.getState().clear();
+    }
+  }, [noticeRequest]);
   const openOnlineSettings = () => { setSettingsPage('S-10k'); setView('settings'); };
   const run = useRun();
 
@@ -5251,7 +5244,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
     if (projector.live) say({ text: `on the wall: ${projector.live.label}` });
     else if (had) say({ text: 'wall cleared' });
   }, [onWall, projector.live, say]);
-  const goManual = useCallback(() => say({ text: "suggestions off — you're driving" }), [say]);
+  const goManual = useCallback(() => useNoticeNavigation.getState().open('speech'), []);
 
   /*
    * A media card let go over a background target (see RunDragBridge).
@@ -5266,11 +5259,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
    */
   const dropMedia = useCallback(async (key: BackgroundDropKey, media: ThemeMedia | undefined): Promise<string> => {
     const action = backgroundDropAction(key, media);
-    if (!media || action === 'refuse') return media ? CLIP_NOT_BACKGROUND : 'that picture is no longer on the shelf';
-    if (action === 'stage-content') {
-      projector.stage({ source: 'media', id: media.id, label: media.label, path: media.url, mediaKind: 'video', origin: 'operator' });
-      return `${media.label} is in preview — ${CLIP_NOT_BACKGROUND}`;
-    }
+    if (!media || action === 'refuse') return 'that background is no longer on the shelf';
     if (key === 'media-themes') addMedia({ ...media, collection: 'themes' });
     const text = await chooseBackground(media.id, action, 'drop');
     return key === 'media-themes' ? `added to themes · ${text}` : text;
@@ -5308,10 +5297,9 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
         say({ text: notice });
         return;
       }
-      /* A clip dropped here is staged, and the import line has already
-         said a clip is not a background — once is enough. */
+      /* Apply the imported background without replacing the staged words. */
       const done = await dropMedia(key, pick);
-      say({ text: `${notice} · ${notice.includes(CLIP_NOT_BACKGROUND) ? done.replace(` — ${CLIP_NOT_BACKGROUND}`, '') : done}` });
+      say({ text: `${notice} · ${done}` });
     })();
   }, [dropMedia, say]);
 
@@ -5338,15 +5326,21 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
         trade to revisit — not the rail.
       */}
       <div
+        ref={operatorRoot}
         className={cx(
           'grid h-full w-full min-w-0 gap-[var(--tri-gap)] p-2.5',
           'tri-workspace-aurora',
+          (viewport.h < 650 || viewport.w < 1100) && 'operator-compact',
+          viewport.h <= 560 && 'operator-short',
+          viewport.h <= 460 && 'operator-tight',
         )}
         style={{
           // Keep the run readable when the window is narrower than a booth monitor.
-          '--tri-rail-w': 'max(232px, 20%)',
+          '--tri-rail-w': 'clamp(160px, 20%, 300px)',
+          '--operator-footer-h': `${Math.max(38, Math.min(58, viewport.h * 0.07))}px`,
+          '--stage-control-rows': viewport.w < 1200 ? 2 : 1,
           gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
-          gridTemplateRows: 'var(--tri-topbar-h) minmax(0, auto) minmax(min(190px, 36vh), 1fr) auto',
+          gridTemplateRows: `var(--tri-topbar-h) minmax(0, auto) minmax(${BROWSER_FLOOR}, 1fr) auto`,
         } as CSSProperties}
       >
         {/* Shared across views so the selection pill can slide continuously. */}
@@ -5366,12 +5360,10 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               2026-10-08). SermonStartControl is off the toolbar for now; it
               comes back later and the engine half still runs without it. */}
           <StatusOrb label={stateLabel} onClick={stepState} />
-          <ListenControl />
-          <MicPicker />
-          <MobileRemotePanel />
+          <MobileMenu />
           <DigitalClockBento />
           <div className="tri-header-log-slot flex min-w-0 items-stretch">
-            <ServiceLogBar entries={log.entries} onAction={goManual} />
+            <NotificationCenter />
           </div>
         </div>
 
@@ -5386,7 +5378,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                  full width. It brings its own nine-page rail, so it wants
                  the frame without the bento's padding. */
               <div className="min-h-0 flex-1 overflow-hidden">
-                <SettingsSurface pageId={settingsPage} />
+                <SettingsSurface key={`${settingsPage}:${noticeRequest}`} pageId={settingsPage} />
               </div>
             ) : view === 'profile' ? (
               <ProfileView />
@@ -5424,14 +5416,10 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
           className="col-span-2 row-span-3 grid min-h-0 min-w-0 grid-rows-subgrid"
           style={{ gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)', columnGap: 'var(--tri-gap)' }}
         >
-          <div
-            data-drop-segment=""
-            className="row-span-3 min-h-0 min-w-0 grid grid-rows-subgrid"
-          >
-            {/* Out of flow inside its cell: the run can be any length, and a
-                long one must scroll inside the row the stage sized rather
-                than be counted as a reason to make that row taller. */}
-            <div className="relative min-h-0">
+          <OperatorRail
+            run={
+            /* The run scrolls within its equal starting share of the rail. */
+            <div data-drop-segment="" className="operator-run-panel relative min-h-0">
             <Panel
               title={`run of service (${run.segments.length})`}
               className="operator-empty absolute inset-0 !bg-[#111111]"
@@ -5449,12 +5437,12 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               />
             </Panel>
             </div>
-
-            {/* Catches, down to the ticker's row. */}
+            }
+            transcript={
             <Panel
               className="min-h-0 !bg-[#111111]"
-              bodyClass="pt-3 flex flex-col"
-              bodyStyle={{ paddingBottom: 'var(--tri-card-gap)' }}
+              bodyClass="flex flex-col"
+              bodyStyle={{ padding: 'var(--tri-gap)' }}
             >
               <CatchActions />
               <div className="operator-empty min-h-0 flex-1 overflow-y-auto">
@@ -5466,19 +5454,24 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                   : <CatchesTranscript onOpenTranscript={() => setView('dashboard')} />}
               </div>
             </Panel>
+            }
+            footer={<ListeningSign />}
+          />
 
-            {/* The ticker's row, under the rail: the ON AIR sign, the
-                screen's main action. It is its own card — see OnAirSign. */}
-            <OnAirSign />
-          </div>
-
-          <div className="row-span-3 grid min-h-0 min-w-0 grid-rows-subgrid">
-            <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
+          <div data-library-workspace className="row-span-3 grid min-h-0 min-w-0 grid-rows-subgrid">
+            {/* The stage row is held at the pictures' natural size by the
+                sizer; the column itself is one flow across all three rows,
+                so a smaller stage hands its height to the browser here and
+                nowhere else. The browser's floor is its row's, plus the
+                ticker's row it also spans — which is what keeps the two
+                columns on one line on a window too short for the stage. */}
+            <StageSizer />
+            <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]" style={{ gridArea: '1 / 1 / -1 / 2' }}>
+            <div className="flex min-h-0 min-w-0 flex-col">
             <Stage
               transition={textTransition}
               say={say}
               editingTheme={TABS[tab]?.id === 'themes'}
-              sampling={sampling}
               onThemeChange={setPreviewTheme}
               previewTheme={previewTheme}
               liveTheme={liveTheme}
@@ -5492,16 +5485,14 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                 across the browser's row and the ticker's, so the browser
                 runs to the foot of the window while the strip is away and
                 gives the height back as it rises. */}
-            <div className="row-span-2 flex min-h-0 min-w-0 flex-col">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col" style={{ minHeight: BROWSER_FLOOR }}>
             <div className="flex min-h-0 min-w-0 flex-1 gap-[var(--tri-gap)]">
             <LibraryTabs tab={tab} onChange={setTab} />
             <Panel
               className="min-h-0 min-w-0 flex-1 !bg-[#111111]"
-              /* Themes sits on the panel like every other tab — see
-                 ThemesEditor. Its inset is the stage's, --tri-gap all round,
-                 because it seats a projector the same way the stage does. */
+              /* Each theme control supplies its own heading and content inset. */
               bodyClass={TABS[tab]?.id === 'themes' ? undefined : TABS[tab]?.id === 'songs' || TABS[tab]?.id === 'slides' ? 'pt-4' : 'pt-3'}
-              bodyStyle={TABS[tab]?.id === 'themes' ? { padding: 'var(--tri-gap)' } : undefined}
+              bodyStyle={TABS[tab]?.id === 'themes' ? { padding: 0 } : ['scriptures', 'songs', 'slides', 'media'].includes(TABS[tab]?.id) ? { paddingTop: 'var(--tri-card-gap)' } : undefined}
             >
               {TABS[tab]?.id === 'themes' ? (
                 <ThemesEditor
@@ -5511,7 +5502,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                   onReset={() => setPreviewTheme(DEFAULT_THEME)}
                 />
               ) : null}
-              {TABS[tab]?.id === 'scriptures' ? <ScripturesBrowser /> : null}
+              {TABS[tab]?.id === 'scriptures' ? <ScripturesBrowser searchRef={scriptureSearch} /> : null}
               {TABS[tab]?.id === 'songs' ? <SongsBrowser /> : null}
               {TABS[tab]?.id === 'slides' ? <SlidesBrowser /> : null}
               {TABS[tab]?.id === 'media' ? (
@@ -5527,22 +5518,14 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                 />
               ) : null}
               {TABS[tab]?.id === 'online' ? (
-                /* The same search the media tab's third shelf opens, and a
-                   pick does what a pick there does: the file is saved to
-                   this laptop, joins the library and becomes the preview's
-                   background — and the browser stays here, for the next
-                   look. A clip is content, never a background: it goes on
-                   the media shelf, and the log says why. */
+                /* Online picks preview as standalone media; the themes shelf
+                   explicitly chooses backgrounds behind words. */
                 <StockSearch
                   onOpenSettings={openOnlineSettings}
                   onPick={(media) => {
-                    if (!canBeBackground(media)) {
-                      addMedia({ ...media, collection: 'media' });
-                      say({ text: `${media.label} is in media — ${CLIP_NOT_BACKGROUND}` });
-                      return;
-                    }
-                    addMedia(media);
-                    void chooseBackground(media.id, 'preview', 'pick').then((text) => say({ text }));
+                    addMedia({ ...media, collection: 'media' });
+                    const item = mediaPreview(media);
+                    if (item) projector.stage(item);
                   }}
                 />
               ) : null}
@@ -5585,6 +5568,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                   onOpenDashboard={() => setView('dashboard')}
                 />
               </div>
+            </div>
             </div>
             </div>
           </div>

@@ -1,0 +1,47 @@
+.tri-themes-editor {
+  position: relative;
+}
+
+.tri-themes-editor::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  bottom: 24px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.tri-theme-controls {
+  container-type: inline-size;
+}
+
+.tri-theme-controls .tri-label {
+  font-size: clamp(12px, calc(10px + 0.6cqw), 15px);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+.tri-theme-controls .tri-control-heading {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: baseline;
+  margin-inline: -16px;
+  padding: 12px 16px;
+}
+
+.tri-theme-controls .tri-control-heading > span {
+  font-weight: inherit;
+}
+
+.tri-theme-controls .grid-cols-2 > div > .tri-control-heading {
+  margin-inline: -8px;
+  padding-inline: 8px;
+}

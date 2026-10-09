@@ -17,7 +17,7 @@
   min-height: 100%;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: minmax(274px, 1fr) minmax(310px, 1.1fr) minmax(246px, .9fr);
-  gap: max(8px, var(--tri-gap));
+  gap: var(--tri-gap);
   padding: 1px;
 }
 .dashboard-bento__tile { min-width: 0; min-height: 0; }
@@ -25,7 +25,7 @@
 .dashboard-bento__status {
   display: grid;
   grid-template-rows: minmax(100px, .8fr) minmax(180px, 1.2fr);
-  gap: max(8px, var(--tri-gap));
+  gap: var(--tri-gap);
   min-width: 0;
   min-height: 0;
 }
@@ -116,7 +116,7 @@
 .dashboard-bento .companion-face__details p { font-size: 11px; }
 
 /* Both sides of a shared boundary use the same easing and duration.
-   Real widths change together; text stays crisp and the gutter stays 8px. */
+   Real widths change together; the gutter follows the shared bento spacing. */
 .dashboard-bento__cell {
   position: relative;
   min-width: 0;
