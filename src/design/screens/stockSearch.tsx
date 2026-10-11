@@ -54,6 +54,8 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
   const [page, setPage] = useState(1);
   const [saving, setSaving] = useState<string | null>(null);
   const [providers, setProviders] = useState<StockProvider[] | null>(null);
+  const [providerError, setProviderError] = useState(false);
+  const [providerAttempt, setProviderAttempt] = useState(0);
 
   /* The query is the preset's, or the operator's — never both. Typing
      clears the chip so the grid never claims to be showing "cross" while
@@ -67,8 +69,12 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
       setProviders([]);
       return;
     }
-    window.api.getStockProviders().then(setProviders).catch(() => setProviders([]));
-  }, []);
+    let alive = true;
+    const refresh = () => { setProviderError(false); return window.api!.getStockProviders!().then(value => { if (alive) setProviders(value); }).catch(() => { if (alive) { setProviders(null); setProviderError(true); } }); };
+    void refresh();
+    window.addEventListener('trilorah-stock-credentials-changed', refresh);
+    return () => { alive = false; window.removeEventListener('trilorah-stock-credentials-changed', refresh); };
+  }, [providerAttempt]);
 
   /* One in-flight search at a time wins. A slow answer for "cro" must not
      land on top of the answer for "cross". */
@@ -76,7 +82,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
   useEffect(() => {
     const mine = ++ticket.current;
     setPage(1);
-    if (!hasSearch || !query || !window.api?.searchStock) {
+    if (!hasSearch || !query || !window.api?.searchStock || !providers?.length) {
       setPhase({ at: 'idle' });
       return;
     }
@@ -94,7 +100,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
       }).catch(() => { if (mine === ticket.current) setPhase({ at: 'error', message: 'Search is unavailable. Check your connection and try again.' }); });
     }, delay);
     return () => clearTimeout(timer);
-  }, [query, kind, preset, hasSearch]);
+  }, [query, kind, preset, hasSearch, providers]);
 
   const loadMore = () => {
     if (phase.at !== 'ready' || !window.api?.searchStock) return;
@@ -133,13 +139,14 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
       poster: item.thumb,
       kind: item.kind,
     });
+    window.dispatchEvent(new CustomEvent('trilorah-guide-observed', { detail: 'stock-picked' }));
   };
 
   const noEngine = !window.api?.searchStock;
   const noKey = providers !== null && providers.length === 0;
 
   return (
-    <div className={cx("stock-search relative flex flex-col gap-3", !flow && "h-full min-h-0")}>
+    <div data-guide="stock-search" data-guide-state={!window.api?.searchStock ? 'offline' : providerError ? 'error' : providers === null ? 'checking' : !providers.length ? 'missing-key' : phase.at === 'ready' && !phase.items.length ? 'empty' : phase.at} className={cx("stock-search relative flex flex-col gap-3", !flow && "h-full min-h-0")}>
       {mediaKind === undefined && <MediaKindPicker value={kind} onChange={setKind} />}
       {/* Embedded libraries provide their own search and media type controls. */}
       {!embedded && <div className="stock-search__toolbar flex shrink-0 flex-wrap items-center gap-3 px-1">
@@ -152,12 +159,13 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
           }}
           placeholder="or search for anything…"
           ariaLabel="search online media"
-          disabled={noEngine || noKey}
+          disabled={noEngine || noKey || providers === null}
           className="min-w-[180px] max-w-[320px] flex-1"
         />
-        {(noEngine || noKey) && onOpenSettings && <Button label="set up search" onClick={onOpenSettings} />}
+        {(noEngine || noKey) && onOpenSettings && <Button guideId="stock-setup" label="set up search" onClick={onOpenSettings} />}
       </div>}
 
+      {providerError && <div role="alert" className="flex items-center gap-3 px-1 text-xs text-[var(--tri-ink-muted)]">Couldn’t check online search. <Button label="try again" onClick={() => setProviderAttempt(value => value + 1)} /></div>}
       {/* The presets of the chosen group. Chips, not a grid of pictures: the
           words are the point, and thirty pictures before the search has run
           would look like results. */}
@@ -172,7 +180,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
                 setPreset(on ? null : x);
                 setTyped('');
               }}
-              disabled={noEngine || noKey}
+              disabled={noEngine || noKey || providers === null}
               aria-pressed={on}
               className={cx(
                 'tri-rounded-control h-7 px-2.5 text-[length:var(--tri-size-xs)] lowercase transition-colors disabled:opacity-40',
@@ -249,7 +257,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
 
 function OnlineEmpty({ line, hint, onSetup }: { line: string; hint: string; onSetup?: () => void }) {
   return <div className="h-full min-h-0"><EmptyMark plain art={<GlobeEmptyArt />} w={180} h={160} line={line} hint={hint}
-    below={onSetup ? <div className="mt-3"><Button label="set up online search" onClick={onSetup} /></div> : undefined} /></div>;
+    below={onSetup ? <div className="mt-3"><Button guideId="stock-setup" label="set up online search" onClick={onSetup} /></div> : undefined} /></div>;
 }
 
 function StockCard({
@@ -271,6 +279,7 @@ function StockCard({
   return (
     <button
       type="button"
+      data-guide="stock-result"
       onClick={onPick}
       disabled={disabled}
       aria-label={`${item.tags || title} — ${item.credit}`}

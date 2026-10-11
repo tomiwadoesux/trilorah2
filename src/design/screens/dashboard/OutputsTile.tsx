@@ -176,7 +176,7 @@ export function OutputsTile({ className }: { className?: string }) {
             </Panel>
           : <Face screens={screens} onRole={onRole} onOpen={onOpen} className="min-h-0 w-full flex-1" />}
       >
-        <div>
+        <div data-guide="outputs-settings">
           {rowsFor(screens, picker, onRole, onDisplay).map(({ row, onChange }) => (
             <SettingRow key={row.key} row={row} value={'value' in row ? row.value : undefined} onChange={onChange ?? (() => undefined)} />
           ))}

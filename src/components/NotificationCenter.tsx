@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEventHandler, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useNotificationStore, type NotificationEntry } from '../stores/notificationStore';
 import { openNoticeTarget } from '../lib/notificationNavigation';
@@ -11,22 +11,43 @@ import { useEmptyHover } from '../design/screens/useEmptyHover';
 import './notificationCenter.css';
 
 const rank = { error: 0, warning: 1, info: 2 };
-export function NotificationCenter() {
+export interface NotificationTriggerProps {
+  ref: RefObject<HTMLButtonElement | null>;
+  onClick: MouseEventHandler<HTMLButtonElement>;
+  expanded: boolean;
+  controls: string;
+  unread: boolean;
+  count: number;
+}
+export function NotificationCenter({ renderTrigger, statusMessage, portrait }: {
+  renderTrigger?: (props: NotificationTriggerProps) => ReactNode;
+  statusMessage?: { key: string; text: string };
+  portrait?: ReactNode;
+} = {}) {
   const entries = useNotificationStore(s => s.entries);
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [statusHistory, setStatusHistory] = useState<Array<{ id: number; text: string; at: number }>>([]);
+  const previousStatus = useRef<string | null>(null);
+  const statusSequence = useRef(0);
+  useEffect(() => {
+    if (!statusMessage || previousStatus.current === statusMessage.key) return;
+    previousStatus.current = statusMessage.key;
+    const message = { id: ++statusSequence.current, text: statusMessage.text, at: Date.now() };
+    setStatusHistory(old => [message, ...old].slice(0, 100));
+  }, [statusMessage?.key, statusMessage?.text]);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const id = useId();
-  const position = usePopupPlacement(open, trigger, panel);
+  const position = usePopupPlacement(open, trigger, panel, renderTrigger ? 'left' : 'right');
   const placed = position !== null;
   const active = entries.filter(e => e.status === 'active' && !e.dismissed).sort((a, b) => rank[a.severity] - rank[b.severity] || b.updatedAt - a.updatedAt);
   const recovered = entries.filter(e => e.status === 'resolved' && !e.dismissed && now - e.updatedAt < 8000).sort((a, b) => b.updatedAt - a.updatedAt)[0];
   const top = active[0] ?? recovered;
   const shown = history ? [...entries].sort((a, b) => b.updatedAt - a.updatedAt) : active;
-  const empty = shown.length === 0;
+  const empty = shown.length === 0 && (!history || statusHistory.length === 0);
   const unread = active.some(e => !e.read);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -54,33 +75,49 @@ export function NotificationCenter() {
     return () => { window.removeEventListener('pointerdown', down); window.removeEventListener('keydown', key); };
   }, [open, placed]);
   return <>
-    <div className="tri-notification-anchor" data-stack={Math.min(active.length, 3)}>
+    {renderTrigger ? renderTrigger({ ref: trigger, expanded: open, controls: id, unread, count: active.length,
+      onClick: event => { setKeyboard(event.detail === 0); if (!open) setHistory(false); setOpen(v => !v); },
+    }) : <div className="tri-notification-anchor" data-stack={Math.min(active.length, 3)}>
       {active.length > 1 && <span aria-hidden className="tri-notification-back tri-notification-back-one" />}
       {active.length > 2 && <span aria-hidden className="tri-notification-back tri-notification-back-two" />}
-      <button ref={trigger} type="button" className="tri-header-control tri-notification-trigger" data-unread={unread} data-tone={top?.status === 'resolved' ? 'resolved' : top?.severity}
+      <button ref={trigger} data-guide="notifications" type="button" className="tri-header-control tri-notification-trigger" data-unread={unread} data-tone={top?.status === 'resolved' ? 'resolved' : top?.severity}
         aria-expanded={open} aria-controls={id} aria-haspopup="dialog" aria-label={`Notifications${active.length ? `, ${active.length} active` : ', no active issues'}`}
-        onClick={event => { setKeyboard(event.detail === 0); setOpen(v => !v); }}>
+        onClick={event => { setKeyboard(event.detail === 0); if (!open) setHistory(false); setOpen(v => !v); }}>
         <span className="tri-notification-dot" aria-hidden />
         <span className="tri-notification-summary">{top ? `${top.status === 'resolved' ? 'resolved · ' : ''}${top.title}` : 'notifications'}</span>
         {active.length > 0 && <span className="tri-notification-count">{active.length}</span>}
         <span aria-hidden className="tri-notification-chevron">{open ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span>
       </button>
-    </div>
+    </div>}
     <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{top ? `${top.status === 'resolved' ? 'Resolved: ' : ''}${top.title}. ${top.detail}` : ''}</span>
-    {open && createPortal(<div ref={panel} id={id} role="dialog" aria-label="Service notifications" className="tri-notification-panel" data-keyboard={keyboard} data-empty={empty}
+    {open && createPortal(<div ref={panel} id={id} role="dialog" aria-label="Service notifications" className="tri-notification-panel" data-keyboard={keyboard} data-empty={empty} data-orb={!!renderTrigger}
       style={{ left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? 'visible' : 'hidden' }}>
-      <div className="tri-notification-heading"><div><strong>notifications</strong>{!empty && <span>{active.length ? `${active.length} need attention` : 'all quiet for now'}</span>}</div>
+      <div className="tri-notification-heading"><div><strong>{renderTrigger ? 'A word from your orb' : 'notifications'}</strong>{!renderTrigger && !empty && <span>{active.length ? `${active.length} need attention` : 'all quiet for now'}</span>}</div>
         <button type="button" data-close aria-label="Close notifications" onClick={() => { setOpen(false); trigger.current?.focus(); }}><CloseIcon size={16} /></button>
       </div>
+      {renderTrigger && <div className="tri-orb-conversation-intro">
+        <div className="tri-orb-conversation-portrait" aria-hidden="true">{portrait}</div>
+        <div><strong>{history ? 'Here’s what I’ve noticed.' : active.length ? 'Let’s take care of this.' : 'I’m here when you need me.'}</strong>
+          <p>{history ? 'Our updates from this session, newest first.' : active.length ? `${active.length === 1 ? 'One thing needs' : `${active.length} things need`} a look. I’ll point you to the right controls.` : statusMessage?.text ?? 'No new issues need your attention.'}</p></div>
+      </div>}
       <div className="tri-notification-tabs" role="group" aria-label="Notification filter">
-        <button type="button" aria-pressed={!history} onClick={() => setHistory(false)}>active {active.length || ''}</button>
-        <button type="button" aria-pressed={history} onClick={() => setHistory(true)}>history</button>
+        <button type="button" aria-pressed={!history} onClick={() => setHistory(false)}>Active <span>{active.length}</span></button>
+        <button type="button" aria-pressed={history} onClick={() => setHistory(true)}>History <span>{entries.length + statusHistory.length}</span></button>
       </div>
       <div className="tri-notification-list">
-        {empty && <NotificationEmptyState history={history} />}
-        <NotificationCards entries={shown} onNavigate={() => setOpen(false)} />
+        {empty && (renderTrigger ? <div className="tri-orb-conversation-empty"><span aria-hidden="true">{history ? '◷' : '✓'}</span>
+          <p>{history ? 'We’re just getting started.' : 'Nothing else needs your attention.'}</p>
+          <small>{history ? 'I’ll keep our updates here.' : 'I’ll let you know when something comes up.'}</small>
+        </div> : <NotificationEmptyState history={history} />)}
+        {history && statusHistory.length ? [
+          ...shown.map(entry => ({ id: `notice:${entry.id}`, at: entry.updatedAt, node: <NotificationCards entries={[entry]} onNavigate={() => setOpen(false)} /> })),
+          ...statusHistory.map(message => ({ id: `orb:${message.id}`, at: message.at, node: <article className="tri-orb-history-message">
+            <span className="tri-orb-message-speaker">Your orb</span><p>{message.text}</p><time dateTime={new Date(message.at).toISOString()}>{new Date(message.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</time>
+          </article> })),
+        ].sort((a, b) => b.at - a.at).map(item => <div key={item.id}>{item.node}</div>)
+          : <NotificationCards entries={shown} onNavigate={() => setOpen(false)} />}
       </div>
-      <p className="tri-notification-footer">Only service issues and useful updates appear here.</p>
+      <p className="tri-notification-footer">{statusMessage ? 'Service updates and orb status changes from this session.' : 'Only service issues and useful updates appear here.'}</p>
     </div>, document.body)}
   </>;
 }

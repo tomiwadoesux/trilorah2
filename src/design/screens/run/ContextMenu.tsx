@@ -2,17 +2,14 @@ import { popupPlacement } from '../../../lib/popupPlacement';
 import { popupBounds } from '../../../ui/primitives/usePopupPlacement';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDownIcon, cx } from '../../../ui';
+import { CheckIcon, ChevronDownIcon, cx } from '../../../ui';
 
 /*
  * A menu that opens where you pointed.
  *
- * ActionMenu hangs from its trigger and right-aligns to it, which is right
- * for a "+" and cannot be asked to open at a pointer. This is the same
- * bubble — same fill, edge, radius, row height and type, so the two read as
- * one menu system — placed at a point instead, and it drills in place the
- * way ActionMenu does, for the same reason: beside a rail pinned to the
- * window's left edge there is no room for a submenu to fly out.
+ * Compact neutral rows open at the pointer. Submenus drill in place because
+ * the rail is pinned to the window's left edge, leaving little room for a
+ * second menu beside it.
  *
  * It is also the keyboard's menu. The context-menu key and Shift+F10 open
  * it from a focused row (see useContextMenu), so it takes focus when it
@@ -25,7 +22,7 @@ export interface ContextMenuItem {
   id: string;
   label: string;
   icon?: ReactNode;
-  /** The destructive row: danger ink, and a rule above it. */
+  /** Separates the destructive action from the other rows with a rule. */
   danger?: boolean;
   /** Marks the current choice in a drilled list. */
   checked?: boolean;
@@ -40,11 +37,11 @@ export interface ContextMenuState {
   from: HTMLElement | null;
 }
 
-/** Shared with ActionMenu by value; see the note there. */
+/** A compact, neutral surface for pointer and keyboard context menus. */
 const BUBBLE = {
-  borderRadius: '6px',
-  backgroundColor: 'var(--tri-pop)',
-  boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
+  borderRadius: '10px',
+  backgroundColor: '#202020',
+  boxShadow: '0 8px 24px rgb(0 0 0 / 0.3), inset 0 0 0 1px rgb(255 255 255 / 0.18)',
 } as const;
 
 
@@ -187,7 +184,7 @@ export function ContextMenu({
   };
 
   const row =
-    'flex shrink-0 w-full items-center gap-2.5 rounded-[6px] px-3.5 text-left lowercase transition-colors h-[var(--tri-option-h)] text-[length:var(--tri-control-size)] outline-none hover:bg-[rgb(255_255_255_/_0.06)] focus-visible:bg-[rgb(255_255_255_/_0.08)]';
+    'flex min-h-7 shrink-0 w-full items-center gap-2 rounded-[5px] px-2 py-1 text-left text-[12px] leading-5 outline-none hover:bg-white/[0.07] focus-visible:bg-white/10';
 
   return createPortal(
     <div
@@ -196,7 +193,7 @@ export function ContextMenu({
       aria-label={label}
       onKeyDown={onKey}
       onContextMenu={(e) => e.preventDefault()}
-      className="tri-ctx-in fixed z-[70] flex flex-col gap-1 p-1.5"
+      className="tri-context-menu fixed z-[70] flex flex-col p-1.5"
       style={{
         ...BUBBLE,
         ...popupBounds,
@@ -242,15 +239,15 @@ export function ContextMenu({
                 setPath((p) => [...p, item.id]);
               }
             }}
-            className={cx(row, item.danger ? 'text-[var(--tri-ink-danger)]' : 'text-[var(--tri-ink)]')}
+            className={cx(row, 'text-[#ededed]')}
           >
             {item.icon && (
-              <span className={cx('grid w-[14px] shrink-0 place-items-center', item.danger ? '' : 'text-[rgb(143_211_192_/_0.85)]')}>
+              <span className="grid w-[14px] shrink-0 place-items-center text-current opacity-75">
                 {item.icon}
               </span>
             )}
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            {item.checked && <span aria-hidden className="size-[5px] shrink-0 rounded-full bg-[rgb(var(--tri-go-2))]" />}
+            {item.checked && <CheckIcon size={12} className="shrink-0" />}
             {item.items && <ChevronDownIcon size={10} className="shrink-0 -rotate-90 text-[rgb(229_243_242_/_0.4)]" />}
           </button>
         </div>

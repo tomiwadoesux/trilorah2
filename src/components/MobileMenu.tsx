@@ -85,7 +85,7 @@ export function MobileMenu({ preview = false }: { preview?: boolean }) {
   };
 
   return <>
-    <button ref={trigger} type="button" className="tri-header-control tri-header-remote tri-mobile-trigger"
+    <button ref={trigger} data-guide="mobile-tools" type="button" className="tri-header-control tri-header-remote tri-mobile-trigger"
       aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} title="Mobile tools"
       onClick={() => { initialItem.current = 0; setOpen(value => !value); }}
       onKeyDown={event => {

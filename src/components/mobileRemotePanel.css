@@ -91,3 +91,27 @@
 .mobile-remote-devices h3 { margin: 0; font-size: var(--tri-size-sm); font-weight: 600; }
 .mobile-remote-device { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgb(255 255 255 / .08); font-size: var(--tri-size-sm); }
 .mobile-remote-error { margin: 16px 0 0; font-size: var(--tri-size-sm); line-height: 1.55; color: var(--tri-ink-danger); }
+
+/* Consistent surfaces for the three jobs in Mobile. */
+.mobile-remote-panel { max-width: 460px; max-height: calc(100dvh - 40px); border-radius: 20px; background: #111817; }
+.mobile-remote-heading { display: flex; justify-content: space-between; }
+.mobile-remote-heading h2 { font-size: 15px; font-weight: 550; letter-spacing: 0; text-transform: none; text-align: left; }
+.mobile-remote-close { width: 32px; height: 32px; background: rgb(229 243 242 / .025); border: 1px solid rgb(229 243 242 / .1); }
+.mobile-remote-intro { padding-top: 12px; }
+.mobile-remote-active { gap: 14px; }
+.mobile-remote-active .mobile-pairing-steps { margin: 2px 0 4px; }
+.mobile-remote-code { padding: 0 0 4px; }
+.mobile-remote-help { border-top: 1px solid rgb(229 243 242 / .07); padding-top: 12px; }
+.mobile-remote-help summary { color: #9caea5; font-size: 11px; cursor: pointer; }
+.mobile-remote-help p { padding-top: 10px; }
+.mobile-remote-request { padding: 16px; gap: 8px; background: rgb(143 211 192 / .04); border: 1px solid rgb(143 211 192 / .15); border-radius: 12px; }
+.mobile-remote-request p { font-size: 15px; overflow-wrap: anywhere; }
+.mobile-remote-request small { font-size: 12px; color: rgb(229 243 242 / .55); }
+.mobile-remote-request__label { color: #9cb6a9; font-size: 10px; }
+.mobile-remote-request .mobile-remote-actions { justify-content: flex-end; margin-top: 6px; }
+.mobile-remote-device { padding: 12px; background: rgb(229 243 242 / .025); border-radius: 9px; border: 1px solid rgb(229 243 242 / .07); }
+.mobile-remote-device > span { overflow-wrap: anywhere; min-width: 0; }
+.mobile-remote-error { padding: 12px; background: rgb(210 90 90 / .07); border-radius: 9px; }
+.mobile-stream-qr-surface { width: 100%; margin: 8px 0 18px; }
+.mobile-stream-qr-surface .mobile-stream-code { width: 196px; margin: 0; }
+@media (max-width: 480px) { .mobile-remote-panel { padding: 20px; } }

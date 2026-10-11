@@ -577,7 +577,7 @@ function RunEmptyActions() {
         style={{ '--tri-control-h': '32px', '--tri-control-pad-x': '11px' } as CSSProperties}
       >
         <Button label="scan image" icon={<ScanIcon size={14} />} title="read a photo of the programme" onClick={() => askRun('scan')} />
-        <Button label="paste" tone="ash" icon={<NoteIcon size={13} />} title="paste the programme as text" onClick={() => askRun('paste')} />
+        <Button guideId="run-paste" label="paste" tone="ash" icon={<NoteIcon size={13} />} title="paste the programme as text" onClick={() => askRun('paste')} />
       </div>
       <div
         className="flex items-center gap-2"

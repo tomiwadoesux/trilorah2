@@ -66,7 +66,6 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
   const [phoneOpen, setPhoneOpen] = useState(false);
   const noticeRequest = useNoticeNavigation(s => s.request);
   useEffect(() => {
-    if (compact) return;
     const navigation = useNoticeNavigation.getState();
     if (navigation.target === 'audio') { setOpen(true); navigation.clear(); }
     if (navigation.target === 'phone') { setPhoneOpen(true); navigation.clear(); }
@@ -87,9 +86,12 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
   const current = practice ? PRACTICE_SERMON_DEVICE : /^default - /i.test(saved) ? '' : saved;
   const currentLabel = options.find((o) => o.value === current)?.label ?? current;
 
-  /* Listening started with the menu open: the choice is locked, so is the menu. */
+  /* Close when listening starts, but allow a problem link to open the picker
+     while already listening, including when it mounts after navigation. */
+  const previousBusy = useRef(busy);
   useEffect(() => {
-    if (busy) setOpen(false);
+    if (busy && !previousBusy.current) setOpen(false);
+    previousBusy.current = busy;
   }, [busy]);
 
   useEffect(() => {
@@ -153,6 +155,7 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
     <>
       <button
         ref={triggerRef}
+        data-guide="audio-input"
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -183,6 +186,7 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
       {open && createPortal(
         <div
           ref={menuRef}
+          data-guide="audio-options"
           role="menu"
           aria-label="audio input"
           onKeyDown={onMenuKey}

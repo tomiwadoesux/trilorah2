@@ -6,7 +6,13 @@ import { selectBackgroundContent } from '../../lib/backgroundSelection';
 import { videoSpeed, videoBass } from '../../lib/backgroundPlayback';
 import { rearrangeLyrics } from '../../../shared/rearrangeLyrics';
 import { isEmptyPreview } from '../emptyPreviewMode';
-import { NotificationCenter } from '../../components/NotificationCenter';
+import { NotificationCenter, type NotificationTriggerProps } from '../../components/NotificationCenter';
+import { nextOrbPhrase } from '../../lib/orbPhrases';
+import { ProductGuide } from '../../components/ProductGuide';
+import type { GuideDestination } from '../../lib/productGuide';
+import { OrbActions, type OrbSuggestion } from '../../components/OrbActions';
+import { OrbStatusHint } from '../../components/OrbStatusHint';
+import type { OrbDestination } from '../../lib/orbActions';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useNoticeNavigation } from '../../lib/notificationNavigation';
 import './themesEditor.css';
@@ -26,7 +32,7 @@ import { editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
 import { lyricScore } from '../../lib/songMatch';
-import { Children, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Children, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useMobileRemote } from './useMobileRemote';
 import { MicPicker } from '../../components/MicPicker';
 import { MobileMenu } from '../../components/MobileMenu';
@@ -34,7 +40,7 @@ import { ScriptureCatches, ScriptureFindOverlay, ScriptureSearch } from './Scrip
 import { useScriptureFindStore } from '../../stores/scriptureFindStore';
 import SvgOrbsPill from '../orb/SvgOrbsPill';
 import { ORB_BY_STATE, STATUS_ORB_INK as INK } from '../orb/statusLooks';
-import { orbStatusDescription, useOrbShape } from '../orb/orbIdle';
+import { useOrbShape } from '../orb/orbIdle';
 import { LiveTranscript } from './transcript/LiveTranscript';
 import { OperatorRail } from './OperatorRail';
 import {
@@ -307,6 +313,7 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
           return (
             <button
               key={t.id}
+              data-guide={`library-${t.id}`}
               ref={(el) => {
                 refs.current[i] = el;
               }}
@@ -1051,6 +1058,7 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
             tab's "import slides" is the same act — rather than a + tucked
             inside the search field, where it read as part of the search. */}
         <LibraryAction
+          guideId="media-import"
           textClassName="hidden @min-[30rem]/mediabar:inline"
           action={{
             id: 'add',
@@ -1959,7 +1967,16 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
       </LibraryPane>
       {/* Everything the engine catches lands here, beside the Bible it came
           from — see CatchesPane. */}
-      <LibraryPane header={false}><CatchesPane /></LibraryPane>
+      <LibraryPane header={false} scroll={false}>
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="shrink-0 p-[var(--tri-gap)]">
+            <CatchActions />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CatchesPane />
+          </div>
+        </div>
+      </LibraryPane>
     </LibraryBrowser>
     </div>
   );
@@ -2772,16 +2789,12 @@ function segmentAddMenu(): ActionMenuGroup[] {
 }
 
 /* ------------------------------------------------------------------ */
-/* The catches card — the room's microphone, asked two things           */
+/* The catches pane — the room's microphone, asked two things           */
 /* ------------------------------------------------------------------ */
 
 /*
- * Caught verses no longer land here: they go to the right half of the
- * verses card, beside the Bible they came from (CatchesPane, owner
- * 2026-10-06). This card keeps the two things the booth can ask the room's
- * microphone for, and under them the transcript, always — the strip that
- * used to rise along the foot of the window while a catch held this card is
- * gone with the catches.
+ * The microphone actions sit above the caught verses in the right half
+ * of the verses card, beside the Bible they came from.
  */
 
 /* "search song": the songs it finds are drawn in the right half of the
@@ -2805,7 +2818,7 @@ function SongSearchTile() {
 function CatchActions() {
   return (
     <div
-      className="catch-actions mb-3 grid w-full shrink-0 grid-cols-2 gap-[var(--tri-gap)]"
+      className="catch-actions grid w-full shrink-0 grid-cols-2 gap-[var(--tri-gap)]"
       style={{ '--tri-control-h': '54px', '--tri-control-pad-x': '8px' } as CSSProperties}
     >
       <style>{`
@@ -2903,7 +2916,6 @@ function SegmentAdd({ seg, size = 22 }: { seg: RunSegment; size?: number }) {
  * The table itself is ORB_BY_STATE in orb/statusLooks.ts, shared with the
  * Thinking orb 2 sheet so the sheet shows exactly what the bar does.
  */
-const STATE_LABELS = LIVE_STATES.map((s) => s.label);
 
 /**
  * The orb in the context bar, gear-sized. `label` is one of the fourteen
@@ -2914,24 +2926,55 @@ const STATE_LABELS = LIVE_STATES.map((s) => s.label);
  * kept until the operator stops (see pickStatusLook). The name on hover is
  * the state's, whichever style it is wearing.
  */
-function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) {
+function OrbPortrait({ label }: { label: string }) {
+  const pick = useOrbShape(label);
+  const look = ORB_BY_STATE[label] ?? ORB_BY_STATE.idle;
+  return <SvgOrbsPill style={pick.style} startAt={pick.startAt ?? 0} dotColor={INK} accent={look.accent}
+    speed={look.speed} dotOpacity={look.opacity} showsPill={false} showsLabel={false}
+    ball={68} dots={0.75} dotScale={2} fps={30} scheme="dark" />;
+}
+
+function StatusOrb({ label, notification, suggestion }: { label: string; notification: NotificationTriggerProps; suggestion: OrbSuggestion | null }) {
   const look = ORB_BY_STATE[label] ?? ORB_BY_STATE.idle;
   /* The session's shape for this state — or, during a long smooth stretch
      of listening, a borrowed one. See orb/orbIdle. */
   const pick = useOrbShape(label);
   const [named, setNamed] = useState(false);
-  const phrase = orbStatusDescription(label);
-  const show = () => setNamed(true);
+  const hintId = useId();
+  const messageAnchor = useRef<HTMLDivElement>(null);
+  const [mutedSuggestion, setMutedSuggestion] = useState<string | null>(null);
+  const [phrase, setPhrase] = useState(() => nextOrbPhrase(label));
+  const previousPhrases = useRef<Record<string, string>>({});
+  const showing = useRef(false);
+  const hide = () => { showing.current = false; setNamed(false); };
+  const show = () => {
+    if (showing.current || notification.expanded) return;
+    const next = nextOrbPhrase(label, previousPhrases.current[label]);
+    previousPhrases.current[label] = next;
+    showing.current = true;
+    setPhrase(next);
+    setNamed(true);
+  };
+  useEffect(() => { showing.current = false; setNamed(false); }, [label, notification.expanded]);
+  const automatic = !!suggestion && mutedSuggestion !== suggestion.key;
+  const speaking = !notification.expanded && (named || automatic);
   return (
-    <div className="tri-header-orb relative flex aspect-square shrink-0">
+    <div ref={messageAnchor} className="tri-header-orb relative flex aspect-square shrink-0" data-speaking={speaking || undefined} data-expanded={notification.expanded || undefined}>
       <button
         type="button"
-        onClick={onClick}
+        ref={notification.ref}
+        data-guide="notifications"
+        onClick={event => { hide(); notification.onClick(event); }}
         onPointerEnter={show}
-        onPointerLeave={() => setNamed(false)}
+        onPointerLeave={hide}
         onFocus={show}
-        onBlur={() => setNamed(false)}
-        aria-label={phrase}
+        onBlur={hide}
+        onKeyDown={event => { if (event.key === 'Escape') { hide(); setMutedSuggestion(suggestion?.key ?? null); } }}
+        aria-label={`Open orb notifications${notification.count ? `, ${notification.count} active` : ''}`}
+        aria-haspopup="dialog"
+        aria-expanded={notification.expanded}
+        aria-controls={notification.controls}
+        aria-describedby={speaking ? hintId : undefined}
         className="tri-header-orb-face flex h-full w-full items-center justify-center"
       >
         {/* The dot ball, drawn as SVG by the same geometry as the WebGPU
@@ -2954,26 +2997,14 @@ function StatusOrb({ label, onClick }: { label: string; onClick?: () => void }) 
           showsLabel={false}
           ball={52}
           dots={0.75}
+          // Keep the small dot surface legible beside the action controls.
+          dotScale={2}
           fps={30}
           scheme="dark"
         />
       </button>
-      <span
-        role="tooltip"
-        aria-hidden={!named}
-        className={cx(
-          'tri-rounded-control pointer-events-none absolute left-0 top-[calc(100%+4px)] z-30',
-          'w-64 max-w-[calc(100vw-2rem)] whitespace-normal px-3 py-2 text-left text-[length:var(--tri-size-sm)] leading-relaxed',
-          'text-[var(--tri-ink)] transition-opacity duration-150',
-          named ? 'opacity-100' : 'opacity-0',
-        )}
-        style={{
-          background: 'rgb(14 18 18 / 0.96)',
-          boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.12)',
-        }}
-      >
-        {phrase}
-      </span>
+      {notification.unread && <span className="tri-orb-unread" aria-hidden="true" />}
+      {speaking && <OrbStatusHint id={hintId} message={named ? phrase : suggestion!.text} anchor={messageAnchor} automatic={automatic && !named} />}
     </div>
   );
 }
@@ -3667,6 +3698,7 @@ function ListeningSign() {
   return (
     <button
       type="button"
+      data-guide="listen"
       disabled={disabled}
       onClick={() => engine.listen(!on)}
       aria-pressed={on}
@@ -4523,6 +4555,7 @@ function Stage({
                 lit over a wall showing only its background. */}
             <Button
               label={screen === 'clear' ? 'restore' : 'clear'}
+              className="stage-output-control"
               tone="ash"
               disabled={!engine.caps.outputs && !live}
               title={screen === 'clear' ? 'bring the words back' : 'drop the words, keep the background'}
@@ -5025,14 +5058,8 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
    * TWO sources, and which one wins is the whole design. The sandbox strip
    * names a state for design review — that is what the strip is for, and
    * every one of the fourteen has to stay reachable from it. Everything else
-   * comes off the engine.
-   *
-   * So: a state named on the strip is held, because someone asked to look at
-   * it. Land on the strip's default and the screen reports itself instead.
-   * The orb stops being a stepper the moment there is a real engine behind
-   * it, because a control that overwrites the truth about what a
-   * congregation is looking at is not a control anyone should have
-   * mid-service.
+   * comes off the engine. The orb itself opens notification history;
+   * changing demo states belongs to the design strip.
    */
   const stripLabel = LIVE_STATES.find((s) => s.id === state)?.label ?? null;
   const [pinned, setPinned] = useState<string | null>(stripLabel);
@@ -5056,16 +5083,10 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
    * it is the only place it should.
    */
   const stateLabel = engine.caps.bridge ? derived : (pinned ?? derived);
-  /* Only when nothing real is behind it. See the note above. */
-  const stepState = engine.caps.bridge
-    ? undefined
-    : () =>
-        setPinned((l) =>
-          STATE_LABELS[(STATE_LABELS.indexOf(l ?? 'idle') + 1) % STATE_LABELS.length],
-        );
 
   const [view, setView] = useState<ViewMode>(isEmptyPreview ? 'dashboard' : 'operator');
   const operatorRoot = useRef<HTMLDivElement>(null);
+  const [orbSuggestion, setOrbSuggestion] = useState<OrbSuggestion | null>(null);
   const scriptureSearch = useRef<ScriptureReferenceInputHandle>(null);
   const skipOperatorEntryFocus = useRef(false);
   useOperatorTyping({ enabled: view === 'operator', root: operatorRoot, search: scriptureSearch, revealSearch: () => setTab(SCRIPTURES_TAB), skipNextEntryFocus: skipOperatorEntryFocus });
@@ -5074,9 +5095,13 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
   useEffect(() => {
     const target = useNoticeNavigation.getState().target;
     if (!target) return;
-    const settings: Record<string, string> = { speech: 'S-10b', displays: 'S-10f', cloud: 'S-10l', language: 'S-10c', recognition: 'S-10d', storage: 'S-10m' };
+    const settings: Record<string, string> = { keys: 'S-10k', speech: 'S-10b', displays: 'S-10f', cloud: 'S-10l', language: 'S-10c', recognition: 'S-10d', storage: 'S-10m' };
     if (settings[target]) { setSettingsPage(settings[target]); setView('settings'); useNoticeNavigation.getState().clear(); }
     else if (target === 'connections' || target === 'notes' || target === 'timers') setView('dashboard');
+    else if (target === 'audio' || target === 'phone') {
+      skipOperatorEntryFocus.current = true;
+      setView('operator');
+    }
     else if (target === 'media' || target === 'songs' || target === 'slides' || target === 'run') {
       // Follow the requested destination once, including Run's own focus.
       // Typing from a neutral area still opens the scripture search later.
@@ -5086,7 +5111,48 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
       if (target !== 'run') useNoticeNavigation.getState().clear();
     }
   }, [noticeRequest]);
+  const [orbFocus, setOrbFocus] = useState<{ selector: string } | null>(null);
+  const navigateOrb = (target: OrbDestination) => {
+    const selectors = { preview: '.stage-go-live', 'live-controls': '.stage-output-control', listen: '[data-guide="listen"]' };
+    if (target === 'preview' || target === 'live-controls' || target === 'listen') {
+      skipOperatorEntryFocus.current = true;
+      setView('operator');
+      setOrbFocus({ selector: selectors[target] });
+    } else useNoticeNavigation.getState().open(target);
+  };
+  useEffect(() => {
+    if (!orbFocus || view !== 'operator') return;
+    const frame = requestAnimationFrame(() => {
+      const control = operatorRoot.current?.querySelector<HTMLElement>(orbFocus.selector);
+      control?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      control?.focus({ preventScroll: true });
+      setOrbFocus(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [orbFocus, view]);
   const openOnlineSettings = () => { setSettingsPage('S-10k'); setView('settings'); };
+  const navigateGuide = (destination: GuideDestination): string => {
+    skipOperatorEntryFocus.current = true;
+    if (destination === 'notifications') return '[data-guide="notifications"]';
+    if (destination === 'mobile') return '[data-guide="mobile-tools"]';
+    const pages: Partial<Record<GuideDestination, string>> = { speech: 'S-10b', language: 'S-10c', cloud: 'S-10l', appearance: 'S-10g', church: 'S-10a', settings: 'S-10a' };
+    if (pages[destination]) {
+      setSettingsPage(pages[destination]!); setView('settings');
+      return '[data-guide="settings-content"]';
+    }
+    if (destination === 'profile') { setView('profile'); return '[data-guide="workspace-view"]'; }
+    if (['outputs', 'notes', 'timers', 'companion'].includes(destination)) {
+      setView('dashboard');
+      return `[data-guide="dashboard-${destination}"]`;
+    }
+    setView('operator');
+    if (destination === 'audio' || destination === 'phone') return '[data-guide="audio-input"]';
+    if (destination === 'run') return '[data-guide="run"]';
+    const id = destination === 'scripture' ? 'verses' : destination;
+    const index = TABS.findIndex(item => item.id === id);
+    if (index >= 0) setTab(index);
+    return `[data-guide="library-${id}"]`;
+  };
   const run = useRun();
 
   /*
@@ -5337,6 +5403,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
         style={{
           // Keep the run readable when the window is narrower than a booth monitor.
           '--tri-rail-w': 'clamp(160px, 20%, 300px)',
+          '--tri-topbar-h': '64px',
           '--operator-footer-h': `${Math.max(38, Math.min(58, viewport.h * 0.07))}px`,
           '--stage-control-rows': viewport.w < 1200 ? 2 : 1,
           gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
@@ -5354,17 +5421,17 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
           className="tri-live-header tri-live-controls flex min-w-0 items-center"
           style={{ height: 'var(--tri-topbar-h)' }}
         >
+          <div className="tri-header-ambient">
+            <OrbActions state={stateLabel} hasPreview={!!projector.preview && (!projector.live || liveKey(projector.preview) !== liveKey(projector.live))} previewKey={liveKey(projector.preview)} onNavigate={navigateOrb} onSuggestionChange={setOrbSuggestion} />
+            <NotificationCenter statusMessage={{ key: stateLabel, text: nextOrbPhrase(stateLabel) }}
+              portrait={<OrbPortrait label={stateLabel} />}
+              renderTrigger={notification => <StatusOrb label={stateLabel} notification={notification} suggestion={orbSuggestion} />} />
+          </div>
           <div className="min-w-0 flex-1" />
-          {/* The service controls sit on the right, beside the clock, with the
-              orb leading them — it is the listening state's face (owner,
-              2026-10-08). SermonStartControl is off the toolbar for now; it
-              comes back later and the engine half still runs without it. */}
-          <StatusOrb label={stateLabel} onClick={stepState} />
+          {/* The orb follows Settings; the service controls stay at the right. */}
           <MobileMenu />
           <DigitalClockBento />
-          <div className="tri-header-log-slot flex min-w-0 items-stretch">
-            <NotificationCenter />
-          </div>
+          <ProductGuide onNavigate={navigateGuide} />
         </div>
 
         {view === 'dashboard' || view === 'profile' || view === 'settings' ? (
@@ -5372,7 +5439,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               Profile borrows this same frame: it is read rather than
               worked, like the dashboard, so it wants the header and the
               full width, not the operator's rail-and-stage grid. */
-          <div className="col-span-2 row-span-3 flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
+          <div data-guide="workspace-view" className="col-span-2 row-span-3 flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
             {view === 'settings' ? (
               /* The same surface the sandbox draws, given the posture's
                  full width. It brings its own nine-page rail, so it wants
@@ -5419,10 +5486,11 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
           <OperatorRail
             run={
             /* The run scrolls within its equal starting share of the rail. */
-            <div data-drop-segment="" className="operator-run-panel relative min-h-0">
+            <div data-guide="run" data-drop-segment="" className="operator-run-panel relative min-h-0">
             <Panel
               title={`run of service (${run.segments.length})`}
-              className="operator-empty absolute inset-0 !bg-[#111111]"
+              className="operator-empty absolute inset-0 !bg-transparent"
+              style={{ borderRadius: 0, boxShadow: 'none' }}
               /* Always mounted, drawn only once the run has something in
                  it. While it is empty the empty state carries the same
                  actions at a size you cannot miss, and a second, smaller
@@ -5440,11 +5508,11 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
             }
             transcript={
             <Panel
-              className="min-h-0 !bg-[#111111]"
+              className="min-h-0 !bg-transparent"
+              style={{ borderRadius: 0, boxShadow: 'none' }}
               bodyClass="flex flex-col"
               bodyStyle={{ padding: 'var(--tri-gap)' }}
             >
-              <CatchActions />
               <div className="operator-empty min-h-0 flex-1 overflow-y-auto">
                 {/* Away from the verses card, a catch comes here instead,
                     and the transcript rises along the foot of the window

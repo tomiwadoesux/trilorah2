@@ -241,6 +241,8 @@ export function Expandable({ tile, className, title, blurb, children, bodyClassN
           eye reads "that one lifted off" rather than "one appeared". */}
       <div
         ref={anchor}
+        onClick={event => { if (event.target === event.currentTarget) lift(); }}
+        data-guide={`dashboard-${notificationTarget ?? title.toLowerCase().replace(/\s+/g, '-')}`}
         className={cx(
           'group/tile relative flex min-h-0 min-w-0 flex-col transition-[opacity,transform]',
           /* The one hover every opening tile shares: it says "this opens"

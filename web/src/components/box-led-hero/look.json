@@ -1,0 +1,66 @@
+{
+  "box": {
+    "maxWidth": 990,
+    "maxHeight": 540,
+    "sideMargin": 24,
+    "spaceAbove": 140,
+    "spaceBelow": 140,
+    "fill": "#000000"
+  },
+  "leds": {
+    "spacing": 4.5,
+    "colorFrom": "#047857",
+    "colorTo": "#7dd3fc",
+    "gradientAngle": 45,
+    "gradientSpin": 0,
+    "evenBrightness": 0.45,
+    "idleBrightness": 0.05,
+    "litBrightness": 0.4,
+    "peakBrightness": 1.8,
+    "intensity": 0.2
+  },
+  "motion": {
+    "mode": "lines",
+    "startAt": "bottom-left",
+    "introSweep": 1.6,
+    "introHold": 0.5,
+    "introSettle": 1.4,
+    "introBrightness": 0.8,
+    "speed": 1,
+    "lineLength": 1,
+    "clickSpeedBoost": 10
+  },
+  "colours": {
+    "mode": "off",
+    "left": "#f32e40",
+    "bottom": "#00ab3e",
+    "right": "#0090ff",
+    "top": "#ffb000",
+    "strength": 1,
+    "blend": 173
+  },
+  "light": {
+    "background": "#000000",
+    "tint": 0.8,
+    "tintLightness": 0.6,
+    "strength": 121,
+    "haze": 8.3,
+    "falloff": 0.9,
+    "edgeLine": 0.25,
+    "edgeLineWidth": 40,
+    "bloom": 1.15,
+    "exposure": 0.55,
+    "contrast": 1.02,
+    "grain": 2,
+    "screenFade": 0.46
+  },
+  "hover": {
+    "enabled": true,
+    "zone": "inside",
+    "glowRadius": 396,
+    "glowStrength": 1,
+    "dimLines": 1,
+    "fadeLinesNear": 1.4,
+    "insideBoost": 1
+  }
+}

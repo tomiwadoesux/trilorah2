@@ -1,0 +1,35 @@
+{
+  "checked_on": "2026-10-10",
+  "article_count": 16,
+  "body_words_total": 8782,
+  "body_words_by_article": {
+    "01": 537,
+    "02": 575,
+    "03": 551,
+    "04": 577,
+    "05": 545,
+    "06": 556,
+    "07": 539,
+    "08": 526,
+    "09": 554,
+    "10": 519,
+    "11": 542,
+    "12": 552,
+    "13": 560,
+    "14": 556,
+    "15": 562,
+    "16": 531
+  },
+  "unique_proposed_dates": 16,
+  "date_range": [
+    "2026-03-02",
+    "2026-07-28"
+  ],
+  "relative_links": "pass",
+  "source_files_exist": "pass",
+  "mapped_task_ids": "pass",
+  "frontmatter_title_consistency": "pass",
+  "runtime_workflows": "not performed by content agent; per-article checks pending",
+  "screenshots": "shot lists supplied; assets not captured",
+  "publication": "not published or scheduled"
+}

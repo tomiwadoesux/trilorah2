@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, CloseIcon } from '../ui';
 import { PhoneConnectionArt } from './PhoneConnectionArt';
+import { MobileConnectionLink } from './MobileConnectionLink';
 import { openNoticeTarget } from '../lib/notificationNavigation';
 import './mobileRemotePanel.css';
 import './mobileStreamPanel.css';
@@ -11,7 +12,6 @@ export function MobileStreamPanel({ onClose, preview = false }: { onClose: () =>
   const [busy, setBusy] = useState(false);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
   const pending = useRef(false);
   const mounted = useRef(true);
   const api = preview ? undefined : window.api;
@@ -40,16 +40,6 @@ export function MobileStreamPanel({ onClose, preview = false }: { onClose: () =>
     }
   }
 
-  async function copyLink() {
-    if (!code) return;
-    try {
-      await navigator.clipboard.writeText(code.url);
-      if (mounted.current) { setCopied(true); setError(''); }
-    } catch {
-      if (mounted.current) setError('Could not copy the link. Select the address below the code to copy it.');
-    }
-  }
-
   return <div className="mobile-remote-scrim" onClick={onClose}>
     <section role="dialog" aria-modal="true" aria-label="Stream" className="mobile-remote-panel mobile-stream-panel tri-rounded-surface" onClick={event => event.stopPropagation()}>
       <header className="mobile-remote-heading">
@@ -59,9 +49,11 @@ export function MobileStreamPanel({ onClose, preview = false }: { onClose: () =>
       <div className="mobile-remote-intro" aria-busy={busy}>
         <p className="mobile-remote-intro__line">Scan to follow the service on your phone.</p>
         {code ? <>
-          <div className="mobile-stream-code" role="img" aria-label="Scan to open the service on your phone" dangerouslySetInnerHTML={{ __html: code.svg }} />
-          <p className="mobile-stream-address">{code.url}</p>
-          <Button label={copied ? 'Link copied' : 'Copy link'} tone="go" onClick={() => void copyLink()} />
+          <div className="mobile-connection-qr mobile-stream-qr-surface">
+            <div className="mobile-stream-code" role="img" aria-label="Scan to open the service on your phone" dangerouslySetInnerHTML={{ __html: code.svg }} />
+            <p>Scan to follow verses, notes, and the service.</p>
+          </div>
+          <MobileConnectionLink url={code.url} label="Share this link with your congregation" />
         </> : <>
           <PhoneConnectionArt variant="stream" />
           {missing && <p className="mobile-remote-hint mobile-stream-message" role="status">Set up your church’s companion page to create its access code.</p>}

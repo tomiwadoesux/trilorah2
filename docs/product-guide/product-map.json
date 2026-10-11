@@ -1,0 +1,2884 @@
+{
+  "schemaVersion": 1,
+  "product": "Trilorah",
+  "reviewedOn": "2026-10-10",
+  "packageVersion": "0.4.7",
+  "baseCommit": "f91b813dc2fa6547d4455d96990baa9863fa3822",
+  "includesWorkingTreeChanges": true,
+  "scope": "Source-reviewed user task families across the current desktop, phone, and web surfaces. This is the first product map, not an exhaustive control registry or a runtime-certified walkthrough library.",
+  "statusDefinitions": {
+    "wired": "UI and supporting code path found; runtime behavior not verified in this map.",
+    "partial": "Some implementation exists, but a current UI/wiring gap prevents or limits the task. Read limitations.",
+    "unverified": "Surface located, but end-to-end task behavior needs further inspection and testing."
+  },
+  "entrypoints": {
+    "desktop": [
+      "src/App.tsx",
+      "src/screens/LiveHost.tsx",
+      "src/design/screens/Live.tsx"
+    ],
+    "note": "The design directory contains the active desktop UI. Legacy route registry entries are not authoritative. Some older modules, notably Cloud and Themes, are deliberately embedded in current Settings."
+  },
+  "guideImplementation": {
+    "status": "registered cross-app companion preview",
+    "entry": "Top-right i guide button in the active desktop Live screen",
+    "implemented": [
+      "Compact on-brand companion with short questions and Show me / I’ll do it choices",
+      "Triangular cursor with interruptible travel and visible click ripple",
+      "Registered tab/control clicks with live bounds, visibility, enabled-state and occlusion checks",
+      "Songs tab, Add song, title and lyrics orientation; manual clicks advance the steps",
+      "Library-tab orientation, scripture field pointing and local media filtering",
+      "Automatic isolated microphone demonstration with pause/resume reconciliation",
+      "Real microphone walkthrough observes source, listening, fresh audio and transcript; user controls capture",
+      "Searchable help across 59 task families, local typo tolerance and supported desktop navigation",
+      "Caption bubble beside the cursor; distance-aware travel with decelerating stop; pause freezes current position",
+      "User-editable typing drafts for references, stock searches, programme text and song fields; no Enter submission",
+      "Dashboard Outputs opens with a real click and prompts for user display selection",
+      "Programme entry, guided typing and parsing into review; applying to run stays with the user",
+      "Online stock prerequisites distinguish missing provider keys, missing desktop bridge, failed reads and missing Bible database",
+      "Pixabay/Pexels entry and save in API keys Settings; guide waits for provider availability and retains the original search",
+      "Typo-tolerant follow-up task choices; keyword suggestions for image search",
+      "Build and dev-watch source index with visible revision; registered controls are re-found on every action"
+    ],
+    "uiVerified": [
+      "Guide opens in the running desktop app",
+      "Misspelled microphone query finds the guide",
+      "Microphone demo completes through simulated audio and transcript",
+      "Pause/resume and unrelated user interaction yield control",
+      "Real microphone input anchor highlights without starting capture",
+      "Outputs quick-help navigation opens and highlights the dashboard tile",
+      "Companion Songs tab and Add song clicks with visible cursor travel and ripple",
+      "Pointing inside song editor and manual lyrics-field click advancement",
+      "Automatic microphone demo completed",
+      "Pause after demo input click resumes at listening without replaying selection",
+      "Browser preview: guide opened programme dialog, typed five-line example and clicked Read it into five parsed review rows",
+      "Browser preview: misspelled follow-up conect scren offered Outputs and cursor opened its expanded settings",
+      "Browser preview: Online tab navigation, search suggestions and correct desktop-bridge-unavailable message",
+      "Browser preview: refreshed source index revision after HMR",
+      "Browser preview: cursor opened a display picker inside expanded Outputs without assigning any display",
+      "Active guide paused on a source change with updated revision and a Continue prompt"
+    ],
+    "realMicrophoneVerified": false,
+    "missing": [
+      "General language-model understanding: requests currently use local typo-tolerant retrieval and reviewed workflows",
+      "Full executable coverage of all 59 task families; topics without registered workflows retain navigation and quick help",
+      "Actual credential save and authenticated stock-provider search verification",
+      "Hardware-backed screen assignment, microphone capture and cross-platform verification",
+      "Website guide integration; automatic semantic authoring of new workflows"
+    ],
+    "sources": [
+      "src/components/ProductGuide.tsx",
+      "src/components/productGuide.css",
+      "src/lib/productGuide.ts",
+      "src/components/useGuideCursor.ts",
+      "src/lib/guideWalkthroughs.ts",
+      "src/lib/guidePrerequisites.ts",
+      "src/design/screens/StockCredential.tsx",
+      "scripts/guideIndex.ts"
+    ]
+  },
+  "updatePolicy": {
+    "recommended": "Review the map in the same change as its UI/behavior changes. Run source check before publishing or shipping guides.",
+    "schedulerConfigured": false,
+    "automaticSemanticUpdates": false,
+    "note": "The checker flags changed source areas and task evidence. It does not update explanations, certify features, or run in the background.",
+    "automaticControlIndex": "Vite rebuilds literal control inventory and source revision on code edits/additions/removals and each build. This does not invent task semantics, authorize arbitrary controls or certify execution."
+  },
+  "watchGroups": [
+    {
+      "id": "desktop-ui",
+      "roots": [
+        "src"
+      ]
+    },
+    {
+      "id": "desktop-engine",
+      "roots": [
+        "electron"
+      ]
+    },
+    {
+      "id": "shared-contracts",
+      "roots": [
+        "shared"
+      ]
+    },
+    {
+      "id": "web",
+      "roots": [
+        "web/src"
+      ]
+    },
+    {
+      "id": "external-integrations",
+      "roots": [
+        "integrations"
+      ]
+    },
+    {
+      "id": "build-configuration",
+      "roots": [
+        "package.json",
+        "web/package.json",
+        "vite.config.ts",
+        "web/next.config.mjs",
+        "package-lock.json",
+        "web/package-lock.json"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "audio.choose-input",
+      "title": "Choose a microphone or soundboard input",
+      "area": "audio",
+      "entry": "Audio menu beneath the operator preview; existing notification destination audio",
+      "controls": [
+        "audio input trigger",
+        "system default or enumerated input radio option"
+      ],
+      "preconditions": [
+        "Desktop bridge available",
+        "Audio input connected and visible to mediaDevices"
+      ],
+      "completion": [
+        "micDeviceLabel setting saved and selected option checked",
+        "Audio samples/level arrive after starting listening"
+      ],
+      "limitations": [
+        "Choosing a hardware input while listening stops and restarts listening",
+        "Device labels may disappear or change; saved unavailable device can fall back to system default",
+        "Settings microphone status text is not reliable evidence by itself"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/components/MicPicker.tsx",
+          "symbol": "MicPicker / choose"
+        },
+        {
+          "path": "src/lib/micCapture.ts",
+          "symbol": "openMicrophone"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        },
+        {
+          "path": "src/lib/productGuide.ts",
+          "symbol": "microphoneSteps / microphoneCheckComplete"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor / guideClickTargets"
+        },
+        {
+          "path": "src/components/useGuideCursor.ts",
+          "symbol": "useGuideCursor"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "audio-input",
+        "audio-options",
+        "listen"
+      ],
+      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified."
+    },
+    {
+      "id": "audio.phone-microphone",
+      "title": "Use a phone as the microphone",
+      "area": "audio",
+      "entry": "Audio beneath the operator preview -> phone (over wi-fi), or notification destination phone",
+      "controls": [
+        "connect phone",
+        "QR / connection code",
+        "let it in",
+        "not this one",
+        "use phone audio",
+        "disconnect",
+        "Scan code",
+        "Phone connect to the laptop",
+        "Desktop let it in / not this one",
+        "Phone mute / unmute"
+      ],
+      "preconditions": [
+        "Desktop phone-mic API",
+        "Phone and computer on same Wi-Fi",
+        "Internet needed to establish connection",
+        "Phone microphone permission",
+        "Phone and computer on suitable shared network",
+        "Internet for connection setup",
+        "Phone browser secure context and microphone permission",
+        "Desktop approval"
+      ],
+      "completion": [
+        "Phone mic status connected",
+        "Phone level responds",
+        "use phone audio saves PHONE_MIC_LABEL and starts listening",
+        "Phone mic store reports connected",
+        "Audio level responds to speech",
+        "use phone audio selects PHONE_MIC_LABEL and restarts listening",
+        "Transcription success verified separately from connection"
+      ],
+      "limitations": [
+        "Connecting phone and selecting phone as active input are separate steps",
+        "Code can expire; connection can be declined or ended",
+        "Phone microphone is different from phone remote control",
+        "Connected does not mean selected as listening source",
+        "Expiry/declined/ended/error states require explicit retry handling",
+        "No actual phone/network/microphone check performed"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/components/PhoneMicPanel.tsx",
+          "symbol": "PhoneMicPanel / connect"
+        },
+        {
+          "path": "src/components/MicPicker.tsx",
+          "symbol": "PHONE_MIC_LABEL"
+        },
+        {
+          "path": "src/lib/phoneMic.ts",
+          "symbol": "usePhoneMicStore"
+        },
+        {
+          "path": "src/components/PhoneMicPanel.tsx",
+          "symbol": "PhoneMicPanel; connect; use phone audio"
+        },
+        {
+          "path": "src/components/MobileMenu.tsx",
+          "symbol": "FEATURES"
+        },
+        {
+          "path": "web/src/app/mic/MicClient.tsx",
+          "symbol": "Stage; connect; toggleMute; disconnect"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "audio.practice-sermon",
+      "title": "Practice scripture recognition without a microphone",
+      "area": "audio",
+      "entry": "Audio beneath the operator preview -> practice sermon (no microphone), then Start listening",
+      "controls": [
+        "practice sermon (no microphone)",
+        "Start listening",
+        "Stop listening"
+      ],
+      "preconditions": [
+        "Desktop bridge",
+        "Bible/matcher resources for exercised catches"
+      ],
+      "completion": [
+        "Practice status and progressively emitted transcript visible",
+        "Real downstream catches appear",
+        "User stops listening when script finishes"
+      ],
+      "limitations": [
+        "Simulates recognizer text, not microphone capture or real ASR accuracy",
+        "Session-only choice is not saved across restart",
+        "Uses real recognition/output pathways; do not describe it as a wholly isolated output sandbox"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/components/MicPicker.tsx",
+          "symbol": "PRACTICE_SERMON_DEVICE"
+        },
+        {
+          "path": "src/stores/practiceStore.ts",
+          "symbol": "usePracticeStore"
+        },
+        {
+          "path": "electron/asr/practiceSermon.ts",
+          "symbol": "startPracticeSermon"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "setRehearsal"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "audio.start-stop-listening",
+      "title": "Start or stop listening to the service",
+      "area": "audio",
+      "entry": "Operator footer listening control",
+      "controls": [
+        "Start listening",
+        "Stop listening"
+      ],
+      "preconditions": [
+        "Desktop engine bridge",
+        "Configured speech engine and usable selected audio source"
+      ],
+      "completion": [
+        "ASR status event received",
+        "Audio level and transcript events confirm capture/transcription separately",
+        "Stop status after stopListening"
+      ],
+      "limitations": [
+        "Renderer listen callback optimistically sets listening before backend success; guide must not equate that with verified microphone success",
+        "First start may require permission/model download/cloud key"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "ListeningSign"
+        },
+        {
+          "path": "src/design/screens/engine.tsx",
+          "symbol": "listen"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "startASR"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        },
+        {
+          "path": "src/lib/productGuide.ts",
+          "symbol": "microphoneSteps / microphoneCheckComplete"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor / guideClickTargets"
+        },
+        {
+          "path": "src/components/useGuideCursor.ts",
+          "symbol": "useGuideCursor"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "audio-input",
+        "audio-options",
+        "listen"
+      ],
+      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified."
+    },
+    {
+      "id": "audio.troubleshoot",
+      "title": "Find why the app cannot hear speech",
+      "area": "audio",
+      "entry": "Audio problem notice -> Choose audio input; header audio menu",
+      "controls": [
+        "Choose audio input",
+        "Try phone audio",
+        "Start listening",
+        "audio level / transcript"
+      ],
+      "preconditions": [
+        "Desktop running with audio notifications",
+        "User can inspect or reconnect actual hardware if necessary"
+      ],
+      "completion": [
+        "Audio input opened and disconnected notice resolved",
+        "Level responds to speech",
+        "Transcript arrives, independently confirming transcription"
+      ],
+      "limitations": [
+        "Permission and device failures may require OS settings or hardware steps outside the app",
+        "A moving meter alone does not prove recognition works",
+        "No guide should fabricate a device it cannot enumerate"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/lib/micCapture.ts",
+          "symbol": "requestMicPermission / audio-input"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "quiet"
+        },
+        {
+          "path": "shared/serviceNotice.ts",
+          "symbol": "NoticeTarget"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        },
+        {
+          "path": "src/lib/productGuide.ts",
+          "symbol": "microphoneSteps / microphoneCheckComplete"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor / guideClickTargets"
+        },
+        {
+          "path": "src/components/useGuideCursor.ts",
+          "symbol": "useGuideCursor"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "audio-input",
+        "audio-options",
+        "listen"
+      ],
+      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified."
+    },
+    {
+      "id": "cloud.account",
+      "title": "Sign in, finish church setup, and link another computer",
+      "area": "cloud",
+      "entry": "Settings > Account & cloud; notification target cloud",
+      "controls": [
+        "Sign in / create account",
+        "Church name and public slug",
+        "Complete setup",
+        "Generate link code",
+        "Redeem link code",
+        "Sign out"
+      ],
+      "preconditions": [
+        "Cloud configured in the desktop build",
+        "Network connection",
+        "User account or user-driven account creation"
+      ],
+      "completion": [
+        "cloudStatus reports signedIn and account completion",
+        "Device link operation returns success and refreshed status",
+        "Generated link code appears"
+      ],
+      "limitations": [
+        "Only desktop UI wiring inspected; no external authentication, account, or database operations performed",
+        "Do not reuse Connected tile's disabled sign-in action as the entry point",
+        "Guide must leave passwords and linking approval to the user"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "PAGES S-10l"
+        },
+        {
+          "path": "src/screens/Cloud.tsx",
+          "symbol": "Cloud; refresh; generateLink; cloudCompleteAccountSetup; cloudRedeemLinkCode"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "companion.publish",
+      "title": "Start and end congregation sharing",
+      "area": "cloud",
+      "entry": "Settings > Account & cloud > cloud service controls; paired phone remote > Online",
+      "controls": [
+        "Start cloud service",
+        "End cloud service",
+        "Remote sharing switch"
+      ],
+      "preconditions": [
+        "Configured cloud and signed-in church account",
+        "Network connection",
+        "Desktop available for remote commands"
+      ],
+      "completion": [
+        "cloudStatus activeServiceId exists while sharing",
+        "Companion publish status confirms current publishing condition",
+        "Public page receives actual new content"
+      ],
+      "limitations": [
+        "Signed-in status alone does not demonstrate successful publishing",
+        "No cloud operation or remote end-to-end check performed",
+        "Remote sharing path explicitly sets public/transcript flags; desktop path uses service defaults"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/screens/Cloud.tsx",
+          "symbol": "Start cloud service; End cloud service"
+        },
+        {
+          "path": "src/design/screens/useMobileRemote.ts",
+          "symbol": "case 'sharing'"
+        },
+        {
+          "path": "src/design/screens/dashboard/CompanionTile.tsx",
+          "symbol": "publish; companionPublishLine"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "companion.configure",
+      "title": "Configure companion access, stream link, and audience options",
+      "area": "companion",
+      "entry": "Dashboard > Companion > expanded settings",
+      "controls": [
+        "Who can open the link",
+        "Watch the stream",
+        "QR caption",
+        "Congregation polls",
+        "Audience training"
+      ],
+      "preconditions": [
+        "Church companion configured for meaningful public effect"
+      ],
+      "completion": [
+        "Settings persist and resulting companion service receives them"
+      ],
+      "limitations": [
+        "CURRENT UI GAP: CompanionTile renders RowList without persist",
+        "Changes to listed fields only affect local RowList state",
+        "Do not claim wifi-only restriction or live stream configuration can currently be set from this UI",
+        "QR display/background has separate wired handlers and is a distinct task"
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/CompanionTile.tsx",
+          "symbol": "ROWS; RowList rows={ROWS}"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "RowList"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "companion.qr",
+      "title": "Show or share the congregation QR code",
+      "area": "companion",
+      "entry": "Dashboard > Companion, or header Mobile tools > Stream",
+      "controls": [
+        "show on live",
+        "Confirmation yes, show it",
+        "Clear",
+        "Show access code",
+        "Copy link",
+        "Choose image / use gradient for QR background"
+      ],
+      "preconditions": [
+        "Public web address and church account slug configured",
+        "Desktop getQrSvg / showQr APIs available"
+      ],
+      "completion": [
+        "getQrSvg returns actual URL and SVG",
+        "showQr returns success",
+        "Clipboard copy status or output QR visible"
+      ],
+      "limitations": [
+        "QR availability alone does not prove the companion is receiving live content",
+        "Companion local live flag is not authoritative confirmation of current wall contents",
+        "Unconfigured Stream panel routes to cloud setup",
+        "No actual scan or projector check performed"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/CompanionTile.tsx",
+          "symbol": "showOnLive; clearFromLive; changeBackground"
+        },
+        {
+          "path": "src/components/MobileStreamPanel.tsx",
+          "symbol": "showCode; copyLink"
+        },
+        {
+          "path": "src/components/MobileMenu.tsx",
+          "symbol": "FEATURES"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "giving.configure",
+      "title": "Configure giving methods shown to the congregation",
+      "area": "companion",
+      "entry": "Dashboard > Giving",
+      "controls": [
+        "Zelle",
+        "Venmo",
+        "Cash App",
+        "PayPal",
+        "Bank transfer",
+        "Giving page",
+        "Note"
+      ],
+      "preconditions": [
+        "Church account and companion page",
+        "User provides verified church giving destinations"
+      ],
+      "completion": [
+        "Persisted giving methods match church-provided destinations",
+        "Companion Give tab renders intended links/details"
+      ],
+      "limitations": [
+        "CURRENT UI GAP: GivingTile renders RowList without persist",
+        "Tile itself derives visible methods from seed rows instead of saved settings",
+        "Seed donation addresses are sample data and must never be treated as user's verified destinations",
+        "No external financial action attempted"
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/GivingTile.tsx",
+          "symbol": "ROWS; GivingTile; RowList rows={rows}"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "RowList"
+        },
+        {
+          "path": "web/src/app/live/[slug]/CompanionClient.tsx",
+          "symbol": "tab === 'give'"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "timers.manage",
+      "title": "Set, run, pause, extend, and display a service timer",
+      "area": "dashboard",
+      "entry": "Dashboard > service timer; notification target timers",
+      "controls": [
+        "Click clock and type duration",
+        "Timer name",
+        "Start / pause / reset",
+        "Extra time 3 / 5 / 7 minutes",
+        "Delete",
+        "Open screen"
+      ],
+      "preconditions": [
+        "Desktop timer API available",
+        "Positive duration",
+        "Timer must not be running to edit duration"
+      ],
+      "completion": [
+        "onTimers snapshot shows desired name/duration/state",
+        "Extra time reflected in extraSec / inExtension",
+        "Timer output window reports open"
+      ],
+      "limitations": [
+        "Delete clears every stored timer rather than only the visible one",
+        "Browser preview locally simulates timer behavior",
+        "External timer display not runtime-tested"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/TimersTile.tsx",
+          "symbol": "TimersTile; handleStartFace; handleAddMinutes; handleRemove; Stage Timer Display"
+        },
+        {
+          "path": "src/design/screens/dashboard/outputs/fromEngine.ts",
+          "symbol": "useOutputsStatus"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "integrations.configure",
+      "title": "Configure OBS, vMix, or external command devices",
+      "area": "integrations",
+      "entry": "Dashboard > Connected; notification target connections",
+      "controls": [
+        "OBS enabled / host / port / password / connect",
+        "vMix enabled / host / port / check",
+        "Stream Deck & remote enabled",
+        "pair a device"
+      ],
+      "preconditions": [
+        "External software/device configured and reachable",
+        "Relevant engine integration available"
+      ],
+      "completion": [
+        "OBS status connected or vMix status reachable",
+        "Authenticated external device connection exists"
+      ],
+      "limitations": [
+        "CURRENT UI GAP: ConnectedTile uses RowList without persist or onAction",
+        "Its editable fields are local-only and action rows disabled",
+        "Secret control is presentational and has no add/reveal handler",
+        "Backend OBS/vMix APIs and status polling exist but do not make this setup walkthrough usable",
+        "Stream Deck status currently treats any live paired socket as connected, not device-specific proof",
+        "No integration connections attempted"
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/ConnectedTile.tsx",
+          "symbol": "ROWS; RowList rows={ROWS}"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "RowList persist = false; SettingRow action; Secret"
+        },
+        {
+          "path": "src/design/screens/dashboard/ConnectionsTile.tsx",
+          "symbol": "useLinks"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "obs-connect; obs-status; vmix-status"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "media.find-online",
+      "title": "Find stock images or videos",
+      "area": "media",
+      "entry": "Online library tab → search → choose result",
+      "controls": [
+        "StockSearch",
+        "result card"
+      ],
+      "preconditions": [
+        "Network",
+        "Provider configured and available"
+      ],
+      "completion": [
+        "Chosen item added to media collection",
+        "Standalone media staged in preview"
+      ],
+      "limitations": [
+        "Online tab stages standalone media. Applying behind text uses a separate background workflow."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "StockSearch"
+        },
+        {
+          "path": "src/design/screens/stockSearch.tsx",
+          "symbol": "StockSearch"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "library-online",
+        "stock-search",
+        "stock-setup",
+        "stock-result",
+        "setting-pixabayApiKey",
+        "setting-pexelsApiKey"
+      ],
+      "execution": "Guided tab click and search typing with a missing-key setup detour; user chooses/downloads the image."
+    },
+    {
+      "id": "media.import-preview-local",
+      "title": "Import and preview local media",
+      "area": "media",
+      "entry": "Media → Add from laptop or Finder drop → choose media card",
+      "controls": [
+        "addHere",
+        "photo/video choice",
+        "media shelf",
+        "media card"
+      ],
+      "preconditions": [
+        "Desktop file picker bridge for import",
+        "Valid supported file or existing media entry"
+      ],
+      "completion": [
+        "Imported cards appear",
+        "Import progress resolves with result notice",
+        "Single imported or selected media item is staged"
+      ],
+      "limitations": [
+        "Cancellation is not success.",
+        "Multiple imports need result inspection.",
+        "Theme-shelf clicks stage backgrounds instead of standalone content."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "MediaBrowser"
+        },
+        {
+          "path": "src/design/screens/mediaLibrary.ts",
+          "symbol": "addFromLaptop"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "library-media",
+        "media-import"
+      ],
+      "execution": "Opens Media and local filter; points at Add from laptop and prompts for user file choice."
+    },
+    {
+      "id": "navigation.open-library",
+      "title": "Find a library",
+      "area": "navigation",
+      "entry": "Operator posture → verses, themes, songs, slides, media, or online tab",
+      "controls": [
+        "ViewTabs",
+        "LibraryTabs"
+      ],
+      "preconditions": [
+        "LiveScreen mounted"
+      ],
+      "completion": [
+        "Selected tab browser mounted"
+      ],
+      "limitations": [
+        "These are current in-window tabs, not old src/screens URL routes. Notice navigation currently covers media, songs, slides, and run; other library tabs use local state."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "LibraryTabs"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "TABS"
+        },
+        {
+          "path": "src/screens/LiveHost.tsx",
+          "symbol": "LiveHost"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "navigation.search-registry-gap",
+      "title": "Search for a feature or guide",
+      "area": "navigation",
+      "entry": "Search IPC over command registry; current UI guide entry not established",
+      "controls": [
+        "search-query",
+        "SearchIndex.search"
+      ],
+      "preconditions": [
+        "Registry loaded"
+      ],
+      "completion": [
+        "Ranked navigation/action results returned"
+      ],
+      "limitations": [
+        "Registry mirrors older src/screens URL routes and must be remapped to current LiveScreen navigation.",
+        "Existing search uses BM25, character trigram fuzzy matching, and keyword boosts; optional embeddings are not configured in main.ts.",
+        "No clarification dialogue, guided workflow intent selection, or task-progress tracking exists in this subsystem.",
+        "Microphone question test currently points to speech engine setting rather than microphone device selector."
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "electron/search/index.ts",
+          "symbol": "SearchIndex"
+        },
+        {
+          "path": "electron/search/entries.ts",
+          "symbol": "ALL_ENTRIES"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "searchIndex"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "notifications.resolve",
+      "title": "Understand a service issue and open its controls",
+      "area": "navigation",
+      "entry": "Header status orb → service notifications → issue action",
+      "controls": [
+        "Open active/history list",
+        "Open the notice destination",
+        "Use an available retry or recovery action"
+      ],
+      "preconditions": [
+        "Desktop engine for commands; current notice for contextual actions"
+      ],
+      "completion": [
+        "Correct destination opens",
+        "Command-specific result is returned; check the underlying audio/output/publishing state before claiming recovery"
+      ],
+      "limitations": [
+        "Dismissal only hides a notice; it does not repair the problem",
+        "Reopen output returns a request acknowledgement, not proof that a projector displays content"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/components/NotificationCenter.tsx",
+          "symbol": "NotificationCards"
+        },
+        {
+          "path": "src/lib/notificationActions.ts",
+          "symbol": "performNoticeAction"
+        },
+        {
+          "path": "shared/serviceNotice.ts",
+          "symbol": "NoticeAction"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "notes.generate-export",
+      "title": "Review, generate, and export sermon notes",
+      "area": "notes",
+      "entry": "Dashboard -> Sermon notes; existing notification destination notes",
+      "controls": [
+        "open sermon notes",
+        "generate",
+        "export pdf",
+        "export markdown",
+        "Native save dialog"
+      ],
+      "preconditions": [
+        "Captured sermon transcript for generation",
+        "Cloud HuggingFace token/connectivity for current full-note generator",
+        "Existing incremental or generated notes for export"
+      ],
+      "completion": [
+        "Generated notes saved to live store and outline rendered",
+        "Export reports success and saved file path"
+      ],
+      "limitations": [
+        "Local notes provider is experimental and currently delegates full generation to cloud even when local dependency is installed",
+        "Insufficient transcript or missing token fails generation",
+        "Incremental outline can be exported without requesting full regeneration",
+        "Canceling save is not an export failure/success",
+        "Current Settings secret rows are not connected to onChange; do not claim the visible Settings token-add flow provisions the required HuggingFace token."
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/SermonNotesTile.tsx",
+          "symbol": "useNotes / Actions"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "generate-sermon-notes / export-sermon-notes-pdf / export-sermon-notes-md"
+        },
+        {
+          "path": "electron/llm/notesProvider.ts",
+          "symbol": "localNotesProvider.generate"
+        },
+        {
+          "path": "electron/notes/sermonNotesGenerator.ts",
+          "symbol": "generateSermonNotes"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "Secret / SettingRow secret"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "output.clear-restore",
+      "title": "Clear and restore projected words",
+      "area": "output",
+      "entry": "Operator LIVE panel > clear/restore",
+      "controls": [
+        "Clear words while retaining background",
+        "Restore held content"
+      ],
+      "preconditions": [
+        "Known current screen state and output connection"
+      ],
+      "completion": [
+        "Screen state changes to clear/live; actual output requires display confirmation"
+      ],
+      "limitations": [
+        "Changes congregation output immediately",
+        "Black and logo states are distinct from clear; preview operations must preserve the held screen state",
+        "Video transport state is partly a local estimate and needs actual playback verification"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "setWall"
+        },
+        {
+          "path": "src/design/screens/projector.tsx",
+          "symbol": "ScreenState"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "output.publish-preview",
+      "title": "Send prepared content live",
+      "area": "output",
+      "entry": "Operator preview → Go live",
+      "controls": [
+        "Go live",
+        "goLive",
+        "projector.promote"
+      ],
+      "preconditions": [
+        "Non-null preview",
+        "Content deliverable through desktop bridge"
+      ],
+      "completion": [
+        "Confirmed projector live state reflects delivered content"
+      ],
+      "limitations": [
+        "This is an explicit publication action. A click or loading state alone does not prove successful delivery."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "goLive"
+        },
+        {
+          "path": "src/design/screens/projector.tsx",
+          "symbol": "ProjectorProvider"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "outputs.assign",
+      "title": "Assign projector, stream, stage, or timer outputs to displays",
+      "area": "output",
+      "entry": "Dashboard > Outputs > select display / expand tile",
+      "controls": [
+        "Per-output job segmented control",
+        "Per-output display selector",
+        "no screen — off",
+        "automatic"
+      ],
+      "preconditions": [
+        "Desktop engine available",
+        "Display detected by the operating system for external projection"
+      ],
+      "completion": [
+        "getOutputsStatus returns the chosen display and role",
+        "Output reports open/fullscreen on the intended display"
+      ],
+      "limitations": [
+        "Settings > Displays & output map has clickable-looking display buttons without handlers; route task to Dashboard Outputs instead",
+        "Hardware placement has not been checked live",
+        "Browser/design surface substitutes sample screens"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/OutputsTile.tsx",
+          "symbol": "OutputsTile; onRole; onDisplay; rowsFor"
+        },
+        {
+          "path": "src/design/screens/dashboard/outputs/fromEngine.ts",
+          "symbol": "useOutputsStatus; saveRole; saveDisplay"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "dashboard-outputs",
+        "outputs-settings"
+      ],
+      "execution": "Opens the real output panel; points at display choice and prompts for a physical screen check. User assigns display."
+    },
+    {
+      "id": "outputs.preferences",
+      "title": "Configure stream layout and stage-screen information",
+      "area": "output",
+      "entry": "Settings > Displays & output; notification target displays",
+      "controls": [
+        "Stream layout",
+        "Stage clock",
+        "Stage up-next",
+        "Background fit",
+        "Background position",
+        "Overlay"
+      ],
+      "preconditions": [
+        "Desktop engine available",
+        "A matching output role exists to see the result"
+      ],
+      "completion": [
+        "setSetting returns success and saved indicator appears",
+        "Relevant output reflects selected settings"
+      ],
+      "limitations": [
+        "Actual rendered output still needs runtime verification",
+        "Identify button is disabled because no action handler is supplied",
+        "Settings display map is informational despite its button styling"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "PAGES S-10f; set"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "settings destination mapping"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "DisplayMap; SettingRow action case"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "preacher.create-select",
+      "title": "Create a preacher profile and select who is preaching today",
+      "area": "preachers",
+      "entry": "Profile view / preachers panel",
+      "controls": [
+        "add preacher",
+        "preacher's name",
+        "add",
+        "set for today",
+        "preacher list search"
+      ],
+      "preconditions": [
+        "Desktop preacher profile bridge"
+      ],
+      "completion": [
+        "Created profile returned and visible",
+        "Active preacher ID matches selected profile and today badge appears"
+      ],
+      "limitations": [
+        "Profiles and statistics are distinct from actual acoustic voice cloning",
+        "Design sandbox sample profiles are not production account data"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/ProfileView.tsx",
+          "symbol": "ProfileView"
+        },
+        {
+          "path": "src/design/screens/dashboard/PreachersTile.tsx",
+          "symbol": "AddRow"
+        },
+        {
+          "path": "src/design/screens/dashboard/preachers.ts",
+          "symbol": "setActivePreacher"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "preacher.review-recognition",
+      "title": "Review catches, correct mistakes, and report missed references",
+      "area": "preachers",
+      "entry": "Profile -> sound check & review -> Recognition review",
+      "controls": [
+        "Correct",
+        "Wrong reference",
+        "Not a reference",
+        "Can’t tell / new passage",
+        "Correct Bible reference",
+        "Save correction",
+        "Add missed example",
+        "Finish service & review"
+      ],
+      "preconditions": [
+        "Loaded preacher learning data",
+        "Review items or known missed-reference words"
+      ],
+      "completion": [
+        "resolveReviewItem/addMissedReference/endService succeeds",
+        "Refreshed profile shows remaining reviews and verified statistics"
+      ],
+      "limitations": [
+        "Only verified answers affect readiness",
+        "Skipped and unreviewed examples add no accuracy score",
+        "No pending examples does not mean no references were missed",
+        "Readiness never enables automatic projection in current runtime"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/LearningActions.tsx",
+          "symbol": "ReviewCard / LearningActions"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "auto-mode-set"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "preacher.sound-check",
+      "title": "Run a preacher sound check",
+      "area": "preachers",
+      "entry": "Profile view -> choose preacher -> sound check & review",
+      "controls": [
+        "Reference exercise buttons",
+        "Start sound check",
+        "Stop sound check",
+        "Use free offline speech for services"
+      ],
+      "preconditions": [
+        "Selected preacher profile",
+        "Service microphone input",
+        "Local speech engine/model; first check can download"
+      ],
+      "completion": [
+        "SoundCheckState heard/detected/matches/status returned",
+        "Exercise reports matched or does-not-match"
+      ],
+      "limitations": [
+        "Results arrive in chunks with processing delay",
+        "Uses local sound-check engine even if service speech provider differs",
+        "No saved audio recordings asserted by this UI; only transcribed examples",
+        "Matching one exercise does not prove all future references accurate"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/ProfileView.tsx",
+          "symbol": "section learning"
+        },
+        {
+          "path": "src/design/screens/dashboard/LearningActions.tsx",
+          "symbol": "LearningActions / startPreacherSoundCheck"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "preacher.teach-vocabulary",
+      "title": "Teach recurring book-name mistakes and familiar vocabulary",
+      "area": "preachers",
+      "entry": "Profile -> choose preacher -> teaching",
+      "controls": [
+        "Sounds like alias input",
+        "Vocabulary add/remove",
+        "Ignored tails add/remove",
+        "Per-preacher voice command setting"
+      ],
+      "preconditions": [
+        "Preacher learning detail loaded",
+        "Desktop saveTeaching API"
+      ],
+      "completion": [
+        "Save completes and UI says Saved on this computer",
+        "Updated teaching values reload for profile"
+      ],
+      "limitations": [
+        "Aliases, vocabulary hints, and ignored tails act at different stages",
+        "Saving teaching is not proof that future speech recognition will be correct",
+        "Teaching controls disabled until profile connects to engine"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/dashboard/ProfileView.tsx",
+          "symbol": "patch / teaching"
+        },
+        {
+          "path": "src/design/screens/dashboard/Teaching.tsx",
+          "symbol": "TeachingPanels"
+        },
+        {
+          "path": "src/design/screens/dashboard/preachers.ts",
+          "symbol": "saveTeaching"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "remote.message",
+      "title": "Display and dismiss a short screen message",
+      "area": "remote",
+      "entry": "Paired mobile remote > screen message controls",
+      "controls": [
+        "Screen message input",
+        "show",
+        "take the message down"
+      ],
+      "preconditions": [
+        "Paired remote",
+        "Responsive desktop",
+        "Output available to observe result"
+      ],
+      "completion": [
+        "showAlert called with text and target all",
+        "Output visually displays message then dismisses",
+        "Dismiss command completes"
+      ],
+      "limitations": [
+        "Current remote path targets all outputs for 15 seconds",
+        "Maximum 500 characters",
+        "No equivalent current desktop message editor found in reviewed Live surface",
+        "Live output changes require explicit user action; no runtime test performed"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "public/mobile-remote.html",
+          "symbol": "message; sendMessage; take the message down"
+        },
+        {
+          "path": "src/design/screens/useMobileRemote.ts",
+          "symbol": "case 'alert'"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "remote.pair",
+      "title": "Pair, approve, and revoke a mobile remote",
+      "area": "remote",
+      "entry": "Header Mobile tools > Mobile remote; notification target remote",
+      "controls": [
+        "Enable mobile access",
+        "Connection address",
+        "Generate pairing code",
+        "Approve / Decline",
+        "Revoke",
+        "Turn off mobile access",
+        "Phone request access"
+      ],
+      "preconditions": [
+        "Computer and phone can reach one another on local network",
+        "Desktop mobile server available",
+        "Firewall permits connection",
+        "Desktop operator approval"
+      ],
+      "completion": [
+        "mobileStatus shows running and selected connection URL",
+        "Pending request changes to paired device",
+        "Remote shows connected state",
+        "Revoked device no longer authorized"
+      ],
+      "limitations": [
+        "Codes expire after two minutes",
+        "Guest network isolation may block connection",
+        "Private remote QR is different from public congregation QR",
+        "No pairing or firewall test performed"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/components/MobileRemotePanel.tsx",
+          "symbol": "MobileRemotePanel; act; Paired devices"
+        },
+        {
+          "path": "src/components/MobileMenu.tsx",
+          "symbol": "navigation.target === 'remote'"
+        },
+        {
+          "path": "public/mobile-remote.html",
+          "symbol": "pairButton; pairNote"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "remote.present",
+      "title": "Operate scripture, songs, media, and slides from a paired phone",
+      "area": "remote",
+      "entry": "Paired mobile-remote page > content areas and preview/live dock",
+      "controls": [
+        "Scripture reference search/send",
+        "Song/card selection and lyric edit",
+        "Media/deck/run selection",
+        "go live",
+        "next / previous",
+        "screen mode",
+        "listening",
+        "media playback"
+      ],
+      "preconditions": [
+        "Paired authorized phone",
+        "Responsive desktop app",
+        "Existing imported content for media/decks",
+        "Preview item exists for Go live"
+      ],
+      "completion": [
+        "Desktop projector/preview store reflects chosen item",
+        "Go live validates preview id before promotion",
+        "Remote refreshed state matches actual live/preview and screen mode"
+      ],
+      "limitations": [
+        "Guide must distinguish selecting preview from commands that send immediately",
+        "Imported presentations are required before deck selection",
+        "Only static source inspected; no remote command sent",
+        "Guide needs explicit live-output action handling"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/useMobileRemote.ts",
+          "symbol": "execute; case 'verse'; case 'song'; case 'media'; case 'live'; case 'step'; case 'screen'"
+        },
+        {
+          "path": "public/mobile-remote.html",
+          "symbol": "goLive; loadVerse; Remote sections"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "run.build-edit",
+      "title": "Build or edit an order of service",
+      "area": "run",
+      "entry": "Run rail → plus → Add segment; segment context menu for edits",
+      "controls": [
+        "add segment",
+        "arrange selection",
+        "rename",
+        "move up",
+        "move down",
+        "type",
+        "duration",
+        "duplicate",
+        "remove",
+        "default order of service"
+      ],
+      "preconditions": [
+        "Operator surface",
+        "Existing segment for edit actions"
+      ],
+      "completion": [
+        "operatorRunStore segments reflect requested ordering, labels, and duration"
+      ],
+      "limitations": [
+        "Loading default order replaces existing run after confirmation.",
+        "Run-header add-media/add-note entries have a separate implementation gap."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/run/RunHeaderActions.tsx",
+          "symbol": "ADD_MENU"
+        },
+        {
+          "path": "src/design/screens/run/RunRail.tsx",
+          "symbol": "SegmentCard"
+        },
+        {
+          "path": "src/design/screens/run.tsx",
+          "symbol": "RunProvider"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "run",
+        "run-paste",
+        "run-text",
+        "run-read",
+        "run-programme",
+        "run-apply"
+      ],
+      "execution": "Opens programme paste, types operator-approved draft, and parses to review. User applies reviewed rows."
+    },
+    {
+      "id": "run.header-attach-gap",
+      "title": "Run header media/note shortcuts",
+      "area": "run",
+      "entry": "Run header plus → add media / add note tiles",
+      "controls": [
+        "add media",
+        "add note"
+      ],
+      "preconditions": [
+        "Run header menu visible"
+      ],
+      "completion": [
+        "No handled completion path in RunHeaderActions.onSelect"
+      ],
+      "limitations": [
+        "Menu advertises both tiles, but onSelect handles only scan and paste.",
+        "Use actual library drag/drop for media and segment plus for notes; do not expose these header tiles as working guide actions."
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/run/RunHeaderActions.tsx",
+          "symbol": "ADD_MENU"
+        },
+        {
+          "path": "src/design/screens/run/RunHeaderActions.tsx",
+          "symbol": "RunHeaderActions"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "run.import-programme",
+      "title": "Build a run from a programme",
+      "area": "run",
+      "entry": "Empty run rail Scan image/Paste or header plus → review → Add",
+      "controls": [
+        "scan image",
+        "paste programme",
+        "ScanReview",
+        "add reviewed rows"
+      ],
+      "preconditions": [
+        "Desktop importScheduleImage API for scan",
+        "Programme text for paste"
+      ],
+      "completion": [
+        "Reviewed rows appended as run segments",
+        "setServiceSchedule receives parsed rows",
+        "Added-count notice shown"
+      ],
+      "limitations": [
+        "OCR/parser output requires review.",
+        "UI appends run segments while setServiceSchedule replaces the engine schedule; guide must accurately explain this difference."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/run/RunHeaderActions.tsx",
+          "symbol": "RunHeaderActions"
+        },
+        {
+          "path": "src/design/screens/run/RunRail.tsx",
+          "symbol": "RunEmptyActions"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "run.queue-content-note",
+      "title": "Queue content or notes in a segment",
+      "area": "run",
+      "entry": "Drag supported library content onto a run segment; segment plus → note",
+      "controls": [
+        "segment drop target",
+        "SegmentAdd",
+        "note input",
+        "remove queued item",
+        "queued item live"
+      ],
+      "preconditions": [
+        "Existing or automatically created matching segment",
+        "Resolved content data for publishable queued items"
+      ],
+      "completion": [
+        "run.segments[].items contains queued content or edited note"
+      ],
+      "limitations": [
+        "A song label alone is insufficient to publish: queued song needs lines. Media/presentation needs a valid path.",
+        "Notes are editable run notes, not automatically publishable slides."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/run.tsx",
+          "symbol": "RunProvider"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "SegmentAdd"
+        },
+        {
+          "path": "src/design/screens/run/RunRail.tsx",
+          "symbol": "QueuedItemRow"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "bible.change-session-version",
+      "title": "Change the service Bible translation",
+      "area": "scripture",
+      "entry": "Verses → translation selector",
+      "controls": [
+        "Select",
+        "setVersion"
+      ],
+      "preconditions": [
+        "Chosen version available from getBibleVersions"
+      ],
+      "completion": [
+        "useLiveStore.displayVersion matches selected version",
+        "Text loads in selected version"
+      ],
+      "limitations": [
+        "Changes current service translation, not the church saved default. Online Bible loading can fail."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "ScripturesBrowser"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "setVersion"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "bible.lookup-preview-reference",
+      "title": "Find and preview a Bible passage",
+      "area": "scripture",
+      "entry": "Operator → verses → reference input or verse row",
+      "controls": [
+        "ScriptureReferenceInput",
+        "translation Select",
+        "verse row single click",
+        "Bible version selector",
+        "Verse rows"
+      ],
+      "preconditions": [
+        "Desktop Bible database available",
+        "Chosen online translation available when applicable",
+        "Bible API/database available",
+        "Chosen chapter/version accessible"
+      ],
+      "completion": [
+        "Loaded chapter rows match reference/version",
+        "projector.preview contains selected scripture",
+        "Chapter/verse data loaded",
+        "Submitting valid reference stages and sends matching item live"
+      ],
+      "limitations": [
+        "Submitting the reference input sends live; double-clicking a row or pressing Enter on a row also sends live. A preview-only guide must avoid these actions.",
+        "Browser preview uses unavailable-text fallback.",
+        "Enter on reference input explicitly sends live; it is not merely a passive search",
+        "Unavailable/failed online Bible should not produce invented verse text in desktop",
+        "Range may shrink to fit"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "ScripturesBrowser"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "ScriptureReferenceInput"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "ScripturesBrowser / ScriptureReferenceInput onSubmit"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "projector.stage(item); await projector.send(item)"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "library-verses"
+      ],
+      "execution": "Types an operator-specified reference and points at verse rows. Never submits Enter; user controls preview/live."
+    },
+    {
+      "id": "scripture.catch-and-project",
+      "title": "Recognize a spoken scripture and send it live",
+      "area": "scripture",
+      "entry": "Operator view -> listening, catches and preview/live controls",
+      "controls": [
+        "Start listening",
+        "Caught verse selection",
+        "Preview",
+        "Send live / projector send"
+      ],
+      "preconditions": [
+        "Working transcription",
+        "Bible database and available selected version",
+        "Output window configured to actually see projection"
+      ],
+      "completion": [
+        "Detection appears in catches/preview",
+        "Explicit operator action accepted and live snapshot/output changes"
+      ],
+      "limitations": [
+        "Speech detection alone never automatically projects in current runtime",
+        "auto-mode-set enabled is rejected; readiness/auto labels do not unlock projection",
+        "Incomplete/misheard/generic speech can be missed or withdrawn",
+        "KJV/BSB wording index does not imply identical quotation accuracy for all translations"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "catchView / projector.stage"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "manualOnly: true / auto-mode-set / pushPreviewToLive"
+        },
+        {
+          "path": "electron/engine/verseDelivery.ts",
+          "symbol": "VerseDelivery.promote"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "scripture.phrase-topic-search",
+      "title": "Find scripture from a remembered phrase, person, event, or topic",
+      "area": "scripture",
+      "entry": "Operator -> verses -> second search field",
+      "controls": [
+        "search scripture by phrase, person, event, or topic",
+        "Enter",
+        "use original",
+        "edit searched words",
+        "result cards",
+        "close"
+      ],
+      "preconditions": [
+        "Desktop findHeardScripture API",
+        "Semantic resources needed for full meaning search"
+      ],
+      "completion": [
+        "Results or honest no-close-match shown",
+        "Selecting result invokes pushReference and closes overlay on accepted action"
+      ],
+      "limitations": [
+        "Meaning search can be unavailable; UI reports checking names/wording",
+        "Typo correction can be reverted using original",
+        "Result-card click is an explicit live projection action"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/ScriptureCatches.tsx",
+          "symbol": "ScriptureSearch / ScriptureFindOverlay"
+        },
+        {
+          "path": "src/design/screens/engine.tsx",
+          "symbol": "pushReference"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "scripture.recent-speech-search",
+      "title": "Find the passage the preacher just mentioned",
+      "area": "scripture",
+      "entry": "Operator catches actions -> find scripture",
+      "controls": [
+        "find scripture",
+        "Result cards",
+        "edit searched words",
+        "close"
+      ],
+      "preconditions": [
+        "Recent transcript captured",
+        "Desktop findHeardScripture API"
+      ],
+      "completion": [
+        "Recent heard text and matches in overlay or no-recent-speech message"
+      ],
+      "limitations": [
+        "Search covers recent speech, not arbitrary entire sermon history",
+        "If not listening and no recent text, starts listening and asks user to press again after speech",
+        "Weak or unrelated matches rejected; not guaranteed to find any allusion"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/ScriptureCatches.tsx",
+          "symbol": "ScriptureCatches / find"
+        },
+        {
+          "path": "electron/engine/heardWindow.ts",
+          "symbol": "HeardWindow"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "files.save-open-transfer",
+      "title": "Save, open, or transfer a service",
+      "area": "service files",
+      "entry": "Run header or empty rail → .tri → desired file action",
+      "controls": [
+        "save",
+        "save as…",
+        "open .tri",
+        "import from .tri",
+        "export selected…",
+        "resource selection",
+        "replacement consent"
+      ],
+      "preconditions": [
+        "Desktop .tri API",
+        "Valid selected resources",
+        "Chosen path or package",
+        "Consent for replacing current run when requested"
+      ],
+      "completion": [
+        "Saved/Open/Exported result notice",
+        "Active file path and save status updated",
+        "Imported snapshot applied to run/library"
+      ],
+      "limitations": [
+        "Open replaces the selected service; import appends selected service and copies resources.",
+        "Imported layouts stage in preview.",
+        "Local files can travel; remote links are not guaranteed offline copies.",
+        "Autosave starts only after initial save and tracks current included content."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/run/TriPackageActions.tsx",
+          "symbol": "TriPackageActions"
+        },
+        {
+          "path": "src/design/screens/run/TriPackageActions.tsx",
+          "symbol": "savePackage"
+        },
+        {
+          "path": "src/design/screens/run/TriPackageActions.tsx",
+          "symbol": "importPackage"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "privacy.data",
+      "title": "Inspect local data and access export, deletion, and troubleshooting tools",
+      "area": "settings",
+      "entry": "Settings > Privacy & data; notification target storage",
+      "controls": [
+        "Bible database status",
+        "Online Bibles status",
+        "Export data",
+        "Export corrections",
+        "Wipe transcripts",
+        "Wipe profiles",
+        "Rebuild search index",
+        "Open logs folder"
+      ],
+      "preconditions": [
+        "Desktop available",
+        "Destructive data changes require explicit user choice"
+      ],
+      "completion": [
+        "Database/available Bible status loaded from engine",
+        "For actionable tools, successful API result and resulting filesystem/store state"
+      ],
+      "limitations": [
+        "CURRENT UI GAP: export/wipe/rebuild/open-logs action rows receive no onAction and are disabled",
+        "Generic version/status seed and storage/privacy prose are not trustworthy runtime proof",
+        "Guide may explain read-only database status now; must not advertise disabled maintenance tasks as usable"
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "PAGES S-10m; dbStatus; withLiveOptions; SettingRow"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "SettingRow action case"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "recognition.advanced-settings",
+      "title": "Understand recognition settings and operator control",
+      "area": "settings",
+      "entry": "Settings > Preacher AI",
+      "controls": [
+        "Inspect recognition preferences",
+        "Expand advanced settings"
+      ],
+      "preconditions": [
+        "Desktop settings bridge; source-verified meaning for each setting"
+      ],
+      "completion": [
+        "Persisted preference may be read back; actual engine behavior requires separate verification"
+      ],
+      "limitations": [
+        "Several labels describe automatic projection that current runtime blocks",
+        "Automatic mode cannot be enabled by reaching the displayed trust thresholds",
+        "Do not turn these rows into an automatic-projection tutorial"
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "autoModeMinTrust"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "manualOnly: true"
+        },
+        {
+          "path": "electron/engine/verseDelivery.ts",
+          "symbol": "promote"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "settings.appearance",
+      "title": "Change the operator appearance and default scripture font",
+      "area": "settings",
+      "entry": "Dashboard > change appearance, or Settings > Appearance",
+      "controls": [
+        "App colour swatches",
+        "Colour mode",
+        "Scripture font",
+        "Advanced default weight / text colour"
+      ],
+      "preconditions": [
+        "Desktop required for persisted engine settings"
+      ],
+      "completion": [
+        "App colour updates document theme immediately and is saved locally",
+        "Engine-backed settings display saved / not saved",
+        "Reopened values match stored choices"
+      ],
+      "limitations": [
+        "App colour follows a separate local-storage path",
+        "Advanced reset button has no handler",
+        "Rendered scripture font effect not runtime-tested"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "PAGES S-10g; set; AURORA_SWATCHES"
+        },
+        {
+          "path": "src/design/screens/dashboard/index.tsx",
+          "symbol": "change appearance"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "FontChooser"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "settings.church-identity",
+      "title": "Set church identity",
+      "area": "settings",
+      "entry": "Settings > Church",
+      "controls": [
+        "Edit church name",
+        "Inspect logo action availability"
+      ],
+      "preconditions": [
+        "Desktop settings bridge for persisted name"
+      ],
+      "completion": [
+        "setSetting resolves successfully; stored name can be read back"
+      ],
+      "limitations": [
+        "Choose-image action receives no onAction and is disabled in this current settings surface",
+        "A stored setting is not proof of every downstream display updating"
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "churchName"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "case 'action'"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "settings.find-page",
+      "title": "Find a settings page",
+      "area": "settings",
+      "entry": "Settings > find a setting",
+      "controls": [
+        "Search a page title, row label, or setting key",
+        "Choose a matching page"
+      ],
+      "preconditions": [
+        "Settings surface open"
+      ],
+      "completion": [
+        "The chosen page body is mounted"
+      ],
+      "limitations": [
+        "Current settings filter uses text inclusion; conversational understanding and typo tolerance are separate proposed guide work"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "SettingsSurface"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "settings.provider-keys",
+      "title": "Configure service provider credentials",
+      "area": "settings",
+      "entry": "Settings > API keys; Deepgram is under Audio & speech",
+      "controls": [
+        "Inspect configured provider availability"
+      ],
+      "preconditions": [
+        "Chosen provider and a functioning credential entry path"
+      ],
+      "completion": [
+        "No supported completion path for entering secrets in these current generic rows"
+      ],
+      "limitations": [
+        "Pixabay and Pexels now support masked entry and save through existing local settings. Provider presence is not proof of key validity; a successful search confirms acceptance.",
+        "Generic Hugging Face Secret and KeyList controls remain presentational.",
+        "The guide does not read, type, capture or store credential values. Actual credential save and provider search still require release verification."
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "Secret"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "KeyList"
+        },
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "S-10k"
+        },
+        {
+          "path": "src/design/screens/StockCredential.tsx",
+          "symbol": "StockCredential"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "slides.create-quick-slide",
+      "title": "Create an announcement slide",
+      "area": "slides",
+      "entry": "Slides → Quick slide → enter title/subtitle/body → save",
+      "controls": [
+        "quick slide",
+        "title",
+        "subtitle",
+        "body text",
+        "create/save"
+      ],
+      "preconditions": [
+        "Nonempty title"
+      ],
+      "completion": [
+        "Custom deck persisted",
+        "New slide visible in library"
+      ],
+      "limitations": [
+        "Imported decks and multipage decks use name-only editing; this is not an arbitrary original presentation editor."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/presentations.tsx",
+          "symbol": "QuickSlideModal"
+        },
+        {
+          "path": "src/design/screens/presentations.tsx",
+          "symbol": "handleCreateQuickDeck"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "slides.import-deck",
+      "title": "Import a presentation",
+      "area": "slides",
+      "entry": "Slides → Import slides → choose PPTX/PPT/ODP",
+      "controls": [
+        "import slides"
+      ],
+      "preconditions": [
+        "Desktop importPresentation API",
+        "LibreOffice",
+        "Poppler",
+        "Readable supported presentation file"
+      ],
+      "completion": [
+        "Import notice gives slide count",
+        "Deck appears with rendered pages"
+      ],
+      "limitations": [
+        "Failure is surfaced through importNote.",
+        "Rendered slide images do not preserve all original presentation animations or interactivity."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/presentations.tsx",
+          "symbol": "SlidesBrowser"
+        },
+        {
+          "path": "electron/media/pptxConverter.ts",
+          "symbol": "convertPptxToImages"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "songs.create-edit-slides",
+      "title": "Create or edit lyric slides",
+      "area": "songs",
+      "entry": "Songs → Add song or edit an existing song → editor",
+      "controls": [
+        "song title",
+        "artist or author",
+        "lyrics entry",
+        "split here",
+        "merge",
+        "duplicate",
+        "move earlier",
+        "move later",
+        "save to library",
+        "save changes"
+      ],
+      "preconditions": [
+        "Nonempty title",
+        "At least one slide has lyrics"
+      ],
+      "completion": [
+        "songs.add or songs.update succeeds",
+        "Library refreshes with saved content"
+      ],
+      "limitations": [
+        "New/editor content is not in the library until saved.",
+        "Closing can preserve a temporary draft; UI says it expires after 30 minutes."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "saveSong"
+        },
+        {
+          "path": "src/design/screens/songs/SongEditor.tsx",
+          "symbol": "SongEditor"
+        },
+        {
+          "path": "src/lib/guideWalkthroughs.ts",
+          "symbol": "walkthroughFor / guideClickTargets"
+        },
+        {
+          "path": "src/components/useGuideCursor.ts",
+          "symbol": "useGuideCursor"
+        },
+        {
+          "path": "src/design/screens/LibraryToolbar.tsx",
+          "symbol": "LibraryToolbar data-guide anchors"
+        },
+        {
+          "path": "src/design/screens/songs/SongLyricsEntry.tsx",
+          "symbol": "song-entry / song-title / song-lyrics"
+        },
+        {
+          "path": "src/components/ProductGuide.tsx",
+          "symbol": "ProductGuide"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [
+        "library-songs",
+        "toolbar-songs-add",
+        "song-entry",
+        "song-title",
+        "song-lyrics"
+      ],
+      "execution": "Opens editor; focuses or types supplied title and lyrics. Preserves existing nonempty draft text; user saves."
+    },
+    {
+      "id": "songs.discover-online",
+      "title": "Find online lyrics and add a song",
+      "area": "songs",
+      "entry": "Songs → Search online → search or YouTube route → review editor → save",
+      "controls": [
+        "search",
+        "where the words come from",
+        "youtube link",
+        "get the words",
+        "save to library"
+      ],
+      "preconditions": [
+        "Network",
+        "Search or caption service available",
+        "Returned lyrics or captions"
+      ],
+      "completion": [
+        "Saved song appears in local library",
+        "Search result can be marked added"
+      ],
+      "limitations": [
+        "A song title result does not ensure lyrics are available.",
+        "Result opens an unsaved editor and requires review and save."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/songs/AddSongDialog.tsx",
+          "symbol": "AddSongDialog"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "SongsBrowser"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "songs.find-local",
+      "title": "Find a saved song",
+      "area": "songs",
+      "entry": "Songs → search by song name or lyrics",
+      "controls": [
+        "SearchField",
+        "search songs with microphone",
+        "song card"
+      ],
+      "preconditions": [
+        "Saved song library",
+        "Microphone search additionally needs listening/audio conditions"
+      ],
+      "completion": [
+        "Matching song cards shown",
+        "Selected song opens"
+      ],
+      "limitations": [
+        "Text search and microphone search are distinct workflows; microphone search can start listening."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "SongGrid"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "SongsBrowser"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "songs.preview-display-section",
+      "title": "Preview or display a song section",
+      "area": "songs",
+      "entry": "Songs → open saved song → lyric section",
+      "controls": [
+        "Preview section",
+        "section send",
+        "preview Go live"
+      ],
+      "preconditions": [
+        "Saved song with lyric cards"
+      ],
+      "completion": [
+        "Selected section in projector.preview",
+        "For explicit send, confirmed live state matches section"
+      ],
+      "limitations": [
+        "Preview and send are different actions."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "SongSheet"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "speech.configure-engine",
+      "title": "Choose and configure speech recognition",
+      "area": "speech",
+      "entry": "Settings -> Audio & speech; existing destination speech -> S-10b",
+      "controls": [
+        "Speech engine whisper-local/deepgram",
+        "Whisper model",
+        "Deepgram keys"
+      ],
+      "preconditions": [
+        "Desktop settings API",
+        "Local engine/model available or downloadable",
+        "Deepgram key and connectivity for cloud option"
+      ],
+      "completion": [
+        "Settings save succeeds",
+        "Listening starts through chosen provider and emits transcript"
+      ],
+      "limitations": [
+        "Saving provider is not an end-to-end engine test",
+        "Local model preparation may delay first use",
+        "Deepgram usage can incur charges",
+        "Current Deepgram keys UI is sample/local state only: key selection changes component state, reveal/add have no persistence handler. Do not guide first-time cloud-key setup through this UI as working.",
+        "Provider/model selectors persist, but cloud onboarding requires a separate verified key-entry path or implementation."
+      ],
+      "status": "partial",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "S-10b / SettingsPage"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "settings[target]"
+        },
+        {
+          "path": "electron/asr/provider.ts",
+          "symbol": "resolveASRProvider"
+        },
+        {
+          "path": "src/design/screens/settingsRows.tsx",
+          "symbol": "KeyList / SettingRow keys"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "speech.configure-language",
+      "title": "Set the spoken language and default Bible",
+      "area": "speech",
+      "entry": "Settings -> Language; existing destination language -> S-10c",
+      "controls": [
+        "Engine language",
+        "Speech language",
+        "Default Bible on the projector"
+      ],
+      "preconditions": [
+        "Installed engine language pack",
+        "Transcriber support for supplied speech language",
+        "Bible version available locally or unlocked online",
+        "Available language pack",
+        "Selected Bible available in the running build",
+        "Speech-provider support for requested speech language"
+      ],
+      "completion": [
+        "Settings save succeeds",
+        "Next recognition/service reads configured language/version",
+        "Selected settings saved",
+        "Bible selector sourced from available engine versions",
+        "Unavailable Bible options visibly disabled"
+      ],
+      "limitations": [
+        "Engine language and speech language are separate settings",
+        "Language choices must use getAvailableLanguages; do not infer support from hardcoded fallback list",
+        "UI remains English-only",
+        "Unavailable Bibles are disabled, not promised",
+        "Interface language is explicitly not implemented; UI remains English",
+        "Speech language is a free-text provider code, not proof the provider supports it",
+        "Provider-specific behavior requires runtime verification"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "S-10c / withLiveOptions"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "settings[target]"
+        },
+        {
+          "path": "src/design/screens/Settings.tsx",
+          "symbol": "PAGES S-10c; withLiveOptions; getAvailableLanguages; getBibleVersions"
+        },
+        {
+          "path": "src/design/screens/dashboard/index.tsx",
+          "symbol": "choose language"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "themes.adjust-text-layout",
+      "title": "Adjust readability and layout",
+      "area": "themes",
+      "entry": "Themes library tab",
+      "controls": [
+        "DisplayFontPicker",
+        "text size",
+        "reference size",
+        "shadow strength",
+        "dimness",
+        "blur",
+        "TextPositionPicker",
+        "safe margin",
+        "width",
+        "reset theme"
+      ],
+      "preconditions": [
+        "Preview content available to assess result"
+      ],
+      "completion": [
+        "Updated previewTheme",
+        "Rendered preview reflects requested settings"
+      ],
+      "limitations": [
+        "Most listed fields stage in preview. Transition controls have separate handlers, so do not assume identical persistence/publication behavior for every control."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "ThemesEditor"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "themes.change-background",
+      "title": "Place media behind words",
+      "area": "themes",
+      "entry": "Media → themes shelf → choose background, or drag media onto preview",
+      "controls": [
+        "themes shelf",
+        "background card",
+        "preview drop target"
+      ],
+      "preconditions": [
+        "Suitable background media"
+      ],
+      "completion": [
+        "previewTheme.backgroundId updated",
+        "Preview shows selected background"
+      ],
+      "limitations": [
+        "Double-clicking a theme card or dropping onto LIVE changes the live background. A preparation guide should normally target preview."
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "MediaBrowser"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "chooseBackground"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "web.operator-account-history",
+      "title": "Use website account and service history",
+      "area": "web admin",
+      "entry": "/app, /app/signup, /app/dashboard, /app/services, /app/services/[id]",
+      "controls": [
+        "Open login/signup",
+        "Open church dashboard",
+        "Browse services and open a service record"
+      ],
+      "preconditions": [
+        "Configured web deployment; account access for private pages"
+      ],
+      "completion": [
+        "Authenticated page and permitted service record are displayed; not verified in this mapping pass"
+      ],
+      "limitations": [
+        "Surface inventory only; account creation, authorization, linking, and data delivery were not exercised",
+        "Add separate tested guides for sign-in/linking and service history before publishing walkthroughs"
+      ],
+      "status": "unverified",
+      "sources": [
+        {
+          "path": "web/src/app/app/page.tsx",
+          "symbol": "LoginPage"
+        },
+        {
+          "path": "web/src/app/app/signup/page.tsx",
+          "symbol": "SignupPage"
+        },
+        {
+          "path": "web/src/app/app/dashboard/page.tsx",
+          "symbol": "DashboardPage"
+        },
+        {
+          "path": "web/src/app/app/services/page.tsx",
+          "symbol": "ServicesPage"
+        },
+        {
+          "path": "web/src/app/app/services/[id]/page.tsx",
+          "symbol": "ServiceDetailPage"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "web.follow-service",
+      "title": "Follow a service's transcript, verses, notes, and giving information",
+      "area": "web companion",
+      "entry": "Public church QR/link > /live/[slug]",
+      "controls": [
+        "Transcript",
+        "Verses",
+        "Notes",
+        "Give",
+        "Listen to the live stream when configured"
+      ],
+      "preconditions": [
+        "Valid published church link",
+        "Available shared service",
+        "Network access",
+        "Notes/stream/giving content available for those sections"
+      ],
+      "completion": [
+        "Selected tab visible",
+        "Live/reconnecting status and actual transcript/verse content shown",
+        "Notes section shows generated notes when available"
+      ],
+      "limitations": [
+        "No public service was accessed; UI-level wiring only",
+        "Empty notes can mean still building or unavailable",
+        "Stream player only renders for supported configured URL",
+        "Do not infer delivery success from QR existence"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "web/src/app/live/[slug]/CompanionClient.tsx",
+          "symbol": "CompanionClient; Service sections; TabButton"
+        },
+        {
+          "path": "web/src/app/live/[slug]/components/NotesTab.tsx",
+          "symbol": "NotesTab"
+        },
+        {
+          "path": "web/src/app/live/[slug]/components/StreamPlayer.tsx",
+          "symbol": "StreamPlayer"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "web.reading",
+      "title": "Customize reading appearance on a congregation phone",
+      "area": "web companion",
+      "entry": "Public companion > Reading options",
+      "controls": [
+        "Text size",
+        "App colour",
+        "Choose image",
+        "Remove image"
+      ],
+      "preconditions": [
+        "Companion open in browser",
+        "Optional supported image smaller than 12 MB"
+      ],
+      "completion": [
+        "ReadingAppearance onChange updates visible content",
+        "Preferences retained in browser localStorage when allowed",
+        "Invalid image/storage failures show explanatory error"
+      ],
+      "limitations": [
+        "Changes are local to that browser and church",
+        "Local background is processed as JPEG for storage",
+        "Does not change church projection or other attendees' phones",
+        "Not runtime-tested"
+      ],
+      "status": "wired",
+      "sources": [
+        {
+          "path": "web/src/app/live/[slug]/components/ReadingOptions.tsx",
+          "symbol": "ReadingOptions; update; choose; reading-size"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    },
+    {
+      "id": "web.marketing-demo",
+      "title": "Explore the website product examples",
+      "area": "web marketing",
+      "entry": "/home > example workflow prompts; root / has account links",
+      "controls": [
+        "Choose a demo tab",
+        "Type or click an example prompt",
+        "Read the example response"
+      ],
+      "preconditions": [
+        "Current development website files"
+      ],
+      "completion": [
+        "Local example response appears"
+      ],
+      "limitations": [
+        "Current /home files are uncommitted work in this working tree",
+        "AssistantDemo uses local replyFor rules; it is not the proposed product copilot",
+        "Examples cannot inspect or control a visitor desktop app",
+        "Deployment and complete website interaction have not been verified",
+        "The /home/navigation-preview study previews planned destinations; its Guides, Blog and other destination dialogs are page outlines, not published articles or an executable companion."
+      ],
+      "status": "unverified",
+      "sources": [
+        {
+          "path": "web/src/app/home/page.tsx",
+          "symbol": "HomeLandingPage"
+        },
+        {
+          "path": "web/src/app/home/ProductDemos.tsx",
+          "symbol": "replyFor"
+        },
+        {
+          "path": "web/src/app/page.tsx",
+          "symbol": "HomePage"
+        },
+        {
+          "path": "web/src/app/home/navigation-preview/NavigationStudy.tsx",
+          "symbol": "NavigationStudy / preview"
+        }
+      ],
+      "runtimeTested": false,
+      "guideReady": false,
+      "guideAnchors": [],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+    }
+  ],
+  "intentExamples": [
+    {
+      "input": "conect micrphone",
+      "expectedTask": "audio.choose-input",
+      "note": "Typo-tolerant candidate; not a verified intent-model result."
+    },
+    {
+      "input": "How do I get Trilorah to hear the pastor?",
+      "expectedTask": "audio.choose-input",
+      "note": "Use setup context to choose the input path."
+    },
+    {
+      "input": "My microphone stopped working",
+      "expectedTask": "audio.troubleshoot",
+      "note": "Use actual audio/listening state to select the next diagnostic step."
+    },
+    {
+      "input": "I want to use my phone as the microphone",
+      "expectedTask": "audio.phone-microphone",
+      "note": "Distinguish phone microphone from phone remote and congregation reader."
+    },
+    {
+      "input": "Help me connect",
+      "expectedTask": null,
+      "note": "Clarify microphone, phone, display, or integration only if current conversation/state does not resolve the target."
+    },
+    {
+      "input": "Show me how to preview a verse without putting it live",
+      "expectedTask": "bible.lookup-preview-reference",
+      "note": "Preserve preview-only intent; avoid typed-reference Enter and direct-send controls."
+    },
+    {
+      "input": "Enable automatic scripture projection",
+      "expectedTask": null,
+      "note": "Explain current operator-press requirement. Do not treat displayed auto settings as executable support."
+    },
+    {
+      "clickedTask": "audio.choose-input",
+      "expectedTask": "audio.choose-input",
+      "note": "Use the direct task identifier; do not ask the user to repeat a known goal."
+    }
+  ]
+}

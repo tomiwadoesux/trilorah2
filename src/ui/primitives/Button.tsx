@@ -16,6 +16,7 @@ import { useNudge } from '../hooks/useNudge';
 
 interface ButtonProps {
   label: string;
+  guideId?: string;
   onClick?: () => void;
   /** Leading glyph — pass an icon component from ../icons. */
   icon?: ReactNode;
@@ -35,6 +36,7 @@ interface ButtonProps {
 
 export function Button({
   label,
+  guideId,
   onClick,
   icon,
   tone = 'default',
@@ -49,6 +51,7 @@ export function Button({
   return (
     <button
       ref={ref}
+      data-guide={guideId}
       // A refused submit must not submit, so the type is neutralised too.
       type={disabled ? 'button' : type}
       aria-disabled={disabled || undefined}

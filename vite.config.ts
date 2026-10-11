@@ -1,3 +1,4 @@
+import { guideIndex } from './scripts/guideIndex'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -29,6 +30,7 @@ const external = [
 
 export default defineConfig({
   plugins: [
+    guideIndex(__dirname),
     react(),
     tailwindcss(),
     electron({

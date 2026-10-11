@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, CloseIcon } from '../ui';
 import { PhoneConnectionArt } from './PhoneConnectionArt';
+import { MobileConnectionLink, MobilePairingSteps } from './MobileConnectionLink';
 import './mobileRemotePanel.css';
 
 export interface MobileRemoteIntroProps {
@@ -115,27 +116,32 @@ export function MobileRemotePanel({ open, onClose, preview = false }: { open: bo
           <MobileRemoteIntro onEnable={() => void act('enable', () => api!.mobileEnable(true))} disabled={unavailable || busy} busy={pending === 'enable'} />
         ) : (
           <div className="mobile-remote-active">
-            <p className="mobile-remote-hint">Scan with your phone on the same Wi-Fi, enter the code, then approve it here.</p>
-            {status.urls.length > 0 ? <>
-              <label className="mobile-remote-address">Connection address
-                <select value={url} onChange={event => setUrl(event.target.value)}>{status.urls.map(address => <option key={address}>{address}</option>)}</select>
-              </label>
-              {qr && <img className="mobile-remote-qr tri-rounded-control" width="200" height="200" alt="Scan to open private mobile controls" src={qr} />}
-            </> : <p className="mobile-remote-hint">No Wi-Fi or Ethernet address found. Connect this computer to the church network.</p>}
-            <div className="mobile-remote-code">
-              <Button label="Generate pairing code" tone="ash" disabled={unavailable || busy} onClick={() => void act('code', () => api!.mobileCode(true))} />
-              <strong>{code?.code || '———'}</strong>
-            </div>
-            <p className="mobile-remote-hint">Codes expire after two minutes. If the page cannot open, allow Trilorah through Windows Firewall on Private networks and check that guest Wi-Fi does not isolate devices.</p>
-            <p className="mobile-remote-hint">This QR opens private controls. Use Online on the remote for the congregation’s QR.</p>
+            <p className="mobile-remote-hint">Keep your phone and computer on the same Wi-Fi.</p>
+            <MobilePairingSteps step={status.pending.length ? 1 : status.devices.length ? 2 : 0} />
             {status.pending.map(phone => <div className="mobile-remote-request" key={phone.id}>
-              <p>{phone.name} requests control</p>
+              <span className="mobile-remote-request__label">Waiting for your approval</span><p>{phone.name}</p><small>Allow this phone to control the service?</small>
               <div className="mobile-remote-actions">
                 <Button label="Approve" tone="go" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, true))} />
                 <Button label="Decline" tone="ash" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, false))} />
               </div>
             </div>)}
-            <div className="mobile-remote-actions mobile-remote-actions--end">
+            {status.urls.length > 0 ? <>
+              {status.urls.length > 1 && <label className="mobile-remote-address">Network address
+                <select value={url} onChange={event => setUrl(event.target.value)}>{status.urls.map(address => <option key={address}>{address}</option>)}</select>
+              </label>}
+              <div className="mobile-connection-qr">
+                {qr ? <img width="196" height="196" alt="Scan to open private mobile controls" src={qr} /> : <p role="status">Preparing the QR code…</p>}
+                {code?.code && <strong>{code.code}</strong>}
+                <p>Scan, enter the pairing code, then approve your phone here.</p>
+              </div>
+              {url && <MobileConnectionLink url={url} />}
+            </> : <p className="mobile-remote-hint">No Wi-Fi or Ethernet address found. Connect this computer to the church network.</p>}
+            <div className="mobile-remote-code">
+              <span className="mobile-remote-hint">Pairing codes last two minutes.</span>
+              <Button label={pending === 'code' ? 'Creating…' : code ? 'New code' : 'Create pairing code'} tone="ash" disabled={unavailable || busy} onClick={() => void act('code', () => api!.mobileCode(true))} />
+            </div>
+            <details className="mobile-remote-help"><summary>Having trouble connecting?</summary><p className="mobile-remote-hint">Use the same Wi-Fi on both devices. On Windows, allow Trilorah through the firewall on Private networks. Guest Wi-Fi may block connections between devices.</p></details>
+            <div className="mobile-connection-footer">
               <Button label={pending === 'disable' ? 'Turning off…' : 'Turn off mobile access'} tone="ash" disabled={unavailable || busy} onClick={() => void act('disable', () => api!.mobileEnable(false))} />
             </div>
           </div>

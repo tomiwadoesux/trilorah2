@@ -138,6 +138,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                 {unpicked > 0 ? ` · ${unpicked} without a type` : ''}
               </span>
               <Button
+                guideId="run-apply"
                 label="add to run"
                 tone="go"
                 icon={<PlusIcon size={12} />}
@@ -150,13 +151,13 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
               {list.length > 0 && <Button label="back to the list" tone="ash" onClick={() => setMode('review')} />}
               {onScanAgain && <Button label="scan an image instead" tone="ash" icon={<ScanIcon size={12} />} onClick={onScanAgain} />}
               <span className="flex-1" />
-              <Button label="read it" tone="go" icon={<SparkleIcon size={12} />} disabled={!text.trim()} onClick={read} />
+              <Button guideId="run-read" label="read it" tone="go" icon={<SparkleIcon size={12} />} disabled={!text.trim()} onClick={read} />
             </>
           )}
         </footer>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-6 pt-4">
+      <div data-guide="run-programme" data-guide-state={mode} className="flex min-h-0 flex-1 flex-col gap-2 px-6 pt-4">
         {said && (
           <p className="shrink-0 px-1 text-[length:var(--tri-size-xs)] lowercase leading-relaxed text-[var(--tri-accent-yellow)]" aria-live="polite">
             {said}
@@ -166,6 +167,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
         {mode === 'paste' ? (
           <textarea
             ref={paste}
+            data-guide="run-text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {

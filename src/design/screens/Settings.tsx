@@ -165,7 +165,7 @@ const PAGES: Page[] = [
   {
     id: 'S-10k',
     title: 'API keys',
-    blurb: "Tokens the app uses locally. Once a key is saved, it's masked — revealing it requires your account password.",
+    blurb: "Keys used on this computer. Add a Pixabay or Pexels key to enable online media search.",
     icon: <CheckIcon size={ICON} />,
     rows: [
       { kind: 'secret', key: 'hfToken', label: 'Hugging Face', blurb: 'Sermon note generation and verse disambiguation. Usually pre-configured — transcription and detection work without it.', set: true },
@@ -370,7 +370,7 @@ function PageBody({ page }: { page: Page }) {
   const n = PAGES.indexOf(page) + 1;
 
   return (
-    <div className="mx-auto w-full max-w-[760px] px-10 pb-16 pt-10">
+    <div data-guide="settings-content" data-guide-page={page.id} className="mx-auto w-full max-w-[760px] px-10 pb-16 pt-10">
       <div className="text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.2em] text-[rgb(229_243_242_/_0.35)]">
         {String(n).padStart(2, '0')} · {page.id}
       </div>

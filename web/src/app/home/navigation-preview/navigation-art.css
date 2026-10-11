@@ -1,0 +1,40 @@
+/* The desktop app's charcoal faces and restrained, off-white edge lighting. */
+.nt-art { display:block; fill:none; color:#e1e1e1; stroke:currentColor; stroke-width:.9; stroke-linecap:round; stroke-linejoin:round }
+.nt-face { fill:#1c1c1c; stroke-opacity:.78 }
+.nt-top { fill:#292929; stroke-opacity:.68 }
+.nt-side { fill:#121212; stroke-opacity:.4 }
+.nt-screen { fill:#101212; stroke-opacity:.2 }
+.nt-inset { fill:#333636; stroke:none }
+.nt-fold-shadow { fill:#151515; stroke-opacity:.55 }
+.nt-ink { fill:none; stroke-opacity:.65 }
+.nt-soft { fill:none; stroke-opacity:.32 }
+.nt-dim { fill:none; stroke-opacity:.16; stroke-width:.7 }
+.nt-serif { fill:currentColor; fill-opacity:.86; stroke:none; font-family:Georgia,'Times New Roman',serif }
+.nt-caption { fill:currentColor; fill-opacity:.5; stroke:none; font-family:inherit }
+.nt-number { fill:currentColor; fill-opacity:.72; stroke:none; font:14px Georgia,'Times New Roman',serif }
+.nt-motion { transition:transform 240ms var(--ns-ease); transform:translate(0,0) }
+.nt-fold-left { transform-origin:60px 75px }.nt-fold-right { transform-origin:118px 67px }
+.nt-bell { transform-origin:150px 74px }
+.nt-bell-ring { opacity:.14; transition:opacity 200ms ease }
+.nt-icon { flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.2; stroke-linecap:round; stroke-linejoin:round }
+.ns-mobile-menu .nt-icon { width:18px; height:18px; margin-right:11px; color:#8e9e93 }
+.ns-mobile-menu>button>svg:last-child { margin-left:auto }
+.ns-mobile-menu>button { justify-content:flex-start }
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-slide-0 { transform:translateY(-3px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-slide-1 { transform:translateY(-9px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-slide-2 { transform:translateY(-3px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-quote-left { transform:translate(-4px,-6px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-quote-right { transform:translate(4px,-6px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-verse { transform:translateY(-4px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-phone-verse { transform:translate(-3px,-5px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-fold-left { transform:skewY(2deg) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-fold-right { transform:skewY(-2deg) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-journal-page { transform:translateY(-3px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-release { transform:translateY(-5px) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-bell { transform:rotate(-4deg) }
+  .ns-header[data-keyboard=false] .ns-tile:hover .nt-bell-ring { opacity:.55 }
+}
+@media (prefers-reduced-motion:reduce) {
+  .nt-motion { transform:none!important; transition:none }.nt-bell-ring { transition:none }
+}

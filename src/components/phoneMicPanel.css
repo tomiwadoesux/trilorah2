@@ -1,4 +1,7 @@
 .tri-phone-mic-panel { max-height:calc(100dvh - 40px); overflow-y:auto; }
+.tri-phone-mic-subtitle { margin: 8px 0 0; font-size: 12px; line-height: 1.6; color: rgb(229 243 242 / .5); }
+.tri-phone-mic-pairing { display: grid; gap: 18px; }
+.tri-phone-mic-panel .mobile-connection-state > .tri-phone-connection-art { width: 130px; height: 112px; margin: -6px 0; }
 .tri-phone-mic-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; position:relative; min-height:32px; }
 .tri-phone-mic-heading h2 { margin:0; font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
 .tri-phone-mic-heading[data-empty=true] { justify-content:center; padding:0 32px; }
@@ -12,3 +15,11 @@
 .tri-phone-mic-message { margin:0 0 16px; font-size:12px; line-height:1.55; overflow-wrap:anywhere; color:var(--tri-ink-muted, #adb4b3); }
 .tri-phone-mic-message[data-error=true] { color:var(--tri-ink-danger, #eac7c6); }
 @media (hover:hover) and (pointer:fine) { .tri-phone-mic-heading button:hover { color:var(--tri-ink); background:rgb(255 255 255 / .04); } }
+
+/* Shared mobile-panel hierarchy across every connection state. */
+.tri-phone-mic-panel { border-radius: 20px; background: #111817; }
+.tri-phone-mic-heading[data-empty=true] { justify-content: space-between; padding: 0; }
+.tri-phone-mic-heading h2 { font-size: 15px; font-weight: 550; letter-spacing: 0; text-transform: none; }
+.tri-phone-mic-heading button { width: 32px; height: 32px; background: rgb(229 243 242 / .025); }
+.tri-phone-mic-intro { padding-top: 12px; }
+@media (max-width: 480px) { .tri-phone-mic-panel { padding: 20px; } }

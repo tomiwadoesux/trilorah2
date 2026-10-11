@@ -1,3 +1,4 @@
+import { StockCredential } from './StockCredential';
 import { useEffect, useState, type ReactNode } from 'react';
 import { cx, Button, Select, Slider, SegmentedControl, CheckIcon, type SelectOption } from '../../ui';
 import { Dot } from './parts';
@@ -372,7 +373,7 @@ export function SettingRow({
       control = <input className={cx(FIELD, 'w-[280px]')} value={String(value)} placeholder={row.placeholder} spellCheck={false} onChange={(e) => onChange(e.target.value)} />;
       break;
     case 'secret':
-      control = <Secret set={row.set} />;
+      control = row.key === 'pixabayApiKey' || row.key === 'pexelsApiKey' ? <StockCredential settingKey={row.key} /> : <Secret set={row.set} />;
       break;
     case 'select': {
       const options = row.options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
@@ -418,7 +419,7 @@ export function SettingRow({
   }
 
   return (
-    <div className={cx('py-4', wide ? 'flex flex-col gap-4' : 'flex items-center gap-8')} style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.06)' }}>
+    <div data-guide={`setting-${row.key}`} className={cx('py-4', wide ? 'flex flex-col gap-4' : 'flex items-center gap-8')} style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.06)' }}>
       <div className="min-w-0 flex-1">
         <div className="text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">{row.label}</div>
         {row.blurb && (

@@ -17,12 +17,12 @@ export function SongLyricsEntry({ title, author, lyrics, cards, onTitle, onAutho
   const firstSlide = cards[0];
 
   return (
-    <div className="song-entry">
+    <div className="song-entry" data-guide="song-entry">
       <section className="song-entry-compose" aria-label="song details and lyrics">
         <div className="song-entry-details">
           <label className="song-entry-field">
             <span>song title</span>
-            <input value={title} onChange={(e) => onTitle(e.target.value)} placeholder="give your song a title" spellCheck={false} />
+            <input data-guide="song-title" value={title} onChange={(e) => onTitle(e.target.value)} placeholder="give your song a title" spellCheck={false} />
           </label>
           <label className="song-entry-field">
             <span>artist <span className="song-entry-optional">optional</span></span>
@@ -36,6 +36,7 @@ export function SongLyricsEntry({ title, author, lyrics, cards, onTitle, onAutho
             <span className="song-entry-auto"><SplitIcon size={12} /> auto-split</span>
           </div>
           <textarea
+            data-guide="song-lyrics"
             id="new-song-lyrics"
             value={lyrics}
             onChange={(e) => onLyrics(e.target.value)}

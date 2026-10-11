@@ -158,6 +158,7 @@ export function RunHeaderActions({
       style={{ '--tri-control-h': '26px', '--tri-control-pad-x': '8px' } as React.CSSProperties}
     >
       <TriPackageActions />
+      <Button guideId="run-paste" label="paste" title="paste a programme" onClick={() => setReview({ open: true })} />
       <ActionMenu
         groups={ADD_MENU}
         onArrange={(_parent, picked) => run.addSegments(picked)}
@@ -200,6 +201,7 @@ export function RunHeaderActions({
           onScanAgain={canScan ? () => void scan() : undefined}
           onAdd={(rows) => {
             run.addSegments(rowsToSegments(rows));
+            window.dispatchEvent(new CustomEvent('trilorah-guide-observed', { detail: 'programme-added' }));
             /* The engine gets the same rows, so what it expects next and
                what the rail shows next are one list. It REPLACES the
                engine's schedule: that is what set-service-schedule does,

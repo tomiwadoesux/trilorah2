@@ -1,0 +1,58 @@
+/* Real product captures, arranged as one room-to-phone composition. */
+.pd-companion-scene.pd-actual-scene { height: 670px; user-select: none; --pd-reveal-ease: cubic-bezier(.23, 1, .32, 1); }
+.pd-actual-desktop { position: absolute; top: 62px; left: 21%; width: 91%; overflow: hidden; border: 1px solid #bdd8c426; border-radius: 12px; opacity: .56; mask-image: linear-gradient(90deg, #000 15%, #000 65%, transparent 100%), linear-gradient(#000 16%, #0008 42%, transparent 68%); mask-composite: intersect; -webkit-mask-image: linear-gradient(90deg, #000 15%, #000 65%, transparent 100%), linear-gradient(#000 16%, #0008 42%, transparent 68%); -webkit-mask-composite: source-in; transition: opacity 240ms ease; }
+.pd-actual-desktop > img { display: block; width: 100%; height: auto; }
+.pd-actual-phone { position: absolute; left: 8%; top: 0; width: 282px; padding: 6px; border: 1px solid #748d8170; border-radius: 39px; background: #070d0e; box-shadow: 0 0 0 6px #26322c5c, 0 24px 70px #0006, inset 0 1px 1px #d0e6db1a; z-index: 2; overflow: hidden; }
+.pd-device-status { height: 35px; padding: 6px 16px 8px; display: flex; align-items: center; justify-content: space-between; color: #b2c4bd; font-size: 9px; }
+.pd-device-status > i { width: 74px; height: 20px; border-radius: 20px; background: #010404; }
+.pd-device-status > span:last-child { display: flex; align-items: center; gap: 5px; font-size: 6px; }
+.pd-device-status b { width: 12px; height: 6px; border: 1px solid currentColor; border-radius: 2px; background: linear-gradient(90deg, currentColor 75%, transparent 75%); }
+.pd-phone-capture { position: relative; width: 100%; aspect-ratio: 390 / 844; background: #020608; overflow: hidden; border-radius: 0 0 24px 24px; }
+.pd-phone-capture > img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+.pd-phone-capture > img.is-current { opacity: 1; }
+.pd-capture-nav { position: absolute; inset: auto 0 0; height: 9.3%; display: grid; grid-template-columns: repeat(4, 1fr); padding: 4px 7px 7px; gap: 3px; }
+.pd-capture-nav button { min-width: 0; min-height: 44px; border: 0; border-radius: 13px; background: transparent; cursor: pointer; touch-action: manipulation; }
+.pd-capture-nav button:focus-visible { outline: 2px solid #8fd3c0; outline-offset: -2px; }
+.pd-device-home { width: 82px; height: 3px; margin: 8px auto 4px; border-radius: 4px; background: #c6d8d375; }
+.pd-actual-scene .pd-floating-verse { z-index: 3; top: 151px; left: 0; pointer-events: none; }
+.pd-actual-scene .pd-floating-note { z-index: 3; bottom: 105px; left: 29%; pointer-events: none; }
+.pd-app-details { position: absolute; inset: 0; pointer-events: none; }
+.pd-app-fragment { position: absolute; pointer-events: auto; border-radius: 15px; overflow: hidden; background: #090d0bee; box-shadow: inset 0 0 0 1px #bcd8c40a; transition: transform 240ms var(--pd-reveal-ease); mask-image: linear-gradient(#000 60%, #0009 86%, transparent); }
+.pd-app-fragment img, .pd-fragment-label { opacity: .2; transition: opacity 240ms ease; }
+.pd-reading-fragment { width: 220px; height: 270px; top: 320px; left: 51%; }
+.pd-reading-fragment > img { width: 111.43%; max-width: none; height: auto; display: block; margin-left: -5.715%; margin-top: -56.57%; }
+.pd-notes-fragment { width: 242px; top: 390px; left: 75%; padding: 0; background: #080e0d; border: 1px solid #bdd8c426; cursor: pointer; text-align: left; color: #bdd5c9; font: inherit; }
+.pd-fragment-crop { position: relative; display: block; height: 185px; overflow: hidden; }
+.pd-fragment-crop img { display: block; width: 100%; height: auto; margin-top: -68%; }
+.pd-fragment-label { display: flex; align-items: center; justify-content: space-between; padding: 14px; font-size: 10px; }
+.pd-capture-caption { position: absolute; bottom: 0; left: 8%; margin: 0; display: flex; align-items: center; gap: 7px; font-size: 9px; color: #91a198; }
+.pd-actual-scene:focus-within .pd-floating-verse, .pd-actual-scene:focus-within .pd-floating-note { opacity: 1; transform: none; transition: none; }
+.pd-app-fragment:focus-visible img, .pd-app-fragment:focus-visible .pd-fragment-label { opacity: 1; transition: none; }
+.pd-app-fragment:focus-visible { outline: 2px solid #8fd3c0; outline-offset: 4px; mask-image: none; transition: none; }
+@media (hover: hover) and (pointer: fine) {
+  .pd-actual-desktop:hover { opacity: .78; }
+  .pd-app-fragment:hover { transform: translateY(-3px); }
+  .pd-app-fragment:hover img, .pd-app-fragment:hover .pd-fragment-label { opacity: .94; }
+  .pd-capture-nav button:hover { background: #a8e7d40b; }
+}
+@media (max-width: 1000px) {
+  .pd-reading-fragment { left: 53%; width: 180px; }
+  .pd-notes-fragment { left: 73%; width: 200px; top: 390px; }
+  .pd-actual-desktop { width: 105%; left: 18%; }
+}
+@media (max-width: 640px) {
+  .pd-companion-scene.pd-actual-scene { height: 660px; margin: 0; }
+  .pd-actual-phone { left: 50%; transform: translateX(-50%); width: 272px; }
+  .pd-actual-desktop { top: 110px; left: 0; width: 850px; opacity: .25; mask-image: linear-gradient(90deg, #000, transparent 60%), linear-gradient(#000 50%, transparent 96%); }
+  .pd-app-details { display: none; }
+  .pd-actual-scene .pd-floating-verse { top: 137px; left: -4px; width: 153px; padding: 12px; }
+  .pd-actual-scene .pd-floating-note { left: auto; right: -3px; bottom: 100px; min-width: 180px; padding: 13px; }
+  .pd-capture-caption { left: 0; width: 100%; justify-content: center; flex-wrap: wrap; font-size: 8px; }
+}
+@media (hover: none) {
+  .pd-app-fragment img, .pd-fragment-label { opacity: .48; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-actual-desktop, .pd-app-fragment, .pd-app-fragment img, .pd-fragment-label { transition: none; }
+  .pd-app-fragment:hover { transform: none; }
+}

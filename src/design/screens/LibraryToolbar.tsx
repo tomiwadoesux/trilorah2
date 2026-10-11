@@ -25,6 +25,7 @@ export function LibraryToolbar({ label, actions, searchActions }: { label: strin
             {index > 0 ? <span aria-hidden="true" className="h-3 w-px bg-[rgb(229_243_242_/_0.16)]" /> : null}
             <button
               type="button"
+              data-guide={`toolbar-${label}-${action.id}`}
               title={action.label}
               aria-label={action.label}
               aria-pressed={action.active}
@@ -41,6 +42,7 @@ export function LibraryToolbar({ label, actions, searchActions }: { label: strin
         <button
           key={action.id}
           type="button"
+          data-guide={`toolbar-${label}-${action.id}`}
           title={action.label}
           aria-label={action.label}
           aria-pressed={action.active}
@@ -63,10 +65,11 @@ export function LibraryToolbar({ label, actions, searchActions }: { label: strin
  * row; `textClassName` lets that row drop the words (icon and label stay)
  * when it gets narrow, because it does not wrap.
  */
-export function LibraryAction({ action, textClassName }: { action: DockAction; textClassName?: string }) {
+export function LibraryAction({ action, textClassName, guideId }: { action: DockAction; textClassName?: string; guideId?: string }) {
   return (
     <button
       type="button"
+      data-guide={guideId}
       title={action.label}
       aria-label={action.label}
       aria-pressed={action.active}
