@@ -169,8 +169,9 @@ const PAGES: Page[] = [
     icon: <CheckIcon size={ICON} />,
     rows: [
       { kind: 'secret', key: 'hfToken', label: 'Hugging Face', blurb: 'Sermon note generation and verse disambiguation. Usually pre-configured — transcription and detection work without it.', set: true },
-      { kind: 'secret', key: 'pixabayApiKey', label: 'Pixabay', blurb: 'Stock backgrounds.', set: false },
-      { kind: 'secret', key: 'pexelsApiKey', label: 'Pexels', blurb: 'Stock backgrounds.', set: false },
+      { kind: 'secret', key: 'pixabayApiKey', label: 'Pixabay', blurb: 'Your API key for searching and downloading photos and videos.', set: false },
+      { kind: 'secret', key: 'youtubeApiKey', label: 'YouTube', blurb: 'Search videos with readable captions. Enable YouTube Data API v3 for this key.', set: false },
+      { kind: 'secret', key: 'pexelsApiKey', label: 'Pexels', blurb: 'Your API key for searching and downloading photos and videos.', set: false },
       { kind: 'note', key: 'deepgramWhere', text: 'Deepgram keys live under Audio & speech, beside the engine that uses them.' },
       { kind: 'segment', key: 'notesProvider', label: 'Notes provider', blurb: 'cloud uses the Hugging Face token above. local runs a small model on this computer and needs nothing.', value: 'cloud', options: ['cloud', 'local'] },
       { kind: 'toggle', key: 'useIncrementalNotes', label: 'Build notes live', blurb: 'Assemble the sermon outline incrementally during the sermon instead of only at the end. Slightly higher latency on transcription.', value: true },

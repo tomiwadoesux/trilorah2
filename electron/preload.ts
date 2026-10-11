@@ -602,6 +602,8 @@ contextBridge.exposeInMainWorld('api', {
     getLyrics: (id: number) => invokeObserved('lyrics-get', { id }),
     lyricsPreview: (title: string, artist: string, opts?: { retry?: boolean }) =>
       invokeObserved('lyrics-preview', { title, artist, retry: !!opts?.retry }),
+    youtubeSearch: (query: string) => invokeObserved('youtube-search', {query}),
+    youtubeSearchConfigured: () => invokeObserved('youtube-search-configured'),
     youtubeCaptions: (url: string) => invokeObserved('youtube-captions', { url })
   },
   // Evals (item 25)

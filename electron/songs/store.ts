@@ -241,7 +241,10 @@ export class SongStore {
       if (!title) throw new Error('Song title is required')
       song.title = title
     }
-    if (patch.sections !== undefined) song.sections = cleanSections(patch.sections)
+    if (patch.sections !== undefined) {
+      song.originalSections ??= cleanSections(song.sections);
+      song.sections = cleanSections(patch.sections);
+    }
     if (patch.authors !== undefined) {
       const authors = patch.authors.map((a) => a.trim()).filter(Boolean)
       if (authors.length) song.authors = authors
@@ -365,6 +368,7 @@ export class SongStore {
       id: this.makeId(),
       title: imported.title?.trim() || 'Untitled',
       sections: cleanSections(imported.sections ?? []),
+      originalSections: cleanSections(imported.sections ?? []),
       createdAt: ts,
       updatedAt: ts,
       origin
@@ -423,6 +427,7 @@ function cleanSections(sections: readonly SongSection[]): SongSection[] {
 
 function cloneSong(s: Song): Song {
   const copy: Song = { ...s, sections: s.sections.map((x) => ({ label: x.label, lines: [...x.lines] })) }
+  if (s.originalSections) copy.originalSections = cleanSections(s.originalSections)
   if (s.authors) copy.authors = [...s.authors]
   return copy
 }
@@ -446,6 +451,7 @@ function reviveSong(x: unknown): Song | null {
     id: s.id,
     title: s.title,
     sections: Array.isArray(s.sections) ? cleanSections(s.sections) : [],
+    originalSections: Array.isArray(s.originalSections) ? cleanSections(s.originalSections) : Array.isArray(s.sections) ? cleanSections(s.sections) : [],
     createdAt: typeof s.createdAt === 'number' ? s.createdAt : 0,
     updatedAt: typeof s.updatedAt === 'number' ? s.updatedAt : 0,
     origin: s.origin === 'seed' || s.origin === 'manual' ? s.origin : 'imported'

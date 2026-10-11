@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { editSongCard, songCards } from './songCards';
+import { arrangeSongCards, editSongCard, songCards } from './songCards';
 
 it('keeps every lyric in order while limiting each live card to four lines', () => {
   const lines=['one','two','three','four','five','six'];
@@ -19,4 +19,13 @@ it('edits one card without dropping its remaining lyrics or other sections', () 
   expect(editSongCard(sections,0,4,2,['new ending'])).toEqual([{label:'Verse 1',lines:['a','b','c','d','new ending']},sections[1]]);
   expect(()=>editSongCard(sections,0,0,0,['new line'])).toThrow('changed');
   expect(sections[0].lines).toHaveLength(6);
+});
+
+it('moves and deletes exactly one visible card without losing neighboring lyrics',()=>{
+ const sections=[{label:'Verse',lines:['a','b','c','d','e','f']},{label:'Chorus',lines:['g']}];
+ expect(arrangeSongCards(sections,0,2).map(s=>s.lines)).toEqual([['e','f'],['g'],['a','b','c','d']]);
+ expect(arrangeSongCards(sections,1,null).map(s=>s.lines)).toEqual([['a','b','c','d'],['g']]);
+ expect(sections[0].lines).toHaveLength(6);
+ expect(()=>arrangeSongCards([{label:'Only',lines:['a']}],0,null)).toThrow('at least one');
+ expect(()=>arrangeSongCards(sections,-1,null)).toThrow('no longer');
 });

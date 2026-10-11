@@ -20,3 +20,17 @@ export function editSongCard(sections: SongSection[], sectionIndex: number, offs
   }
   return sections.map((section,i)=>i===sectionIndex ? {...section,lines:[...section.lines.slice(0,offset),...lines,...section.lines.slice(offset+count)]} : section);
 }
+
+/** Preserve the visible four-line cards as separate slides when arranging them. */
+export function arrangeSongCards(sections: SongSection[], from: number, to: number | null): SongSection[] {
+  const cards = songCards({ id: 'arrange', sections }).map(card => ({ label: card.label, lines: [...card.lines] }));
+  if (!Number.isInteger(from) || from < 0 || from >= cards.length) throw new Error('That slide is no longer available.');
+  if (to === null) {
+    if (cards.length <= 1) throw new Error('Keep at least one lyric slide.');
+    return cards.filter((_, index) => index !== from);
+  }
+  if (!Number.isInteger(to) || to < 0 || to >= cards.length) throw new Error('That slide position is no longer available.');
+  const [card] = cards.splice(from, 1);
+  cards.splice(to, 0, card);
+  return cards;
+}

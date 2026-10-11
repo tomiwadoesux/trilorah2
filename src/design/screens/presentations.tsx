@@ -1,3 +1,4 @@
+import { useLibraryNavigation } from '../../stores/libraryNavigation';
 import { isEmptyPreview } from '../emptyPreviewMode';
 import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
 import { useProjector } from './projector';
@@ -443,6 +444,17 @@ export function SlidesBrowser() {
     const item = projector.preview;
     if (item?.deckId && item.deckIndex != null) setPageAt(current => ({ ...current, [item.deckId!]: item.deckIndex! }));
   }, [projector.preview]);
+  const request = useLibraryNavigation(state => state.request);
+  useEffect(() => {
+    const item=request?.item;
+    if (item?.source !== 'presentation' || !item.path) return;
+    const deck=allDecks.find(deck=>deck.paths?.includes(item.path!));
+    if (!deck?.paths) return;
+    const page=deck.paths.indexOf(item.path);
+    setQuery(''); setPageAt(current=>({...current,[deck.id]:page}));
+    projector.stage({source:'presentation',id:`${deck.id}:${page}`,label:item.label,path:item.path,deckId:deck.id,deckIndex:page,deckPaths:deck.paths,title:deck.title,mediaKind:'photo',origin:'operator'});
+    useLibraryNavigation.getState().consume();
+  }, [request,allDecks]);
   const pageOf = (deck: LoadedDeck) => Math.min(pageAt[deck.id] ?? 0, Math.max(0, deck.rendered - 1));
   const stepPage = (deck: LoadedDeck, delta: -1 | 1) =>
     setPageAt((m) => {

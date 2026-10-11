@@ -1,3 +1,4 @@
+import { useLibraryNavigation } from '../../../stores/libraryNavigation';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   ActionMenu,
@@ -126,6 +127,7 @@ function QueuedItemRow({
     if (isVerse) {
       projector.send({ source: 'scripture', id: item.label, label: item.label, reference: item.label });
     } else if (item.source === 'song' && item.lines) {
+      if (item.songId) useLibraryNavigation.getState().selectSong(item.songId);
       projector.send({
         source: 'song',
         id: item.label,
@@ -178,14 +180,14 @@ function QueuedItemRow({
           className="min-w-0 flex-1 bg-transparent text-[length:var(--tri-size-body)] text-[rgb(229_243_242_/_0.72)] placeholder:text-[rgb(229_243_242_/_0.28)] focus:outline-none"
         />
       ) : (
-        <span className="flex min-w-0 flex-1 items-baseline gap-1.5" title={item.label}>
+        <button type="button" className="run-item-open flex min-w-0 flex-1 items-baseline gap-1.5 text-left" title={`Open ${item.label} in the library and preview`} onClick={() => useLibraryNavigation.getState().open(item)}>
           <span className="min-w-0 truncate">{main}</span>
           {part && (
             <span className="max-w-[45%] shrink-0 truncate text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.4)]">
               {part}
             </span>
           )}
-        </span>
+        </button>
       )}
 
       {canGoLive && (
@@ -334,7 +336,7 @@ function SegmentCard({
       data-active={open || undefined}
       data-menu={menu.at ? 'true' : undefined}
       className={cx(
-        surface({ shape: 'panel', tone: 'gold', wide: true, interactive: true }),
+        surface({ shape: 'panel', tone: 'ash', wide: true, interactive: true }),
         over && 'tri-surface--gold',
         'run-seg relative shrink-0 overflow-hidden',
       )}
@@ -345,7 +347,7 @@ function SegmentCard({
        * wakes up exactly like every other control and merely sleeps more
        * quietly.
        */
-      style={{ borderRadius: 6, '--tri-alpha-rest': 0.15 } as CSSProperties}
+      style={{ borderRadius: 10, '--tri-alpha-rest': 0.15 } as CSSProperties}
     >
       <div {...menu.pointer} className="relative flex items-center gap-1.5 py-[5px] pl-2.5 pr-[9px]">
         {renaming ? (

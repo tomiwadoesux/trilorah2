@@ -79,6 +79,34 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
     return () => import.meta.hot?.off('trilorah-guide-map-update', updated);
   }, [walking, pauseGuide]);
   const close = useCallback(() => { stop(); setOpen(false); setWalking(false); setVoice(false); trigger.current?.focus(); }, [stop]);
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault(); if (open) close(); else setOpen(true);
+      }
+    };
+    window.addEventListener('keydown', shortcut);
+    return () => window.removeEventListener('keydown', shortcut);
+  }, [open, close]);
+  useEffect(() => {
+    if (!open || walking) return;
+    const keys = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+      if (event.key === 'Tab') {
+        const controls = [...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, textarea, summary, a[href]') ?? [])].filter(el => el.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !selected) {
+        const results = [...(panel.current?.querySelectorAll<HTMLButtonElement>('.product-guide-result') ?? [])];
+        const index = results.indexOf(document.activeElement as HTMLButtonElement);
+        event.preventDefault(); results[(index + (event.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length]?.focus();
+      }
+    };
+    window.addEventListener('keydown', keys);
+    return () => window.removeEventListener('keydown', keys);
+  }, [open, walking, selected, close]);
   const results = useMemo(() => query.trim() ? searchGuideTasks(query).slice(0, 12) : all ? guideTasks : starters.map(id => guideTasks.find(task => task.id === id)!).filter(Boolean), [query, all]);
 
   useEffect(() => { if (open && !selected) search.current?.focus(); }, [open, selected]);
@@ -261,6 +289,7 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
   return <>
     <button ref={trigger} type="button" className="tri-header-control product-guide-trigger" aria-label="Open Trilorah guide" title="Trilorah guide" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? dialogId : undefined} onClick={() => open ? close() : setOpen(true)}><span aria-hidden="true" className="product-guide-info">i</span><span className="product-guide-trigger-label">guide</span></button>
     {open && createPortal(<>
+      {!walking && <div className="product-guide-scrim" onClick={close} />}
       {cursor.rect && cursor.visible && <div aria-hidden="true" className="product-guide-highlight" style={{ left: cursor.rect.left - 3, top: cursor.rect.top - 3, width: cursor.rect.width + 6, height: cursor.rect.height + 6 }} />}
       <div ref={cursor.cursor} aria-hidden="true" className="product-guide-cursor" data-visible={cursor.visible}>
         {cursor.pulse > 0 && <span key={cursor.pulse} className="product-guide-click" />}<Triangle /><span className="product-guide-cursor-name">trilorah</span>
@@ -275,9 +304,9 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
         <div className="product-guide-demo-transcript">{demoSpoken ? <p data-guide="demo-transcript">“Welcome. It’s good to be here together.”</p> : <div className="product-guide-wave" data-listening={demoListening} aria-label={demoListening ? 'Demo listening' : 'Demo stopped'}>{[12, 22, 34, 18, 28, 42, 20, 32, 16, 26, 12].map((h, i) => <span key={i} style={{ height: h }} />)}</div>}</div>
         <div className="product-guide-demo-bottom"><button type="button" data-guide="demo-listen" aria-pressed={demoListening} onClick={() => setDemoListening(!demoListening)}>{demoListening ? 'listening' : 'start listening'}</button><button type="button" data-guide="demo-speech" disabled={!demoListening} onClick={() => setDemoSpoken(true)}>try a sentence</button></div>
       </section>}
-      <aside ref={panel} id={dialogId} role="dialog" aria-modal="false" aria-label="Trilorah guide" data-typing-scope="local" className="product-guide-panel" data-dock={dock}>
+      <aside ref={panel} id={dialogId} role="dialog" aria-modal={!walking} aria-label="Trilorah guide" data-typing-scope="local" className="product-guide-panel" data-centered={!walking} data-dock={dock}>
         <header className="product-guide-header"><span className="product-guide-mark"><Triangle small /></span><h2>trilorah guide</h2><span className="product-guide-presence">{cursor.busy ? 'showing you' : paused ? 'paused' : 'with you'}</span>
-          <button type="button" aria-label={`Move guide to the ${dock === 'right' ? 'left' : 'right'}`} title="Move guide" onClick={() => setDock(dock === 'right' ? 'left' : 'right')}>⇄</button><button type="button" aria-label="Close guide" onClick={close}><CloseIcon size={14} /></button>
+          {walking && <button type="button" aria-label={`Move guide to the ${dock === 'right' ? 'left' : 'right'}`} title="Move guide" onClick={() => setDock(dock === 'right' ? 'left' : 'right')}>⇄</button>}<button type="button" aria-label="Close guide" onClick={close}><CloseIcon size={14} /></button>
         </header>
         <div className="product-guide-scroll">
           {!selected ? <>

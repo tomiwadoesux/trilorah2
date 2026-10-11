@@ -53,9 +53,9 @@ export type LyricsSearchResult = { ok: true; hits: LyricsHit[] } | LyricsFailure
 export type LyricsGetResult = { ok: true; title: string; artist: string; lyrics: string } | LyricsFailure
 /**
  * What a song card hears back: the record the click will open, by id, and
- * its opening line. The full words stay in this process until the click.
+ * its lyric lines for paged previews.
  */
-export type LyricsPreviewResult = { ok: true; id: number; firstLine: string } | LyricsFailure
+export type LyricsPreviewResult = { ok: true; id: number; firstLine: string; lines: string[] } | LyricsFailure
 export type SongLyricsResult =
   | { ok: true; id: number; title: string; artist: string; lyrics: string; firstLine: string }
   | LyricsFailure
@@ -304,8 +304,8 @@ export function findSongLyrics(title: string, artist: string, opts: { retry?: bo
   return run
 }
 
-/** `findSongLyrics` trimmed to what crosses IPC: the id and one line, never the whole song. */
+/** `findSongLyrics` trimmed to what crosses IPC: the id and lyric lines for four-line preview pages. */
 export async function lyricsPreview(title: string, artist: string, opts: { retry?: boolean } = {}): Promise<LyricsPreviewResult> {
   const r = await findSongLyrics(title, artist, opts)
-  return r.ok ? { ok: true, id: r.id, firstLine: r.firstLine } : r
+  return r.ok ? { ok: true, id: r.id, firstLine: r.firstLine, lines: r.lyrics.split(/\r?\n/).map(line => line.trim()).filter(line => !!line && !/^\[[^\]]+\]$/.test(line)) } : r
 }

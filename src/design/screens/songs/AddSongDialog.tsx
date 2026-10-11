@@ -96,8 +96,45 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
   const [searching, setSearching] = useState(false);
   const [searchNote, setSearchNote] = useState('');
   const searchTicket = useRef(0);
-  const visibleSongs = onlineSongs ?? songs;
+  const candidates = onlineSongs ?? songs;
+  const [resultLimit,setResultLimit] = useState(24);
+  useEffect(()=>setResultLimit(24),[candidates]);
+  const [verifiedSongs, setVerifiedSongs] = useState<ChristianSong[]>([]);
+  const [checkingLyrics, setCheckingLyrics] = useState(false);
+  const [checkMessage, setCheckMessage] = useState('');
+  const visibleSongs = verifiedSongs;
+  useEffect(() => {
+    if (!open || route !== 'search') return;
+    let active = true;
+    setVerifiedSongs([]); setCheckMessage('');
+    if (!lyricPreviews.available()) { setCheckMessage(NO_ENGINE); return; }
+    setCheckingLyrics(true);
+    // Small batches avoid flooding the lyrics provider with the whole catalogue.
+    const batch = candidates.slice(0, resultLimit);
+    const requests = batch.map(song => ({song,key:previewKey(song.title,song.artist),promise:lyricPreviews.request(previewKey(song.title,song.artist),song.title,song.artist)}));
+    void Promise.all(requests.map(async ({song,promise}) => {
+      const answer = await promise;
+      if (!active) return;
+      if (answer.kind === 'line') setVerifiedSongs(list => [...list,song]);
+      else if (answer.kind === 'busy' || answer.kind === 'offline') setCheckMessage('Some lyrics could not be checked. Try searching again in a moment.');
+    })).then(() => { if (active) setCheckingLyrics(false); });
+    return () => { active=false; requests.forEach(({key,promise}) => lyricPreviews.cancel(key,promise)); };
+  }, [open, route, candidates, resultLimit]);
   const [url, setUrl] = useState('');
+  const [videoQuery,setVideoQuery] = useState('');
+  const [videos,setVideos] = useState<import('../../../../electron/songs/youtubeSearch').CaptionedVideo[]>([]);
+  const [videoBusy,setVideoBusy] = useState(false);
+  const videoTicket=useRef(0);
+  useEffect(() => { videoTicket.current++; setVideoBusy(false); setVideos([]); setVideoQuery(''); },[open,route]);
+  const searchVideos = async () => {
+    if (!videoQuery.trim() || videoBusy) return;
+    const mine=++videoTicket.current; setVideoBusy(true); setNote(null); setVideos([]);
+    const answer=await api?.youtubeSearch?.(videoQuery).catch(() => null);
+    if (mine!==videoTicket.current) return;
+    setVideoBusy(false);
+    if (answer?.ok) { setVideos(answer.videos); if (!answer.videos.length) setNote({text:'No videos with readable captions found. Try a different title or artist.'}); }
+    else setNote({text:answer && !answer.ok ? answer.message : NO_ENGINE});
+  };
 
   const body = useRef<HTMLDivElement>(null);
   /* A reply that arrives after the dialog was closed, or after a newer
@@ -221,8 +258,8 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
   };
 
   /* ---- youtube ------------------------------------------------------- */
-  const fetchCaptions = async () => {
-    const link = url.trim();
+  const fetchCaptions = async (selectedUrl = url) => {
+    const link = selectedUrl.trim();
     if (!link) return;
     if (!api?.youtubeCaptions) return setNote({ text: NO_ENGINE, nudge: true });
     const mine = (ticket.current += 1);
@@ -289,24 +326,37 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
             </div>
             <div className="song-discovery-label">
               <span>{onlineSongs ? 'online results' : 'discover Christian music'}</span>
-              <span>{visibleSongs.length} songs · search the online catalogue for more</span>
+              <span>{visibleSongs.length} songs with lyrics</span>
             </div>
             <div className="song-discovery-scroll" aria-busy={!!busy || searching}>
-              <p role="status" className="song-discovery-status">{searching ? 'searching Christian music…' : searchNote}</p>
+              <p role="status" className="song-discovery-status">{searching ? 'searching Christian music…' : checkingLyrics ? 'checking for available lyrics…' : searchNote || checkMessage}</p>
               <div className="song-discovery-grid">
                 {visibleSongs.map(song => (
                   <DiscoveryCard key={song.id} song={song} inLibrary={added?.has(song.id) ?? false} busy={!!busy}
                     onChoose={(chosen, card) => void choose(chosen, card)} />
                 ))}
               </div>
-              {visibleSongs.length === 0 && <Hint>try another title or artist, or a youtube lyric video for a song you already know.</Hint>}
+              {!checkingLyrics && candidates.length > resultLimit && <Button label="check more songs" onClick={()=>setResultLimit(value=>value+24)} />}
+              {checkingLyrics && <div className="song-discovery-loading" role="status" aria-label="Checking lyrics"><span/><span/><span/></div>}
+              {!checkingLyrics && visibleSongs.length === 0 && <Hint>try another title or artist, or a youtube lyric video for a song you already know.</Hint>}
             </div>
             <span className="text-[11px] text-[var(--tri-ink-muted)]">worship, gospel &amp; hymns</span>
           </div>
         ) : null}
 
         {route === 'youtube' ? (
-          <div className="flex flex-1 flex-col gap-3">
+          <div className="youtube-discovery flex min-h-0 flex-1 flex-col gap-3">
+            <form className="flex items-center gap-2" onSubmit={event => {event.preventDefault(); void searchVideos();}}>
+              <input aria-label="Search YouTube videos" placeholder="Search YouTube by song or artist…" value={videoQuery} onChange={event=>setVideoQuery(event.target.value)} className={cx(INPUT,'h-[var(--tri-field-h)]')} />
+              <Button type="submit" label={videoBusy ? 'checking captions…' : 'search videos'} disabled={videoBusy || !videoQuery.trim()} />
+            </form>
+            <div className="youtube-results" aria-busy={videoBusy}>
+              {videoBusy && <div className="song-discovery-loading" role="status" aria-label="Searching videos and checking captions"><span/><span/><span/></div>}
+              {videos.map(video=><button type="button" key={video.id} className="youtube-result" disabled={!!busy} onClick={()=>void fetchCaptions(video.id)}>
+                <img src={video.thumbnail} alt=""/><span><strong>{video.title}</strong><small>{video.author}</small><em>{video.trackKind==='auto'?'Auto-generated captions':'Uploaded captions'}</em></span>
+              </button>)}
+            </div>
+            <span className="text-xs text-white/40">Or paste a video link</span>
             <div className="flex items-center gap-2">
               <input
                 value={url}
@@ -400,6 +450,7 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const [shown, setShown] = useState(false);
+  const [page, setPage] = useState(0);
   const wanted = hover || focus;
   const card = useRef<HTMLElement>(null);
 
@@ -441,6 +492,8 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
     };
   }, [wanted, key, song.title, song.artist]);
 
+  const lines = preview?.kind === 'line' ? preview.lines ?? [preview.text] : [];
+  const pages = Math.max(1,Math.ceil(lines.length/4));
   const kind = preview?.kind;
   const visible = shown && !!kind && kind !== 'unavailable';
   return (
@@ -458,7 +511,7 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
           <span className="song-discovery-category">{song.category}</span>
           {/* Before the action pill, so the pill paints over the line's foot. */}
           <span id={lineId} className="song-discovery-preview" data-state={kind ?? 'empty'} aria-hidden={!visible}>
-            <span className="song-discovery-preview-text">{previewCopy(preview)}</span>
+            <span className="song-discovery-preview-text">{kind === 'line' ? lines.slice(page*4,page*4+4).join('\n') : previewCopy(preview)}</span>
           </span>
           {/* Adding a run of songs means coming back here after
               each one; the mark says which are done already. */}
@@ -469,6 +522,11 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
         <span className="song-discovery-title">{song.title}</span>
         <span className="song-discovery-artist">{song.artist}</span>
       </button>
+      {visible && kind === 'line' && pages > 1 && <div className="song-discovery-pager">
+        <button type="button" aria-label="Previous lyric lines" disabled={page===0} onClick={() => setPage(value => Math.max(0,value-1))}>‹</button>
+        <span>{page+1} / {pages}</span>
+        <button type="button" aria-label="Next lyric lines" disabled={page===pages-1} onClick={() => setPage(value => Math.min(pages-1,value+1))}>›</button>
+      </div>}
       {song.storeUrl && <a className="song-discovery-store" href={song.storeUrl} target="_blank" rel="noopener noreferrer">Download on iTunes <ExternalLinkIcon size={12} /></a>}
     </article>
   );

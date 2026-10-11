@@ -302,3 +302,8 @@
    nothing of its own, the control draws the box. */
 .tri-live-header .tri-header-audio select { font: inherit; letter-spacing: inherit; }
 .tri-live-header .tri-header-audio select option { color: #0b1214; }
+/* Workspace navigation responds immediately; no half-second label/pill travel. */
+.tri-header-views .tri-header-view-pill,
+.tri-header-views[data-pill-sliding='true'] .tri-header-view-pill,
+.tri-header-views .tri-header-view-label,
+.tri-header-views .tri-header-view-symbol { transition: none; }

@@ -508,6 +508,8 @@ interface SongsApi {
    * operator puts them on a wall. Rides on undocumented YouTube endpoints —
    * treat `reason: 'error'` as "YouTube changed", and keep paste one click away.
    */
+  youtubeSearch(query: string): Promise<import('../../electron/songs/youtubeSearch').YoutubeSearchResult>;
+  youtubeSearchConfigured(): Promise<boolean>;
   youtubeCaptions(url: string): Promise<YoutubeCaptionsResult>;
 }
 

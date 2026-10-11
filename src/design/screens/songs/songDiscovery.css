@@ -38,3 +38,21 @@
 .song-discovery-preview-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: rgb(255 255 255 / .94); font-size: 11px; line-height: 1.4; font-style: italic; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
 .song-discovery-preview:not([data-state="line"]) .song-discovery-preview-text { font-style: normal; color: rgb(255 255 255 / .72); }
 @media (prefers-reduced-motion: reduce) { .song-discovery-preview { transition: none; transform: none; } }
+.song-discovery-card { position: relative; }
+.song-discovery-preview { padding: 18px 12px 42px; background: linear-gradient(to top, #071310f5 80%, #071310cc); }
+.song-discovery-preview-text { display: block; white-space: pre-line; font-style: normal; line-height: 1.65; font-size: 12px; max-height: 8em; }
+.song-discovery-pager { position: absolute; right: 8px; bottom: 65px; z-index: 3; display: flex; align-items: center; gap: 8px; background: #111c17; border: 1px solid #ffffff25; border-radius: 6px; padding: 2px; font-size: 10px; }
+.song-discovery-pager button { width: 26px; height: 26px; font-size: 18px; }
+.song-discovery-pager button:disabled { opacity: .2; }
+.song-discovery-loading { display: flex; gap: 12px; padding: 16px 0; }
+.song-discovery-loading span { width: 160px; height: 140px; border-radius: 12px; background: #ffffff06; animation: song-check-pulse 1s ease-in-out infinite alternate; }
+@keyframes song-check-pulse { to { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .song-discovery-loading span { animation: none; } }
+.youtube-results { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 10px; }
+.youtube-result { display: flex; gap: 12px; padding: 10px; border: 1px solid #ffffff12; border-radius: 10px; text-align: left; background: #ffffff04; }
+.youtube-result:hover { background: #ffffff09; }
+.youtube-result img { width: 110px; height: 72px; object-fit: cover; border-radius: 6px; }
+.youtube-result > span { display: grid; gap: 5px; min-width: 0; }
+.youtube-result strong { font-size: 12px; font-weight: 500; }
+.youtube-result small { color: #a3b2aa; font-size: 10px; }
+.youtube-result em { color: #a0cbb5; font-size: 10px; font-style: normal; }

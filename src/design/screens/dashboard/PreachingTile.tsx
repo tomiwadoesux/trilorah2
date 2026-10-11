@@ -199,7 +199,7 @@ export function TranscriptFace({ spoken, asr, className, onOpen, rail = false }:
           <div className="min-w-0">
             <h3 className="preaching-card__title">Preacher transcript</h3>
           </div>
-          <ArrowIcon size={14} />
+          {!rail && <ArrowIcon size={14} />}
         </button>
         <div className="preaching-card__history">
           {settled.length > 0 ?

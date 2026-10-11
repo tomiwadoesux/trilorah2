@@ -92,3 +92,12 @@
     animation: none;
   }
 }
+.run-seg { background-image: none; background-color: #171d1b; box-shadow: inset 0 0 0 1px #d6e8df12; }
+.run-seg[data-active] { background-color: #1a2420; box-shadow: inset 0 0 0 1px #b0d0bb24; }
+.run-seg > div:first-child { min-height: 42px; }
+.run-seg ul { gap: 5px; padding-top: 5px; }
+.run-item-open { min-height: 28px; border-radius: 5px; }
+.run-item-open:hover { color: #e5f3f2; }
+.run-item-open:focus-visible { outline: 2px solid #91b5a6; outline-offset: 2px; }
+.tri-context-menu[role='menu'] { padding: 7px; }
+.tri-context-menu [role='menuitem'] { min-height: 34px; border-radius: 6px; }

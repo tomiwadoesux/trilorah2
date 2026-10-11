@@ -373,7 +373,7 @@ export function SettingRow({
       control = <input className={cx(FIELD, 'w-[280px]')} value={String(value)} placeholder={row.placeholder} spellCheck={false} onChange={(e) => onChange(e.target.value)} />;
       break;
     case 'secret':
-      control = row.key === 'pixabayApiKey' || row.key === 'pexelsApiKey' ? <StockCredential settingKey={row.key} /> : <Secret set={row.set} />;
+      control = row.key === 'pixabayApiKey' || row.key === 'pexelsApiKey' || row.key === 'youtubeApiKey' ? <StockCredential settingKey={row.key} /> : <Secret set={row.set} />;
       break;
     case 'select': {
       const options = row.options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));

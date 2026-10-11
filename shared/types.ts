@@ -194,6 +194,8 @@ export interface Song {
   ccliNumber?: string
   copyright?: string
   sections: SongSection[]
+  /** Original imported arrangement, retained when slides are edited. */
+  originalSections?: SongSection[]
   createdAt: number
   updatedAt: number
   origin: SongOrigin

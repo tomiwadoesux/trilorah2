@@ -1,3 +1,5 @@
+import { getSetting } from '../data/settings';
+import { cachedVideoCaptions, searchYoutubeVideos } from './youtubeSearch';
 import { discoverChristianSongs } from './songDiscovery';
 /**
  * IPC for the two online lyric sources. Kept out of main.ts because neither
@@ -13,7 +15,7 @@ import { discoverChristianSongs } from './songDiscovery';
 
 import { app, type IpcMain } from 'electron'
 import { getLyrics, lyricsPreview, searchLyrics, setLyricsClientVersion } from './lyricsSearch'
-import { youtubeCaptions } from './youtubeCaptions'
+import { parseVideoId, youtubeCaptions } from './youtubeCaptions'
 
 const backstop = (err: unknown) => ({
   ok: false as const,
@@ -35,7 +37,9 @@ export function registerLyricsIpc(ipcMain: IpcMain): void {
   ipcMain.handle('lyrics-preview', (_event, payload: { title?: string; artist?: string; retry?: boolean } | undefined) =>
     lyricsPreview(String(payload?.title ?? ''), String(payload?.artist ?? ''), { retry: !!payload?.retry }).catch(backstop)
   )
+  ipcMain.handle('youtube-search', (_event, payload: {query?: string} | undefined) => searchYoutubeVideos(String(payload?.query ?? ''), getSetting('youtubeApiKey')));
+  ipcMain.handle('youtube-search-configured', () => !!getSetting('youtubeApiKey'));
   ipcMain.handle('youtube-captions', (_event, payload: { url?: string } | undefined) =>
-    youtubeCaptions(String(payload?.url ?? '')).catch(backstop)
+    cachedVideoCaptions(parseVideoId(String(payload?.url ?? '')) ?? '') ?? youtubeCaptions(String(payload?.url ?? '')).catch(backstop)
   )
 }

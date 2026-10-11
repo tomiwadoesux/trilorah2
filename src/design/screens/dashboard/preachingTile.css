@@ -118,3 +118,5 @@
  .transcript-word[data-reference-state] { animation:none; }
  .transcript-reference[data-pill], .transcript-command.tri-surface { animation:none; }
 }
+.preaching-card--rail .preaching-card__live { border-top: 0; padding-top: 0; }
+.preaching-card--rail { animation: none; }

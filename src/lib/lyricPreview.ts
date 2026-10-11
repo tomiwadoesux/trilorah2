@@ -23,7 +23,7 @@
 
 export type PreviewState =
   | { kind: 'loading' }
-  | { kind: 'line'; text: string; id: number }
+  | { kind: 'line'; text: string; id: number; lines?: string[] }
   | { kind: 'none' }
   | { kind: 'busy' }
   | { kind: 'offline' }
@@ -32,7 +32,7 @@ export type PreviewState =
 
 /** What the bridge answers — the shape of `songs.lyricsPreview`. */
 export type PreviewAnswer =
-  | { ok: true; id: number; firstLine: string }
+  | { ok: true; id: number; firstLine: string; lines?: string[] }
   | { ok: false; reason: string; message?: string };
 
 export interface PreviewRequest {
@@ -76,7 +76,7 @@ const BUSY: PreviewState = { kind: 'busy' };
 
 function toState(answer: PreviewAnswer | null | undefined): PreviewState {
   if (!answer) return UNAVAILABLE;
-  if (answer.ok) return { kind: 'line', text: answer.firstLine, id: answer.id };
+  if (answer.ok) return { kind: 'line', text: answer.firstLine, id: answer.id, ...(answer.lines ? {lines:answer.lines} : {}) };
   if (answer.reason === 'not-found') return { kind: 'none' };
   if (answer.reason === 'offline') return { kind: 'offline' };
   // 'busy', and any other failure: LRCLIB is not answering properly, which

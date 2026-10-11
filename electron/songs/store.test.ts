@@ -41,6 +41,7 @@ describe('SongStore', () => {
       ccliNumber: '22025',
       copyright: 'Public domain',
       sections: [{ label: 'Verse 1', lines: ['a line'] }],
+      originalSections: [{ label: 'Verse 1', lines: ['a line'] }],
       createdAt: now,
       updatedAt: now,
       origin: 'imported'
@@ -130,7 +131,7 @@ describe('SongStore', () => {
     const store = make()
     expect(store.problem).toBeNull()
     expect(store.list()).toEqual([
-      { id: 'k', title: 'Kept', sections: [], createdAt: 0, updatedAt: 0, origin: 'imported' }
+      { id: 'k', title: 'Kept', sections: [], originalSections: [], createdAt: 0, updatedAt: 0, origin: 'imported' }
     ])
     // The one good deletedSeeds entry is kept; the number is dropped.
     store.add(song('x'))
@@ -429,3 +430,14 @@ describe('SongStore', () => {
     })
   })
 })
+
+ it('retains the imported arrangement through edits, caller mutation and reload', () => {
+   const store=make(); const added=store.add(song('Original'));
+   const edited=store.update(added.id,{sections:[{label:'Changed',lines:['new words']}]});
+   expect(edited.originalSections).toEqual(added.sections);
+   edited.originalSections![0].lines[0]='mutated by renderer';
+   const restored=make().get(added.id)!;
+   expect(restored.originalSections).toEqual(added.sections);
+   expect(restored.sections[0].lines).toEqual(['new words']);
+   expect(store.update(added.id,{sections:restored.originalSections}).sections).toEqual(added.sections);
+ });

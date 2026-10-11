@@ -14,6 +14,7 @@ export const defaults = {
   deepgramApiKey: '',
   pixabayApiKey: '',
   pexelsApiKey: '',
+  youtubeApiKey: '',
   agentEnabled: true,
   /** Lets speech detection blank the projector by itself (prayer-mode verse
    *  dismiss, the 30 s worship auto-clear). Off: the screen changes only when

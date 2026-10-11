@@ -1,3 +1,4 @@
+import { useLibraryNavigation } from '../../stores/libraryNavigation';
 import { mediaPreview } from '../../lib/mediaPreview';
 import { useOperatorTyping } from '../../lib/useOperatorTyping';
 import { QrProjectionConfirm } from './QrProjectionConfirm';
@@ -28,7 +29,7 @@ import { TEXT_WIDTH } from '../../../shared/textWidth';
 import { resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, type TextSpacing } from '../../../shared/textSpacing';
 import { forgetTriMedia, normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
-import { editSongCard, songCards } from '../../../shared/songCards';
+import { arrangeSongCards, editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
 import { lyricScore } from '../../lib/songMatch';
@@ -1073,7 +1074,7 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
           {/* Only the carried media is used as a background; parked run items stay put. */}
           {(['themes','media'] as const).map(value => <button key={value} type="button" {...(value === 'themes' && carried ? drag.dropProps('media-themes', { solo: true }) : {})}
             className={`${button} ${view === value || (value === 'themes' && drag.over === 'media-themes') ? 'bg-white/15 text-[var(--tri-ink)]' : 'text-[var(--tri-ink-muted)]'}`}
-            aria-pressed={view === value} onClick={() => { setView(value); setNotice(''); }}>{value}</button>)}
+            aria-pressed={view === value} onClick={() => { setView(value); setQuery(''); setNotice(''); }}>{value}</button>)}
         </div>
       </div>
       <MediaKindPicker value={kind} onChange={setKind} />
@@ -1434,7 +1435,15 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
   }, []);
   /* Opened while a verse is live: open on it, not on Genesis. */
   const [startAt] = useState(() => liveSpan(projector.live));
-  const [query, setQuery] = useState(() => (startAt ? spanReference(startAt) : ''));
+  const libraryRequest = useLibraryNavigation(s => s.request);
+  const [query, setQuery] = useState(() => libraryRequest?.item.source === 'scripture' ? libraryRequest.item.label : startAt ? spanReference(startAt) : '');
+  useEffect(() => {
+    if (libraryRequest?.item.source !== 'scripture') return;
+    const reference = libraryRequest.item.label;
+    setQuery(reference);
+    projector.stage({source:'scripture',id:reference,label:reference,reference,origin:'operator'});
+    useLibraryNavigation.getState().consume();
+  }, [libraryRequest]);
   const [ref, setRef] = useState<ResolvedReference | null>(null);
   const [rows, setRows] = useState<VerseRow[]>([]);
   /* Which chapter `rows` holds. Naming another leaves the old rows up for a
@@ -1998,6 +2007,7 @@ interface Song {
   title: string;
   author: string;
   verses: SongVerse[];
+  originalSections?: SongBase["sections"];
 }
 
 /*
@@ -2148,7 +2158,9 @@ function songFromDraft(id: string, draft: SongDraft): Song {
 }
 
 function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const openId = useLibraryNavigation(s => s.songId);
+  const setOpenId = useLibraryNavigation(s => s.selectSong);
+  const projector = useProjector();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   /* Search results saved while the search is up, so each card can say so.
@@ -2160,9 +2172,12 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
   const { drafts, save: saveDraft, clear: clearDraft } = useSongDrafts();
 
   const store = typeof window === 'undefined' ? undefined : window.api?.songs;
+  const [loading,setLoading] = useState(!!store);
+  const [loadProblem,setLoadProblem] = useState('');
   const [stored, setStored] = useState<Song[] | null>(store || isEmptyPreview ? [] : null);
   const refresh = useCallback(() => {
     if (!store) return;
+    setLoading(true); setLoadProblem('');
     void store
       .list()
       .then((list) =>
@@ -2178,11 +2193,13 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
             id: song.id,
             title: song.title,
             author: (song.authors ?? []).join(', '),
+            originalSections: song.originalSections ?? song.sections,
             verses: song.sections.map((sec, i) => ({ id: `${song.id}:${i}`, label: sec.label, lines: sec.lines })),
           })),
         ),
       )
-      .catch(() => undefined);
+      .catch(() => setLoadProblem('Your songs could not load. Try again.'))
+      .finally(() => setLoading(false));
   }, [store]);
   useEffect(refresh, [refresh]);
   useEffect(() => {
@@ -2209,6 +2226,24 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
     return library;
   }, [stored, deleted]);
   const open = songs.find((s) => s.id === openId && !isNewId(s.id));
+  const libraryRequest = useLibraryNavigation(s => s.request);
+  useEffect(() => {
+    const item=libraryRequest?.item;
+    if (item?.source !== 'song') return;
+    const found=songs.find(song=>song.id===item.songId) ?? songs.find(song=>song.title===(item.title ?? item.label.split(' — ')[0]));
+    if (found) {
+      setOpenId(found.id);
+      const cards=songCards({id:found.id,sections:found.verses});
+      const card=cards.find(card=>item.lines ? JSON.stringify(card.lines)===JSON.stringify(item.lines) : card.label===item.section) ?? cards[0];
+      if(card) projector.stage({source:'song',id:card.id,label:`${found.title} — ${card.label}`,title:found.title,section:card.label,lines:card.lines,origin:'operator'});
+      useLibraryNavigation.getState().consume();
+    }
+  }, [libraryRequest, songs]);
+  useEffect(() => {
+    if (openId || projector.live?.source !== 'song') return;
+    const song = songs.find(s => projector.live?.id.startsWith(`${s.id}/`) || s.title === projector.live?.title);
+    if (song) setOpenId(song.id);
+  }, [songs, projector.live]);
 
   const edit = (song: Song, origin: HTMLElement | null) => {
     const draft = drafts[song.id];
@@ -2228,6 +2263,7 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
         id: isNew ? `song-${Date.now()}` : id,
         title: song.title,
         author: song.author,
+        originalSections: isNew ? song.sections : songs.find(s => s.id === id)?.originalSections ?? songs.find(s => s.id === id)?.verses.map(v => ({label:v.label,lines:v.lines})) ?? song.sections,
         verses: song.sections.map((sec, i) => ({ id: `${id}:${i}`, label: sec.label, lines: sec.lines })),
       };
       setStored((prev) => {
@@ -2300,7 +2336,7 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
           </div>
         </details>
       ) : null}
-      {open ? (
+      {loading ? <div className="song-library-loading" role="status" aria-label="Loading songs"><span/><span/><span/><span/></div> : loadProblem ? <div className="p-5"><p role="alert">{loadProblem}</p><Button label="retry" onClick={refresh}/></div> : open ? (
         <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} onSave={(base) => saveSong(open.id, false, base)} />
       ) : (
         <SongGrid
@@ -2312,7 +2348,11 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
                yet; opening it means carrying on editing it. */
             const song = songs.find((s) => s.id === id);
             if (song && isNewId(id)) edit(song, null);
-            else setOpenId(id);
+            else {
+              setQuery(''); setOpenId(id);
+              const card = song && songCards({id:song.id,sections:song.verses})[0];
+              if (song && card) projector.stage({source:'song',id:card.id,label:`${song.title} — ${card.label}`,title:song.title,section:card.label,lines:card.lines,origin:'operator'});
+            }
           }}
           onEdit={edit}
           onAdd={() => setEditor({
@@ -2381,6 +2421,7 @@ function SongGrid({
   const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial].join(' ').split(/\s+/).slice(-16).join(' ');
   const searchRow = useRef<HTMLDivElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => { onQuery(''); }, []);
 
   /*
    * Which verse each card is showing, once the operator has paged it off
@@ -2691,6 +2732,12 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
   const [words, setWords] = useState('');
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const sections = song.verses.map(v => ({label:v.label,lines:v.lines}));
+  const original = song.originalSections ?? sections;
+  const changed = JSON.stringify(original) !== JSON.stringify(sections);
+  const matches = (content: LiveItem | null, card: ReturnType<typeof songCards>[number]) => content?.source === 'song' && (content.title === song.title || content.id.startsWith(`${song.id}/`)) && JSON.stringify(content.lines) === JSON.stringify(card.lines);
   const cards = songCards({id:song.id,sections:song.verses});
   const item = (card: typeof cards[number]): LiveItem => ({ source: 'song', id: card.id,
     label: `${song.title} — ${card.label}`, title: song.title, section: card.label, lines: card.lines, origin: 'operator' });
@@ -2719,13 +2766,30 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
     } catch (error) { setProblem(error instanceof Error ? error.message : 'Could not rearrange the lyrics.'); }
     finally { setSaving(false); }
   };
-  const at = cards.findIndex(card => projector.isLive('song', card.id));
+  const changeSlides = async (sections: SongBase['sections']) => {
+    if (saving) return;
+    setSaving(true); setProblem(null);
+    try {
+      if (!await onSave({title:song.title,author:song.author,sections})) throw new Error('Could not save the slides. Try again.');
+      setEditing(null);
+    } catch(error) { setProblem(error instanceof Error ? error.message : 'Could not save the slides.'); }
+    finally { setSaving(false); }
+  };
+  const locateCard = (content: LiveItem | null) => {
+    const exact = cards.findIndex(card => card.id === content?.id && matches(content,card));
+    return exact >= 0 ? exact : cards.findIndex(card => matches(content,card));
+  };
+  const at = locateCard(projector.live);
+  const previewAt = locateCard(projector.preview);
+  const liveCard = useRef<HTMLElement>(null);
+  useEffect(() => { liveCard.current?.scrollIntoView({block:'nearest'}); },[song.id,at]);
   const next = cards.length ? cards[(at + 1) % cards.length] : null;
   return <LibraryBrowser framed search={null}>
     <LibraryPane scroll={false} title={<button type="button" onClick={onBack} title="back to the song library" className="flex min-w-0 items-center gap-2 text-left">
       <ChevronDownIcon size={11} className="rotate-90"/><span>{song.title}</span><span className="font-normal text-white/40">{song.author}</span>
     </button>} footer={<div className="flex flex-wrap items-center gap-3 px-3 pb-2">
       <span className="min-w-0 flex-1 text-xs text-white/45">{at < 0 ? `${cards.length} lyric cards` : `${cards[at].label} · live`}</span>
+      {changed && <Button label="back to default" disabled={saving} title="Restore the original imported lyrics and slide order" onClick={() => void changeSlides(original)} />}
       <Button label={saving ? 'saving…' : 'rearrange'} disabled={saving || editing !== null} title="Regroup imported lyric cards into balanced slides, keeping named verses and choruses" onClick={() => void rearrange()}/>
       {next && <Button label={at < 0 ? 'go live' : 'next lyrics'} tone="gold" icon={<PlayIcon size={12}/>} onClick={() => void send(next)}/>}
     </div>}>
@@ -2734,11 +2798,16 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="song-sections-grid">
             {cards.map((card, index) => {
-              const live = projector.isLive('song', card.id);
-              const selected = projector.isStaged('song', card.id);
+              const live = index === at;
+              const selected = index === previewAt;
               const edit = editing === card.id;
-              return <article key={card.id} className="song-section-card" data-live={live} data-preview={selected}>
-                <div className="song-section-heading"><span>{card.label}</span><span>{live ? 'live' : selected ? 'preview' : String(index + 1).padStart(2, '0')}</span></div>
+              return <article ref={live ? liveCard : undefined} key={card.id} className="song-section-card" data-live={live} data-preview={selected} data-dragging={dragFrom === index} data-over={dragOver === index && dragFrom !== index}
+                onDragOver={event => { if (dragFrom !== null && !saving) { event.preventDefault(); setDragOver(index); } }}
+                onDrop={event => { event.preventDefault(); if (dragFrom !== null && dragFrom !== index) void changeSlides(arrangeSongCards(sections,dragFrom,index)); setDragFrom(null); setDragOver(null); }}>
+                <div className="song-section-heading"><button type="button" className="song-slide-grip" aria-label={`Move slide ${index + 1}. Use left and right arrows to reorder.`} title="Drag to reorder · arrow keys move this slide" draggable={!saving && !editing}
+                  onKeyDown={event => { const next = index + (event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0); if (next !== index) { event.preventDefault(); if (!saving && next >= 0 && next < cards.length) void changeSlides(arrangeSongCards(sections,index,next)); } }}
+                  onDragStart={event => { setDragFrom(index); event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',card.id); }}
+                  onDragEnd={() => { setDragFrom(null); setDragOver(null); }}>⠿</button><span>{card.label}</span><span>{live ? 'live' : selected ? 'preview' : String(index + 1).padStart(2, '0')}</span></div>
                 {edit ? <textarea aria-label={`Edit ${card.label} lyrics`} className="song-section-editor" autoFocus value={words} onChange={event => setWords(event.target.value)} disabled={saving}/> :
                   <button type="button" className="song-section-lyrics" aria-label={`Preview ${card.label}`} onClick={() => projector.stage(item(card))}
                     {...drag.bind(() => ({source:'song',label:`${song.title} — ${card.label}`,title:song.title,section:card.label,lines:card.lines,songId:song.id}))}>
@@ -2746,7 +2815,7 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
                   </button>}
                 <div className="song-section-actions">
                   {edit ? <><Button label="cancel" tone="ash" disabled={saving} onClick={() => setEditing(null)}/><Button label={saving ? 'saving…' : 'save lyrics'} disabled={saving} icon={<CheckIcon size={12}/>} onClick={() => void save(card)}/></> :
-                    <><Button label="edit" tone="ash" icon={<PencilIcon size={12}/>} onClick={() => { setEditing(card.id); setWords(card.lines.join('\n')); setProblem(null); }}/><Button label="go live" tone="gold" icon={<PlayIcon size={12}/>} onClick={() => void send(card)}/></>}
+                    <><button type="button" className="song-slide-delete" aria-label={`Delete slide ${index+1}`} title="Delete this slide" disabled={saving || cards.length <= 1} onClick={() => void changeSlides(arrangeSongCards(sections,index,null))}><TrashIcon size={14}/></button><Button label="edit" tone="ash" icon={<PencilIcon size={12}/>} onClick={() => { setEditing(card.id); setWords(card.lines.join('\n')); setProblem(null); }}/><Button label="go live" tone="gold" icon={<PlayIcon size={12}/>} onClick={() => void send(card)}/></>}
                 </div>
               </article>;
             })}
@@ -2847,7 +2916,7 @@ function CatchActions() {
  */
 function CatchesTranscript({ onOpenTranscript }: { onOpenTranscript: () => void }) {
   const engine = useEngine();
-  const heard = engine.asr === 'listening' || engine.spoken.lines.length > 0 || Boolean(engine.spoken.partial);
+  const heard = engine.spoken.lines.length > 0 || Boolean(engine.spoken.partial);
   return heard ? (
     <TranscriptFace rail spoken={engine.spoken} asr={engine.asr} className="h-full w-full" onOpen={onOpenTranscript} />
   ) : (
@@ -5091,6 +5160,32 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
   const skipOperatorEntryFocus = useRef(false);
   useOperatorTyping({ enabled: view === 'operator', root: operatorRoot, search: scriptureSearch, revealSearch: () => setTab(SCRIPTURES_TAB), skipNextEntryFocus: skipOperatorEntryFocus });
   const [settingsPage, setSettingsPage] = useState('S-10a');
+  useEffect(() => {
+    const live=projector.live;
+    if (live?.source !== 'song') return;
+    let current=true;
+    if (live.id.includes('/')) useLibraryNavigation.getState().selectSong(live.id.split('/')[0]);
+    else void window.api?.songs?.list().then(songs=>{
+      const song=songs.find(song=>song.title===live.title);
+      if(current && song) useLibraryNavigation.getState().selectSong(song.id);
+    }).catch(()=>undefined);
+    return ()=>{current=false;};
+  }, [projector.live]);
+  const libraryRequest = useLibraryNavigation(s => s.request);
+  useEffect(() => {
+    if (!libraryRequest) return;
+    const item = libraryRequest.item;
+    skipOperatorEntryFocus.current = true;
+    setView('operator');
+    const source = item.source === 'scripture' ? 'scriptures' : item.source === 'presentation' ? 'slides' : item.source === 'song' ? 'songs' : 'media';
+    setTab(TABS.findIndex(t => t.id === source));
+    // A mounted browser may already have resolved the exact slide in this commit.
+    if (useLibraryNavigation.getState().request !== libraryRequest) return;
+    if (item.source === 'scripture') projector.stage({source:'scripture',id:item.label,label:item.label,reference:item.label,origin:'operator'});
+    else if (item.source === 'song') {
+      if (item.songId) useLibraryNavigation.getState().selectSong(item.songId);
+    } else if (item.path && item.source !== 'note') projector.stage({source:item.source,id:item.label,label:item.label,path:item.path,mediaKind:item.mediaKind,origin:'operator'});
+  }, [libraryRequest]);
   const noticeRequest = useNoticeNavigation(s => s.request);
   useEffect(() => {
     const target = useNoticeNavigation.getState().target;

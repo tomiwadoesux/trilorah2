@@ -198,3 +198,21 @@
 @media (hover: hover) and (pointer: fine) {
   .stage-go-live.tri-interactive:hover:not([aria-disabled='true']) { background: linear-gradient(180deg, #a3ebd0, #66c9a8); }
 }
+.song-section-card { border-radius: 12px; background: #151c1b; border-color: rgb(229 243 242 / .1); }
+.song-section-card[data-live='true'] { border: 2px solid #e4d87a; box-shadow: 0 0 0 3px rgb(228 216 122 / .07); background: #20251b; }
+.song-section-card[data-live='true'] .song-section-heading > span:last-child { padding: 4px 8px; border-radius: 5px; background: #e4d87a; color: #20251b; font-weight: 700; }
+.song-section-card[data-preview='true']:not([data-live='true']) { border-color: #91b5a6; }
+.song-section-heading { gap: 8px; }
+.song-section-heading > span:nth-child(2) { flex: 1; }
+.song-slide-grip { cursor: grab; padding: 2px 4px; font-size: 18px; opacity: .5; }
+.song-slide-delete { display: grid; place-items: center; width: 30px; height: 32px; color: #a8b3ae; border-radius: 6px; }
+.song-slide-delete:hover { background: #aa555522; color: #ecc4c4; }
+.song-slide-delete:disabled { opacity: .25; }
+.song-slide-grip:focus-visible, .song-slide-delete:focus-visible { outline: 2px solid #e4d87a; outline-offset: 2px; }
+.song-section-card[data-dragging='true'] { opacity: .4; }
+.song-section-card[data-over='true'] { outline: 2px solid #91b5a6; outline-offset: 3px; }
+.song-section-lyrics, .song-section-editor { color: #e5f3f2; }
+.song-section-card:nth-child(even) { background: #151c1b; }
+.song-section-card[data-live='true']:nth-child(even) { background: #20251b; }
+.song-library-loading { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; padding: 16px; }
+.song-library-loading span { height: 190px; border-radius: 12px; background: #ffffff06; }

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Button } from '../../ui';
 
 /** Uses provider availability, never a retrieved key, to show connection state. */
-export function StockCredential({ settingKey }: { settingKey: 'pixabayApiKey' | 'pexelsApiKey' }) {
-  const provider = settingKey === 'pixabayApiKey' ? 'pixabay' : 'pexels';
+export function StockCredential({ settingKey }: { settingKey: 'pixabayApiKey' | 'pexelsApiKey' | 'youtubeApiKey' }) {
+  const provider = settingKey === 'pixabayApiKey' ? 'pixabay' : settingKey === 'youtubeApiKey' ? 'youtube' : 'pexels';
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
@@ -11,7 +11,9 @@ export function StockCredential({ settingKey }: { settingKey: 'pixabayApiKey' | 
   const [error, setError] = useState('');
   useEffect(() => {
     let alive = true;
-    window.api?.getStockProviders?.().then(items => { if (alive) setConfigured(items.includes(provider)); }).catch(() => { if (alive) setError('Could not check this key.'); });
+    const check = provider === 'youtube' ? window.api?.songs?.youtubeSearchConfigured?.() : window.api?.getStockProviders?.().then(items => items.includes(provider));
+    if (!check) setConfigured(false);
+    check?.then(ready => { if (alive) setConfigured(ready); }).catch(() => { if (alive) setError('Could not check this key.'); });
     return () => { alive = false; };
   }, [provider]);
   const save = async () => {
@@ -20,8 +22,8 @@ export function StockCredential({ settingKey }: { settingKey: 'pixabayApiKey' | 
     try {
       const ok = await window.api.setSetting(settingKey, value.trim());
       if (!ok) throw new Error('save failed');
-      const providers = await window.api.getStockProviders?.();
-      if (!providers?.includes(provider)) throw new Error('unavailable');
+      const ready = provider === 'youtube' ? await window.api.songs?.youtubeSearchConfigured?.() : (await window.api.getStockProviders?.())?.includes(provider);
+      if (!ready) throw new Error('unavailable');
       setValue(''); setConfigured(true); setEditing(false);
       window.dispatchEvent(new Event('trilorah-stock-credentials-changed'));
     } catch { setError('Could not save this key. Try again.'); }

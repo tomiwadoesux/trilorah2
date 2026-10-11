@@ -10,10 +10,10 @@ export function OperatorRail({ run, transcript, footer }: { run: ReactNode; tran
   const clamp = (value: number) => Math.max(.25, Math.min(.75, value));
   return <div className="operator-rail row-span-3 flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
     <div ref={split} className="operator-rail-split tri-rounded-surface grid min-h-0 flex-1 overflow-hidden bg-[#111111]"
-      style={{ gridTemplateRows: `minmax(0, ${share}fr) 1px minmax(0, ${1 - share}fr)`, boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.055)' } as CSSProperties}>
+      style={{ gridTemplateRows: `minmax(0, ${share}fr) 6px minmax(0, ${1 - share}fr)`, boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.055)' } as CSSProperties}>
       {run}
-      <div className="operator-rail-divider relative z-10 h-px bg-white/10">
-        <button type="button" className="absolute inset-x-0 -top-1 h-[9px] cursor-row-resize touch-none outline-none hover:bg-white/[0.035] focus-visible:bg-white/10" aria-pressed={expanded}
+      <div className="operator-rail-divider relative z-10 h-[6px] bg-white/15">
+        <button type="button" className="absolute inset-x-0 -top-1 h-[14px] cursor-row-resize touch-none outline-none hover:bg-white/[0.035] focus-visible:bg-white/10" aria-pressed={expanded}
           aria-label={expanded ? 'balance left panels' : 'expand transcript'}
           title={`${expanded ? 'balance left panels' : 'expand transcript'} — drag to resize the left panels`}
           onKeyDown={event => {
@@ -27,7 +27,7 @@ export function OperatorRail({ run, transcript, footer }: { run: ReactNode; tran
           onPointerDown={event => {
             if (event.button !== 0) return;
             suppressClick.current = false;
-            drag.current = { y: event.clientY, share, height: Math.max(1, (split.current?.clientHeight ?? 1) - 1), moved: false };
+            drag.current = { y: event.clientY, share, height: Math.max(1, (split.current?.clientHeight ?? 1) - 6), moved: false };
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={event => {

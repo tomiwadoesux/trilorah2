@@ -213,7 +213,7 @@ describe('lyricsPreview — one polite request per song card', () => {
   it('answers the id and the opening line, and names itself to LRCLIB', async () => {
     setLyricsClientVersion('9.9.9')
     fetchMock.mockResolvedValueOnce(reply(200, [record()]))
-    expect(await lyricsPreview('Invented Song', 'Invented Band')).toEqual({ ok: true, id: 77, firstLine: 'an invented opening line' })
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toEqual({ ok: true, id: 77, firstLine: 'an invented opening line', lines: ['an invented opening line', 'and another made up one'] })
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('https://lrclib.net/api/search?q=Invented%20Song%20Invented%20Band')
     expect(init.headers['User-Agent']).toContain('Trilorah v9.9.9')
@@ -269,7 +269,7 @@ describe('lyricsPreview — one polite request per song card', () => {
   })
   it('passes over a labels-only record for a later whole one of the same song', async () => {
     fetchMock.mockResolvedValueOnce(reply(200, [record({ id: 5, plainLyrics: '[Intro]\n[Instrumental]' }), record({ id: 6 })]))
-    expect(await lyricsPreview('Invented Song', 'Invented Band')).toEqual({ ok: true, id: 6, firstLine: 'an invented opening line' })
+    expect(await lyricsPreview('Invented Song', 'Invented Band')).toEqual({ ok: true, id: 6, firstLine: 'an invented opening line', lines: ['an invented opening line', 'and another made up one'] })
   })
   it('same title by another artist is not-found', async () => {
     fetchMock.mockResolvedValueOnce(reply(200, [record({ artistName: 'Some Other Choir' })]))

@@ -100,3 +100,12 @@
 .product-guide-map { display: block; padding: 0 17px 10px; color: var(--tri-ink-muted); opacity: .65; font-size: 9px; }
 @keyframes guide-subtitle-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .product-guide-subtitle p { animation: none; } }
+/* The task picker is a command palette; active walkthroughs can move aside. */
+.product-guide-scrim { position: fixed; inset: 0; z-index: 799; background: #0008; backdrop-filter: blur(5px); }
+.product-guide-panel[data-centered='true'] { top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); width: min(620px, calc(100vw - 40px)); max-height: min(700px, calc(100dvh - 48px)); border-radius: 18px; background: #131b1a; box-shadow: 0 30px 100px #0009; }
+.product-guide-panel[data-centered='true'] .product-guide-scroll { padding: 24px; }
+.product-guide-panel[data-centered='true'] .product-guide-search { height: 52px; margin: 18px 0; padding: 0 14px; border-radius: 10px; }
+.product-guide-panel[data-centered='true'] .product-guide-search input { font-size: 15px; }
+.product-guide-panel[data-centered='true'] .product-guide-result { padding: 13px 12px; border: 0; border-radius: 8px; font-size: 13px; }
+.product-guide-result:hover, .product-guide-result:focus-visible { background: #ffffff08; }
+.product-guide-panel[data-centered='true'] .product-guide-header { padding-inline: 24px 16px; background: none; }
