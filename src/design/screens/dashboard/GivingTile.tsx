@@ -1,8 +1,9 @@
+import { useCompanionSettings } from './useCompanionSettings';
 import { isEmptyPreview } from '../../emptyPreviewMode';
 import { Panel } from '../parts';
 import { BankIcon, LinkIcon } from '../../../ui';
 import { Expandable } from './expand';
-import { RowList, type Row } from '../settingsRows';
+import { SettingRow, type Row } from '../settingsRows';
 
 /*
  * Giving — the ways to give, as the companion page will show them.
@@ -14,13 +15,13 @@ import { RowList, type Row } from '../settingsRows';
  */
 
 const ROWS: Row[] = [
-  { kind: 'text', key: 'givingZelle', label: 'Zelle', blurb: '', value: 'give@vrcministries.org', placeholder: 'email or phone' },
-  { kind: 'text', key: 'givingVenmo', label: 'Venmo', blurb: '', value: '@vrcministries', placeholder: '@handle' },
+  { kind: 'text', key: 'givingZelle', label: 'Zelle', blurb: '', value: '', placeholder: 'email or phone' },
+  { kind: 'text', key: 'givingVenmo', label: 'Venmo', blurb: '', value: '', placeholder: '@handle' },
   { kind: 'text', key: 'givingCashApp', label: 'Cash App', blurb: '', value: '', placeholder: '$cashtag' },
   { kind: 'text', key: 'givingPaypal', label: 'PayPal', blurb: '', value: '', placeholder: 'paypal.me/…' },
   { kind: 'text', key: 'givingBankInfo', label: 'Bank transfer', blurb: 'Account name, sort code or routing, account number.', value: '' },
-  { kind: 'text', key: 'givingCustomUrl', label: 'Giving page', blurb: 'Your own giving link, if you have one.', value: 'https://vrcministries.org/give', placeholder: 'https://' },
-  { kind: 'text', key: 'givingNote', label: 'Note', blurb: 'A line shown above the giving buttons.', value: 'Thank you for partnering with us.' },
+  { kind: 'text', key: 'givingCustomUrl', label: 'Giving page', blurb: 'Your own giving link, if you have one.', value: '', placeholder: 'https://' },
+  { kind: 'text', key: 'givingNote', label: 'Note', blurb: 'A line shown above the giving buttons.', value: '' },
 ];
 
 /* Each service in its own colour, the one people know it by. Unset, a
@@ -100,12 +101,14 @@ function MethodMark({ id, color }: { id: string; color: string }) {
 
 
 export function GivingTile({ className, face = 'strip' }: { className?: string; face?: 'strip' | 'card' }) {
-  const rows = isEmptyPreview ? ROWS.map(row => row.kind === 'text' ? { ...row, value: '' } : row) : ROWS;
-  const set = new Set(rows.filter((r) => r.kind === 'text' && r.value).map((r) => r.key));
+  const settings = useCompanionSettings(ROWS);
+  const rows = ROWS.map(row => row.kind === 'text' ? { ...row, value: isEmptyPreview ? '' : String(settings.values[row.key] ?? '') } : row);
+  const set = new Set(rows.filter((r) => r.kind === 'text' && r.key !== 'givingNote' && r.value).map((r) => r.key));
   const on = METHODS.filter((m) => set.has(m.key));
 
   return (
     <Expandable
+      guideArea="giving"
       className={className}
       title="Giving"
       blurb="Ways to give, shown on the companion page as tappable buttons."
@@ -132,6 +135,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
           >
             <button
               type="button"
+              data-guide="giving-open"
               onClick={onOpen}
               className="flex h-full w-full flex-col justify-between text-left"
             >
@@ -177,7 +181,7 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
           </Panel>
         ) : (
         <Panel className="min-h-0 flex-1" bodyStyle={{ padding: 0 }}>
-          <button type="button" onClick={onOpen} className="flex h-full w-full items-center gap-3 px-3 text-left">
+          <button type="button" data-guide="giving-open" onClick={onOpen} className="flex h-full w-full items-center gap-3 px-3 text-left">
             <span className="shrink-0 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.55)]">giving</span>
             <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
               {METHODS.map((m) => {
@@ -209,7 +213,9 @@ export function GivingTile({ className, face = 'strip' }: { className?: string; 
         )
       }
     >
-      <RowList rows={rows} />
+      <p className="mb-3 text-xs text-[rgb(229_243_242_/_0.65)]">These details appear on the congregation companion. Changes save on this computer and queue for your connected church account.</p>
+      {settings.error && <p role="alert" className="mb-3 text-sm text-[#e4d87a]">{settings.error}</p>}
+      <fieldset disabled={!settings.ready}>{rows.map(row => <SettingRow key={row.key} row={row} value={settings.values[row.key]} onChange={value => void settings.change(row.key, value)} saved={settings.saved[row.key]}/>)}</fieldset>
     </Expandable>
   );
 }

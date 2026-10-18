@@ -1,4 +1,6 @@
 "use client";
+import { useState } from 'react';
+import { ArrowUpRight, Check, Copy } from '@/components/icons';
 import { IconCredits } from '@/components/IconCredits';
 
 interface GivingMethods {
@@ -15,7 +17,7 @@ export default function GiveTab({ methods }: { methods: GivingMethods | null }) 
   if (!methods) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-4 items-center justify-center text-sm text-gray-500">
-        No giving methods configured.
+        Giving details haven’t been added by your church yet.
         <IconCredits />
       </div>
     );
@@ -23,26 +25,26 @@ export default function GiveTab({ methods }: { methods: GivingMethods | null }) 
 
   const cards: Array<{ label: string; value: string; href?: string; copy?: boolean }> = [];
   if (methods.venmo) {
+    const handle = methods.venmo.trim().replace(/^@/, '');
     cards.push({
       label: "Venmo",
-      value: `@${methods.venmo}`,
-      href: `https://venmo.com/${methods.venmo}`,
+      value: `@${handle}`,
+      href: `https://venmo.com/${encodeURIComponent(handle)}`,
     });
   }
   if (methods.cashApp) {
+    const handle = methods.cashApp.trim().replace(/^\$/, '');
     cards.push({
       label: "Cash App",
-      value: `$${methods.cashApp}`,
-      href: `https://cash.app/$${methods.cashApp}`,
+      value: `$${handle}`,
+      href: `https://cash.app/$${encodeURIComponent(handle)}`,
     });
   }
   if (methods.paypal) {
-    const href = methods.paypal.startsWith("http")
-      ? methods.paypal
-      : methods.paypal.includes("@")
-        ? `https://paypal.me/${encodeURIComponent(methods.paypal)}`
-        : `https://paypal.me/${methods.paypal}`;
-    cards.push({ label: "PayPal", value: methods.paypal, href });
+    const value = methods.paypal.trim();
+    const href = value.includes('@') ? undefined : value.startsWith('http') ? safeGivingUrl(value)
+      : value.startsWith('paypal.me/') ? safeGivingUrl('https://' + value) : 'https://paypal.me/' + encodeURIComponent(value);
+    cards.push({ label: 'PayPal', value, href, copy: !href });
   }
   if (methods.zelle) {
     cards.push({ label: "Zelle", value: methods.zelle, copy: true });
@@ -54,21 +56,22 @@ export default function GiveTab({ methods }: { methods: GivingMethods | null }) 
     cards.push({
       label: "Online giving",
       value: methods.customUrl,
-      href: methods.customUrl,
+      href: safeGivingUrl(methods.customUrl),
+      copy: !safeGivingUrl(methods.customUrl),
     });
   }
 
   if (cards.length === 0) {
     return (
       <div className="flex-1 min-h-0 flex flex-col gap-4 items-center justify-center text-sm text-gray-500">
-        No giving methods configured.
+        Giving details haven’t been added by your church yet.
         <IconCredits />
       </div>
     );
   }
 
   return (
-    <div className="px-5 py-6 pb-32 overflow-y-auto flex-1 min-h-0 space-y-3">
+    <div className="companion-giving overflow-y-auto flex-1 min-h-0">
       {methods.note && (
         <p className="text-sm text-gray-400 leading-relaxed mb-2 px-1">
           {methods.note}
@@ -82,6 +85,10 @@ export default function GiveTab({ methods }: { methods: GivingMethods | null }) 
   );
 }
 
+function safeGivingUrl(value: string): string | undefined {
+  try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : undefined; } catch { return undefined; }
+}
+
 function GivingCard({
   label,
   value,
@@ -93,14 +100,14 @@ function GivingCard({
   href?: string;
   copy?: boolean;
 }) {
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const Body = (
-    <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 hover:border-brand/40 transition-colors">
-      <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
-        {label}
-      </p>
-      <p className="text-base font-medium text-white whitespace-pre-line break-all">
-        {value}
-      </p>
+    <div className="companion-giving-row">
+      <div className="companion-giving-copy">
+        <p>{label}</p>
+        <p>{value}</p>
+      </div>
+      {href ? <span className="companion-giving-action">Open <ArrowUpRight size={16}/></span> : copy ? <span className="companion-giving-action" aria-live="polite">{copyStatus === 'copied' ? <><Check size={16}/>Copied</> : copyStatus === 'failed' ? 'Try again' : <><Copy size={16}/>Copy</>}</span> : null}
     </div>
   );
   if (href) {
@@ -113,8 +120,13 @@ function GivingCard({
   if (copy) {
     return (
       <button
-        onClick={() => {
-          navigator.clipboard?.writeText(value);
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(value);
+            setCopyStatus('copied');
+          } catch {
+            setCopyStatus('failed');
+          }
         }}
         className="block w-full text-left"
       >

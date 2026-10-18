@@ -2,7 +2,7 @@
 .tri-live-header {
   --tri-view-inset: 2px;
   --tri-header-tray-h: calc(var(--tri-field-h) + var(--tri-view-inset) * 2);
-  gap: 2px;
+  gap: var(--tri-gap);
   padding: 0;
   border: 0;
   background: transparent;
@@ -244,7 +244,7 @@
 /* The orb is not a control. It is the engine's face: bare on the ground,
    no box of its own, and a size up from the buttons beside it. */
 /* Taller than the strip on purpose: it overhangs the row a few px each way. */
-.tri-live-header .tri-header-orb { margin-left: 0; height: calc(var(--tri-control-h) * 1.65); }
+.tri-live-header .tri-header-orb { margin-left: 0; height: var(--tri-topbar-h); }
 .tri-header-orb-face { border-radius: 50%; padding: 0; background: none; cursor: pointer; }
 .tri-header-orb-face:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 2px; }
 
@@ -307,3 +307,95 @@
 .tri-header-views[data-pill-sliding='true'] .tri-header-view-pill,
 .tri-header-views .tri-header-view-label,
 .tri-header-views .tri-header-view-symbol { transition: none; }
+
+/* Preview controls sit below their canvas; live controls sit above it. */
+.stage-toolbar-actions > button { min-height: var(--tri-field-h); }
+
+/* Or beside it, once a short stage leaves the picture room either side
+   (useSideControls in Live.tsx decides). The row's two ends become two
+   columns at the box's edges, the picture between them; each column keeps
+   to the edge its row was on — the preview's to the picture's foot, the
+   live box's to its head. The row is as tall as the picture and sits in the
+   middle of the box. */
+.stage-box[data-side] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-content: center;
+  column-gap: var(--tri-gap);
+}
+.stage-box[data-side] > .stage-toolbar { display: contents; }
+.stage-box[data-side] .stage-toolbar-lead,
+.stage-box[data-side] .stage-toolbar-actions { grid-row: 1; flex-direction: column; flex-wrap: nowrap; margin: 0; }
+.stage-box[data-side] .stage-toolbar-lead { grid-column: 1; justify-self: start; align-items: flex-start; }
+.stage-box[data-side] .stage-toolbar-actions { grid-column: 3; justify-self: end; align-items: flex-end; }
+.stage-box[data-side][data-edge='end'] :is(.stage-toolbar-lead, .stage-toolbar-actions) { align-self: end; }
+.stage-box[data-side][data-edge='start'] :is(.stage-toolbar-lead, .stage-toolbar-actions) { align-self: start; }
+.stage-box[data-side] > .stage-picture { grid-column: 2; grid-row: 1; }
+/* × and go live on one line where the column is wide enough, × over go
+   live where it is not — go live keeps the corner either way. */
+.stage-box[data-side] .stage-pair { flex-wrap: wrap; justify-content: flex-end; }
+/* Over the picture, should a control pass its corner while gliding between
+   the row and the side. */
+.stage-box :is(.stage-toolbar-lead, .stage-toolbar-actions) { position: relative; z-index: 1; }
+
+/* Around each stage picture (StageBackdrop in Live.tsx): its background,
+   blurred and darkened, under the app's dot patches. Inset by the border so
+   the panel's hairline, an inset shadow, still draws over it. */
+.stage-backdrop {
+  position: absolute;
+  inset: var(--tri-border);
+  z-index: -1;
+  overflow: hidden;
+  border-radius: calc(var(--tri-radius-surface) - var(--tri-border));
+  corner-shape: var(--tri-corner);
+  pointer-events: none;
+  background: #111111;
+}
+.stage-backdrop-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Scaled up so the blur's soft rim falls outside the box. */
+  filter: blur(28px) saturate(1.2);
+  transform: scale(1.15);
+  animation: stage-backdrop-in 500ms ease-out both;
+}
+.stage-backdrop-shade { position: absolute; inset: 0; background: rgb(0 0 0 / 0.62); }
+/* The dots and patches of dottedSurface.css, here over the picture's light
+   rather than under a card's glass. */
+.stage-backdrop-dots { z-index: 0; --tri-dot-alpha: 0.2; }
+@keyframes stage-backdrop-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .stage-backdrop-image { animation: none; }
+}
+.stage-live-label { display: inline-flex; align-items: center; gap: 8px; height: var(--tri-field-h); padding-inline: 9px; color: var(--tri-ink-muted); font-size: var(--tri-control-size); font-weight: 500; line-height: 1; }
+.stage-live-signal { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid rgb(229 243 242 / .16); border-radius: 50%; }
+.stage-live-signal > span { width: 6px; height: 6px; border-radius: 50%; background: rgb(229 243 242 / .35); }
+.stage-live-label[data-active] { color: var(--tri-ink); }
+.stage-live-label[data-active] .stage-live-signal { border-color: rgb(231 107 98 / .35); }
+.stage-live-label[data-active] .stage-live-signal > span { background: #e76b62; animation: stage-on-air 2.4s ease-in-out infinite; }
+@keyframes stage-on-air { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .stage-live-label[data-active] .stage-live-signal > span { animation: none; }
+}
+
+/* Both splitters expose the same arrow without enlarging the gutter. */
+.operator-rail-divider button { display: grid; place-items: center; color: var(--tri-ink-muted); }
+.operator-rail-divider::before { content: ''; position: absolute; inset: 50% 8px auto; height: 1px; background: rgb(229 243 242 / .13); }
+.operator-rail .operator-rail-handle,
+.stage-resizer .stage-resizer-button { width: 28px; height: 12px; border: 0; background: #161918; }
+.operator-rail .operator-rail-handle > svg,
+.stage-resizer .stage-resizer-button > svg { display: block; }
+.operator-rail-divider button:focus-visible { outline: 1px solid var(--tri-accent-yellow); outline-offset: 1px; }
+
+.stage-gradient { position: absolute; inset: 0; overflow: hidden; contain: strict; }
+.stage-gradient__field, .stage-gradient__veil { position: absolute; inset: -45%; border-radius: 40%; }
+.stage-gradient__field { background: radial-gradient(ellipse at 20% 30%, var(--gradient-a), transparent 65%), radial-gradient(ellipse at 80% 70%, var(--gradient-b), transparent 60%), linear-gradient(var(--gradient-turn), var(--gradient-c), var(--gradient-d)); animation: stage-gradient-drift 38s ease-in-out infinite alternate; animation-delay: var(--gradient-delay); }
+.stage-gradient__veil { background: radial-gradient(ellipse at 75% 25%, var(--gradient-c), transparent 65%), radial-gradient(ellipse at 25% 75%, var(--gradient-a), transparent 70%); animation: stage-gradient-shift 29s ease-in-out infinite alternate; animation-delay: var(--gradient-delay); }
+@keyframes stage-gradient-drift { from { transform: translate(-4%, -2%) rotate(-12deg) scale(1); } to { transform: translate(4%, 2%) rotate(18deg) scale(1.12); } }
+@keyframes stage-gradient-shift { from { opacity: .15; transform: rotate(12deg); } to { opacity: .7; transform: rotate(-15deg); } }
+.stage-scripture-nav { display: inline-flex; align-items: center; gap: 5px; font-size: var(--tri-size-xs); font-variant-numeric: tabular-nums; color: var(--tri-ink-muted); }
+.scripture-reference-label { font-family: var(--tri-font-serif, Georgia, serif); }
+@media (prefers-reduced-motion: reduce) { .stage-gradient__field, .stage-gradient__veil { animation: none; } .stage-gradient__veil { opacity: .3; } }

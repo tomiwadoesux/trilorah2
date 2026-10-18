@@ -1,0 +1,34 @@
+/* Row 2 · #songs. Front: song search with Amazing Grace found. Back: the workspace with the lyrics. */
+
+/*
+ * Row 1 mirrored: the crisp panel sits on the right, flush with the container's right edge,
+ * and the workspace spreads from the left. Both captures are drawn at one scale (front 1050px,
+ * back 2570px: 41.7% and 102% of the stage). The front lies in the library's empty space below
+ * the live pane, its top level with the verse cards, so verse 2 in preview beside go live,
+ * verse 1 on the wall and both verse cards stay in view.
+ */
+.sc-row-songs .sc-stage{
+  --sc-back-left:0%;--sc-back-top:0%;--sc-back-bottom:auto;--sc-back-width:102%;
+  --sc-front-left:58.3%;--sc-front-top:47.1%;--sc-front-width:41.7%;
+  --sc-fade-x:84%;--sc-fade-x-end:100%;--sc-fade-y:70%;--sc-fade-y-end:100%;
+  --sc-back-dim:.6;
+
+  /* Phone: preview, go live and both verse cards across the top, the workspace bleeding off the
+     left edge; song search below it on the right, over the cards' buttons. */
+  --sc-m-stage-ratio:5 / 6;
+  --sc-m-back-left:-16%;--sc-m-back-top:0%;--sc-m-back-bottom:auto;--sc-m-back-width:190%;
+  --sc-m-front-left:22%;--sc-m-front-top:56%;--sc-m-front-width:78%;
+  --sc-m-fade-x:50%;--sc-m-fade-x-end:60%;--sc-m-fade-y:66%;--sc-m-fade-y-end:100%;
+}
+
+/* The capture ends in empty panel; crop it to the card plus the panel's own padding. */
+.sc-row-songs .sc-front{aspect-ratio:1050 / 656}
+
+/* Phone: the workspace starts past the left edge, so it fades in from there too (the shared
+   mask fades right and bottom only). The rail is gone by the viewport edge; preview is clear. */
+@media(max-width:760px){
+  .sc-row-songs .sc-back{
+    -webkit-mask-image:linear-gradient(90deg,transparent 5%,#000 11.5%,#000 var(--sc-fx),transparent var(--sc-fx-end)),linear-gradient(180deg,#000 var(--sc-fy),transparent var(--sc-fy-end));
+    mask-image:linear-gradient(90deg,transparent 5%,#000 11.5%,#000 var(--sc-fx),transparent var(--sc-fx-end)),linear-gradient(180deg,#000 var(--sc-fy),transparent var(--sc-fy-end));
+  }
+}

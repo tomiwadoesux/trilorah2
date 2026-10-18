@@ -4,7 +4,7 @@ import { cx } from '../lib/cx';
 export function IconCredits({ className }: { className?: string }) {
   return (
     <p className={cx('text-[11px] leading-relaxed text-white/40', className)}>
-      Icons: Trilorah Cutout · original artwork
+      Icons: Nubo · David Umoru
     </p>
   );
 }

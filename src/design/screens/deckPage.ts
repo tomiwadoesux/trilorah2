@@ -16,6 +16,8 @@
  * render is not a preview of anything.
  */
 
+import { capitalizeScriptureNames } from '../../../shared/scriptureNames';
+
 const W = 320;
 const H = 180;
 
@@ -121,7 +123,7 @@ interface BlockOptions {
 }
 
 function block(raw: string, o: BlockOptions): { svg: string; lines: number } {
-  const ls = wrapText(raw, o.max).slice(0, o.lines ?? 2);
+  const ls = wrapText(capitalizeScriptureNames(raw), o.max).slice(0, o.lines ?? 2);
   const step = Math.round(o.size * 1.2);
   const tspans = ls
     .map((l, i) => `<tspan x="${o.x}" dy="${i === 0 ? 0 : step}">${esc(l)}</tspan>`)

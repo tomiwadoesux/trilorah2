@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  --site-green: #07271c;
+  --site-green-black: #010806;
+  --site-mint: #e5f3f2;
+  --site-yellow: #e4d87a;
   color-scheme: dark;
 }
 
@@ -12,6 +16,10 @@ html, body {
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading), Arial, sans-serif;
 }
 
 /* Smooth scroll for transcript */

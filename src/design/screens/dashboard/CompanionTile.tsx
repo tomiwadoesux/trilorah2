@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { cx, surface, Button, SegmentedControl, PlusIcon } from '../../../ui';
+import { cx, surface, Button, PlusIcon } from '../../../ui';
 import { Panel } from '../parts';
 import { EmptyMark } from '../emptyArt';
 import { CompanionBoxesArt } from '../CompanionBoxesArt';
 import { Expandable } from './expand';
-import { RowList, type Row } from '../settingsRows';
+import { SettingRow, type Row } from '../settingsRows';
+import { useCompanionSettings } from './useCompanionSettings';
 import { companionPublishLine, type PublishLine } from '../../../lib/companionStatus';
 
 /*
@@ -27,12 +28,9 @@ import { companionPublishLine, type PublishLine } from '../../../lib/companionSt
  */
 
 const ROWS: Row[] = [
-  { kind: 'segment', key: 'companionShareMode', label: 'Who can open the link', blurb: 'anyone — the link works from home. wifi-only — only phones on the church network.', value: 'anyone', options: ['anyone', 'wifi-only'] },
-  { kind: 'text', key: 'streamUrl', label: 'Watch the stream', blurb: 'Your livestream address. Shown as a button on the companion page when set.', value: '', placeholder: 'https://youtube.com/…' },
+  { kind: 'text', key: 'streamUrl', label: 'Watch the stream', blurb: 'Public YouTube or Facebook URL. Saved for future services and sent to the active service.', value: '', placeholder: 'https://youtube.com/…' },
   { kind: 'text', key: 'qrCompanionCaption', label: 'QR caption', blurb: 'The line under the QR code on the projector.', value: "Follow along on your phone — scan to see today's verses and notes." },
-  { kind: 'toggle', key: 'companionPollsEnabled', label: 'Congregation polls', blurb: 'When the app is unsure between two verses, ask the room. Their taps weigh into the choice. When to ask, and for how long, the app works out itself.', value: true },
-  { kind: 'toggle', key: 'audienceTrainingEnabled', label: 'Audience training', blurb: 'Let "wrong verse" taps from the companion page feed the pastor\'s profile.', value: false },
-  { kind: 'status', key: 'companionLogo', label: 'Logo on the page', blurb: 'Sent to phones for the length of a service, from this computer. Never stored anywhere else.', state: 'ok', text: 'church-logo.png · streaming' },
+  { kind: 'toggle', key: 'audienceTrainingEnabled', label: 'Audience training', blurb: 'Let people flag a recently shared reference on the public companion.', value: false },
 ];
 
 function Confirm({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
@@ -43,12 +41,12 @@ function Confirm({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
         <p className="text-[length:var(--tri-size)] font-semibold text-[var(--tri-ink)]">Put the QR code on the projector?</p>
         <p className="mt-1 text-[length:var(--tri-size-xs)] leading-relaxed text-[rgb(229_243_242_/_0.5)]">The congregation will see it until you clear the screen.</p>
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-[length:var(--tri-size-xs)] text-[rgb(229_243_242_/_0.6)]">
-          <input type="checkbox" checked={dontAsk} onChange={(e) => setDontAsk(e.target.checked)} className="accent-[#8fd3c0]" />
+          <input type="checkbox" data-guide="companion-dont-ask" checked={dontAsk} onChange={(e) => setDontAsk(e.target.checked)} className="accent-[#8fd3c0]" />
           don't ask again
         </label>
         <div className="mt-3 flex justify-end gap-2">
-          <Button label="no" onClick={onNo} />
-          <Button label="yes, show it" tone="gold" onClick={onYes} />
+          <Button guideId="companion-qr-no" label="no" onClick={onNo} />
+          <Button guideId="companion-qr-yes" label="yes, show it" tone="gold" onClick={onYes} />
         </div>
       </div>
     </div>
@@ -56,7 +54,7 @@ function Confirm({ onYes, onNo }: { onYes: () => void; onNo: () => void }) {
 }
 
 export function CompanionTile({ className, stacked = false }: { className?: string; stacked?: boolean }) {
-  const [mode, setMode] = useState<'anyone' | 'wifi-only'>('anyone');
+  const settings = useCompanionSettings(ROWS);
   const [confirm, setConfirm] = useState(false);
   const [live, setLive] = useState(false);
 
@@ -123,14 +121,7 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
       })
       .catch(() => undefined);
 
-    void api
-      .getSettings?.()
-      .then((s: Record<string, unknown>) => {
-        if (!alive) return;
-        const share = String(s?.companionShareMode ?? 'anyone');
-        if (share === 'wifi-only' || share === 'anyone') setMode(share);
-      })
-      .catch(() => undefined);
+
 
     return () => {
       alive = false;
@@ -156,6 +147,7 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
 
   return (
     <Expandable
+      guideArea="companion"
       className={className}
       title="Companion"
       blurb="The page people open by scanning the QR code. What it shows and who may open it."
@@ -166,7 +158,7 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
           bodyClass="pt-3"
           title={stacked ? 'companion' : undefined}
           empty={!link}
-          right={!link ? <button type="button" aria-label="set up companion" onClick={onOpen} className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tri-ink)] hover:bg-white/10"><PlusIcon size={14} /></button> : undefined}
+          right={!link ? <button type="button" data-guide="companion-setup" aria-label="set up companion" onClick={onOpen} className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--tri-ink)] hover:bg-white/10"><PlusIcon size={14} /></button> : undefined}
           tone={live ? 'live' : 'default'}
         >
           {confirm && (
@@ -190,11 +182,12 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
             link, then the controls pushed to the foot — so both sides start
             on one line and end on another.
           */}
-          {!link ? <EmptyMark plain art={<CompanionBoxesArt />} w={185} h={160} line="your companion is waiting" hint="set up the page people follow along with" below={<div className="mt-2"><Button label="set up companion" icon={<PlusIcon size={12} />} onClick={onOpen} /></div>} /> : <div className={cx('companion-face flex h-full min-h-0 gap-4', stacked ? 'companion-face--stacked flex-col items-stretch' : 'items-stretch')}>
+          {!link ? <EmptyMark plain art={<CompanionBoxesArt />} w={185} h={160} line="your companion is waiting" hint="set up the page people follow along with" below={<div className="mt-2"><Button guideId="companion-setup-empty" label="set up companion" icon={<PlusIcon size={12} />} onClick={onOpen} /></div>} /> : <div className={cx('companion-face flex h-full min-h-0 gap-4', stacked ? 'companion-face--stacked flex-col items-stretch' : 'items-stretch')}>
             {/* The code is the door: press it and the tile opens. The
                 controls beside it act without opening anything. */}
             <button
               type="button"
+              data-guide="companion-open"
               onClick={onOpen}
               title="open companion settings"
               className={cx(
@@ -261,17 +254,10 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
                   the column centres against IT and a foot-anchored stack
                   would drift away from the thing it belongs to. */}
               <div className="flex flex-col gap-2 pt-1">
-                <SegmentedControl
-                  size="sm"
-                  value={mode}
-                  options={[
-                    { id: 'anyone', label: 'anyone' },
-                    { id: 'wifi-only', label: 'wifi only' },
-                  ]}
-                  onChange={(m) => setMode(m as typeof mode)}
-                />
+                <p className="text-xs text-[rgb(229_243_242_/_0.65)]">Public congregation link</p>
                 <button
                   type="button"
+                  data-guide="companion-qr"
                   onClick={() => (live ? clearFromLive() : setConfirm(true))}
                   className={cx(
                     surface({ tone: live ? 'gold' : 'default', shape: 'control', interactive: true }),
@@ -287,11 +273,13 @@ export function CompanionTile({ className, stacked = false }: { className?: stri
         </Panel>
       )}
     >
-      <RowList rows={ROWS} />
+      <p className="mb-3 text-sm text-[rgb(229_243_242_/_0.65)]">For the congregation: transcript, scriptures, personal notes and giving. The public link works at church and at home. To control the projector, pair a phone under Mobile tools → Mobile remote.</p>
+      {settings.error && <p role="alert" className="mb-3 text-sm text-[#e4d87a]">{settings.error}</p>}
+      <fieldset disabled={!settings.ready}>{ROWS.map(row => <SettingRow key={row.key} row={row} value={settings.values[row.key]} onChange={value => void settings.change(row.key, value)} saved={settings.saved[row.key]}/>)}</fieldset>
       <div className="mx-5 my-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-[var(--tri-ink)]">
         <p className="font-semibold">Congregation QR background</p>
         <p className="mt-1 text-xs opacity-70">{backgroundName || 'Dark teal gradient'} · Images always have a 48% dark overlay so they stay visible behind the words.</p>
-        <div className="mt-3 flex gap-2"><Button label="choose image" onClick={()=>void changeBackground('choose')} /><Button label="use gradient" onClick={()=>void changeBackground('clear')} /></div>
+        <div className="mt-3 flex gap-2"><Button guideId="companion-image" label="choose image" onClick={()=>void changeBackground('choose')} /><Button guideId="companion-gradient" label="use gradient" onClick={()=>void changeBackground('clear')} /></div>
         {note && <p role="alert" className="mt-2 text-xs">{note}</p>}
       </div>
     </Expandable>

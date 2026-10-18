@@ -1,3 +1,4 @@
+import { capitalizeScriptureNames } from '../../../../../../shared/scriptureNames';
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -265,8 +266,8 @@ function groupBySegment(chunks: Chunk[]): { type: string | null; texts: string[]
     if (!c.text) continue;
     const type = c.segment_type ?? null;
     const last = groups[groups.length - 1];
-    if (last && last.type === type) last.texts.push(c.text);
-    else groups.push({ type, texts: [c.text] });
+    if (last && last.type === type) last.texts.push(capitalizeScriptureNames(c.text));
+    else groups.push({ type, texts: [capitalizeScriptureNames(c.text)] });
   }
   return groups;
 }

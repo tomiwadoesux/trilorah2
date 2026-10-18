@@ -48,6 +48,15 @@ interface Page {
 
 const ICON = 13;
 
+/** What an `action` row's button does, by row key. Rows not listed here stay disabled. */
+const ACTIONS: Record<string, (() => void) | undefined> = {
+  senderMode: () => {
+    // It closes the operator window and every screen, and stops listening — say so first.
+    const ok = window.confirm('Switch this computer to sender mode?\n\nTrilorah closes here, including the projector and any other screens, and listening stops. A small sender window opens instead. Press “back to Trilorah” in it to return.');
+    if (ok) void window.api?.enterSenderMode?.();
+  },
+};
+
 const PAGES: Page[] = [
   {
     id: 'S-10a',
@@ -66,6 +75,9 @@ const PAGES: Page[] = [
     icon: <MicIcon size={ICON} />,
     rows: [
       { kind: 'status', key: 'micDeviceLabel', label: 'Microphone', blurb: 'Pick the soundboard feed, not the laptop mic. Used for every service until changed.', state: 'ok', text: 'Scarlett Solo USB · signal' },
+      /* Sender mode (electron/ndi/networkSound.ts): for the computer the
+         soundboard is plugged into, when Trilorah runs on another one. */
+      { kind: 'action', key: 'senderMode', label: 'Send this computer’s sound', blurb: 'For the computer the sound desk is plugged into, when Trilorah runs on a different one. This computer turns into a small sender window, and the other Trilorah picks “sound from” this computer under audio. It goes over the network, and Wi-Fi is fine.', button: 'switch to sender mode' },
       { kind: 'segment', key: 'asrProvider', label: 'Speech engine', blurb: 'whisper-local is free, runs on this computer and needs no account. Deepgram is the faster cloud option for churches that bring their own key. Both stay set up — switching does not forget either.', value: 'whisper-local', options: ['whisper-local', 'deepgram'] },
       { kind: 'segment', key: 'whisperModelSize', label: 'Whisper model', blurb: 'small is the right pick for strong accents. Larger models are slower to answer.', value: 'base', options: ['base', 'small', 'medium'], when: ['asrProvider', 'whisper-local'] },
       {
@@ -387,7 +399,7 @@ function PageBody({ page }: { page: Page }) {
             <p className="mb-4 text-xs text-white/50">The colour behind your workspace. Buttons take on its tint.</p>
             <div className="grid grid-cols-5 gap-2">
               {AURORA_SWATCHES.map(({ id, colors }) => (
-                <button key={id} type="button" aria-pressed={values.appAurora === id}
+                <button key={id} type="button" data-guide={`settings-colour-${id}`} aria-pressed={values.appAurora === id}
                   aria-label={`${id} app colour`} onClick={() => set('appAurora')(id)}
                   className="aurora-choice">
                   <span className="aurora-choice-art" style={{ background: colors[0], borderBottom: `2px solid ${colors[1]}` }}>
@@ -404,6 +416,7 @@ function PageBody({ page }: { page: Page }) {
             row={row}
             value={values[row.key]}
             onChange={set(row.key)}
+            onAction={ACTIONS[row.key]}
             saved={saved?.key === row.key ? saved.ok : undefined}
           />
         ))}
@@ -413,6 +426,7 @@ function PageBody({ page }: { page: Page }) {
         <div className="mt-8">
           <button
             type="button"
+            data-guide="settings-advanced"
             onClick={() => setShowAdvanced((s) => !s)}
             className="flex items-center gap-2 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.16em] text-[rgb(229_243_242_/_0.45)] transition-colors hover:text-[rgb(229_243_242_/_0.7)]"
           >
@@ -434,7 +448,7 @@ function PageBody({ page }: { page: Page }) {
                 />
               ))}
               <div className="flex justify-end pt-4">
-                <Button label="reset these to defaults" icon={<ResetIcon size={12} />} />
+                <Button guideId="settings-reset" label="reset these to defaults" icon={<ResetIcon size={12} />} />
               </div>
             </div>
           )}
@@ -476,10 +490,10 @@ export function SettingsSurface({ pageId }: { pageId: string }) {
     : null;
 
   return (
-    <div className="flex h-full">
+    <div data-guide-area="settings" className="flex h-full">
       <nav className="flex shrink-0 flex-col gap-[var(--tri-gap)] p-2.5" style={{ width: NAV_W, boxShadow: 'inset -1px 0 0 rgb(255 255 255 / 0.06)' }}>
         <div className="px-2 pt-1 text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.2em] text-[rgb(229_243_242_/_0.35)]">settings</div>
-        <SearchField value={query} onChange={setQuery} placeholder="find a setting" />
+        <SearchField guideId="settings-search" value={query} onChange={setQuery} placeholder="find a setting" />
         <ul className="flex min-h-0 flex-1 flex-col gap-[2px] overflow-y-auto">
           {PAGES.map((p, i) => {
             const active = p.id === page.id;
@@ -488,6 +502,7 @@ export function SettingsSurface({ pageId }: { pageId: string }) {
               <li key={p.id}>
                 <button
                   type="button"
+                  data-guide={`settings-page-${p.id}`}
                   onClick={() => setCurrent(p.id)}
                   className={cx(
                     active && surface({ tone: 'default', shape: 'control' }),

@@ -353,12 +353,17 @@ export class CorrectionLedger {
   addReviewItem(item: Omit<ReviewItem, 'id'>): ReviewItem {
     const data = item.preacherId ? this.load(item.preacherId) : null
     const target = data ? data.reviews! : this.reviewItems
-    const service = item.preacherId ? this.serviceRecord(item.preacherId) : null
+    /* A missed reference is typed in by hand, often after the service. It
+       belongs to the service still open, else the last one; it never opens
+       a service of its own (that would leave a phantom "service still open"). */
+    const serviceId = !item.preacherId ? undefined
+      : item.kind === 'miss' ? (this.currentService.get(item.preacherId) ?? data!.services.at(-1))?.id
+        : this.serviceRecord(item.preacherId).id
     // Repeated previews in the same service make one example, not a pile.
-    const duplicate = target.find((r) => !r.resolution && r.serviceId === service?.id &&
+    const duplicate = target.find((r) => !r.resolution && r.serviceId === serviceId &&
       r.kind === item.kind && r.heard === item.heard && JSON.stringify(r.proposed) === JSON.stringify(item.proposed))
     if (duplicate) return duplicate
-    const full: ReviewItem = { ...item, heard: item.heard.slice(0, 1200), serviceId: service?.id, id: randomUUID() }
+    const full: ReviewItem = { ...item, heard: item.heard.slice(0, 1200), serviceId, id: randomUUID() }
     target.push(full)
     // Bounded disk/memory use. Discarded examples never become successes.
     if (target.length > 200) target.splice(0, target.length - 200)
@@ -387,14 +392,17 @@ export class CorrectionLedger {
     if (amendedTo) item.amendedTo = amendedTo
     if (!pid) return true
     const data = this.load(pid)
-    const service = data.services.find((s) => s.id && s.id === item.serviceId) ?? this.serviceRecord(pid)
+    const open = this.currentService.get(pid)
+    const own = data.services.find((s) => s.id && s.id === item.serviceId) ?? (open?.id && open.id === item.serviceId ? open : undefined)
+    // Answering a missed reference never opens a service; it counts against the open or last one, if any.
+    const service = own ?? (item.kind === 'miss' ? open ?? data.services.at(-1) : this.serviceRecord(pid))
     if (resolution !== 'skipped') {
       // A missed reference is a recall failure, not a detected-verse sample.
-      if (item.kind !== 'miss') {
+      if (service && item.kind !== 'miss') {
         service.detections++
         if (resolution === 'confirmed') service.confirmed++
       }
-      if (resolution === 'rejected' || resolution === 'amended') service.corrections++
+      if (service && (resolution === 'rejected' || resolution === 'amended')) service.corrections++
       if (resolution === 'amended' && amendedTo) {
         data.samples.push({ heard: item.heard, correctedTo: `${amendedTo.book} ${amendedTo.chapter}:${amendedTo.verse ?? 1}`, source: 'operator', ts: this.now() })
         if (data.samples.length > 500) data.samples.splice(0, data.samples.length - 500)

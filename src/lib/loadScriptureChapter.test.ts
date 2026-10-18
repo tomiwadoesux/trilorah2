@@ -38,3 +38,26 @@ describe('scripture loading recovery', () => {
     expect(await loadScriptureChapter(undefined, 1, 1, 'KJV')).toMatchObject({ status: 'no-api', data: [], error: expect.stringContaining('desktop app') });
   });
 });
+
+
+describe('chapter reuse while browsing and following', () => {
+  it('coalesces concurrent requests and reuses loaded text', async () => {
+    let finish!: (result: ChapterResult) => void;
+    const api = { getChapter: vi.fn(() => new Promise<ChapterResult>(resolve => { finish = resolve; })) };
+    const first = loadScriptureChapter(api, 0, 1, 'KJV');
+    const second = loadScriptureChapter(api, 0, 1, 'KJV');
+    expect(first).toBe(second);
+    finish({ success: true, data: [verse] });
+    await first;
+    expect(await loadScriptureChapter(api, 0, 1, 'KJV')).toMatchObject({ data: [verse] });
+    expect(api.getChapter).toHaveBeenCalledTimes(1);
+  });
+  it('isolates translations and retries errors on the same bridge', async () => {
+    const api = { getChapter: vi.fn().mockResolvedValueOnce({ success: false, error: 'offline' })
+      .mockResolvedValue({ success: true, data: [verse] }) };
+    await loadScriptureChapter(api, 0, 1, 'KJV');
+    expect((await loadScriptureChapter(api, 0, 1, 'KJV')).status).toBe('idle');
+    await loadScriptureChapter(api, 0, 1, 'BSB');
+    expect(api.getChapter.mock.calls).toEqual([[0, 1, 'KJV'], [0, 1, 'KJV'], [0, 1, 'BSB']]);
+  });
+});

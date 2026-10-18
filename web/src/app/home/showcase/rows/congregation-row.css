@@ -1,0 +1,11 @@
+.sc-row-congregation .sc-stage {
+  --sc-stage-ratio: 1200 / 780;
+  --sc-front-left: 0%; --sc-front-top: 5%; --sc-front-width: 30%;
+  --sc-back-left: 24%; --sc-back-top: 0%; --sc-back-bottom: auto; --sc-back-width: 88%;
+  --sc-back-dim: .9; --sc-fade-x: 90%; --sc-fade-x-end: 100%; --sc-fade-y: 90%; --sc-fade-y-end: 100%;
+  --sc-m-stage-ratio: 390 / 660;
+  --sc-m-front-left: 0%; --sc-m-front-top: 12%; --sc-m-front-width: 65%;
+  --sc-m-back-left: 26%; --sc-m-back-top: 0%; --sc-m-back-bottom: auto; --sc-m-back-width: 110%;
+  --sc-m-fade-x: 85%; --sc-m-fade-x-end: 100%; --sc-m-fade-y: 85%; --sc-m-fade-y-end: 100%;
+}
+.sc-row-congregation .sc-front { border: 1px solid #3c5144; border-radius: 16px; }

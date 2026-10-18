@@ -236,6 +236,7 @@ export function ConnectionsTile({
         <li className="flex min-h-0 flex-1 items-center">
           <button
             type="button"
+            data-guide="connected-add"
             onClick={(e) => {
               e.stopPropagation();
               onAdd?.();

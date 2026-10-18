@@ -12,14 +12,15 @@ export function guideIndex(root: string): Plugin {
     const walk = (dir: string) => { for (const entry of readdirSync(dir, { withFileTypes: true })) { const path = join(dir, entry.name); if (entry.isDirectory()) walk(path); else if (/\.(tsx?|css)$/.test(path) && !/\.test\./.test(path)) files.push(path); } };
     walk(join(root, 'src'));
     files.push(join(root, 'docs/product-guide/product-map.json'));
-    const hash = createHash('sha256'); const anchors = new Map<string, Set<string>>();
+    const hash = createHash('sha256'); const anchors = new Map<string, Set<string>>(); const areas = new Set<string>();
     for (const file of files.sort()) {
       const source = readFileSync(file, 'utf8'); hash.update(relative(root, file)); hash.update(source);
+      for (const match of source.matchAll(/data-guide-area=["']([^"']+)["']/g)) areas.add(match[1]);
       for (const match of source.matchAll(/(?:data-guide|guideId)=["']([^"']+)["']/g)) {
         const refs = anchors.get(match[1]) ?? new Set<string>(); refs.add(relative(root, file)); anchors.set(match[1], refs);
       }
     }
-    return { revision: hash.digest('hex').slice(0, 10), sourceFiles: files.length, anchors: [...anchors].sort(([a], [b]) => a.localeCompare(b)).map(([name, sources]) => ({ name, sources: [...sources] })) };
+    return { revision: hash.digest('hex').slice(0, 10), sourceFiles: files.length, areas: [...areas].sort(), anchors: [...anchors].sort(([a], [b]) => a.localeCompare(b)).map(([name, sources]) => ({ name, sources: [...sources] })) };
   };
   let index = collect(); let timer: ReturnType<typeof setTimeout> | undefined;
   const refresh = (server: ViteDevServer) => {

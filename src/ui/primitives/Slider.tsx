@@ -99,6 +99,8 @@ interface SliderProps {
    */
   immediate?: boolean;
   className?: string;
+  /** Stable anchor for the in-app guide (data-guide on the range input). */
+  guideId?: string;
 }
 
 export function Slider({
@@ -113,6 +115,7 @@ export function Slider({
   disabled = false,
   immediate = false,
   className = '',
+  guideId,
 }: SliderProps) {
   const span = max - min || 1;
 
@@ -338,6 +341,7 @@ export function Slider({
 
         <input
           ref={inputRef}
+          data-guide={guideId}
           type="range"
           min={min}
           max={max}

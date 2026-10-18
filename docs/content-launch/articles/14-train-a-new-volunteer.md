@@ -1,59 +1,64 @@
 ---
-title: "Teach a new Trilorah volunteer one complete service"
+title: "Train a new volunteer by running a small service"
 slug: "train-a-new-volunteer"
 audience: "Volunteer coordinators and experienced operators training a teammate"
 question: "What should a new operator learn first, and how can we tell they are ready?"
 proposed_publication_date: "2026-07-07"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; volunteer trial and companion-release review pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [navigation.open-library, run.build-edit, output.publish-preview, output.clear-restore, scripture.catch-and-project, files.save-open-transfer]
 ---
 
-# Teach a new Trilorah volunteer one complete service
+# Train a new volunteer by running a small service
 
-A new volunteer does not need a tour of every setting before they can learn to run a service. Give them a small, complete service and let them practice the decisions they will make in the room.
+Let the new volunteer use the mouse early. Watching you work is useful; doing the next step themselves tells you what they have understood.
 
-Use a rehearsal session with a welcome slide, one song, a scripture reading, and a closing announcement. Keep the material simple enough that the volunteer can focus on the workflow.
+Prepare a short rehearsal with a welcome slide, one song, a scripture reading and a closing announcement. Use the equipment they will operate, without an audience waiting.
 
-## Begin with what the audience can see
+The goal is to complete that small service and recover from a change. The rest of the menus can wait.
 
-Show preview and live first. Prepare an item in preview, point to what is currently live, and ask the volunteer to explain the difference.
+## Show preview and live first
 
-Then let them send the prepared item. Ask them to check the real output screen. This connects the button press to its visible result.
+Prepare the welcome in preview and point out what is currently live. Ask the volunteer which one the congregation can see.
 
-Practice clearing the words while retaining the background and restoring the held content. Explain the separate black and logo states only if your team uses them in this rehearsal.
+Let them choose **go live**, then check the physical screen together. Practice **clear** to remove the words while keeping the background, followed by **restore** to bring the held content back.
 
-## Follow a run, not a list of menus
+Repeat with the song. Give an agreed cue, let them send a lyric section, then ask for the chorus again. That small change teaches them to choose the right content instead of memorising a sequence.
 
-Walk through the prepared order of service. For each segment, identify the content, the cue to show it, and any operator note.
+## Follow the service plan
 
-Let the volunteer open the saved song, preview a lyric section, and send it when you give the agreed cue. Move to the scripture reading and closing slide in the same way.
+For each segment, have the volunteer find the content, read any note and explain the cue they are waiting for. Then let them present it.
 
-Then change one thing: repeat a chorus or move an announcement earlier. The purpose is to learn how to find the right content when the plan changes, not to memorize a sequence of clicks.
+Use operator notes for instructions such as “Wait until the host finishes speaking.” Keep those distinct from the words meant for the congregation.
 
-## Explain the scripture shortcuts explicitly
+After one pass, move the closing announcement earlier. Let the volunteer find it without taking the mouse back immediately. You are practising the moment when the real service stops following the printed order.
 
-Scripture controls do not all behave alike. A single click on a verse row previews it. Enter in the reference field, Enter on a verse row, or a double-click on the row sends it live.
+## Teach the clicks that send scripture
 
-A result card in the phrase-search interface also sends its passage when selected. Demonstrate that difference during rehearsal so the volunteer can choose deliberately during the service.
+Demonstrate these during rehearsal:
 
-For spoken recognition, ask the trainee to inspect the caught reference and translation before sending it. A suggestion does not become live merely because the app recognized it.
+| Control | Result |
+|---|---|
+| Single-click a verse row | Preview |
+| Double-click or press Enter on a verse row | Send live |
+| Press Enter in the reference field | Send live |
+| Select a phrase-search result card | Send live |
 
-## Let the guide support practice
+Then speak a full reference and let the volunteer inspect the suggestion. Ask them to check the reference and translation before sending it. A detected passage waits for a deliberate send action.
 
-If the guide preview is included in your build, open **ⓘ guide** for the available walkthroughs. Use **Show me** to watch a supported interaction, then **I'll do it** to repeat the step yourself.
+## Use the companion for a specific task
 
-Treat the guide as help with the available workflow. A completed demo is not proof that the room's microphone, projector, or online services have been tested. Check those with the actual equipment.
+Open **i guide** at the top right and choose an available walkthrough. **Show me** lets the companion perform supported steps in the app; **I’ll do it** points out the controls while the volunteer acts. The moving cursor and short bubble show what happens next.
 
-Pause the guide when the volunteer wants to explore. The trainer's job is to connect each action with its effect, especially actions that change live output.
+These can be real actions in the current workspace. For a demonstration without a microphone, the microphone walkthrough also offers a separate **watch a demo** option marked as simulated.
 
-## Finish with three recovery exercises
+Use **pause** when the volunteer wants to ask something or explore. The guide helps with supported tasks; the room's microphone, projector and online services still need a real check.
 
-Ask the volunteer to find a known scripture without listening, return from an unexpected library tab, and explain what they would do if a planned video were unavailable.
+## Finish with a recovery exercise
 
-Finally, save the practice service and reopen the prepared material. Let the volunteer name what they checked and anything they still want help with.
+Ask the volunteer to find a reference manually, return from another library tab and explain what they would do if a planned video were unavailable. Agree on the fallback your team wants.
 
-Readiness is more useful as an observed workflow than a guess based on time spent watching. A volunteer who can prepare, present, clear, and recover has a clear foundation for the next rehearsal.
+Save the rehearsal service and reopen it together. Ask what still feels uncertain, then practise that part once more.
 
-Use [the first-service checklist](02-first-service-checklist.md) as the practice sheet and [the audio troubleshooting guide](13-when-trilorah-cannot-hear-you.md) for a follow-up exercise.
+A useful first session ends with the volunteer able to prepare, present, clear and recover. Use [the rehearsal checklist](02-first-service-checklist.md) for the next session, followed by [audio troubleshooting](13-when-trilorah-cannot-hear-you.md) when they are ready.

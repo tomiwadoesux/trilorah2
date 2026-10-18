@@ -11,6 +11,7 @@
  */
 
 import { bookNames } from './books'
+import { capitalizeScriptureNames } from '../../shared/scriptureNames'
 
 export interface SearchableDb {
   prepare(sql: string): { all(...params: unknown[]): unknown[]; get(...params: unknown[]): unknown }
@@ -109,5 +110,16 @@ function searchLike(db: SearchableDb, q: string, version: string, limit: number)
 }
 
 function withBookName(r: Omit<BibleSearchHit, 'book'>): BibleSearchHit {
-  return { ...r, book: bookNames[r.bookId] ?? `Book ${r.bookId}` }
+  // FTS inserts <b> tags between title words. Case the visible text as one
+  // phrase, then put the existing highlights back at their original offsets.
+  const parts = r.snippet.split(/(<\/?b>)/g)
+  const visible = capitalizeScriptureNames(parts.filter((_, i) => i % 2 === 0).join(''))
+  let at = 0
+  const snippet = parts.map((part, i) => {
+    if (i % 2) return part
+    const cased = visible.slice(at, at + part.length)
+    at += part.length
+    return cased
+  }).join('')
+  return { ...r, text: capitalizeScriptureNames(r.text), snippet, book: bookNames[r.bookId] ?? `Book ${r.bookId}` }
 }

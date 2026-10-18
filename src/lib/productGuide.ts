@@ -1,10 +1,56 @@
 import mapText from '../../docs/product-guide/product-map.json?raw';
 
+export type LessonAction = 'click' | 'focus' | 'point' | 'input' | 'listen' | 'check' | 'write' | 'choose';
+/** One point of a lesson: a short line (plus written rephrases) tied to one anchor. Reviewed data, never generated. */
+export interface LessonPoint {
+  id: string;
+  say: string[];
+  anchor: string;
+  do: LessonAction;
+  done?: string;
+  field?: 'reference' | 'search' | 'programme' | 'songTitle' | 'lyrics';
+  prerequisite?: 'stock' | 'bible';
+  observed?: 'stock-picked' | 'programme-added' | 'display-assigned';
+  holdMs?: number;
+}
 export interface GuideTask {
   id: string; title: string; area: string; entry: string;
   controls: string[]; status: 'wired' | 'partial' | 'unverified';
+  asks?: string[];
+  lesson?: LessonPoint[];
+  near?: string[];
+  since?: string;
+  consequential?: boolean;
 }
-export const guideTasks: GuideTask[] = JSON.parse(mapText).tasks;
+export interface GuideTrouble { say: string[]; task: string }
+const productMap: { packageVersion: string; tasks: GuideTask[]; troubles?: Record<string, GuideTrouble>; areas?: { id: string; title: string }[] } = JSON.parse(mapText);
+export const guideTasks: GuideTask[] = productMap.tasks;
+export const guideMapVersion: string = productMap.packageVersion;
+export const guideTroubles: Record<string, GuideTrouble> = productMap.troubles ?? {};
+export const guideAreas: { id: string; title: string }[] = productMap.areas ?? [];
+
+/** The line for a notice: by its id first, then by its destination. Null when the map has nothing written. */
+export function troubleFor(notice: { id: string; target: string }): { say: string[]; task: GuideTask } | null {
+  const trouble = guideTroubles[notice.id] ?? guideTroubles[`target:${notice.target}`];
+  const task = trouble && guideTasks.find(item => item.id === trouble.task);
+  return trouble && task ? { say: trouble.say, task } : null;
+}
+/** Tasks written for the part of the app the volunteer is looking at. */
+export function tasksNear(area: string | null): GuideTask[] {
+  if (!area) return [];
+  return guideTasks.filter(task => task.near?.includes(area) && task.status === 'wired');
+}
+const semver = (value: string) => value.split('.').map(part => Number.parseInt(part, 10) || 0);
+export function newerThan(version: string, seen: string | null): boolean {
+  if (!seen) return false;
+  const [a, b] = [semver(version), semver(seen)];
+  for (let i = 0; i < 3; i++) { if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0); }
+  return false;
+}
+/** Lessons that arrived after the version the volunteer last opened the Messenger on. */
+export function tasksSince(seen: string | null): GuideTask[] {
+  return guideTasks.filter(task => task.lesson && task.since && newerThan(task.since, seen));
+}
 export type GuideDestination = 'keys' | 'audio' | 'phone' | 'speech' | 'language' | 'scripture' | 'themes' | 'songs' | 'slides' | 'media' | 'online' | 'run' | 'outputs' | 'notes' | 'timers' | 'profile' | 'cloud' | 'appearance' | 'church' | 'settings' | 'companion' | 'notifications' | 'mobile';
 
 const aliases: Record<string, string> = {
@@ -39,7 +85,7 @@ export function searchGuideTasks(query: string): GuideTask[] {
   if (!tokens.length) return guideTasks;
   return guideTasks.map(task => {
     const title = words(task.title);
-    const vocabulary = [...title, ...words(`${task.area} ${aliases[task.id] ?? ''}`)];
+    const vocabulary = [...title, ...words(`${task.area} ${aliases[task.id] ?? ''} ${(task.asks ?? []).join(' ')}`)];
     let matched = 0;
     let score = 0;
     for (const token of tokens) {
@@ -81,7 +127,7 @@ export function destinationFor(task: GuideTask): GuideDestination | null {
 }
 
 export const microphoneSteps = [
-  { title: 'Choose your microphone', body: 'Open Audio beneath the preview. Choose your microphone or soundboard feed. System default follows your computer’s selected input.' },
+  { title: 'Choose your microphone', body: 'Open Audio, at the preview’s bottom left. Choose your microphone or soundboard feed. System default follows your computer’s selected input.' },
   { title: 'Start listening', body: 'Press Start listening at the bottom left. If it is already listening, you can continue. This uses your current speech service.' },
   { title: 'Say a few words', body: 'Speak a short sentence. We’ll check for a fresh audio signal and new transcript text. A connection alone doesn’t confirm both.' },
   { title: 'Your input is responding', body: 'Audio and new transcript text arrived during this check. Read the transcript to make sure the words are correct.' },

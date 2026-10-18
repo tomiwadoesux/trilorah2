@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trilorah signal</title>
+    <!-- The see-through window main opens over the operator's screen to
+         show a catch's signal (electron/output/catchSignalOverlay.ts). -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+      }
+      #signal {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="signal"></div>
+    <script type="module" src="/src/signal.ts"></script>
+  </body>
+</html>

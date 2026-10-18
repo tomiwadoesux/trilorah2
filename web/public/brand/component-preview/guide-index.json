@@ -1,0 +1,200 @@
+{
+  "revision": "8f28254a22",
+  "sourceFiles": 328,
+  "anchors": [
+    {
+      "name": "${name}",
+      "sources": [
+        "src/lib/guideWalkthroughs.ts"
+      ]
+    },
+    {
+      "name": "audio-input",
+      "sources": [
+        "src/components/MicPicker.tsx",
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "audio-options",
+      "sources": [
+        "src/components/MicPicker.tsx",
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "dashboard-${destination}",
+      "sources": [
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "demo-audio",
+      "sources": [
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "demo-input",
+      "sources": [
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "demo-listen",
+      "sources": [
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "demo-speech",
+      "sources": [
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "demo-transcript",
+      "sources": [
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "library-${id}",
+      "sources": [
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "listen",
+      "sources": [
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "media-import",
+      "sources": [
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "mobile-tools",
+      "sources": [
+        "src/components/MobileMenu.tsx",
+        "src/components/OrbStatusHint.tsx",
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "notifications",
+      "sources": [
+        "src/components/NotificationCenter.tsx",
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "outputs-settings",
+      "sources": [
+        "src/components/ProductGuide.tsx",
+        "src/design/screens/dashboard/OutputsTile.tsx",
+        "src/lib/guideWalkthroughs.ts"
+      ]
+    },
+    {
+      "name": "run",
+      "sources": [
+        "src/design/screens/Live.tsx"
+      ]
+    },
+    {
+      "name": "run-apply",
+      "sources": [
+        "src/design/screens/run/ScanReview.tsx"
+      ]
+    },
+    {
+      "name": "run-paste",
+      "sources": [
+        "src/design/screens/run/RunRail.tsx"
+      ]
+    },
+    {
+      "name": "run-programme",
+      "sources": [
+        "src/components/ProductGuide.tsx",
+        "src/design/screens/run/ScanReview.tsx"
+      ]
+    },
+    {
+      "name": "run-read",
+      "sources": [
+        "src/design/screens/run/ScanReview.tsx"
+      ]
+    },
+    {
+      "name": "run-text",
+      "sources": [
+        "src/design/screens/run/ScanReview.tsx"
+      ]
+    },
+    {
+      "name": "setting-pixabayApiKey",
+      "sources": [
+        "src/components/ProductGuide.tsx"
+      ]
+    },
+    {
+      "name": "settings-content",
+      "sources": [
+        "src/components/ProductGuide.tsx",
+        "src/design/screens/Live.tsx",
+        "src/design/screens/Settings.tsx"
+      ]
+    },
+    {
+      "name": "song-entry",
+      "sources": [
+        "src/components/ProductGuide.tsx",
+        "src/design/screens/songs/SongLyricsEntry.tsx"
+      ]
+    },
+    {
+      "name": "song-lyrics",
+      "sources": [
+        "src/design/screens/songs/SongLyricsEntry.tsx"
+      ]
+    },
+    {
+      "name": "song-title",
+      "sources": [
+        "src/design/screens/songs/SongLyricsEntry.tsx"
+      ]
+    },
+    {
+      "name": "stock-result",
+      "sources": [
+        "src/design/screens/stockSearch.tsx",
+        "src/lib/guideWalkthroughs.ts"
+      ]
+    },
+    {
+      "name": "stock-search",
+      "sources": [
+        "src/components/ProductGuide.tsx",
+        "src/design/screens/stockSearch.tsx",
+        "src/lib/guideWalkthroughs.ts"
+      ]
+    },
+    {
+      "name": "stock-setup",
+      "sources": [
+        "src/design/screens/stockSearch.tsx"
+      ]
+    },
+    {
+      "name": "workspace-view",
+      "sources": [
+        "src/design/screens/Live.tsx"
+      ]
+    }
+  ]
+}

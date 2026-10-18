@@ -5,7 +5,7 @@ const task = (id: string) => guideTasks.find(item => item.id === id)!;
 
 describe('companion action boundaries', () => {
   it('never clicks a selector inferred from arbitrary help or generated text', () => {
-    for (const target of ['button', '[data-guide="listen"]', '[aria-label="GO LIVE"]', '[data-guide="song-save"]', '[data-guide="audio-options"] button']) {
+    for (const target of ['button', '[data-guide="listen"]', '[data-guide="preview-unstage"]', '[aria-label="GO LIVE"]', '[data-guide="song-save"]', '[data-guide="audio-options"] button']) {
       expect(canGuideClick({ id: 'made-up', title: '', prompt: '', target, action: 'click' })).toBe(false);
     }
   });
@@ -37,6 +37,16 @@ describe('companion action boundaries', () => {
 });
 
 describe('cross-app walkthroughs', () => {
+  it('teaches clearing from the preview and showing the item again without executing either action', () => {
+    const steps = walkthroughFor(task('output.clear-restore'));
+    expect(steps.map(step => step.target)).toEqual(['[data-guide="preview-unstage"]', '[data-guide="go-live"]']);
+    expect(steps.every(step => step.action === 'choose' && !canGuideClick(step))).toBe(true);
+    expect(steps[0].prompt).toContain('currently live item');
+  });
+  it('opens online search inside Media and uses the current scripture tab anchor', () => {
+    expect(walkthroughFor(task('media.find-online')).slice(0, 2).map(step => step.target)).toEqual(['[data-guide="library-media"]', '[data-guide="media-online"]']);
+    expect(walkthroughFor(task('bible.lookup-preview-reference'))[0].target).toBe('[data-guide="library-scriptures"]');
+  });
   it('checks stock credentials before typing or selecting provider results', () => {
     const steps = walkthroughFor(task('media.find-online'));
     expect(steps.find(step => step.action === 'write')?.prerequisite).toBe('stock');

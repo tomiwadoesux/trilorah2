@@ -113,6 +113,8 @@ describe('conversion and portable media', () => {
 describe('archive boundaries', () => {
   it.each([
     [{ name: '../escape.png', data: Buffer.from('x') }],
+    [{ name: 'media\\..\\..\\escape.png', data: Buffer.from('x') }],
+    [{ name: 'C:\\escape.png', data: Buffer.from('x') }],
     [{ name: 'link.png', data: Buffer.from('/etc/passwd'), mode: 0o120777 }],
     [{ name: 'a.png', data: Buffer.from('x') }, { name: 'A.png', data: Buffer.from('y') }],
     [{ name: 'large.png', data: Buffer.from('x'), size: IMPORT_LIMITS.entryBytes + 1 }],
@@ -133,6 +135,25 @@ describe('archive boundaries', () => {
     ew.writeUInt32LE(0, ew.indexOf(Buffer.from('504b0102', 'hex')) + 16)
     const ewFile = await file('Sunday.ewsx', ew)
     await expect(unpack(ewFile, path.join(directory, 'ew'), { easyWorshipCrc: true })).resolves.toHaveLength(1)
+  })
+  it('reads EasyWorship 7 backslash entry names, its own media checksums, and skips its empty media folder entry', async () => {
+    // The entry layout of a real packed EasyWorship 7.4 schedule, where every entry carries a nonstandard CRC.
+    const bytes = zipFixture([{ name: 'main.db', data: Buffer.from('database bytes') }, { name: 'media', data: Buffer.alloc(0) }, { name: 'media\\qwtbdq.JPG', data: Buffer.from('picture') }])
+    let at = -1
+    while ((at = bytes.indexOf(Buffer.from('504b0102', 'hex'), at + 1)) !== -1) bytes.writeUInt32LE(0x12345678, at + 16)
+    const archive = await file('Sunday.ewsx', bytes)
+    const files = await unpack(archive, path.join(directory, 'out'), { easyWorshipCrc: true })
+    expect(files.map(entry => entry.name)).toEqual(['main.db', 'media/qwtbdq.JPG'])
+    expect(await fs.readFile(files[1].file, 'utf8')).toBe('picture')
+  })
+  it('keeps a PowerPoint packed in a schedule whole and points to the slides importer', async () => {
+    const pptx = zipFixture([{ name: '[Content_Types].xml', data: Buffer.from('<Types/>') }, { name: 'ppt/slides/slide1.xml', data: Buffer.from('<p:sld/>') }, { name: 'ppt/media/image1.png', data: Buffer.from('slide picture') }])
+    const archive = await file('Sunday.ewsx', zipFixture([{ name: 'media', data: Buffer.alloc(0) }, { name: 'media\\sky.png', data: Buffer.from('picture') }, { name: 'media\\qxgrxd.pptx', data: pptx }]))
+    const result = await convertForeign([archive]); converted.push(result.directory)
+    expect(result.manifest.categories.media?.map(item => item.label)).toEqual(['sky.png'])
+    expect(result.questions).toEqual([])
+    expect(result.warnings.some(warning => warning.startsWith('qxgrxd.pptx:') && warning.includes('import slides'))).toBe(true)
+    expect(result.warnings.some(warning => warning.includes('empty'))).toBe(false)
   })
   it('enforces archive depth and validates checksums inside nested exports', async () => {
     let nested = zipFixture([{ name: 'Sunday.pro6', data: Buffer.from(pro6Fixture) }])
@@ -243,6 +264,23 @@ describe('any-app imports: sniffing, harvesting, asking', () => {
     expect(songs[0].data.sections).toEqual([{ label: 'Verse 1', lines: ['Amazing grace', 'how sweet'] }, { label: 'Chorus', lines: ['Praise'] }])
     expect(songs[1].data.sections).toEqual([{ label: 'Verse 1', lines: ['Line one', 'Line two'] }, { label: 'Chorus', lines: ['Chorus line'] }])
     expect(unanswered(result.questions)).toHaveLength(0)
+  })
+  sqliteIt('imports a packed EasyWorship 7 schedule with backslash media names', async () => {
+    const db = path.join(directory, 'main.db')
+    const sqlite = new Database!(db)
+    sqlite.exec(`CREATE TABLE presentation (rowid INTEGER PRIMARY KEY, title TEXT, author TEXT, copyright TEXT, reference_number TEXT, presentation_type INTEGER);
+      CREATE TABLE slide (rowid INTEGER PRIMARY KEY, presentation_id INTEGER, order_index INTEGER);
+      CREATE TABLE element (rowid INTEGER PRIMARY KEY, slide_id INTEGER, foreground_resource_id INTEGER, element_type INTEGER, element_style_type INTEGER);
+      CREATE TABLE resource_text (rowid INTEGER PRIMARY KEY, resource_id INTEGER, rtf TEXT);
+      INSERT INTO presentation VALUES (1, 'Amazing Grace', 'John Newton', '', '', 6), (2, 'Prayer', '', '', '', 10);
+      INSERT INTO slide VALUES (1, 1, 0), (2, 1, 1);
+      INSERT INTO element VALUES (1, 1, 10, 6, 4), (2, 2, 11, 6, 4);
+      INSERT INTO resource_text VALUES (1, 10, '{\\rtf1\\ansi Amazing grace\\par how sweet the sound}'), (2, 11, '{\\rtf1\\ansi I once was lost}');`)
+    sqlite.close()
+    const archive = await file('Sunday.ewsx', zipFixture([{ name: 'main.db', data: await fs.readFile(db) }, { name: 'media', data: Buffer.alloc(0) }, { name: 'media\\qwtbdq.JPG', data: Buffer.from('picture') }]))
+    const result = await convertForeign([archive]); converted.push(result.directory)
+    expect(result.manifest.categories.songs?.map(song => song.data.sections.map((section: any) => section.lines))).toEqual([[['Amazing grace', 'how sweet the sound'], ['I once was lost']]])
+    expect(result.manifest.categories.media?.map(item => item.label)).toEqual(['qwtbdq.JPG'])
   })
   it('lists what it skipped instead of dropping it silently', async () => {
     const blob = await file('mystery.bin', Buffer.from([0, 1, 2, 3, 0, 0, 7, 9, 0, 0, 0, 1]))

@@ -4,22 +4,27 @@ import type { ScriptureReferenceInputHandle } from '../ui/primitives/ScriptureRe
 import { hasOpenTypingInteraction, ownsTextInput, shouldRouteOperatorTyping } from './operatorTyping';
 
 /** One initial focus, then typing on demand. Never refocus after blur. */
-export function useOperatorTyping({ enabled, root, search, revealSearch, skipNextEntryFocus }: {
+export function useOperatorTyping({ enabled, root, search, revealSearch, activeLibrary = 'scriptures', skipNextEntryFocus }: {
   enabled: boolean;
   root: RefObject<HTMLElement | null>;
   search: RefObject<ScriptureReferenceInputHandle | null>;
   revealSearch: () => void;
+  activeLibrary?: string;
   /** An explicit navigation destination wins over the default entry field. */
   skipNextEntryFocus?: RefObject<boolean>;
 }) {
   const reveal = useRef(revealSearch);
   reveal.current = revealSearch;
+  const library = useRef(activeLibrary);
+  library.current = activeLibrary;
 
   useEffect(() => {
     if (!enabled) return;
     const document = root.current?.ownerDocument;
     const window = document?.defaultView;
     if (!document || !window) return;
+    const libraryInput = () => [...(root.current?.querySelectorAll<HTMLInputElement>('[data-library-workspace] input[data-operator-search]') ?? [])]
+      .find(input => !input.disabled && !input.closest('[inert], [hidden]') && input.getClientRects().length > 0);
 
     const skipEntryFocus = skipNextEntryFocus?.current ?? false;
     if (skipNextEntryFocus) skipNextEntryFocus.current = false;
@@ -34,8 +39,10 @@ export function useOperatorTyping({ enabled, root, search, revealSearch, skipNex
       document.removeEventListener('keydown', rememberInteraction, true);
       if (!skipEntryFocus && !interacted && document.activeElement === initialFocus && !ownsTextInput(initialFocus) &&
         !hasOpenTypingInteraction(document) && (initialFocus === document.body || root.current?.contains(initialFocus))) {
-        if (!search.current) flushSync(() => reveal.current());
-        search.current?.focus();
+        if (library.current === 'scriptures') {
+          if (!search.current) flushSync(() => reveal.current());
+          search.current?.focus();
+        } else libraryInput()?.focus();
       }
     });
 
@@ -54,10 +61,20 @@ export function useOperatorTyping({ enabled, root, search, revealSearch, skipNex
         textSelected: document.getSelection()?.isCollapsed === false,
       })) return;
 
-      // Mount the existing field before delivering the first character, even
-      // when Songs/Media is open. Its usual validation still owns the text.
-      if (!search.current) flushSync(() => reveal.current());
-      if (search.current?.beginTyping(event.key)) event.preventDefault();
+      if (library.current === 'scriptures') {
+        if (!search.current) flushSync(() => reveal.current());
+        if (search.current?.beginTyping(event.key)) event.preventDefault();
+        return;
+      }
+      const input = libraryInput();
+      if (!input) return;
+      event.preventDefault();
+      input.focus({ preventScroll: true });
+      // Use the native setter so React's controlled input observes the new
+      // character. Starting from the canvas begins a fresh lookup.
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, event.key);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.setSelectionRange(event.key.length, event.key.length);
     };
     window.addEventListener('keydown', onKey);
     return () => {

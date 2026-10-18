@@ -1,0 +1,24 @@
+/* Native app styles draw the interface. Only captured-state transitions live here. */
+.hero-practice-arrive {
+  animation: hero-practice-in 240ms var(--tri-ease-out, cubic-bezier(.23, 1, .32, 1)) both;
+}
+
+.hero-practice-leave {
+  animation: hero-practice-out 240ms var(--tri-ease-out, cubic-bezier(.23, 1, .32, 1)) both;
+}
+
+.tri-listening-sign__lamp { animation: none !important; }
+
+@keyframes hero-practice-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hero-practice-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-practice-arrive, .hero-practice-leave { animation: none; }
+}

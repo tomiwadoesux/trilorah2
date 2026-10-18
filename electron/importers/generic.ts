@@ -60,7 +60,8 @@ export function themeShaped(data: unknown): boolean {
 export async function detect(source: SourceFile): Promise<Detected> {
   const extension = ext(source.name)
   if ((MEDIA_TYPES.photo as readonly string[]).includes(extension) || (MEDIA_TYPES.video as readonly string[]).includes(extension)) return { kind: 'media' }
-  if (/\.(mp3|wav|ogg|m4a|aac|flac|wmv|avi|mkv|pdf|pptx?|odp|heic)$/i.test(source.name)) return { kind: 'other-media', reason: 'this resource type is not converted by this importer. Import or convert it separately.' }
+  if (/\.(pp[ts][xm]?|pot[xm]?|odp)$/i.test(source.name)) return { kind: 'other-media', reason: 'PowerPoint slides are not converted here. Bring them in from slides → import slides.' }
+  if (/\.(mp3|wav|ogg|m4a|aac|flac|wmv|avi|mkv|pdf|key|heic)$/i.test(source.name)) return { kind: 'other-media', reason: 'this resource type is not converted by this importer. Import or convert it separately.' }
   if (extension === '.pro') return { kind: 'pro' }
   if (extension === '.pro6') return { kind: 'pro6' }
   if (extension === '.proplaylist') return { kind: 'proplaylist' }

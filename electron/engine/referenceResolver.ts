@@ -36,6 +36,8 @@ export interface ResolvedReference {
   confidence: number
   source: 'resolver'
   explicitBook?: boolean
+  /** Missing ordinal: the operator chooses the numbered book. */
+  alternateBooks?: string[]
 }
 
 type VerseCallback = (data: ResolvedReference) => void
@@ -210,6 +212,9 @@ function buildAliasTable(pack: LanguagePack | null): BookAlias[] {
     }
   }
 
+  // A missing ordinal is a question, never an assumed first book.
+  for (const stem of ['Samuel', 'Kings', 'Chronicles', 'Corinthians', 'Thessalonians', 'Timothy']) add(stem, stem)
+
   // Language pack aliases layer on top of English (code-switch friendly).
   if (pack && pack.matchMode === 'words') {
     for (const [canonical, list] of Object.entries(pack.bookAliases)) {
@@ -240,6 +245,7 @@ function foldLatin(text: string): string {
 export function normalizeWords(text: string): string[] {
   return foldLatin(text.toLowerCase())
     .replace(/(\d+)[:：](\d+)/g, '$1 $2')
+    .replace(/(\d)\s*[-–—]\s*(?=\d)/g, '$1 to ')
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
     .split(/\s+/)
     .filter((w) => w.length > 0)
@@ -288,7 +294,8 @@ interface BookMatch {
 /* The resolver state machine                                          */
 /* ------------------------------------------------------------------ */
 
-const PENDING_TTL_MS = 8000
+const PENDING_TTL_MS = 90_000
+const HYPOTHESIS_TTL_MS = 8_000
 /** How long "chapter N" may still mean the last book named — a sermon point, not a sentence. */
 const LAST_BOOK_TTL_MS = 15 * 60_000
 const DEDUP_WINDOW_MS = 4000
@@ -322,7 +329,7 @@ export class SpokenReferenceResolver {
   /*
    * The book the sermon is IN, as opposed to the book a sentence is in.
    *
-   * pendingBook lives 8 seconds — long enough to join "Philippians chapter
+   * pendingBook lives 90 seconds — long enough to join "Philippians chapter
    * four … verse six". But a preacher who read Exodus 4:7 and, a minute of
    * preaching later, says "let's go to chapter nine verse two" means Exodus
    * 9:2, and by then pendingBook is long gone: the chapter was discarded and
@@ -441,7 +448,7 @@ export class SpokenReferenceResolver {
       if (isFinal && this.heldEmit) {
         const held = this.heldEmit
         this.heldEmit = null
-        if (this.now() - this.heldAt <= PENDING_TTL_MS) held()
+        if (this.now() - this.heldAt <= HYPOTHESIS_TTL_MS) held()
       }
       if (isFinal) {
         this.earlyEmitKey = ''
@@ -682,6 +689,12 @@ export class SpokenReferenceResolver {
         const num = this.parseNum(tokens.map((x) => x.word), i)
         if (num) {
           if (this.pendingChapter === null) {
+            const continuation = this.readReferenceNumbers(tokens, i, this.pendingBook)
+            if (continuation?.verse !== null && continuation?.verse !== undefined) {
+              i += continuation.consumed
+              this.emit(this.pendingBook, continuation.chapter, continuation.verse, continuation.rangeEnd, 0.95, now, this.hasReferenceBoundary(tokens, i))
+              continue
+            }
             // Two consecutive numbers = chapter + verse ("three sixteen")
             const second = this.parseNum(tokens.map((x) => x.word), i + num.consumed)
             if (second) {
@@ -722,11 +735,15 @@ export class SpokenReferenceResolver {
     const words = tokens.map((x) => x.word)
     let i = start
     let explicit = false
+    let namedChapter = false
+    const singleChapter = book !== undefined && CHAPTER_COUNTS[bookIdMap[book]] === 1
     while (i < tokens.length && this.fillers.has(words[i])) i++
     if (this.chapterWords.has(words[i])) {
       explicit = true
+      namedChapter = true
       i++
     }
+    if (singleChapter && !explicit && this.verseWords.has(words[i])) { explicit = true; i++ }
     // "Exodus 165": the transcriber ran "sixteen five" together into one
     // number. No book has that many chapters, so it is a chapter and a verse
     // written as one — the longest chapter the book has, then the rest.
@@ -744,6 +761,10 @@ export class SpokenReferenceResolver {
     const chap = this.parseNum(words, i)
     if (!chap) return null
     i += chap.consumed
+    if (singleChapter && !namedChapter && !this.verseWords.has(words[i]) && !this.parseNum(words, i)) {
+      const range = this.readRange(tokens, i) ?? this.readAndPair(tokens, i, chap.value)
+      return { chapter: 1, verse: chap.value, rangeEnd: range?.end ?? null, consumed: i - start + (range?.consumed ?? 0), explicit }
+    }
     let j = i
     while (
       j < tokens.length &&
@@ -790,8 +811,10 @@ export class SpokenReferenceResolver {
   ): { end: number; consumed: number } | null {
     const words = tokens.map((x) => x.word)
     if (this.rangeWords.has(words[at])) {
-      const n = this.parseNum(words, at + 1)
-      if (n) return { end: n.value, consumed: 1 + n.consumed }
+      let next = at + 1
+      if (this.verseWords.has(words[next])) next++
+      const n = this.parseNum(words, next)
+      if (n) return { end: n.value, consumed: next - at + n.consumed }
     }
     return null
   }
@@ -890,7 +913,8 @@ export class SpokenReferenceResolver {
       endVerse: rangeEnd,
       confidence,
       source: 'resolver',
-      explicitBook
+      explicitBook,
+      ...(book && bookIdMap[book] === undefined ? { alternateBooks: Object.keys(bookIdMap).filter(name => /^[123] /.test(name) && name.slice(2) === book) } : {})
     })
   }
 }

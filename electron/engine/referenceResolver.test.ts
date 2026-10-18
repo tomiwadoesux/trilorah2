@@ -180,7 +180,7 @@ describe('SpokenReferenceResolver', () => {
   it('expires pending book state after the TTL', () => {
     const { detections, feed, tick } = collect()
     feed('turn to john')
-    tick(10_000)
+    tick(100_000)
     feed('three sixteen')
     // "three sixteen" with no live pending book must not invent John 3:16
     expect(detections.filter((d) => d.verse === 16)).toHaveLength(0)
@@ -405,5 +405,38 @@ describe('SpokenReferenceResolver — a growing utterance emits once, complete',
       feed('exodus six teen five')
       expect(detections.at(-1)).toMatchObject({ book: 'Exodus', chapter: 16, verse: 5 })
     })
+  })
+})
+
+
+describe('operator-reported spoken references', () => {
+  it.each(['Jude 20', 'Jude verse one', 'Jude verse twenty', 'Obadiah 3', 'Philemon 6', '2 John 6', '3 John 4'])('understands the single-chapter shorthand %s', text => {
+    const c = collect(); c.feed(text)
+    expect(c.detections.at(-1)).toMatchObject({ chapter: 1 })
+    expect(c.detections.at(-1)?.verse).toBeGreaterThan(0)
+  })
+  it('keeps an explicitly spoken chapter one and verse twenty', () => {
+    const c = collect(); c.feed('Jude chapter one verse twenty')
+    expect(c.detections.at(-1)).toMatchObject({ book: 'Jude', chapter: 1, verse: 20 })
+  })
+  it.each(['first Kings chapter 18 verses 41 to verse 46', '1 Kings 18:41-46', '1 Kings 18 verses forty one through verse forty six'])('keeps the entire range in %s', text => {
+    const c = collect(); c.feed(text)
+    expect(c.detections.at(-1)).toMatchObject({ book: '1 Kings', chapter: 18, verse: 41, endVerse: 46 })
+  })
+  it('joins chapter and verse across a long reading pause', () => {
+    const c = collect(); c.feed('Look at the book of Genesis chapter'); c.tick(25_000); c.feed('32 verse 24 to 28')
+    expect(c.detections.at(-1)).toMatchObject({ book: 'Genesis', chapter: 32, verse: 24, endVerse: 28 })
+  })
+  it('retains a chapter for the later explicit verse range', () => {
+    const c = collect(); c.feed('first Kings chapter eighteen'); c.tick(20_000); c.feed('verses forty one to verse forty six')
+    expect(c.detections.at(-1)).toMatchObject({ book: '1 Kings', chapter: 18, verse: 41, endVerse: 46 })
+  })
+  it('asks for the missing ordinal, including after a split utterance', () => {
+    const c = collect(); c.feed('Kings chapter eighteen'); c.feed('verse 41 to verse 46')
+    expect(c.detections.at(-1)).toMatchObject({ chapter: 18, verse: 41, endVerse: 46, alternateBooks: ['1 Kings', '2 Kings'] })
+  })
+  it('does not treat second Jude utterance as chapter two', () => {
+    const c = collect(); c.feed('Jude 20'); c.feed('Jude 2')
+    expect(c.detections.at(-1)).toMatchObject({ book: 'Jude', chapter: 1, verse: 2 })
   })
 })

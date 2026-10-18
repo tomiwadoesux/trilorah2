@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatNoteText } from '../../shared/noteDisplay';
 import { useLiveStore } from '../stores/liveStore';
 import {
   Button,
@@ -27,6 +28,7 @@ function snapshotToNotes(snapshot: NotesSnapshot): SermonNotes {
 }
 
 function LiveOutline({ snapshot }: { snapshot: NotesSnapshot }) {
+  snapshot = formatNoteText(snapshot);
   return (
     <div className="space-y-4">
       {snapshot.title && <p className="font-scripture text-2xl">{snapshot.title}</p>}
@@ -76,6 +78,7 @@ function LiveOutline({ snapshot }: { snapshot: NotesSnapshot }) {
 }
 
 function NotesDocument({ notes }: { notes: SermonNotes }) {
+  notes = formatNoteText(notes);
   return (
     <article className="max-w-2xl space-y-8">
       <header className="space-y-2">

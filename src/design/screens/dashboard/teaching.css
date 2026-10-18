@@ -1,0 +1,191 @@
+/* Words and names — Teaching.tsx (and the words tab's wrapper in ProfileView).
+   Lives inside .profile-page, so --pf-* are set.
+
+   Hover is fast in, slow out: 80ms to light up, 200ms to let go, and only
+   on a real pointer. Lists are contiguous — every rule is the row's own
+   border — so moving down a list never drops the hover in a gap. */
+
+.wn { margin:0; padding:0; border:0; min-inline-size:0; min-width:0; transition:opacity 120ms ease; }
+/* A save is local and quick; only one that takes a noticeable moment dims. */
+.wn:disabled { opacity:.5; transition:opacity 160ms ease 320ms; }
+
+/* -------- header status + notices -------- */
+.wn-statusbox { display:inline-flex; align-items:center; min-height:22px; }
+.wn-status { display:inline-flex; align-items:center; gap:6px; font-size:var(--tri-size-sm); color:var(--pf-mute); white-space:nowrap; animation:wn-fade 140ms ease; }
+.wn-status--saved { animation:wn-fade 140ms ease, wn-out 400ms ease 2500ms forwards; }
+.wn-status--saved svg { color:var(--pf-mint); }
+.wn-status--error { color:var(--pf-rose); }
+.wn-spin { animation:wn-spin 900ms linear infinite; }
+
+.wn-note { display:flex; align-items:flex-start; gap:8px; margin:2px 20px 10px 46px; padding:9px 12px; border-radius:6px; background:rgb(255 255 255 / .03); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .06); font-size:var(--tri-size); line-height:18px; color:var(--pf-mute); }
+.wn-note svg { margin-top:2px; flex-shrink:0; }
+.wn-note--error { color:var(--pf-rose); background:rgb(234 199 198 / .06); box-shadow:inset 0 0 0 1px rgb(234 199 198 / .18); animation:wn-rise 180ms var(--tri-ease-out); }
+
+/* -------- sections: a label column and the control beside it -------- */
+.wn-secs { display:flex; flex-direction:column; }
+/* 46px lines the label column up with the card title (16px + the icon's 30). */
+.wn-sec { display:grid; grid-template-columns:232px minmax(0,720px); column-gap:40px; row-gap:12px; padding:20px 20px 22px 46px; }
+.wn-sec:first-child { padding-top:8px; }
+.wn-sec + .wn-sec { border-top:1px solid var(--pf-rule); }
+.wn-label { min-width:0; }
+.wn-label h3 { font-size:calc(var(--tri-size) + 2px); line-height:20px; font-weight:600; letter-spacing:-.005em; color:var(--tri-ink); }
+.wn-desc { margin-top:4px; max-width:36ch; font-size:var(--tri-size); line-height:18px; color:rgb(229 243 242 / .58); text-wrap:pretty; }
+.wn-meta { margin-top:10px; font-size:var(--tri-size-sm); color:var(--pf-faint); font-variant-numeric:tabular-nums; }
+.wn-meta b { color:var(--pf-mint); font-weight:500; }
+.wn-body { display:flex; flex-direction:column; gap:10px; min-width:0; }
+
+/* -------- voice commands -------- */
+.wn-switch { display:flex; align-items:flex-start; gap:12px; width:fit-content; max-width:100%; cursor:pointer; }
+.wn-switch:has(button:disabled) { cursor:default; }
+.wn-switch > button { margin-top:1px; }
+.wn-switch-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.wn-switch-text b { font-size:calc(var(--tri-size) + 1px); line-height:20px; font-weight:500; color:var(--tri-ink); }
+.wn-switch-state { font-size:var(--tri-size); line-height:18px; color:rgb(229 243 242 / .58); animation:wn-fade 160ms ease; }
+
+/* -------- fields (shared) -------- */
+.wn-field, .wn-boxinput {
+  width:100%; min-width:0; height:var(--tri-control-h); padding:0 12px; border:0; border-radius:var(--tri-radius-control);
+  font-size:calc(var(--tri-size) + 1px); color:var(--tri-ink); outline:none; color-scheme:dark;
+}
+.wn-field { background:rgb(255 255 255 / .03); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1); transition:box-shadow 200ms ease, background-color 200ms ease; }
+.wn-field::placeholder, .wn-boxinput::placeholder { color:rgb(229 243 242 / .32); }
+.wn-field:focus { background:rgb(0 0 0 / .22); box-shadow:inset 0 0 0 1px rgb(143 211 192 / .55); transition-duration:120ms; }
+.wn-field[aria-invalid="true"] { box-shadow:inset 0 0 0 1px rgb(234 199 198 / .55); }
+.wn-field--mono { font-family:var(--font-mono); font-size:var(--tri-size); }
+.wn-field:disabled, .wn-boxinput:disabled { cursor:default; }
+@media (hover:hover) and (pointer:fine) {
+  .wn-field:hover:not(:focus):not(:disabled) { box-shadow:inset 0 0 0 1px rgb(255 255 255 / .16); transition-duration:80ms; }
+}
+
+.wn-hint { display:flex; align-items:center; gap:7px; padding:0 20px 10px; font-size:var(--tri-size); line-height:18px; color:var(--pf-rose); animation:wn-rise 160ms var(--tri-ease-out); }
+.wn-hint svg { flex-shrink:0; }
+.wn-hint--info { color:var(--pf-mute); }
+.wn-hint--box { padding:0 12px 10px; }
+
+/* -------- book names: one bordered table -------- */
+.wn-table { border-radius:6px; box-shadow:inset 0 0 0 1px rgb(255 255 255 / .08); overflow:hidden; }
+.wn-cols { display:grid; grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr) 124px 36px; column-gap:8px; align-items:center; padding:0 8px; }
+.wn-head { height:32px; background:rgb(255 255 255 / .02); border-bottom:1px solid var(--pf-rule); font-size:10px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-faint); }
+/* Text cells start where the fields' text starts, so the header, the add
+   row and the rows below it read as one set of columns. */
+.wn-head > span:nth-child(1), .wn-head > span:nth-child(3), .wn-heard, .wn-means { padding-left:12px; }
+.wn-addrow { border-bottom:1px solid var(--pf-rule); }
+.wn-addrow > .wn-cols { padding-top:8px; padding-bottom:8px; }
+.wn-arrow { display:grid; place-items:center; color:var(--pf-faint); }
+.wn-fieldwrap { position:relative; min-width:0; }
+.wn-field--guess { padding-right:140px; }
+.wn-guess { position:absolute; right:8px; top:50%; translate:0 -50%; display:flex; align-items:center; gap:6px; max-width:132px; font-size:var(--tri-size); color:rgb(229 243 242 / .45); pointer-events:none; white-space:nowrap; animation:wn-fade 120ms ease; }
+.wn-guess kbd, .wn-kbd { display:inline-grid; place-items:center; height:16px; padding:0 4px; border-radius:4px; font:600 9px/1 var(--font-mono); letter-spacing:.04em; text-transform:uppercase; color:rgb(229 243 242 / .5); background:rgb(255 255 255 / .06); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1); }
+.wn-addbtn { grid-column:4 / -1; justify-self:end; }
+
+.wn-rows > li + li { border-top:1px solid var(--pf-rule); }
+.wn-row { min-height:44px; transition:background-color 200ms ease; }
+.wn-heard { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono); font-size:var(--tri-size); color:rgb(229 243 242 / .72); }
+.wn-means { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:calc(var(--tri-size) + 1px); font-weight:600; color:var(--tri-ink); }
+.wn-tag { display:inline-flex; align-items:center; gap:5px; max-width:100%; height:20px; padding:0 7px; border-radius:4px; font-size:var(--tri-size-sm); color:var(--pf-mint); background:rgb(143 211 192 / .1); white-space:nowrap; overflow:hidden; }
+.wn-tag svg { flex-shrink:0; }
+.wn-tag--eg { padding:0 6px; font-size:10px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-mute); background:rgb(255 255 255 / .05); }
+/* Example rows are a dashed slot, like the example chips, with the words
+   dimmed — not the whole row faded, which took the EXAMPLE tag down to
+   about 1.3:1. The slot still says "example" where the tag is hidden. */
+.wn-row--eg { position:relative; }
+.wn-row--eg::before { content:''; position:absolute; inset:5px 6px; border:1px dashed rgb(255 255 255 / .16); border-radius:6px; pointer-events:none; }
+.wn-row--eg .wn-heard, .wn-row--eg .wn-means { color:rgb(229 243 242 / .42); font-weight:500; }
+
+.wn-x { justify-self:center; display:grid; place-items:center; width:28px; height:28px; border-radius:var(--tri-radius-control); color:rgb(229 243 242 / .36);
+  transition:color 200ms ease, background-color 200ms ease, transform 140ms var(--tri-ease-out); }
+.wn-x:active:not(:disabled) { transform:scale(.92); }
+.wn-x:focus-visible, .wn-undo:focus-visible, .wn-more:focus-visible, .wn-chip-x:focus-visible, .wn-suggest:focus-visible { outline:2px solid rgb(143 211 192 / .7); outline-offset:-2px; color:var(--tri-ink); }
+@media (hover:hover) and (pointer:fine) {
+  .wn-row:not(.wn-row--eg):hover { background:rgb(255 255 255 / .025); transition-duration:80ms; }
+  .wn-row:hover .wn-x { color:rgb(229 243 242 / .62); transition-duration:80ms; }
+  .wn-x:hover:not(:disabled) { color:var(--tri-ink); background:rgb(255 255 255 / .07); transition-duration:80ms; }
+}
+
+.wn-row--new { animation:wn-fade 180ms ease-out, wn-fresh 1400ms var(--tri-ease-out) both; }
+.wn-row--flash { animation:wn-row-flash 900ms ease-out; }
+
+.wn-gone { display:flex; align-items:center; gap:12px; min-height:44px; padding:0 14px 0 20px; background:rgb(255 255 255 / .025); font-size:var(--tri-size); color:var(--pf-mute); animation:wn-fade 160ms ease; }
+.wn-gone b { font-weight:500; color:var(--pf-ink-2); }
+.wn-undo { display:inline-flex; align-items:center; gap:5px; margin-left:auto; height:28px; padding:0 8px; border-radius:var(--tri-radius-control); color:var(--pf-mint); font-weight:500; flex-shrink:0; transition:background-color 200ms ease; }
+@media (hover:hover) and (pointer:fine) { .wn-undo:hover { background:rgb(143 211 192 / .08); transition-duration:80ms; } }
+
+.wn-empty { padding:12px 20px 14px; border-top:1px solid var(--pf-rule); font-size:var(--tri-size); line-height:18px; color:var(--pf-mute); }
+
+.wn-more { display:flex; align-items:center; gap:7px; width:100%; height:38px; padding:0 20px; border-top:1px solid var(--pf-rule); font-size:var(--tri-size); color:var(--pf-mint); transition:background-color 200ms ease; }
+.wn-more svg { transition:transform 220ms var(--tri-ease-in-out); }
+.wn-more[aria-expanded="true"] svg { transform:rotate(180deg); }
+@media (hover:hover) and (pointer:fine) { .wn-more:hover { background:rgb(143 211 192 / .04); transition-duration:80ms; } }
+
+/* -------- chip groups: one box, the add strip on top -------- */
+.wn-box { border-radius:6px; box-shadow:inset 0 0 0 1px rgb(255 255 255 / .08); transition:box-shadow 160ms ease; }
+.wn-box:has(.wn-boxinput:focus) { box-shadow:inset 0 0 0 1px rgb(143 211 192 / .45); }
+.wn-box--invalid, .wn-box--invalid:has(.wn-boxinput:focus) { box-shadow:inset 0 0 0 1px rgb(234 199 198 / .45); }
+.wn-boxtop { border-radius:6px 6px 0 0; background:rgb(0 0 0 / .18); }
+.wn-boxadd { display:flex; align-items:center; gap:8px; padding:6px 6px 6px 0; }
+.wn-boxinput { flex:1; height:32px; background:transparent; }
+.wn-chips { padding:12px; border-top:1px solid var(--pf-rule); }
+.wn-chiplist, .wn-none { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.wn-none { font-size:var(--tri-size); color:var(--pf-mute); }
+.wn-none > span:first-child { margin-right:4px; }
+.wn-chip { display:inline-flex; align-items:center; gap:2px; height:28px; max-width:100%; padding:0 3px 0 10px; border-radius:var(--tri-radius-control); background:rgb(255 255 255 / .045); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .09);
+  font-size:calc(var(--tri-size) + 1px); color:var(--pf-ink-2); transition:background-color 200ms ease, box-shadow 200ms ease; }
+.wn-chip > span { min-width:0; max-width:32ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wn-chip-x { position:relative; display:grid; place-items:center; width:22px; height:22px; flex-shrink:0; border-radius:4px; color:rgb(229 243 242 / .36); transition:color 200ms ease, background-color 200ms ease; }
+.wn-chip-x::after { content:''; position:absolute; inset:-3px; }
+@media (hover:hover) and (pointer:fine) {
+  .wn-chip:not(.wn-chip--eg):hover { background:rgb(255 255 255 / .07); transition-duration:80ms; }
+  .wn-chip:hover .wn-chip-x { color:rgb(229 243 242 / .62); transition-duration:80ms; }
+  .wn-chip-x:hover:not(:disabled) { color:var(--tri-ink); background:rgb(255 255 255 / .08); transition-duration:80ms; }
+}
+.wn-chip--eg { padding:0 10px; background:transparent; box-shadow:none; outline:1px dashed rgb(255 255 255 / .16); outline-offset:-1px; color:rgb(229 243 242 / .38); }
+.wn-chip--new { animation:wn-chip-in 180ms var(--tri-ease-out) both; transform-origin:left center; }
+.wn-chip--flash { animation:wn-chip-flash 900ms ease-out; }
+
+.wn-suggestions { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:10px 12px 12px; border-top:1px solid var(--pf-rule); }
+.wn-eyebrow { margin-right:6px; font-size:10px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--pf-faint); }
+.wn-suggest { display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 10px 0 8px; border-radius:var(--tri-radius-control); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1);
+  font-size:var(--tri-size); color:var(--pf-mute); transition:color 200ms ease, box-shadow 200ms ease, background-color 200ms ease, transform 140ms var(--tri-ease-out); }
+.wn-suggest:active:not(:disabled) { transform:scale(.97); }
+@media (hover:hover) and (pointer:fine) {
+  .wn-suggest:hover:not(:disabled) { color:var(--tri-ink); background:rgb(143 211 192 / .06); box-shadow:inset 0 0 0 1px rgb(143 211 192 / .45); transition-duration:80ms; }
+}
+
+/* -------- narrow -------- */
+@container (max-width:820px) {
+  .wn-sec { grid-template-columns:minmax(0,1fr); padding:18px 16px 20px; }
+  .wn-sec:first-child { padding-top:6px; }
+  .wn-desc { max-width:62ch; }
+  .wn-note { margin-left:16px; margin-right:16px; }
+}
+@container (max-width:600px) {
+  .wn-cols { grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr) 28px 32px; column-gap:6px; }
+  .wn-tag { padding:0 5px; }
+  .wn-tag > span, .wn-tag--eg { display:none; }
+  .wn-field--guess { padding-right:12px; }
+  .wn-guess { display:none; }
+}
+@container (max-width:560px) {
+  .wn-status-text { display:none; }
+}
+
+@keyframes wn-fade { from { opacity:0; } }
+@keyframes wn-out { to { opacity:0; } }
+@keyframes wn-rise { from { opacity:0; transform:translateY(-3px); } }
+@keyframes wn-spin { to { transform:rotate(360deg); } }
+@keyframes wn-fresh { from { background-color:rgb(143 211 192 / .12); } to { background-color:rgb(143 211 192 / 0); } }
+@keyframes wn-row-flash {
+  from { background-color:rgb(228 216 122 / .1); box-shadow:inset 0 0 0 1px rgb(228 216 122 / .7); }
+  to { background-color:rgb(228 216 122 / 0); box-shadow:inset 0 0 0 1px rgb(228 216 122 / 0); }
+}
+@keyframes wn-chip-in { from { opacity:0; transform:scale(.94); } }
+@keyframes wn-chip-flash { from { background-color:rgb(228 216 122 / .12); box-shadow:inset 0 0 0 1px rgb(228 216 122 / .75); } }
+
+@media (prefers-reduced-motion:reduce) {
+  .wn-status, .wn-switch-state, .wn-hint, .wn-note--error, .wn-guess, .wn-gone, .wn-chip--new { animation:none; }
+  .wn-status--saved { animation:wn-out 1ms linear 2500ms forwards; }
+  .wn-row--new { animation:wn-fresh 1400ms ease both; }
+  .wn-spin { animation:none; }
+  .wn-x:active:not(:disabled), .wn-suggest:active:not(:disabled) { transform:none; }
+  .wn-more svg { transition:none; }
+}

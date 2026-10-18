@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Button, SearchField, SearchIcon, GlobeIcon, ResetIcon, MusicIcon, SparkleIcon, CheckIcon, ExternalLinkIcon, SegmentedControl, cx } from '../../../ui';
+import { Button, SearchField, SearchIcon, GlobeIcon, ResetIcon, MusicIcon, SparkleIcon, CheckIcon, ExternalLinkIcon, ChevronLeftIcon, ChevronRightIcon, SegmentedControl, cx } from '../../../ui';
 import { splitLyrics } from '../../../../shared/lyricSplit';
 import type { SongBase } from '../../../../shared/songDraft';
 import { FlightPopup } from './FlightPopup';
@@ -296,6 +296,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
       label={TITLES[route]}
       onRequestClose={onRequestClose}
       onClosed={onClosed}
+      guideArea="addsong"
       header={
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
@@ -305,7 +306,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
             </p>
           </div>
           {/* The two online routes are one choice, so they are one control. */}
-          <SegmentedControl options={ROUTES} value={route} onChange={go} size="sm" label="where the words come from" />
+          <SegmentedControl guideId="addsong-route" options={ROUTES} value={route} onChange={go} size="sm" label="where the words come from" />
         </div>
       }
     >
@@ -313,12 +314,12 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
         {route === 'search' ? (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
             <div className="flex items-center gap-2">
-              <SearchField value={query} onChange={value => {
+              <SearchField guideId="addsong-search" value={query} onChange={value => {
                 setQuery(value); searchTicket.current += 1; setSearching(false); setSearchNote('');
                 if (!value.trim()) setOnlineSongs(null);
               }} onSubmit={() => void searchOnline()} placeholder="search all Christian songs or artists…" />
-              <Button label="search" tone="go" icon={<SearchIcon size={13} />} disabled={!query.trim() || searching} onClick={() => void searchOnline()} />
-              <Button label="shuffle" tone="ash" icon={<ResetIcon size={13} />} disabled={!!busy || searching} onClick={() => {
+              <Button guideId="addsong-search-go" label="search" tone="go" icon={<SearchIcon size={13} />} disabled={!query.trim() || searching} onClick={() => void searchOnline()} />
+              <Button guideId="addsong-shuffle" label="shuffle" tone="ash" icon={<ResetIcon size={13} />} disabled={!!busy || searching} onClick={() => {
                 setSongs(shuffleChristianSongs()); setQuery('');
                 const terms = ['Christian worship', 'gospel praise', 'Christian hymns', 'African gospel', 'worship live', 'praise and worship'];
                 void searchOnline(terms[Math.floor(Math.random() * terms.length)]);
@@ -336,7 +337,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
                     onChoose={(chosen, card) => void choose(chosen, card)} />
                 ))}
               </div>
-              {!checkingLyrics && candidates.length > resultLimit && <Button label="check more songs" onClick={()=>setResultLimit(value=>value+24)} />}
+              {!checkingLyrics && candidates.length > resultLimit && <Button guideId="addsong-more" label="check more songs" onClick={()=>setResultLimit(value=>value+24)} />}
               {checkingLyrics && <div className="song-discovery-loading" role="status" aria-label="Checking lyrics"><span/><span/><span/></div>}
               {!checkingLyrics && visibleSongs.length === 0 && <Hint>try another title or artist, or a youtube lyric video for a song you already know.</Hint>}
             </div>
@@ -347,18 +348,19 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
         {route === 'youtube' ? (
           <div className="youtube-discovery flex min-h-0 flex-1 flex-col gap-3">
             <form className="flex items-center gap-2" onSubmit={event => {event.preventDefault(); void searchVideos();}}>
-              <input aria-label="Search YouTube videos" placeholder="Search YouTube by song or artist…" value={videoQuery} onChange={event=>setVideoQuery(event.target.value)} className={cx(INPUT,'h-[var(--tri-field-h)]')} />
-              <Button type="submit" label={videoBusy ? 'checking captions…' : 'search videos'} disabled={videoBusy || !videoQuery.trim()} />
+              <input data-guide="addsong-video-search" aria-label="Search YouTube videos" placeholder="Search YouTube by song or artist…" value={videoQuery} onChange={event=>setVideoQuery(event.target.value)} className={cx(INPUT,'h-[var(--tri-field-h)]')} />
+              <Button guideId="addsong-video-go" type="submit" label={videoBusy ? 'checking captions…' : 'search videos'} disabled={videoBusy || !videoQuery.trim()} />
             </form>
             <div className="youtube-results" aria-busy={videoBusy}>
               {videoBusy && <div className="song-discovery-loading" role="status" aria-label="Searching videos and checking captions"><span/><span/><span/></div>}
-              {videos.map(video=><button type="button" key={video.id} className="youtube-result" disabled={!!busy} onClick={()=>void fetchCaptions(video.id)}>
+              {videos.map(video=><button type="button" key={video.id} data-guide="addsong-video" className="youtube-result" disabled={!!busy} onClick={()=>void fetchCaptions(video.id)}>
                 <img src={video.thumbnail} alt=""/><span><strong>{video.title}</strong><small>{video.author}</small><em>{video.trackKind==='auto'?'Auto-generated captions':'Uploaded captions'}</em></span>
               </button>)}
             </div>
             <span className="text-xs text-white/40">Or paste a video link</span>
             <div className="flex items-center gap-2">
               <input
+                data-guide="addsong-url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => {
@@ -369,7 +371,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
                 aria-label="youtube link"
                 className={cx(INPUT, 'h-[var(--tri-field-h)]')}
               />
-              <Button label="get the words" tone="go" icon={<SparkleIcon size={12} />} disabled={!url.trim() || !!busy} onClick={() => void fetchCaptions()} />
+              <Button guideId="addsong-fetch" label="get the words" tone="go" icon={<SparkleIcon size={12} />} disabled={!url.trim() || !!busy} onClick={() => void fetchCaptions()} />
             </div>
             <Hint>
               reads the captions on a lyric video. the video&rsquo;s own subtitles are used when it has them; otherwise
@@ -389,7 +391,7 @@ export function AddSongDialog({ initialRoute = 'search', open, onRequestClose, o
                 {note.text}
               </span>
               {note.nudge
-                ? <Button label={route === 'youtube' ? 'search instead' : 'try youtube'} tone="ash" onClick={() => go(route === 'youtube' ? 'search' : 'youtube')} />
+                ? <Button guideId="addsong-switch" label={route === 'youtube' ? 'search instead' : 'try youtube'} tone="ash" onClick={() => go(route === 'youtube' ? 'search' : 'youtube')} />
                 : null}
             </>
           ) : null}
@@ -502,7 +504,7 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
       onPointerLeave={() => setHover(false)}
       onFocus={e => { if ((e.target as HTMLElement).matches?.(':focus-visible')) setFocus(true); }}
       onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocus(false); }}>
-      <button type="button" className="song-discovery-select" disabled={busy}
+      <button type="button" data-guide="addsong-pick" className="song-discovery-select" disabled={busy}
         onClick={e => onChoose(song, e.currentTarget.closest('article'))}
         aria-label={`${inLibrary ? 'Added to the library. Find lyrics again' : 'Find lyrics'} for ${song.title} by ${song.artist}`}
         aria-describedby={kind === 'line' ? lineId : undefined}>
@@ -523,9 +525,9 @@ function DiscoveryCard({ song, inLibrary, busy, onChoose }: DiscoveryCardProps) 
         <span className="song-discovery-artist">{song.artist}</span>
       </button>
       {visible && kind === 'line' && pages > 1 && <div className="song-discovery-pager">
-        <button type="button" aria-label="Previous lyric lines" disabled={page===0} onClick={() => setPage(value => Math.max(0,value-1))}>‹</button>
+        <button type="button" data-guide="addsong-lines-previous" aria-label="Previous lyric lines" disabled={page===0} onClick={() => setPage(value => Math.max(0,value-1))}><ChevronLeftIcon size={16} /></button>
         <span>{page+1} / {pages}</span>
-        <button type="button" aria-label="Next lyric lines" disabled={page===pages-1} onClick={() => setPage(value => Math.min(pages-1,value+1))}>›</button>
+        <button type="button" data-guide="addsong-lines-next" aria-label="Next lyric lines" disabled={page===pages-1} onClick={() => setPage(value => Math.min(pages-1,value+1))}><ChevronRightIcon size={16} /></button>
       </div>}
       {song.storeUrl && <a className="song-discovery-store" href={song.storeUrl} target="_blank" rel="noopener noreferrer">Download on iTunes <ExternalLinkIcon size={12} /></a>}
     </article>

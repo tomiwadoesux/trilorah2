@@ -1,0 +1,98 @@
+[
+  {
+    "title": "Minimal solid",
+    "family": "Material Design Icons",
+    "id": "mdi-cross",
+    "url": "https://raw.githubusercontent.com/Templarian/MaterialDesign-SVG/master/svg/cross.svg",
+    "source": "https://pictogrammers.com/library/mdi/icon/cross/",
+    "file": "mdi-cross.svg"
+  },
+  {
+    "title": "Thin outline",
+    "family": "Phosphor · Thin",
+    "id": "phosphor-thin",
+    "url": "https://raw.githubusercontent.com/phosphor-icons/core/main/assets/thin/cross-thin.svg",
+    "source": "https://github.com/phosphor-icons/core/blob/main/assets/thin/cross-thin.svg",
+    "file": "phosphor-thin.svg"
+  },
+  {
+    "title": "Regular outline",
+    "family": "Phosphor · Regular",
+    "id": "phosphor-regular",
+    "url": "https://raw.githubusercontent.com/phosphor-icons/core/main/assets/regular/cross.svg",
+    "source": "https://github.com/phosphor-icons/core/blob/main/assets/regular/cross.svg",
+    "file": "phosphor-regular.svg"
+  },
+  {
+    "title": "Bold outline",
+    "family": "Phosphor · Bold",
+    "id": "phosphor-bold",
+    "url": "https://raw.githubusercontent.com/phosphor-icons/core/main/assets/bold/cross-bold.svg",
+    "source": "https://github.com/phosphor-icons/core/blob/main/assets/bold/cross-bold.svg",
+    "file": "phosphor-bold.svg"
+  },
+  {
+    "title": "Soft filled",
+    "family": "Phosphor · Fill",
+    "id": "phosphor-fill",
+    "url": "https://raw.githubusercontent.com/phosphor-icons/core/main/assets/fill/cross-fill.svg",
+    "source": "https://github.com/phosphor-icons/core/blob/main/assets/fill/cross-fill.svg",
+    "file": "phosphor-fill.svg"
+  },
+  {
+    "title": "Rounded outline",
+    "family": "Tabler · Outline",
+    "id": "tabler-outline",
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/outline/cross.svg",
+    "source": "https://tabler.io/icons/icon/cross",
+    "file": "tabler-outline.svg"
+  },
+  {
+    "title": "Rounded filled",
+    "family": "Tabler · Filled",
+    "id": "tabler-fill",
+    "url": "https://raw.githubusercontent.com/tabler/tabler-icons/main/icons/filled/cross.svg",
+    "source": "https://github.com/tabler/tabler-icons/blob/main/icons/filled/cross.svg",
+    "file": "tabler-fill.svg"
+  },
+  {
+    "title": "Classic filled",
+    "family": "Font Awesome · Solid",
+    "id": "fontawesome",
+    "url": "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/7.x/svgs/solid/cross.svg",
+    "source": "https://fontawesome.com/icons/cross?f=classic&s=solid",
+    "file": "fontawesome.svg"
+  },
+  {
+    "title": "Square outline",
+    "family": "Material Design Icons",
+    "id": "mdi-outline",
+    "url": "https://raw.githubusercontent.com/Templarian/MaterialDesign-SVG/master/svg/cross-outline.svg",
+    "source": "https://pictogrammers.com/library/mdi/icon/cross-outline/",
+    "file": "mdi-outline.svg"
+  },
+  {
+    "title": "Celtic cross",
+    "family": "Material Design Icons",
+    "id": "mdi-celtic",
+    "url": "https://raw.githubusercontent.com/Templarian/MaterialDesign-SVG/master/svg/cross-celtic.svg",
+    "source": "https://pictogrammers.com/library/mdi/icon/cross-celtic/",
+    "file": "mdi-celtic.svg"
+  },
+  {
+    "title": "Bolnisi cross",
+    "family": "Material Design Icons",
+    "id": "mdi-bolnisi",
+    "url": "https://raw.githubusercontent.com/Templarian/MaterialDesign-SVG/master/svg/cross-bolnisi.svg",
+    "source": "https://pictogrammers.com/library/mdi/icon/cross-bolnisi/",
+    "file": "mdi-bolnisi.svg"
+  },
+  {
+    "title": "Slender solid",
+    "family": "Maki · Religious Christian",
+    "id": "maki",
+    "url": "https://raw.githubusercontent.com/mapbox/maki/main/icons/religious-christian.svg",
+    "source": "https://github.com/mapbox/maki/blob/main/icons/religious-christian.svg",
+    "file": "maki.svg"
+  }
+]

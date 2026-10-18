@@ -1,6 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
 import { publishLiveItem } from './publishLiveItem'
 
+describe('automatic scripture delivery', () => {
+  it('passes the original reading guard and removes it from the confirmed item', async () => {
+    const followFrom = { reference: 'John 3:16', version: 'KJV' };
+    const mobileVerse = vi.fn().mockResolvedValue({ book: 'John', chapter: 3, verse: 17, text: 'For God sent not his Son', version: 'KJV', verses: [{ verse: 17, text: 'For God sent not his Son' }] });
+    const result = await publishLiveItem({ source: 'scripture', id: 'John 3:17', label: 'John 3:17', reference: 'John 3:17', version: 'KJV', followFrom }, { mobileVerse } as unknown as WindowApi);
+    expect(mobileVerse).toHaveBeenCalledWith('John 3:17', 'KJV', true, followFrom);
+    expect(result).not.toHaveProperty('followFrom');
+  });
+  it('keeps the newer live item when a guarded automatic delivery is cancelled', async () => {
+    const mobileVerse = vi.fn().mockResolvedValue({ superseded: true });
+    expect(await publishLiveItem({ source: 'scripture', id: 'John 3:17', label: 'John 3:17', version: 'KJV', followFrom: { reference: 'John 3:16', version: 'KJV' } }, { mobileVerse } as unknown as WindowApi)).toBeNull();
+  });
+});
+
 describe('scripture Go live delivery', () => {
   it('sends a selected reference to the engine exactly once, including its translation', async () => {
     const mobileVerse = vi.fn().mockResolvedValue({ text: 'scripture' })

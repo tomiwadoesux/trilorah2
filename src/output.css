@@ -74,7 +74,8 @@ body {
 
 /* Theme variables come from the Themes tab (set inline by output.tsx). */
 .output-enter {
-  text-transform: var(--text-case, none);
+  /* Content casing is applied in TypeScript to preserve divine names. */
+  text-transform: none;
 }
 
 .output-verse {
@@ -594,3 +595,11 @@ body {
   font-size: clamp(1rem, 2vw, 2.6vw);
   color: rgba(255, 255, 255, 0.65);
 }
+
+/* Clear and restore keep the same spatial path as the chosen entrance. */
+.output-stage { transition-timing-function: cubic-bezier(.23,1,.32,1); }
+.tx-zoom .output-stage { transform: scale(.98); transition: opacity var(--tx-ms, 450ms) cubic-bezier(.23,1,.32,1), transform var(--tx-ms, 450ms) cubic-bezier(.23,1,.32,1); }
+.tx-zoom .output-stage.visible { transform: none; }
+.tx-blur .output-stage { filter: blur(.12em); transition: opacity var(--tx-ms, 450ms) cubic-bezier(.23,1,.32,1), filter var(--tx-ms, 450ms) cubic-bezier(.23,1,.32,1); }
+.tx-blur .output-stage.visible { filter: none; }
+@media (prefers-reduced-motion: reduce) { .tx-zoom .output-stage, .tx-blur .output-stage { transform: none; filter: none; transition: opacity 150ms ease; } }

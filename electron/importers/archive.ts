@@ -17,7 +17,8 @@ const crcTable = Uint32Array.from({ length: 256 }, (_, n) => {
 export async function unpack(file: string, directory: string, options: { maxBytes?: number; maxEntries?: number; easyWorshipCrc?: boolean; include?: Set<string> } = {}): Promise<SourceFile[]> {
   const stat = await fs.stat(file)
   if (!stat.isFile() || stat.size > IMPORT_LIMITS.bytes) throw new Error('Choose an archive smaller than 2 GiB.')
-  const zip = await new Promise<yauzl.ZipFile>((resolve, reject) => yauzl.open(file, { lazyEntries: true, autoClose: false, strictFileNames: true, validateEntrySizes: true }, (error, value) => error ? reject(error) : resolve(value)))
+  // EasyWorship 7 packs media as "media\name.jpg". yauzl turns those backslashes into "/" and still rejects absolute and ".." paths.
+  const zip = await new Promise<yauzl.ZipFile>((resolve, reject) => yauzl.open(file, { lazyEntries: true, autoClose: false, strictFileNames: false, validateEntrySizes: true }, (error, value) => error ? reject(error) : resolve(value)))
   zip.on('error', () => {})
   try {
     if (zip.entryCount > (options.maxEntries ?? IMPORT_LIMITS.entries)) throw new Error('This archive contains too many files.')
@@ -36,7 +37,8 @@ export async function unpack(file: string, directory: string, options: { maxByte
         if (entry.isEncrypted() || ![0, 8].includes(entry.compressionMethod) || entry.uncompressedSize > IMPORT_LIMITS.entryBytes || bytes > (options.maxBytes ?? IMPORT_LIMITS.bytes)) {
           reject(new Error('This archive is encrypted, unsupported, or too large when unpacked.')); return
         }
-        if (!name.endsWith('/')) result.push(entry)
+        // Empty entries carry nothing to import; EasyWorship writes its media folder as one.
+        if (!name.endsWith('/') && entry.uncompressedSize > 0) result.push(entry)
         zip.readEntry()
       })
       zip.once('end', () => resolve(result))
@@ -55,8 +57,8 @@ export async function unpack(file: string, directory: string, options: { maxByte
         callback(bytes > entry.uncompressedSize ? new Error('Archive entry exceeds its declared size.') : null, chunk)
       } }), createWriteStream(target, { flags: 'wx' }))
       if (bytes !== entry.uncompressedSize) throw new Error('Archive entry is incomplete.')
-      // EasyWorship 6/7 stores a nonstandard CRC for main.db; all other entries use normal ZIP CRC32.
-      if (!(options.easyWorshipCrc && entry.fileName.toLowerCase() === 'main.db') && ((crc ^ 0xffffffff) >>> 0) !== entry.crc32) throw new Error(`Archive checksum failed for ${entry.fileName}.`)
+      // EasyWorship 6/7 schedules store a nonstandard CRC on every entry (main.db and packed media alike); sizes are still enforced above.
+      if (!options.easyWorshipCrc && ((crc ^ 0xffffffff) >>> 0) !== entry.crc32) throw new Error(`Archive checksum failed for ${entry.fileName}.`)
       files.push({ name: entry.fileName, file: target })
     }
     return files

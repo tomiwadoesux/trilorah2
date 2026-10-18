@@ -1,10 +1,6 @@
-/**
- * Trilorah Cutout — original shared artwork with named animation parts.
- * All existing public names/default sizes stay compatible with the app.
- * Add geometry in shared/cutout, not here. See docs/CUTOUT-ICONS.md.
- */
-import { createCutoutIcon as icon } from './CutoutIcon';
-export { CutoutIcon, type IconProps } from './CutoutIcon';
+/** Trilorah's UI icons use Nubo Line. Public names and default sizes remain stable. */
+import { createNuboIcon as icon } from './NuboIcon';
+export { TrilorahIcon, TrilorahIcon as CutoutIcon, type IconProps } from './NuboIcon';
 
 export const SettingsIcon = icon('settings');
 export const TrashIcon = icon('trash');
@@ -88,6 +84,7 @@ export const HelpIcon = icon('help');
 export const LoadingIcon = icon('loader');
 export const HeartIcon = icon('heart');
 export const SaveIcon = icon('save');
+export const BookmarkIcon = icon('bookmark');
 export const FilterIcon = icon('filter');
 export const SortIcon = icon('sort');
 export const MailIcon = icon('mail');
@@ -99,3 +96,6 @@ export const ExternalLinkIcon = icon('external-link');
 export const UndoIcon = icon('undo');
 export const RedoIcon = icon('redo');
 export const MoreIcon = icon('more');
+export const ArrowUpRightIcon = icon('arrow-up-right');
+export const SwapIcon = icon('swap');
+export const CircleIcon = icon('circle');

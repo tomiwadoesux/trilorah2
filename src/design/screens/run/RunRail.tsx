@@ -1,667 +1,464 @@
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { RUN_COMPONENTS, runItemTarget, runSelectionRange, runTarget } from '../../../../shared/runCards';
 import { useLibraryNavigation } from '../../../stores/libraryNavigation';
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import {
-  ActionMenu,
-  ArrowIcon,
-  BookIcon,
-  Button,
-  HistoryIcon,
-  ChevronDownIcon,
-  CloseIcon,
-  ClockIcon,
-  CopyIcon,
-  MediaIcon,
-  MusicIcon,
-  NoteIcon,
-  PencilIcon,
-  PlusIcon,
-  ScanIcon,
-  TrashIcon,
-  type ActionMenuGroup,
-  cx,
-  surface,
-} from '../../../ui';
-import { formatMinutes } from '../../../../shared/runPlan';
-import { formatClock } from '../../../../shared/runOfServiceParse';
+import { surface } from '../../../ui/lib/surface';
+import { ArrowLeftIcon, ArrowIcon, Button, CheckIcon, ClipboardIcon, CloseIcon, CopyIcon, GripIcon, ImportIcon, PencilIcon, PlusIcon, ScanIcon, SearchIcon, TrashIcon } from '../../../ui';
 import { useDrag } from '../drag';
 import { useProjector } from '../projector';
+import { EmptyMark } from '../emptyArt';
 import { useRun, type QueueItem, type RunSegment } from '../run';
 import { ContextMenu, useContextMenu, type ContextMenuItem } from './ContextMenu';
-import { ADD_MENU, askRun } from './RunHeaderActions';
+import { askRun, DefaultRunButton, RunHeaderActions, type RunAsk } from './RunHeaderActions';
+import { ContentPreview, RunContentPicker } from './RunContentPicker';
 import { RunSongEditor, type LibrarySong } from './RunSongEditor';
-import { SEGMENT_TYPES, segmentIcon, segmentTypeLabel } from './segmentTypes';
-import './run.css';
-import { EmptyMark } from '../emptyArt';
 import { LayeredProgrammeArt } from './LayeredProgrammeArt';
+import { segmentIcon, segmentTypeLabel } from './segmentTypes';
+import './run.css';
 
-/*
- * The run of service, as drawn in the rail.
- *
- * Lifted out of Live.tsx when it grew a right-click menu, an inline rename
- * and a song editor: the state for the run was already its own module
- * (../run) and the drawing of it had become the biggest single thing left
- * in the screen file. What stays in Live is only what Live alone knows —
- * the segment's "+" menu is built from that file's fixture songs and sample
- * references, so it arrives as `renderAdd`.
- */
-
-const EMPTY_SEGMENT_HINT = 'use + , or hold a row below and drag it here';
-
-/* What a church actually plans a segment at. Not a spinner: this is picked
-   from a menu mid-week, and eight rounded choices cover a printed order of
-   service better than a field nobody wants to type into. */
-const PLANNED_MINUTES = [5, 10, 15, 20, 30, 40, 45, 60];
-
-/** The hover ✕ on a queued item. Parent row needs the `group` class. */
-function RemoveItem({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title="remove"
-      aria-label="remove"
-      className="shrink-0 opacity-0 transition-opacity group-hover:opacity-60 group-focus-within:opacity-60 hover:opacity-100 focus-visible:opacity-100"
-    >
-      <CloseIcon size={10} />
-    </button>
-  );
+function followCardEdge(event: PointerEvent<HTMLElement>) {
+  if (event.pointerType !== 'mouse' || event.buttons || !window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches) return;
+  const card = event.currentTarget;
+  const light = card.querySelector<HTMLElement>('.run-card-glint');
+  if (!light) return;
+  const rect = card.getBoundingClientRect();
+  // Account for the design preview's zoom without moving the card or its contents.
+  const x = (event.clientX - rect.left) * card.offsetWidth / rect.width;
+  const y = (event.clientY - rect.top) * card.offsetHeight / rect.height;
+  light.style.transform = `translate3d(${x}px, ${y}px, 0)`;
 }
 
-/*
- * The source's own mark, standing where the dash was.
- *
- * A dash says "an item"; the operator's question is "WHICH item", and at a
- * glance, mid-service. So scripture wears the book, a song the note pair, a
- * note its page — and an image shows the image itself, because no glyph
- * reminds anyone which photo they queued. Mint, like the menu's icons: the
- * marks are wayfinding, not content.
- *
- * In a fixed 18px box whatever it holds, so every label in a segment starts
- * on the same vertical line — a 12px glyph beside an 18px thumbnail used to
- * stagger them.
- */
-function ItemMark({ item }: { item: QueueItem }) {
-  const glyph = () => {
-    if ((item.source === 'media' || item.source === 'presentation') && item.preview) {
-      return <img src={item.preview} alt="" className="size-[18px] rounded-[4px] object-cover" />;
-    }
-    if (item.source === 'scripture') return <BookIcon size={12} />;
-    if (item.source === 'song') return <MusicIcon size={12} />;
-    if (item.source === 'note') return <NoteIcon size={12} />;
-    return <MediaIcon size={12} />;
-  };
-  return <span className="grid size-[18px] shrink-0 place-items-center text-[rgb(143_211_192_/_0.6)]">{glyph()}</span>;
+function CardEdge() {
+  return <span className="run-card-edge" aria-hidden="true"><span className="run-card-glint" /></span>;
 }
 
-/** "Amazing Grace — Verse 1" → the song, and the part of it. The title is
-    what the operator scans for; the section is which slide of it. */
-function splitSongLabel(item: QueueItem): { main: string; part?: string } {
-  if (item.source !== 'song') return { main: item.label };
-  if (item.title && item.section) return { main: item.title, part: item.section };
-  const [main, part] = item.label.split(/\s+[—–]\s+/);
-  return { main: main || item.label, part };
-}
-
-/** One queued thing, with what its source earns it: a verse can go live
-    from here, a note is edited in place, an image shows itself. */
-function QueuedItemRow({
-  segKey,
-  item,
-  onEditSong,
-}: {
-  segKey: string;
-  item: QueueItem;
-  onEditSong: (item: QueueItem, origin: HTMLElement | null) => void;
-}) {
+function ComponentPicker({ onAdded }: { onAdded: () => void }) {
   const run = useRun();
-  const projector = useProjector();
-  const menu = useContextMenu();
-  const rowRef = useRef<HTMLLIElement>(null);
-  const noteRef = useRef<HTMLInputElement>(null);
-  const isVerse = item.source === 'scripture';
-  const canGoLive = isVerse || (item.source === 'song' && !!item.lines) || !!item.path;
-  const live = canGoLive && projector.isLive(item.source === 'note' ? 'scripture' : item.source, item.label);
-
-  /* All Go live actions use the projector's confirmed delivery path. */
-  const putUp = () => {
-    if (isVerse) {
-      projector.send({ source: 'scripture', id: item.label, label: item.label, reference: item.label });
-    } else if (item.source === 'song' && item.lines) {
-      if (item.songId) useLibraryNavigation.getState().selectSong(item.songId);
-      projector.send({
-        source: 'song',
-        id: item.label,
-        label: item.label,
-        title: item.title,
-        section: item.section,
-        lines: item.lines,
-      });
-    } else if (item.path && (item.source === 'media' || item.source === 'presentation')) {
-      projector.send({ source: item.source, id: item.label, label: item.label, path: item.path, mediaKind: item.mediaKind });
-    }
-  };
-
-  /* What a right-click offers is what THIS row can actually do: a song can
-     be opened in the editor, a note already is its own editor so "edit"
-     means "put the cursor in it", and everything can leave. */
-  const items: ContextMenuItem[] = [
-    ...(item.source === 'song' ? [{ id: 'edit-song', label: 'edit song', icon: <PencilIcon size={12} /> }] : []),
-    ...(item.source === 'note' ? [{ id: 'edit-note', label: 'edit note', icon: <PencilIcon size={12} /> }] : []),
-    { id: 'remove', label: 'remove', icon: <TrashIcon size={11} />, danger: true },
-  ];
-
-  const { main, part } = splitSongLabel(item);
-
-  return (
-    <li
-      ref={rowRef}
-      tabIndex={0}
-      {...menu.bind}
-      data-menu={menu.at ? 'true' : undefined}
-      className={cx(
-        'group flex items-center gap-1.5 rounded-[5px] py-[4px] pl-1.5 pr-2 text-[length:var(--tri-size-body)] outline-none transition-colors',
-        'bg-[rgb(0_0_0_/_0.14)] text-[rgb(229_243_242_/_0.72)]',
-        'focus-visible:bg-[rgb(255_255_255_/_0.07)] data-[menu=true]:bg-[rgb(255_255_255_/_0.07)]',
-      )}
-    >
-      <ItemMark item={item} />
-
-      {item.source === 'note' ? (
-        /* The row IS the editor. No edit mode, no pencil, no dialog — a note
-           in the run is a line of text you can always put the cursor in. */
-        <input
-          ref={noteRef}
-          /* A note added from the + arrives blank, and a blank line you
-             then have to click into is a step nobody expects. */
-          autoFocus={item.label === ''}
-          value={item.label}
-          onChange={(e) => run.updateItem(segKey, item.key, e.target.value)}
-          placeholder="type a note…"
-          className="min-w-0 flex-1 bg-transparent text-[length:var(--tri-size-body)] text-[rgb(229_243_242_/_0.72)] placeholder:text-[rgb(229_243_242_/_0.28)] focus:outline-none"
-        />
-      ) : (
-        <button type="button" className="run-item-open flex min-w-0 flex-1 items-baseline gap-1.5 text-left" title={`Open ${item.label} in the library and preview`} onClick={() => useLibraryNavigation.getState().open(item)}>
-          <span className="min-w-0 truncate">{main}</span>
-          {part && (
-            <span className="max-w-[45%] shrink-0 truncate text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.4)]">
-              {part}
-            </span>
-          )}
-        </button>
-      )}
-
-      {canGoLive && (
-        /*
-         * The push. A single deliberate click, not the browser's
-         * double-click: everything in this list was queued on purpose
-         * before the service, which is the deliberation the two-step
-         * gesture exists to force. Hidden until hover while idle; once
-         * live it holds the gold pill and clicking again takes it down.
-         */
-        <button
-          type="button"
-          onClick={() => (live ? projector.clear() : putUp())}
-          title={live ? 'take it off the projector' : `put this ${isVerse ? 'verse' : item.source} on the projector`}
-          className={cx(
-            'shrink-0 rounded-md px-1.5 py-[1px] text-[length:var(--tri-size-eyebrow)] font-semibold uppercase tracking-[0.12em] transition-all',
-            live
-              ? 'bg-[rgb(228_216_122_/_0.16)] text-[var(--tri-accent-yellow)]'
-              : 'text-[rgb(229_243_242_/_0.4)] opacity-0 hover:text-[var(--tri-accent-yellow)] focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100',
-          )}
-        >
-          live
-        </button>
-      )}
-
-      <RemoveItem onClick={() => run.remove(segKey, item.key)} />
-
-      <ContextMenu
-        at={menu.at}
-        label={`${item.label || 'note'} — actions`}
-        items={items}
-        onClose={menu.close}
-        onSelect={(picked) => {
-          if (picked.id === 'remove') run.remove(segKey, item.key);
-          else if (picked.id === 'edit-note') noteRef.current?.focus();
-          else if (picked.id === 'edit-song') onEditSong(item, rowRef.current);
-        }}
-      />
-    </li>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* One segment                                                         */
-/* ------------------------------------------------------------------ */
-
-function SegmentCard({
-  seg,
-  index,
-  total,
-  over,
-  dropProps,
-  renderAdd,
-  onEditSong,
-}: {
-  seg: RunSegment;
-  index: number;
-  /** How many cards the run has — the last one has nowhere to move down. */
-  total: number;
-  over: boolean;
-  dropProps: { 'data-drop-segment': string };
-  renderAdd: (seg: RunSegment) => ReactNode;
-  onEditSong: (segKey: string, item: QueueItem, origin: HTMLElement | null) => void;
-}) {
-  const run = useRun();
-  const menu = useContextMenu();
-  const open = run.isOpen(seg.key);
-  const [renaming, setRenaming] = useState(false);
-  const [draft, setDraft] = useState(seg.label);
-  const nameRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!renaming) return;
-    nameRef.current?.focus();
-    nameRef.current?.select();
-  }, [renaming]);
-
-  const commit = () => {
-    const next = draft.trim();
-    if (next && next !== seg.label) run.renameSegment(seg.key, next.toLowerCase());
-    setRenaming(false);
-  };
-
-  /*
-   * The card's menu, in the order a Sunday reaches for it: where it sits,
-   * then what it is, then what is in it, then the destructive pair.
-   *
-   * Moving is here because dragging a 200px card mid-service is a
-   * precision gesture and these two rows are not; inserting is here
-   * because the header's + appends to the END of the run, which is never
-   * where a segment added mid-service belongs. Rows that cannot act are
-   * left out rather than shown dead: the first card has no "move up", an
-   * empty one has nothing to clear.
-   */
-  const isFirst = index === 0;
-  const isLast = index === total - 1;
-  const items: ContextMenuItem[] = [
-    ...(isFirst ? [] : [{ id: 'up', label: 'move up', icon: <ArrowIcon size={11} className="-rotate-90" /> }]),
-    ...(isLast ? [] : [{ id: 'down', label: 'move down', icon: <ArrowIcon size={11} className="rotate-90" /> }]),
-    {
-      id: 'insert',
-      label: 'add a segment',
-      icon: <PlusIcon size={12} />,
-      items: [
-        { id: 'insert:above', label: 'above this one', icon: <ArrowIcon size={11} className="-rotate-90" /> },
-        { id: 'insert:below', label: 'below this one', icon: <ArrowIcon size={11} className="rotate-90" /> },
-      ],
-    },
-    { id: 'rename', label: 'rename', icon: <PencilIcon size={12} /> },
-    {
-      id: 'type',
-      label: 'change type',
-      icon: segmentIcon(seg.type, 13),
-      items: SEGMENT_TYPES.map((t) => ({
-        id: `type:${t.value}`,
-        label: t.label,
-        icon: segmentIcon(t.value, 13),
-        checked: t.value === seg.type,
-      })),
-    },
-    {
-      id: 'minutes',
-      label: 'planned length',
-      icon: <ClockIcon size={12} />,
-      items: [
-        ...PLANNED_MINUTES.map((m) => ({
-          id: `minutes:${m}`,
-          label: formatMinutes(m),
-          checked: seg.durationMin === m,
-        })),
-        { id: 'minutes:none', label: 'no length', checked: seg.durationMin === undefined },
-      ],
-    },
-    { id: 'duplicate', label: 'duplicate', icon: <CopyIcon size={12} /> },
-    ...(seg.items.length === 0
-      ? []
-      : [{ id: 'clear', label: `remove the ${seg.items.length} queued`, icon: <TrashIcon size={11} />, danger: true }]),
-    { id: 'remove', label: 'remove from the run', icon: <TrashIcon size={11} />, danger: true },
-  ];
-
-  const minutes = seg.durationMin !== undefined && seg.durationMin > 0 ? formatMinutes(seg.durationMin) : '';
-
-  return (
-    <li
-      {...dropProps}
-      data-active={open || undefined}
-      data-menu={menu.at ? 'true' : undefined}
-      className={cx(
-        surface({ shape: 'panel', tone: 'ash', wide: true, interactive: true }),
-        over && 'tri-surface--gold',
-        'run-seg relative shrink-0 overflow-hidden',
-      )}
-      /*
-       * The system teal, held at half its resting voltage. Only the REST
-       * alpha is overridden — hover and the open card's active state still
-       * reach their full values through the normal channels, so a card
-       * wakes up exactly like every other control and merely sleeps more
-       * quietly.
-       */
-      style={{ borderRadius: 10, '--tri-alpha-rest': 0.15 } as CSSProperties}
-    >
-      <div {...menu.pointer} className="relative flex items-center gap-1.5 py-[5px] pl-2.5 pr-[9px]">
-        {renaming ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2 py-1">
-            <span className="w-4 shrink-0 text-right text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.38)]">
-              {index + 1}
-            </span>
-            <span className="grid size-[14px] shrink-0 place-items-center text-[rgb(143_211_192_/_0.5)]">
-              {segmentIcon(seg.type, 12)}
-            </span>
-            <input
-              ref={nameRef}
-              value={draft}
-              aria-label="segment name"
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commit();
-                else if (e.key === 'Escape') {
-                  e.stopPropagation();
-                  setRenaming(false);
-                }
-              }}
-              /* Same size and ink as the label it replaces, on a faint well:
-                 the name becomes editable where it stands rather than a box
-                 arriving over it. */
-              className="min-w-0 flex-1 rounded-[4px] bg-[rgb(0_0_0_/_0.25)] px-1.5 py-[2px] text-[length:var(--tri-size)] lowercase text-[var(--tri-ink)] outline-none ring-1 ring-[rgb(143_211_192_/_0.35)]"
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => run.toggleOpen(seg.key)}
-            aria-expanded={open}
-            {...menu.keys}
-            className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left text-[length:var(--tri-size)] lowercase outline-none"
-          >
-            {/* The number stays. With seven near-identical slabs it is the
-                only thing that says "fourth", and "what's after four?" is
-                how a service is talked about over comms. */}
-            <span className="w-4 shrink-0 text-right text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.38)]">
-              {index + 1}
-            </span>
-            {/* The type's mark, worn on the card and not only in its menu:
-                seven near-identical slabs told apart by words alone made
-                the rail read as a list of labels. Mint at the item marks'
-                voltage — wayfinding, not content — and a step brighter on
-                the open card, whose contents it is naming. */}
-            <span
-              className={cx(
-                'grid size-[14px] shrink-0 place-items-center transition-colors',
-                open ? 'text-[rgb(143_211_192_/_0.85)]' : 'text-[rgb(143_211_192_/_0.5)]',
-              )}
-            >
-              {segmentIcon(seg.type, 12)}
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span
-                  className={cx(
-                    'min-w-0 truncate transition-colors',
-                    open ? 'text-[var(--tri-ink)]' : 'text-[rgb(229_243_242_/_0.78)]',
-                  )}
-                >
-                  {seg.label}
-                </span>
-                {/* The chevron rides the name rather than the far edge: it
-                    belongs to what it discloses, and out at the edge it was
-                    one more thing in the button cluster. */}
-                <ChevronDownIcon
-                  size={10}
-                  className={cx(
-                    'shrink-0 text-[rgb(229_243_242_/_0.4)] transition-transform duration-150',
-                    open ? 'rotate-0' : '-rotate-90',
-                  )}
-                />
-              </span>
-              {/* A printed start time, when the programme had one. Its own
-                  line because it is the church's fact, not ours — and beside
-                  a long name in a 200px rail there is no room on the first. */}
-              {seg.startMin !== undefined && (
-                <span className="truncate text-[length:var(--tri-size-eyebrow)] tabular-nums lowercase text-[rgb(229_243_242_/_0.4)]">
-                  {formatClock(seg.startMin).toLowerCase()}
-                </span>
-              )}
-            </span>
-          </button>
-        )}
-
-        {/*
-         * One place, two tenants — see run.css. At rest, how long the
-         * segment is planned to run; under the pointer or the keyboard, the
-         * two things you can do to it, laid OVER the right end of the header
-         * rather than beside it. A slot reserved for them cost every title
-         * 48px of a 200px rail, all the time, for buttons that are wanted a
-         * few times a service; this way "closing prayer & benediction" keeps
-         * its words and gives up its tail only while it is being acted on.
-         * The count of queued items that used to sit here is gone at the
-         * owner's call: open the card and the items are right there, and
-         * closed it was a number nobody acted on.
-         */}
-        {minutes && (
-          <span className="run-seg-plan pointer-events-none shrink-0 whitespace-nowrap pr-0.5 text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.4)]">
-            {minutes}
-          </span>
-        )}
-        <div className="run-seg-actions absolute right-[7px] top-[5px] flex h-[30px] items-center gap-1 pl-5">
-          {renderAdd(seg)}
-          {/* The undo of the +, in the danger set, glyph only — the trash
-              already says it, and a card is no place for the word "delete"
-              seven times over. */}
-          <button
-            type="button"
-            onClick={() => run.removeSegment(seg.key)}
-            title={`remove ${seg.label} from the run`}
-            aria-label={`remove ${seg.label} from the run`}
-            className={cx(
-              surface({ tone: 'danger', interactive: true }),
-              'flex size-[22px] shrink-0 items-center justify-center text-[var(--tri-ink-danger)]',
-            )}
-            style={{ borderRadius: 5 }}
-          >
-            <TrashIcon size={11} />
-          </button>
-        </div>
-      </div>
-
-      {open && (
-        <div className="px-2 pb-2">
-          {/* The rule starts where the name starts, not at the card edge —
-              contents belong to the name, not to the slab. */}
-          <div aria-hidden className="mb-1 ml-[48px] h-px bg-[rgb(255_255_255_/_0.07)]" />
-          {/* Separated by shape, not by rule. Hairlines here fought the one
-              under the header — two grades of horizontal line in a 200px
-              card, with the lesser one running longer. A faint well under
-              each row makes the entries discrete the way the cards
-              themselves are: fills on a surface, and the header rule stays
-              the only line in the card. */}
-          <ul className="flex flex-col gap-[3px]">
-            {seg.items.length === 0 ? (
-              /* A dashed well, not a sentence adrift: the hint names a drop
-                 target, so it is drawn as one — the same shape the card
-                 itself takes when a drag is over it. */
-              <li className="grid place-items-center rounded-[5px] border border-dashed border-[rgb(255_255_255_/_0.1)] px-3 py-[7px] text-center text-[length:var(--tri-size-xs)] lowercase leading-snug text-[rgb(229_243_242_/_0.32)]">
-                {EMPTY_SEGMENT_HINT}
-              </li>
-            ) : (
-              seg.items.map((item) => (
-                <QueuedItemRow
-                  key={item.key}
-                  segKey={seg.key}
-                  item={item}
-                  onEditSong={(it, origin) => onEditSong(seg.key, it, origin)}
-                />
-              ))
-            )}
-          </ul>
-        </div>
-      )}
-
-      <ContextMenu
-        at={menu.at}
-        label={`${seg.label} — segment actions`}
-        items={items}
-        onClose={menu.close}
-        onSelect={(picked) => {
-          if (picked.id === 'rename') {
-            setDraft(seg.label);
-            setRenaming(true);
-          } else if (picked.id === 'up') run.moveSegment(seg.key, -1);
-          else if (picked.id === 'down') run.moveSegment(seg.key, 1);
-          else if (picked.id === 'duplicate') run.duplicateSegment(seg.key);
-          else if (picked.id === 'clear') run.clearSegment(seg.key);
-          else if (picked.id === 'remove') run.removeSegment(seg.key);
-          else if (picked.id.startsWith('insert:')) {
-            /* A blank custom segment, named for what it is. The operator is
-               about to rename it or set its type, and both are one more
-               right-click away on the card that appears. */
-            run.insertSegment(seg.key, picked.id.slice(7) as 'above' | 'below', {
-              id: 'custom',
-              label: segmentTypeLabel('custom'),
-            });
-          } else if (picked.id.startsWith('minutes:')) {
-            const rest = picked.id.slice(8);
-            run.setSegmentDuration(seg.key, rest === 'none' ? undefined : Number(rest));
-          } else if (picked.id.startsWith('type:')) {
-            const id = picked.id.slice(5);
-            /* The name follows the type only while it is still the old
-               type's stock name — see run.setSegmentType. */
-            run.setSegmentType(seg.key, { id, label: segmentTypeLabel(id) }, segmentTypeLabel(seg.type));
-          }
-        }}
-      />
-    </li>
-  );
-}
-
-/**
- * The run list — the cards variant carrying the rows variant's anatomy.
- *
- * Chosen from four live candidates, then merged: the slab is what won from
- * cards — each segment a physical object in the system's own gradient
- * surface, so state lives in the material (hover lights it like a button,
- * the open card holds the active alpha, a drop target turns gold) — and the
- * row anatomy is what won from rows: the quiet tabular number in the
- * margin, the chevron, marked items. The cards variant's ghost numerals are
- * gone at the owner's call, and so now is the count pill.
- */
-
-/*
- * The empty rail's own way in — everything the header offers, at a size you
- * cannot miss, directly under the sentence that names it. Reading the
- * programme the church already made comes first and is spelled out, because
- * it is the route that saves the most work and a bare "+" hid it. The
- * dialogs themselves stay in the header (see askRun); these only ask.
- * The clock loads straight away — there is nothing to replace.
- *
- * The "+" drops the attach-to-a-segment tiles: there is no segment yet to
- * hang a clip or a note on.
- */
-const EMPTY_ADD: ActionMenuGroup[] = ADD_MENU.slice(0, 1);
-
-function RunEmptyActions() {
-  const run = useRun();
-  return (
-    <div className="run-empty-actions mt-3 flex w-full min-w-0 flex-col items-center gap-2">
-      <div
-        className="flex items-center gap-2"
-        style={{ '--tri-control-h': '32px', '--tri-control-pad-x': '11px' } as CSSProperties}
-      >
-        <Button label="scan image" icon={<ScanIcon size={14} />} title="read a photo of the programme" onClick={() => askRun('scan')} />
-        <Button guideId="run-paste" label="paste" tone="ash" icon={<NoteIcon size={13} />} title="paste the programme as text" onClick={() => askRun('paste')} />
-      </div>
-      <div
-        className="flex items-center gap-2"
-        style={{ '--tri-control-h': '36px', '--tri-control-pad-x': '11px' } as CSSProperties}
-      >
-        <ActionMenu
-          groups={EMPTY_ADD}
-          onArrange={(_parent, picked) => run.addSegments(picked)}
-          onSelect={(item) => {
-            if (item.id === 'scan' || item.id === 'paste') askRun(item.id);
-          }}
-          trigger={<Button label="" icon={<PlusIcon size={16} />} title="add to the run" />}
-        />
-        <Button
-          label=""
-          tone="ash"
-          icon={<HistoryIcon size={15} />}
-          title="load the default order of service"
-          onClick={() => run.loadSundayTemplate()}
-        />
-        <Button label=".tri" tone="ash" title="open, import or save a .tri service file" onClick={() => askRun('tri')} />
-      </div>
+  const drag = useDrag();
+  return <div className="run-component-picker">
+    <p className="run-hint">Choose a section or drag it into your run.</p>
+    <div className="run-component-grid">
+      {RUN_COMPONENTS.map(type => <button key={type.id} type="button" data-guide={`run-add-${type.id}`} className="run-component-card" data-component={type.id} {...drag.bind(() => ({ source: 'note', label: type.label, dragType: type.id }))}
+        onPointerEnter={followCardEdge} onPointerMoveCapture={followCardEdge}
+        onClick={() => { run.addSegments([type]); onAdded(); }}>
+        <CardEdge />
+        <span className="run-component-icon">{segmentIcon(type.id, 28)}</span><span>{type.label}</span>
+      </button>)}
     </div>
-  );
+  </div>;
 }
 
-export function RunOfService({
-  renderAdd,
-  fallbackSongs,
-}: {
-  /** The segment's "+", which only the screen knows how to fill. */
-  renderAdd: (seg: RunSegment) => ReactNode;
-  /** The fixture library, for "edit song" when there is no engine. */
-  fallbackSongs?: readonly LibrarySong[];
+function SegmentCard({ seg, index, selectedKeys, onSelect, onToggle, onOpen }: {
+  seg: RunSegment; index: number; selectedKeys: string[];
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void; onToggle: () => void; onOpen: (origin: HTMLElement) => void;
 }) {
   const run = useRun();
   const drag = useDrag();
+  const menu = useContextMenu();
+  const [renaming, setRenaming] = useState(false);
+  const [draft, setDraft] = useState(seg.label);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (renaming) { input.current?.focus(); input.current?.select(); } }, [renaming]);
+  const commit = () => { if (draft.trim()) run.renameSegment(seg.key, draft.trim()); setRenaming(false); };
+  const target = runTarget(drag.over);
+  const over = drag.over !== null && target.segmentKey === seg.key;
+  const intent = over ? target.sectionPosition ?? 'inside' : undefined;
+  const selected = selectedKeys.includes(seg.key);
+  const group = selected && selectedKeys.length > 1;
+  const items: ContextMenuItem[] = [
+    ...(group ? [
+      { id: 'selected-up', label: `move ${selectedKeys.length} sections earlier`, icon: <ArrowIcon className="-rotate-90" size={13} /> },
+      { id: 'selected-down', label: `move ${selectedKeys.length} sections later`, icon: <ArrowIcon className="rotate-90" size={13} /> },
+      { id: 'selected-remove', label: `remove ${selectedKeys.length} sections`, icon: <TrashIcon size={13} />, danger: true },
+    ] : []),
+    { id: 'open', label: 'open section', icon: segmentIcon(seg.type) },
+    { id: 'rename', label: 'rename', icon: <PencilIcon size={13} /> },
+    ...(index ? [{ id: 'up', label: 'move earlier', icon: <ArrowIcon className="-rotate-90" size={13} /> }] : []),
+    ...(index < run.segments.length - 1 ? [{ id: 'down', label: 'move later', icon: <ArrowIcon className="rotate-90" size={13} /> }] : []),
+    { id: 'type', label: 'change type', icon: segmentIcon(seg.type), items: RUN_COMPONENTS.map(c => ({ id: `type:${c.id}`, label: c.label, icon: segmentIcon(c.id), checked: seg.type === c.id })) },
+    { id: 'duplicate', label: 'duplicate', icon: <CopyIcon size={13} /> },
+    ...(seg.items.length ? [{ id: 'clear', label: 'clear contents', icon: <TrashIcon size={13} />, danger: true }] : []),
+    { id: 'remove', label: 'remove section', icon: <TrashIcon size={13} />, danger: true },
+  ];
+  const button = useRef<HTMLButtonElement>(null);
+  return <li className="run-segment-tile" data-component={seg.type} data-run-section={seg.key} data-run-label={seg.label} data-selected={selected || undefined} {...drag.dropProps(seg.key)} data-drop-intent={intent} data-dragging={drag.active?.dragSegmentKey === seg.key || drag.active?.dragSegmentKeys?.includes(seg.key) || undefined} {...menu.pointer}
+    onPointerEnter={followCardEdge} onPointerMoveCapture={followCardEdge}>
+    <CardEdge />
+    {renaming ? <div className="run-segment-rename">{segmentIcon(seg.type, 28)}<input ref={input} data-guide="run-section-name" aria-label="Section name" value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit}
+      onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { e.stopPropagation(); setRenaming(false); } }} /></div>
+      : <button ref={button} type="button" data-guide={`run-section-${seg.type}`} className="run-segment-open" {...menu.keys}
+        {...drag.bind(() => ({ source: 'note', label: group ? `${selectedKeys.length} sections` : seg.label, dragSegmentKey: seg.key, dragSegmentKeys: group ? selectedKeys : undefined, componentType: seg.type }))}
+        onClick={onSelect} onDoubleClick={e => { if (selected && !e.metaKey && !e.ctrlKey && !e.shiftKey) onOpen(e.currentTarget); }} aria-label={`Open ${seg.label}, ${seg.items.length} ${seg.items.length === 1 ? 'item' : 'items'}${selected ? ', selected' : ''}`} aria-haspopup="dialog" title={`${seg.label} · drag to reorder · Shift-click to select a range`}>
+        <span className="run-card-number">{String(index + 1).padStart(2, '0')}</span>
+        <span className="run-card-grip"><GripIcon size={13} /></span>
+        <span className="run-component-icon">{segmentIcon(seg.type, 28)}</span>
+        <span className="run-segment-label">{seg.label}</span>
+        <span className="run-card-meta">{seg.items.length} {seg.items.length === 1 ? 'item' : 'items'}</span>
+      </button>}
+    {!renaming && <>
+      <button type="button" data-guide="run-section-select" className="run-section-select-toggle" role="checkbox" aria-checked={selected} aria-label={`Select ${seg.label}`} title={`Select ${seg.label}`} onClick={onToggle}>{selected && <CheckIcon size={11} />}</button>
+      <button type="button" data-guide="run-section-remove" className="run-section-remove" aria-label={`Remove ${seg.label}`} title={`Remove ${seg.label}`} onClick={() => run.removeSegment(seg.key)}><TrashIcon size={12} /></button>
+    </>}
+    {intent && <span className="run-drop-marker" aria-hidden="true">{intent === 'swap' ? 'Swap' : intent === 'inside' ? 'Add here' : ''}</span>}
+    <ContextMenu at={menu.at} items={items} label={`${seg.label} section actions`} onClose={menu.close} onSelect={picked => {
+      if (picked.id === 'open' && button.current) onOpen(button.current);
+      else if (picked.id === 'rename') { setDraft(seg.label); setRenaming(true); }
+      else if (picked.id === 'up') run.moveSegment(seg.key, -1);
+      else if (picked.id === 'down') run.moveSegment(seg.key, 1);
+      else if (picked.id === 'duplicate') run.duplicateSegment(seg.key);
+      else if (picked.id === 'clear') run.clearSegment(seg.key);
+      else if (picked.id === 'remove') run.removeSegment(seg.key);
+      else if (picked.id === 'selected-up') run.moveSegments(selectedKeys, -1);
+      else if (picked.id === 'selected-down') run.moveSegments(selectedKeys, 1);
+      else if (picked.id === 'selected-remove') run.removeSegments(selectedKeys);
+      else if (picked.id.startsWith('type:')) {
+        const type = RUN_COMPONENTS.find(c => c.id === picked.id.slice(5))!;
+        run.setSegmentType(seg.key, type, RUN_COMPONENTS.find(c => c.id === seg.type)?.label ?? segmentTypeLabel(seg.type));
+      }
+    }} />
+  </li>;
+}
+
+function QueuedItemCard({ seg, item, index, onEditSong, onOpenLibrary }: {
+  seg: RunSegment; item: QueueItem; index: number;
+  onEditSong: (item: QueueItem, origin: HTMLElement | null) => void; onOpenLibrary: () => void;
+}) {
+  const run = useRun();
+  const drag = useDrag();
+  const projector = useProjector();
+  const menu = useContextMenu();
+  const note = useRef<HTMLTextAreaElement>(null);
+  const row = useRef<HTMLLIElement>(null);
+  const target = runItemTarget(seg.key, item.key);
+  const carry = () => ({ ...item, dragItem: { segmentKey: seg.key, itemKey: item.key } });
+  const canGoLive = item.source === 'scripture' || (item.source === 'song' && !!item.lines?.length) || (!!item.path && item.source !== 'note');
+  const live = canGoLive && projector.isLive(item.source === 'note' ? 'scripture' : item.source, item.label);
+  const send = () => {
+    if (live) { projector.clear(); return; }
+    if (item.source === 'scripture') projector.send({ source: 'scripture', id: item.label, label: item.label, reference: item.label });
+    else if (item.source === 'song') {
+      if (item.songId) useLibraryNavigation.getState().selectSong(item.songId);
+      projector.send({ source: 'song', id: item.label, label: item.label, title: item.title, section: item.section, lines: item.lines });
+    } else if (item.path && (item.source === 'media' || item.source === 'presentation')) projector.send({ source: item.source, id: item.label, label: item.label, path: item.path, mediaKind: item.mediaKind });
+  };
+  const move = (destination: string, before?: string) => run.dropInto(before ? runItemTarget(destination, before) : destination, [carry()]);
+  const actions: ContextMenuItem[] = [
+    ...(item.source === 'song' ? [{ id: 'edit', label: 'edit song', icon: <PencilIcon size={13} /> }] : []),
+    ...(index ? [{ id: 'earlier', label: 'move earlier' }] : []),
+    ...(index < seg.items.length - 1 ? [{ id: 'later', label: 'move later' }] : []),
+    { id: 'move', label: 'move to section', items: run.segments.filter(s => s.key !== seg.key).map(s => ({ id: `move:${s.key}`, label: s.label, icon: segmentIcon(s.type) })) },
+    { id: 'remove', label: 'remove item', danger: true, icon: <TrashIcon size={13} /> },
+  ].filter(a => a.id !== 'move' || run.segments.length > 1);
+  return <li ref={row} className="run-content-card" {...drag.dropProps(target)} data-drop-item data-drop-label={item.title ?? item.label ?? 'item'} {...menu.pointer} data-over={drag.over === target || undefined} data-live={live || undefined}>
+    {item.source === 'note' ? <div className="run-note-card">
+      <button type="button" className="run-note-handle" {...drag.bind(carry)} {...menu.keys} aria-label="Drag note" title="Drag note to reorder or move">{segmentIcon('notes', 22)}<GripIcon size={14} /></button>
+      <textarea ref={note} data-guide="run-note-text" aria-label="Edit note" autoFocus={!item.label} value={item.label} onChange={e => run.updateItem(seg.key, item.key, e.target.value)} placeholder="Type a note…" />
+    </div> : <button type="button" data-guide="run-item-open" className="run-content-open" {...drag.bind(carry)} {...menu.keys} onClick={() => { useLibraryNavigation.getState().open(item); onOpenLibrary(); }} title={`Preview ${item.label}`}>
+      <ContentPreview item={item} /><span className="run-content-label">{item.title ?? item.label}</span>
+      {item.section && <span className="run-card-meta">{item.section}</span>}
+    </button>}
+    <div className="run-content-actions">
+      <span className="run-card-meta">{index + 1}</span>
+      {canGoLive && <button type="button" data-guide="run-item-live" className="run-live-button" onClick={send}>{live ? 'Take down' : 'Go live'}</button>}
+      {item.source === 'song' && <button type="button" data-guide="run-item-edit" aria-label={`Edit ${item.label}`} onClick={() => onEditSong(item, row.current)}><PencilIcon size={13} /></button>}
+      <button type="button" data-guide="run-item-remove" className="run-remove-action" aria-label={`Remove ${item.label || 'note'}`} onClick={() => run.remove(seg.key, item.key)}><CloseIcon size={13} /></button>
+    </div>
+    <ContextMenu at={menu.at} label={`${item.label || 'Note'} actions`} items={actions} onClose={menu.close} onSelect={picked => {
+      if (picked.id === 'remove') run.remove(seg.key, item.key);
+      else if (picked.id === 'edit') onEditSong(item, row.current);
+      else if (picked.id === 'earlier') move(seg.key, seg.items[index - 1].key);
+      else if (picked.id === 'later') move(seg.key, seg.items[index + 2]?.key);
+      else if (picked.id.startsWith('move:')) move(picked.id.slice(5));
+    }} />
+  </li>;
+}
+
+function ScheduleRow({ seg, index, selected, onSelect }: { seg: RunSegment; index: number; selected: boolean; onSelect: () => void }) {
+  const run = useRun();
+  const drag = useDrag();
+  const menu = useContextMenu();
+  const target = runTarget(drag.over);
+  const intent = drag.over !== null && target.segmentKey === seg.key ? target.sectionPosition ?? 'inside' : undefined;
+  const actions: ContextMenuItem[] = [
+    ...(index > 0 ? [{ id: 'up', label: 'move earlier', icon: <ArrowIcon className="-rotate-90" size={13} /> }] : []),
+    ...(index < run.segments.length - 1 ? [{ id: 'down', label: 'move later', icon: <ArrowIcon className="rotate-90" size={13} /> }] : []),
+    { id: 'duplicate', label: 'duplicate section', icon: <CopyIcon size={13} /> },
+    ...(seg.items.length ? [{ id: 'clear', label: 'clear contents', icon: <TrashIcon size={13} />, danger: true }] : []),
+    { id: 'remove', label: 'remove section', icon: <TrashIcon size={13} />, danger: true },
+  ];
+  return <li className="run-schedule-row" data-run-section={seg.key} data-run-label={seg.label} data-selected={selected || undefined}
+    data-drop-intent={intent} data-dragging={drag.active?.dragSegmentKey === seg.key || undefined} {...drag.dropProps(seg.key)} {...menu.pointer}>
+    <span className="run-schedule-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+    <button type="button" data-guide={`run-schedule-${seg.type}`} className={`run-schedule-select ${surface({ tone: selected ? 'default' : 'ash', interactive: true })}`} data-active={selected || undefined} aria-current={selected ? 'step' : undefined} aria-label={`Select ${seg.label}, section ${index + 1}`}
+      {...drag.bind(() => ({ source: 'note', label: seg.label, dragSegmentKey: seg.key, componentType: seg.type }))}
+      onClick={onSelect} title="Drag to arrange. Alt + Up or Down to move."
+      onKeyDown={event => {
+        if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) { event.preventDefault(); run.moveSegment(seg.key, event.key === 'ArrowUp' ? -1 : 1); }
+        else menu.keys.onKeyDown(event);
+      }}>
+      <span className="run-schedule-type">{segmentIcon(seg.type, 19)}</span>
+      <span className="run-schedule-name"><strong>{seg.label}</strong><small>{seg.items.length} {seg.items.length === 1 ? 'item' : 'items'}</small></span>
+      <GripIcon size={14} className="run-schedule-grip" />
+    </button>
+    {intent && <span className="run-schedule-drop" aria-hidden="true">{intent === 'swap' ? 'Swap sections' : intent === 'inside' ? 'Add here' : ''}</span>}
+    <ContextMenu at={menu.at} items={actions} label={`${seg.label} schedule actions`} onClose={menu.close} onSelect={item => {
+      if (item.id === 'up' || item.id === 'down') run.moveSegment(seg.key, item.id === 'up' ? -1 : 1);
+      else if (item.id === 'duplicate') run.duplicateSegment(seg.key);
+      else if (item.id === 'clear') run.clearSegment(seg.key);
+      else if (item.id === 'remove') run.removeSegment(seg.key);
+    }} />
+  </li>;
+}
+
+const SECTION_EMPTY_COPY: Record<string, string> = {
+  music: 'Add songs and the sections you want to present.',
+  sermon: 'Keep your message outline and sermon notes together.',
+  slides: 'Choose slides from your library or import a presentation.',
+  notes: 'Keep reminders and cues for this part of the service.',
+  image: 'Choose photos and graphics from your library or files.',
+  video: 'Choose video clips from your library or import files.',
+  verse: 'Add the scripture references for this part of the service.',
+};
+
+function SectionDialog({ seg, onSelect, onClose, onEditSong, fallbackSongs }: {
+  seg: RunSegment; onSelect: (key: string) => void; onClose: () => void;
+  onEditSong: (item: QueueItem, origin: HTMLElement | null) => void; fallbackSongs?: readonly LibrarySong[];
+}) {
+  const run = useRun();
+  const drag = useDrag();
+  const [adding, setAdding] = useState(false);
+  const [addingSection, setAddingSection] = useState(false);
+  const [query, setQuery] = useState('');
+  const searchInput = useRef<HTMLInputElement>(null);
+  const sectionPicker = useRef<HTMLDivElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const root = document.getElementById('root');
+    const wasInert = root?.inert;
+    if (root) root.inert = true;
+    dialog.current?.querySelector<HTMLElement>('button')?.focus();
+    return () => {
+      if (root) root.inert = wasInert ?? false;
+      previous?.focus({ preventScroll: true });
+    };
+  }, []);
+  useEffect(() => { setAdding(false); setQuery(''); }, [seg.key]);
+  useEffect(() => {
+    if (!addingSection) return;
+    sectionPicker.current?.scrollIntoView({ block: 'nearest' });
+    sectionPicker.current?.querySelector('button')?.focus({ preventScroll: true });
+  }, [addingSection]);
+  const over = drag.over !== null && runTarget(drag.over).segmentKey === seg.key;
+  const position = run.segments.findIndex(s => s.key === seg.key) + 1;
+  const search = query.trim().toLocaleLowerCase();
+  const shownItems = seg.items.map((item, index) => ({ item, index })).filter(({ item }) =>
+    !search || [item.label, item.title, item.section, item.quote, ...(item.lines ?? [])].filter(Boolean).join(' ').toLocaleLowerCase().includes(search));
+  const clearSearch = () => { setQuery(''); searchInput.current?.focus(); };
+  const showPicker = () => { setQuery(''); setAdding(true); };
+  return createPortal(<div className="run-dialog-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div ref={dialog} className="run-section-dialog" role="dialog" aria-modal="true" aria-labelledby="run-schedule-title" data-typing-scope="local"
+      onKeyDown={e => {
+        if (e.key === 'Escape' && !drag.active) { e.preventDefault(); e.stopPropagation(); if (addingSection) setAddingSection(false); else if (adding) setAdding(false); else closeRef.current(); }
+        if (e.key === 'Tab') {
+          const nodes = [...(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, textarea, [tabindex="0"]') ?? [])].filter(n => n.getClientRects().length);
+          const first = nodes[0], last = nodes[nodes.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        }
+      }}>
+      <header className="run-dialog-header">
+        <button type="button" data-guide="run-dialog-back" className="run-dialog-icon" aria-label="Back to run of show" onClick={onClose}><ArrowLeftIcon size={18} /></button>
+        <div className="run-dialog-heading"><h2 id="run-schedule-title">Service schedule</h2><p>{run.segments.length} sections · Arrange your running order</p></div>
+        <button type="button" data-guide="run-dialog-close" className="run-dialog-icon" aria-label="Close schedule" onClick={onClose}><CloseIcon size={18} /></button>
+      </header>
+      <div className="run-dialog-body">
+        <section className="run-schedule-pane" aria-label="Full schedule">
+          <header className="run-pane-heading"><div><h3>Running order <span className="run-pane-count">{run.segments.length}</span></h3><p>Drag sections to arrange</p></div><DefaultRunButton label="Default" /></header>
+          <div className="run-schedule-scroll" data-run-scroll data-drop-segment="">
+            <ol className="run-schedule-list" data-run-sections data-run-layout="timeline" aria-label="Schedule sections">
+              {run.segments.map((s, i) => <ScheduleRow key={s.key} seg={s} index={i} selected={s.key === seg.key} onSelect={() => onSelect(s.key)} />)}
+            </ol>
+            <div className="run-schedule-end"><span />End of schedule</div>
+            {addingSection && <div ref={sectionPicker} className="run-schedule-picker"><div className="run-picker-heading"><span>Add a section</span><button type="button" data-guide="run-dialog-picker-close" aria-label="Close section picker" onClick={() => setAddingSection(false)}><CloseIcon size={14} /></button></div><ComponentPicker onAdded={() => setAddingSection(false)} /></div>}
+          </div>
+          <button type="button" data-guide="run-dialog-add-section" className="run-schedule-add" onClick={() => setAddingSection(v => !v)} aria-expanded={addingSection}><PlusIcon size={15} />Add section</button>
+        </section>
+        <div className="run-section-main" {...drag.dropProps(seg.key)} data-drop-label={seg.label} data-over={over || undefined}>
+          <div className="run-section-toolbar"><div className="run-section-identity"><span className="run-section-symbol">{segmentIcon(seg.type, 24)}</span><div><p>Section {String(position).padStart(2, '0')} / {run.segments.length}</p><h3>{seg.label}</h3></div></div>
+            {!adding && <div className="run-section-search"><SearchIcon size={15} />
+              <input ref={searchInput} data-guide="run-content-search" type="search" aria-label={`Search ${seg.label} content`} placeholder="Search content…" value={query} onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape' && query) { e.preventDefault(); e.stopPropagation(); setQuery(''); } }} />
+              {query && <button type="button" data-guide="run-content-search-clear" aria-label="Clear content search" onClick={clearSearch}><CloseIcon size={13} /></button>}
+            </div>}
+          </div>
+          <div className="run-content-heading"><div><h4>{adding ? 'Add to this section' : 'Section content'}</h4><span aria-live="polite">{search ? `${shownItems.length} of ` : ''}{seg.items.length} {seg.items.length === 1 ? 'item' : 'items'}</span></div>
+            <Button guideId="run-add-items" label={adding ? 'Back to content' : 'Add items'} icon={adding ? <ArrowLeftIcon size={13} /> : <PlusIcon size={13} />} onClick={() => adding ? setAdding(false) : showPicker()} />
+          </div>
+          <div className="run-section-scroll" data-run-scroll>
+            {adding ? <RunContentPicker key={`${seg.key}:${seg.type}`} seg={seg} fallbackSongs={fallbackSongs} /> : search && !shownItems.length ? <div className="run-section-empty">
+              <span className="run-empty-symbol"><SearchIcon size={32} /></span><h4>No matching content</h4><p>Try a different title or a few words from your content.</p>
+              <Button guideId="run-clear-search" label="Clear search" onClick={clearSearch} />
+            </div> : !seg.items.length ? <div className="run-section-empty">
+              <span className="run-empty-symbol">{segmentIcon(seg.type, 38)}</span>
+              <h4>Your {seg.label.toLowerCase()} content goes here</h4><p>{SECTION_EMPTY_COPY[seg.type] ?? 'Add the content for this part of the service.'}</p>
+              <Button guideId="run-add-items-empty" label="Add items" icon={<PlusIcon size={14} />} onClick={showPicker} />
+              <span className="run-empty-drop">You can also drag content into this section</span>
+            </div> : <>
+              <ul className="run-content-grid" aria-label={`${seg.label} items`}>
+                {shownItems.map(({ item, index }) => <QueuedItemCard key={item.key} seg={seg} item={item} index={index} onEditSong={onEditSong} onOpenLibrary={onClose} />)}
+                {!search && <li><button type="button" data-guide="run-add-more" className="run-add-content" onClick={showPicker}><PlusIcon size={24} /><span>Add more</span></button></li>}
+              </ul>
+            </>}
+          </div>
+          <p className="run-section-footnote">Drag items to arrange them or move them into another section.</p>
+        </div>
+      </div>
+      <footer className="run-schedule-footer"><div><strong>Service tools</strong><span>Open, save, or add a programme.</span></div><div className="run-schedule-imports">
+        <button type="button" data-guide="run-import" className={surface({ tone: 'ash', interactive: true })} onClick={() => askRun('tri')}><ImportIcon size={17} /><span><strong>Service files</strong><small>.tri, EasyWorship & more</small></span></button>
+        <button type="button" data-guide="run-scan" className={surface({ tone: 'ash', interactive: true })} onClick={() => askRun('scan')}><ScanIcon size={17} /><span><strong>Scan image</strong><small>A printed programme</small></span></button>
+        <button type="button" data-guide="run-paste" className={surface({ tone: 'ash', interactive: true })} onClick={() => askRun('paste')}><ClipboardIcon size={17} /><span><strong>Paste text</strong><small>Your order of service</small></span></button>
+      </div></footer>
+    </div>
+  </div>, document.body);
+}
+
+export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly LibrarySong[]; say?: (line: { text: string }) => void }) {
+  const run = useRun();
+  const drag = useDrag();
+  const [picker, setPicker] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [selection, setSelection] = useState<string[]>([]);
+  const selectionAnchor = useRef<string | null>(null);
+  const rail = useRef<HTMLDivElement>(null);
+  const marquee = useRef<{ pointer: number; x: number; y: number; base: string[]; moved: boolean } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<{ segKey: string; item: QueueItem; origin: HTMLElement | null } | null>(null);
-
-  return (
-    <>
-      {run.segments.length === 0 ? (
-        <EmptyMark
-          /* Smaller than the other empty marks: this one has two rows of
-             ways in under it, and on a laptop-height window the full-size
-             art pushed the second row out of the card. */
-          w={172}
-          h={172}
-          plain
-          art={<LayeredProgrammeArt />}
-          line="scan, paste or build today’s run"
-          below={<RunEmptyActions />}
-        />
-      ) : (
-        /* The panel body clips; the list scrolls inside it, so a long service
-           never pushes the cards out of reach under the panel's edge. */
-        <ul className="flex h-full flex-col gap-[6px] overflow-y-auto px-1 py-1.5">
-          {run.segments.map((seg, i) => (
-            <SegmentCard
-              key={seg.key}
-              seg={seg}
-              index={i}
-              total={run.segments.length}
-              over={drag.over === seg.key}
-              dropProps={drag.dropProps(seg.key)}
-              renderAdd={renderAdd}
-              onEditSong={(segKey, item, origin) => setEditing({ segKey, item, origin })}
-            />
-          ))}
-        </ul>
-      )}
-
-      {editing && (
-        <RunSongEditor
-          key={editing.item.key}
-          item={editing.item}
-          origin={editing.origin}
-          fallbackSongs={fallbackSongs}
-          onSaved={(patch) => run.patchItem(editing.segKey, editing.item.key, patch)}
-          onClosed={() => setEditing(null)}
-        />
-      )}
-    </>
-  );
+  const origin = useRef<HTMLElement | null>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const pickerPanel = useRef<HTMLDivElement>(null);
+  const section = run.segments.find(s => s.key === selected) ?? (selected ? run.segments[0] : undefined);
+  const selectedKeys = selection.filter(key => run.segments.some(segment => segment.key === key));
+  const openSection = (key: string, from: HTMLElement) => { origin.current = from; setSelected(key); };
+  const range = (key: string) => runSelectionRange(run.segments.map(segment => segment.key), selectionAnchor.current, key);
+  const toggle = (key: string) => {
+    selectionAnchor.current = key;
+    setSelection(previous => previous.includes(key) ? previous.filter(item => item !== key) : [...previous, key]);
+  };
+  const selectCard = (key: string, event: MouseEvent<HTMLButtonElement>) => {
+    if (event.shiftKey) {
+      const keys = range(key);
+      setSelection(previous => event.metaKey || event.ctrlKey ? [...new Set([...previous, ...keys])] : keys);
+      selectionAnchor.current ??= key;
+    } else if (event.metaKey || event.ctrlKey) toggle(key);
+    else {
+      selectionAnchor.current = key;
+      if (selectedKeys.length) setSelection([key]);
+      else openSection(key, event.currentTarget);
+    }
+  };
+  const removeSelected = () => { run.removeSegments(selectedKeys); setSelection([]); rail.current?.focus({ preventScroll: true }); };
+  const beginMarquee = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !event.isPrimary || event.pointerType === 'touch' || drag.active || (event.target as HTMLElement).closest('button, input, textarea, [data-run-section], [data-run-picker]')) return;
+    const node = event.currentTarget;
+    const rect = node.getBoundingClientRect();
+    const base = event.shiftKey || event.metaKey || event.ctrlKey ? selectedKeys : [];
+    marquee.current = { pointer: event.pointerId, x: event.clientX - rect.left + node.scrollLeft, y: event.clientY - rect.top + node.scrollTop, base, moved: false };
+    node.setPointerCapture(event.pointerId);
+    node.focus({ preventScroll: true });
+    if (!base.length) setSelection([]);
+    event.preventDefault();
+  };
+  const updateMarquee = (event: PointerEvent<HTMLDivElement>) => {
+    const start = marquee.current;
+    if (!start || start.pointer !== event.pointerId) return;
+    const node = event.currentTarget;
+    const rect = node.getBoundingClientRect();
+    if (event.clientY > rect.bottom - 24) node.scrollTop += 10;
+    else if (event.clientY < rect.top + 24) node.scrollTop -= 10;
+    const x = Math.max(0, Math.min(node.scrollWidth, event.clientX - rect.left + node.scrollLeft));
+    const y = Math.max(0, Math.min(node.scrollHeight, event.clientY - rect.top + node.scrollTop));
+    if (!start.moved && Math.hypot(x - start.x, y - start.y) < 4) return;
+    start.moved = true;
+    const box = { left: Math.min(start.x, x), top: Math.min(start.y, y), width: Math.abs(x - start.x), height: Math.abs(y - start.y) };
+    setSelectionBox(box);
+    const keys = [...node.querySelectorAll<HTMLElement>('[data-run-section]')].filter(card => {
+      const cardRect = card.getBoundingClientRect();
+      const left = cardRect.left - rect.left + node.scrollLeft, top = cardRect.top - rect.top + node.scrollTop;
+      return left < box.left + box.width && left + cardRect.width > box.left && top < box.top + box.height && top + cardRect.height > box.top;
+    }).map(card => card.dataset.runSection!);
+    setSelection([...new Set([...start.base, ...keys])]);
+    if (keys.length) selectionAnchor.current = keys[0];
+  };
+  const endMarquee = (event: PointerEvent<HTMLDivElement>) => {
+    if (marquee.current?.pointer !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    marquee.current = null;
+    setSelectionBox(null);
+  };
+  const close = () => { setSelected(null); origin.current?.focus({ preventScroll: true }); };
+  const closePicker = () => { setPicker(false); addButton.current?.focus({ preventScroll: true }); };
+  useEffect(() => {
+    if (picker) pickerPanel.current?.scrollIntoView({ block: 'nearest' });
+  }, [picker]);
+  useEffect(() => {
+    const asked = (event: Event) => { if ((event as CustomEvent<RunAsk>).detail === 'components') setPicker(v => !v); };
+    window.addEventListener('trilorah-run-ask', asked);
+    return () => window.removeEventListener('trilorah-run-ask', asked);
+  }, []);
+  return <>
+    <div ref={rail} className="run-cards-scroll" data-run-scroll data-drop-segment="" tabIndex={0} aria-label="Run of show controls" data-selecting={selectionBox ? true : undefined}
+      onPointerDown={beginMarquee} onPointerMove={updateMarquee} onPointerUp={endMarquee} onPointerCancel={endMarquee} onLostPointerCapture={endMarquee}
+      onKeyDown={event => {
+        if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="menu"]') || picker || drag.active) return;
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
+          event.preventDefault(); event.stopPropagation(); setSelection(run.segments.map(segment => segment.key)); selectionAnchor.current ??= run.segments[0]?.key ?? null;
+        } else if (event.key === 'Escape' && selectedKeys.length) {
+          event.preventDefault(); event.stopPropagation(); setSelection([]);
+        } else if ((event.key === 'Delete' || event.key === 'Backspace') && selectedKeys.length) {
+          event.preventDefault(); event.stopPropagation(); removeSelected();
+        } else if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown') && selectedKeys.length) {
+          event.preventDefault(); event.stopPropagation(); run.moveSegments(selectedKeys, event.key === 'ArrowUp' ? -1 : 1);
+        } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key) && !event.altKey && !event.metaKey && !event.ctrlKey) {
+          const current = (event.target as HTMLElement).closest<HTMLElement>('[data-run-section]');
+          if (!current) return;
+          const index = run.segments.findIndex(segment => segment.key === current.dataset.runSection);
+          const delta = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' ? -3 : 3;
+          const next = run.segments[index + delta];
+          if (!next) return;
+          event.preventDefault(); event.stopPropagation();
+          if (event.shiftKey) { selectionAnchor.current ??= current.dataset.runSection!; setSelection(range(next.key)); }
+          const card = [...(rail.current?.querySelectorAll<HTMLElement>('[data-run-section]') ?? [])].find(node => node.dataset.runSection === next.key);
+          card?.querySelector<HTMLButtonElement>('.run-segment-open')?.focus();
+        }
+      }}>
+      {!!run.segments.length && <div className="run-selection-toolbar" role={selectedKeys.length ? 'toolbar' : undefined} aria-label={selectedKeys.length ? 'Selected section actions' : undefined}>
+        {!selectedKeys.length ? <span className="run-selection-hint">Drag space to select · Shift-click for more</span> : <>
+        <span aria-live="polite">{selectedKeys.length} selected</span>
+        <button type="button" data-guide="run-selected-earlier" aria-label="Move selected sections earlier" title="Move earlier · Alt + ↑" onClick={() => run.moveSegments(selectedKeys, -1)}><ArrowIcon className="-rotate-90" size={13} /></button>
+        <button type="button" data-guide="run-selected-later" aria-label="Move selected sections later" title="Move later · Alt + ↓" onClick={() => run.moveSegments(selectedKeys, 1)}><ArrowIcon className="rotate-90" size={13} /></button>
+        <button type="button" data-guide="run-selected-remove" className="run-selection-remove" aria-label="Remove selected sections" title="Remove selected · Delete" onClick={removeSelected}><TrashIcon size={13} /></button>
+        <button type="button" data-guide="run-selection-clear" aria-label="Clear selection" title="Clear selection · Esc" onClick={() => setSelection([])}><CloseIcon size={13} /></button>
+        </>}
+      </div>}
+      {!run.segments.length && <div className="run-rail-empty"><EmptyMark art={<LayeredProgrammeArt />} plain w={180} h={180} line="nothing in the run yet" hint="Add a section to start your service." /></div>}
+      <ul className="run-component-grid" data-run-sections aria-label="Run of show" data-empty={!run.segments.length || undefined}>
+        {run.segments.map((seg, index) => <SegmentCard key={seg.key} seg={seg} index={index} selectedKeys={selectedKeys} onSelect={event => selectCard(seg.key, event)} onToggle={() => toggle(seg.key)} onOpen={from => openSection(seg.key, from)} />)}
+        <li className={!run.segments.length ? 'run-add-empty' : undefined}><button ref={addButton} type="button" data-guide="run-add-section" className="run-add-section-card" aria-label="Add a section" title="Add a section" aria-expanded={picker} onClick={() => setPicker(v => !v)}><PlusIcon size={22} />{!run.segments.length && <span>Add a section</span>}</button></li>
+      </ul>
+      {selectionBox && <div className="run-selection-box" aria-hidden="true" style={selectionBox} />}
+      {picker && <div ref={pickerPanel} data-run-picker onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); closePicker(); } }}>
+        <div className="run-picker-heading"><span>Add a section</span><button type="button" data-guide="run-picker-close" aria-label="Close section picker" onClick={closePicker}><CloseIcon size={14} /></button></div>
+        <ComponentPicker onAdded={closePicker} />
+      </div>}
+    </div>
+    <RunHeaderActions say={say} onOverlayChange={setImporting} />
+    {section && !editing && !importing && <SectionDialog seg={section} onSelect={setSelected} onClose={close} fallbackSongs={fallbackSongs}
+      onEditSong={(item, from) => setEditing({ segKey: section.key, item, origin: from })} />}
+    {editing && <RunSongEditor key={editing.item.key} item={editing.item} origin={editing.origin} fallbackSongs={fallbackSongs}
+      onSaved={patch => run.patchItem(editing.segKey, editing.item.key, patch)} onClosed={() => setEditing(null)} />}
+  </>;
 }

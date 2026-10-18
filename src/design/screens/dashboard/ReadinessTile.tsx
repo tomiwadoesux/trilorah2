@@ -92,6 +92,7 @@ function troubleWords(n: number): string {
 export function ReadinessTile({ className }: { className?: string }) {
   return (
     <Expandable
+      guideArea="readiness"
       className={className}
       title="Readiness"
       glyph={false}

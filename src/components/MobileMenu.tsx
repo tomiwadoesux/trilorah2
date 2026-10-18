@@ -85,7 +85,7 @@ export function MobileMenu({ preview = false }: { preview?: boolean }) {
   };
 
   return <>
-    <button ref={trigger} data-guide="mobile-tools" type="button" className="tri-header-control tri-header-remote tri-mobile-trigger"
+    <button ref={trigger} data-guide="mobile-tools" data-guide-area="mobile" type="button" className="tri-header-control tri-header-remote tri-mobile-trigger"
       aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} title="Mobile tools"
       onClick={() => { initialItem.current = 0; setOpen(value => !value); }}
       onKeyDown={event => {
@@ -97,7 +97,7 @@ export function MobileMenu({ preview = false }: { preview?: boolean }) {
     </button>
     {open && createPortal(<div ref={menu} id={menuId} className="tri-mobile-menu" role="menu" aria-label="Mobile tools" onKeyDown={menuKey}
       style={{ left: position?.left ?? 0, top: position?.top ?? 0, visibility: placed ? 'visible' : 'hidden' }}>
-      {FEATURES.map(({ id, label, description, Icon }) => <button key={id} type="button" role="menuitem" className="tri-mobile-menu__item" onClick={() => select(id)}>
+      {FEATURES.map(({ id, label, description, Icon }) => <button key={id} type="button" role="menuitem" data-guide={`mobile-${id}`} className="tri-mobile-menu__item" onClick={() => select(id)}>
         <Icon size={19} /><span><strong>{label}</strong><small>{description}</small></span><ChevronRightIcon size={12} />
       </button>)}
     </div>, document.body)}

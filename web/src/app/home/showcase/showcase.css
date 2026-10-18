@@ -1,0 +1,123 @@
+/*
+ * Product showcase rows on /home (and /hero, which shares HomeFeatureSections).
+ *
+ * Every row is <section class="sc-row sc-row-<id>"> with a header and a stage. The stage
+ * (<figure class="sc-stage">) holds up to two panels: .sc-back (the bigger screen, dim,
+ * fading to the page on the right and bottom) and .sc-front (crisp, above, overlapping
+ * the back's left part). A row places them by setting variables on `.sc-row-<id> .sc-stage`.
+ * All positions are % of the stage, so the composition scales with the page.
+ *
+ * Desktop and tablet (above 760px)              Phone (760px and below)
+ *   --sc-stage-ratio      1200 / 620              --sc-m-stage-ratio      10 / 11
+ *   --sc-back-left        30%                     --sc-m-back-left        18%
+ *   --sc-back-top         6%                      --sc-m-back-top         0%
+ *   --sc-back-bottom      0%                      --sc-m-back-bottom      0%
+ *   --sc-back-width       82%                     --sc-m-back-width       130%
+ *   --sc-front-left       0%                      --sc-m-front-left       0%
+ *   --sc-front-top        0%                      --sc-m-front-top        16%
+ *   --sc-front-width      38%                     --sc-m-front-width      70%
+ *   --sc-fade-x / -x-end  46% / 94%               --sc-m-fade-x / -x-end  46% / 94%
+ *   --sc-fade-y / -y-end  38% / 96%               --sc-m-fade-y / -y-end  38% / 96%
+ *   --sc-edge-fade        clamp(56px,12vw,200px)  --sc-m-edge-fade        40px
+ *   --sc-back-dim         .62 (brightness of the back panel, both layouts)
+ *
+ * The defaults live in the var() fallbacks below, so a row sets only what it changes.
+ * Desktop variables never reach the phone layout and phone variables never reach desktop;
+ * for a change at 1050px, restate the desktop variable in the row's own media query.
+ * Fades are % of the back panel's own width and height (where it turns transparent). On top
+ * of that, the stage's ::after paints the page colour over the last --sc-edge-fade before the
+ * viewport's right edge (z-index 1: over the back, under the front), so a back panel that
+ * runs off the page always dissolves before the edge instead of being cut by it.
+ *
+ * Text built in DOM: the stage and both panels are `container-type: inline-size`, so inside
+ * a panel 1cqw is 1% of that panel's width (elsewhere in the stage, of the stage). Size panel
+ * text in cqw and it scales with the panel at every width, phone included.
+ * Never `container-type: size` here: it cancelled CSS transitions in this codebase.
+ *
+ * Reveal: ShowcaseStage sets data-reveal="armed" on the stage only after hydration, only
+ * without reduced motion and only when the stage starts off screen; it flips to "shown" the
+ * first time 20% of the stage is in view. The back rises 24px, the front 32px 120ms later
+ * (900ms, --sc-ease). To animate something inside a panel, hide it only under
+ * `.sc-stage[data-reveal=armed]` and transition it under `.sc-stage[data-reveal=shown]`;
+ * never hide anything by default, and add no second observer.
+ */
+
+/* The app's interface font, for rows that build app UI in DOM (service, screens). */
+@font-face{font-family:"Showcase Geist";src:url("/brand/fonts/geist-variable.woff2") format("woff2");font-weight:100 900;font-display:swap}
+
+.sc-row{position:relative;padding:128px 0 40px;border-top:1px solid var(--home-line);overflow-x:clip}
+
+/* Header: headline left; paragraph, features and an optional link right. */
+.sc-header{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);gap:64px;align-items:start;margin-bottom:88px}
+.sc-copy{max-width:468px;padding-top:6px}
+.sc-paragraph{margin:0;font-size:18px;line-height:1.55;letter-spacing:-.28px;color:var(--home-muted);text-wrap:pretty}
+.sc-lead{color:var(--home-ink)}
+.sc-features-label{margin:34px 0 11px;font-size:12px;line-height:1.4;color:#6c7871}
+.sc-features{display:grid;gap:8px;margin:0;padding:0;list-style:none;font-size:13px;line-height:1.4;letter-spacing:-.05px;color:#cdd5d0}
+.home-page .sc-learn-more{margin-top:28px}
+
+/* Stage */
+.sc-stage{--sc-ease:cubic-bezier(.23,1,.32,1);position:relative;margin:0;aspect-ratio:var(--sc-stage-ratio,1200 / 620);container-type:inline-size}
+
+/* The back panel: large, dim, past the right edge, fading to the page right and bottom. */
+.sc-back{
+  --sc-fx:var(--sc-fade-x,46%);--sc-fx-end:var(--sc-fade-x-end,94%);--sc-fy:var(--sc-fade-y,38%);--sc-fy-end:var(--sc-fade-y-end,96%);
+  position:absolute;left:var(--sc-back-left,30%);top:var(--sc-back-top,6%);bottom:var(--sc-back-bottom,0%);width:var(--sc-back-width,82%);
+  overflow:hidden;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:#0e100f;
+  filter:brightness(var(--sc-back-dim,.62));
+  -webkit-mask-image:linear-gradient(90deg,#000 var(--sc-fx),transparent var(--sc-fx-end)),linear-gradient(180deg,#000 var(--sc-fy),transparent var(--sc-fy-end));
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,#000 var(--sc-fx),transparent var(--sc-fx-end)),linear-gradient(180deg,#000 var(--sc-fy),transparent var(--sc-fy-end));
+  mask-composite:intersect;
+}
+
+/* The front panel: crisp, above, hairline border and a soft deep shadow. */
+.sc-front{
+  position:absolute;z-index:2;left:var(--sc-front-left,0%);top:var(--sc-front-top,0%);width:var(--sc-front-width,38%);
+  overflow:hidden;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:#111312;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),0 10px 28px rgba(0,0,0,.35);
+}
+.sc-stage::after{
+  position:absolute;z-index:1;top:0;bottom:0;right:calc(50cqw - 50vw);width:var(--sc-edge-fade,clamp(56px,12vw,200px));
+  content:"";background:linear-gradient(90deg,transparent,var(--home-bg) 90%);pointer-events:none;
+}
+.sc-front::after{position:absolute;inset:0;content:"";border-radius:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,.04);pointer-events:none}
+.sc-back,.sc-front{container-type:inline-size}
+
+.sc-shot{display:block;width:100%;height:auto;max-width:none;user-select:none;-webkit-user-drag:none}
+
+/* Reveal, armed by ShowcaseStage only: no JS or reduced motion means nothing is ever hidden. */
+.sc-stage[data-reveal=armed] .sc-back{opacity:0;transform:translate3d(0,24px,0)}
+.sc-stage[data-reveal=armed] .sc-front{opacity:0;transform:translate3d(0,32px,0)}
+.sc-stage[data-reveal=shown] :is(.sc-back,.sc-front){transition:opacity 900ms var(--sc-ease),transform 900ms var(--sc-ease)}
+.sc-stage[data-reveal=shown] .sc-front{transition-delay:120ms}
+@media print{.sc-stage[data-reveal] :is(.sc-back,.sc-front){opacity:1;transform:none}}
+
+.sc-visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+@media(max-width:1050px){
+  .sc-row{padding:104px 0 32px}
+  .sc-header{gap:40px;margin-bottom:68px}
+  .sc-paragraph{font-size:17px}
+}
+
+@media(max-width:760px){
+  .sc-row{padding:76px 0 24px}
+  .sc-header{grid-template-columns:1fr;gap:22px;margin-bottom:44px}
+  .sc-copy{max-width:520px;padding-top:0}
+  .sc-paragraph{font-size:17px;line-height:1.5}
+  .sc-features-label{margin-top:26px}
+  .sc-features{grid-template-columns:1fr 1fr;gap:8px 18px}
+  .sc-stage{aspect-ratio:var(--sc-m-stage-ratio,10 / 11)}
+  .sc-stage::after{width:var(--sc-m-edge-fade,40px)}
+  .sc-back{
+    --sc-fx:var(--sc-m-fade-x,46%);--sc-fx-end:var(--sc-m-fade-x-end,94%);--sc-fy:var(--sc-m-fade-y,38%);--sc-fy-end:var(--sc-m-fade-y-end,96%);
+    left:var(--sc-m-back-left,18%);top:var(--sc-m-back-top,0%);bottom:var(--sc-m-back-bottom,0%);width:var(--sc-m-back-width,130%);border-radius:9px;
+  }
+  .sc-front{left:var(--sc-m-front-left,0%);top:var(--sc-m-front-top,16%);width:var(--sc-m-front-width,70%);border-radius:8px;box-shadow:0 22px 50px rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.35)}
+}
+
+@media(max-width:420px){
+  .sc-paragraph{font-size:16px}
+  .sc-features{font-size:12px;gap:8px 12px}
+}

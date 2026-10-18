@@ -9,9 +9,11 @@
 .preaching-card__header:hover > svg { color:#8fd3c0; }
 .preaching-card__title { color:var(--tri-ink); font-size:calc(var(--tri-size-eyebrow) + 1.5px); line-height:18px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; }
 .preaching-card__subtitle { margin-top:6px; font-size:11px; line-height:16px; color:rgb(229 243 242 / .45); }
-.preaching-card__history { display:flex; flex-direction:column; flex:1; min-height:0; padding:0 16px 0 20px; }
-.preaching-card__history-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; cursor:text; }
-.preaching-card__sentences { display:flex; flex-direction:column; gap:16px; padding:2px 5px 4px 0; }
+.preaching-card__history { position:relative; display:flex; flex-direction:column; flex:1; min-height:0; padding:0 16px 0 20px; }
+.preaching-card__history-scroll { position:relative; display:flex; flex-direction:column; flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; cursor:text; }
+.preaching-card__sentences { display:flex; flex-direction:column; flex-shrink:0; gap:16px; margin-top:auto; padding:2px 5px 4px 0; }
+.preaching-card__quiet { position:absolute; top:0; right:0; left:0; overflow:hidden; pointer-events:none; transition:opacity 240ms var(--tri-ease-out, ease-out); }
+.preaching-card__quiet .tri-empty-mark { height:100%; }
 .preaching-card__sentences p { overflow-wrap:anywhere; font-size:15px; line-height:24px; font-weight:400; color:var(--tri-ink-muted); }
 .preaching-card__empty { font-size:13px; line-height:22px; color:var(--tri-ink-muted); }
 .preaching-card__live { flex-shrink:0; margin:18px 20px 0; padding-top:16px; border-top:1px solid rgb(229 243 242 / .12); }
@@ -114,6 +116,7 @@
  .transcript-reader__footer { font-size:10px; gap:10px; }
 }
 @media (prefers-reduced-motion:reduce) {
+ .preaching-card__quiet { transition:none; }
  .transcript-word { transition:none; }
  .transcript-word[data-reference-state] { animation:none; }
  .transcript-reference[data-pill], .transcript-command.tri-surface { animation:none; }

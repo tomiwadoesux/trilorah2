@@ -1,79 +1,89 @@
-# Trilorah launch content: 16 article drafts
+# Trilorah content library and first-year plan
 
-**Sixteen is a sensible first library for five months.** It is enough to introduce Trilorah and answer the main questions a volunteer faces before and during a service. It is not a requirement to turn every feature into an article. Small controls belong in in-app help, short reference pages, and release notes; complete jobs deserve articles.
+The article library contains **23 complete drafts**: 16 rebuilt introductions and guides, six feature stories, and a founder story based on the first volunteering experience shared in this conversation. The writing uses practical language and occasional sharp asides. Steps and recovery instructions stay clear.
 
-These are **16 written drafts**, not outlines. Start with the first six in the order below. Publish the remainder when each workflow and its visuals have been checked in the release build, then adjust the calendar using actual volunteer questions.
+The [website and launch review packet](website/README.md) adds full FAQ answers, About copy, welcome messages, a launch announcement and a short demo script. It also links the website/account terms and revised Privacy Policy drafts, with the remaining publication decisions recorded separately.
 
-## Audience and schedule
+Start with the [first-year publishing plan](brand-plan.md). It connects launch, product releases, volunteer questions, customer experiences and seasonal preparation to the right kind of writing. The [voice guide](TONE.md) keeps future pieces consistent with the founder's feedback.
 
-- **Confirmed primary reader:** church volunteers setting up and running services. Experienced operators and volunteer coordinators are secondary readers.
-- **Proposed dates requested by the user:** March–July 2026. The dates below are planning dates, **not records of articles having been published**. These drafts were prepared and source-reviewed on October 10, 2026. Move the dates if this plan is used for a future launch.
-- **Goal assumed:** help a new volunteer get from curiosity to a rehearsed first service, then build dependable preparation and handoff habits. No traffic, conversion, or ranking outcome is promised.
-- **Format:** concise website articles with task-focused screenshots, optional short captioned clips where movement matters, and links to the next useful guide.
-- **Brand direction:** calm, practical, and specific. Explain the next action and what success looks like. Avoid “magic,” unsupported accuracy claims, invented customer stories, and presenting incomplete settings as working features.
-- **Publication state:** nothing has been published, deployed, or scheduled in a CMS. Screenshots and clips are shot lists, not captured assets.
+All pieces are drafts. Source checks informed the writing; release walkthroughs, visuals and final publication review remain. Nothing has been published, deployed or scheduled. The original March–July 2026 proposed dates remain in the older article metadata as requested planning dates, never publication history. The new plan uses relative phases and real events.
 
-## Editorial calendar
+The current covered source uses **PolyForm Perimeter 1.0.1** following the founder's latest licence choice. Use **source-available** in current copy and check the [licensing scope](../legal/LICENSING.md): church use and internal customisation are permitted, while providing a competing product is restricted even if free. This supersedes the intervening Apache-2.0 choice for the current covered source without revoking valid earlier grants. Optional paid services remain undefined; do not invent plans or prices.
 
-All rows are **drafts**. The last column links to exact source evidence, visual directions, limitations, and the remaining publication check.
+## Read these first
 
-| Proposed date | Article | Intended reader | Question answered | Features covered | Visual plan and evidence |
-|---|---|---|---|---|---|
-| Mar 2, 2026 | [01 · Meet Trilorah: prepare the service, follow the sermon](articles/01-meet-trilorah.md) | New volunteer; team evaluating the app | What is Trilorah, and where do we start? | Libraries, run, preview/live, recognition | Annotated workspace + short optional recognition clip. [Notes](editorial-notes.md#01) |
-| Mar 5 | [02 · Your first service in Trilorah: a rehearsal checklist](articles/02-first-service-checklist.md) | First-time operator | What must I check before a service? | Outputs, run, content review, clear/restore, audio, .tri | One setup screenshot + reusable checklist. [Notes](editorial-notes.md#02) |
-| Mar 9 | [03 · Connect a microphone to Trilorah and check that it hears you](articles/03-connect-a-microphone.md) | Operator setting up listening | How do I verify the input and transcription? | Audio picker, listening, levels, transcript, phone audio | Audio picker + level/transcript crop; optional spoken check clip. [Notes](editorial-notes.md#03) |
-| Mar 13 | [04 · How Trilorah recognizes scripture during a sermon](articles/04-how-scripture-recognition-works.md) | Operator learning recognition | How do references and quotations become suggestions? | Spoken references, quotation evidence, catches, manual publication, recent speech | Reference → candidate → deliberate live action sequence. [Notes](editorial-notes.md#04) |
-| Mar 20 | [05 · Put the right content on the right screen in Trilorah](articles/05-connect-the-right-screens.md) | Operator connecting room screens | How do I assign and verify outputs? | Dashboard Outputs, jobs, displays, output preferences | Actual Outputs tile + real projected test slide. [Notes](editorial-notes.md#05) |
-| Mar 27 | [06 · Build an order of service your next volunteer can follow](articles/06-build-an-order-of-service.md) | Service planner/operator | How do segments, content, and notes fit together? | Add/reorder segments, queue material, notes, save | Run with example sections + one queue/note detail. [Notes](editorial-notes.md#06) |
-| Apr 7 | [07 · Prepare song lyrics that are easy to follow on Sunday](articles/07-prepare-song-lyrics.md) | Worship volunteer | How do I create, save, and present lyric sections? | Songs, editor, splits/reordering, online results, preview/send | Original sample lyrics in editor + saved section cards. [Notes](editorial-notes.md#07) |
-| Apr 17 | [08 · Add images and videos to Trilorah without confusing media and backgrounds](articles/08-use-images-and-videos.md) | Volunteer preparing visuals | How do I import, search, and use media? | Local import, Online, stock downloads, themes shelf, preview | Standalone image and the same image behind text; optional drag clip. [Notes](editorial-notes.md#08) |
-| Apr 29 | [09 · Find a Bible passage when you remember the words, not the reference](articles/09-find-scripture-from-a-phrase.md) | Operator following a sermon | Which scripture search should I use? | Reference search, phrase/topic search, typo correction, recent speech | Labeled search fields + reviewed result card. [Notes](editorial-notes.md#09) |
-| May 12 | [10 · Create an announcement slide or bring in a prepared presentation](articles/10-create-announcements-and-import-slides.md) | Volunteer preparing announcements | When should I use Quick slide or import a deck? | Quick slide, PPTX/PPT/ODP import, rendered pages, preview | Quick-slide form + actual imported pages. [Notes](editorial-notes.md#10) |
-| May 26 | [11 · Save a Trilorah service and move it to another computer](articles/11-save-and-transfer-a-service.md) | Volunteer handing off prepared work | What do save, open, import, and export do? | .tri contents, initial save/autosave, replacement, resource transfer | Package selection + open/import decision diagram. [Notes](editorial-notes.md#11) |
-| Jun 9 | [12 · Make scripture and lyrics readable from the back of the room](articles/12-make-projected-words-readable.md) | Volunteer styling content | How do I check readability in the room? | Themes, size, width/margins, dimness/blur/shadow, lyric splits | Matched before/after + in-room viewing photo. [Notes](editorial-notes.md#12) |
-| Jun 23 | [13 · Trilorah cannot hear the preacher: check the problem in three stages](articles/13-when-trilorah-cannot-hear-you.md) | Operator troubleshooting | Is the failure audio, transcription, or recognition? | Input status, levels, transcript, catches, notifications | Three-stage decision diagram + actual error example. [Notes](editorial-notes.md#13) |
-| Jul 7 | [14 · Teach a new Trilorah volunteer one complete service](articles/14-train-a-new-volunteer.md) | Volunteer coordinator | What should we teach and observe first? | Small rehearsal, preview/live, scripture shortcuts, guide preview, recovery | Practice run + guide choices; optional captioned demonstration. [Notes](editorial-notes.md#14) |
-| Jul 17 | [15 · Use a preacher sound check and review missed scripture](articles/15-preacher-sound-check-and-review.md) | Regular operator/preacher team | How do we review and teach specific mistakes? | Profiles, sound check, verified corrections, misses, vocabulary | Sound-check screen + synthetic correction example. [Notes](editorial-notes.md#15) |
-| Jul 28 | [16 · Turn a service programme into a run you can rehearse](articles/16-turn-a-programme-into-a-service.md) | Volunteer receiving a programme | How do I scan/paste a plan and finish preparation? | Programme scan/paste, row review, run content, schedule, .tri | Synthetic programme → reviewed rows → finished run. [Notes](editorial-notes.md#16) |
+- [Website and launch copy](website/README.md): the new page drafts, first-use messages, launch script and review order.
+- [Why I started Trilorah](stories/23-why-i-started-trilorah.md): the founder's first experience with an operator queuing verses, identifying quotations and preparing songs on the spot.
+- [Meet Trilorah](articles/01-meet-trilorah.md): what the app does and how a volunteer should begin.
+- [Your phone has been promoted](future-features/17-mobile-remote.md): a feature introduction with the new voice, a real use case and pairing conditions.
+- [First-year publishing plan](brand-plan.md): what to post when there is a launch, release, question or story worth telling.
 
-## Three useful content groups
+## The rebuilt original library
 
-1. **Get ready for a service:** 01 is the introduction; 02 is the practical starting page. Link to 03 for audio, 05 for screens, 06 for building the run, and 16 for starting from a programme. These reduce first-use uncertainty.
-2. **Follow what is happening:** 04 explains recognition; 07–10 cover lyrics, media, scripture search, and slides; 12 improves readability. These connect prepared material to deliberate presentation actions.
-3. **Help the next operator succeed:** 11 covers handoff, 13 troubleshooting, 14 training, and 15 recognition review. These support repeat use and team continuity.
+Make essential help available when its verified feature is available. The order below is a reading path, not a reason to withhold ready instructions for months.
 
-Every article has a next-step link to another draft. Keep these relationships when assigning final website URLs. Relative Markdown links currently support review in this folder; they are not final website routes.
+| No. | Draft | Reader's question | Main role |
+| --- | --- | --- | --- |
+| 01 | [Meet Trilorah: ready for the next part of the service](articles/01-meet-trilorah.md) | What does Trilorah do, and where should our team begin? | Introduction |
+| 02 | [Your first Trilorah service starts with a rehearsal](articles/02-first-service-checklist.md) | What should I check before using Trilorah in a service? | Checklist |
+| 03 | [Connect a microphone and check it in Trilorah](articles/03-connect-a-microphone.md) | How do I select the right microphone and confirm that transcription works? | Tutorial |
+| 04 | [How Trilorah finds scripture while the preacher speaks](articles/04-how-scripture-recognition-works.md) | How do spoken references and quotations become scripture suggestions, and who controls projection? | Feature explanation |
+| 05 | [Get Trilorah onto the right screens](articles/05-connect-the-right-screens.md) | How do I assign an output to a connected display and verify it? | Tutorial |
+| 06 | [Build a service another volunteer can run](articles/06-build-an-order-of-service.md) | How do I organize segments, content, and notes for a service? | Tutorial |
+| 07 | [Get the lyrics right before the first song](articles/07-prepare-song-lyrics.md) | How do I add a song, organize its sections, and preview the words? | Tutorial |
+| 08 | [Add images and videos to Trilorah](articles/08-use-images-and-videos.md) | How do I import media, find online visuals, and decide how they should appear? | Tutorial |
+| 09 | [Find a Bible passage from the words you remember](articles/09-find-scripture-from-a-phrase.md) | How can I search by a phrase, person, event, or recent speech? | Tutorial |
+| 10 | [Make an announcement slide or import a presentation](articles/10-create-announcements-and-import-slides.md) | When should I use Quick slide, and how do I import an existing deck? | Tutorial |
+| 11 | [Save your service. Open it on the church computer.](articles/11-save-and-transfer-a-service.md) | What should I save, and what is the difference between opening and importing a .tri file? | Tutorial |
+| 12 | [Make your slides readable from the back row](articles/12-make-projected-words-readable.md) | Which Trilorah controls help projected words remain clear in the actual room? | Tutorial |
+| 13 | [No scripture appearing? Check sound, words, then recognition.](articles/13-when-trilorah-cannot-hear-you.md) | Is the problem the audio input, transcription, or scripture recognition? | Troubleshooting |
+| 14 | [Train a new volunteer by running a small service](articles/14-train-a-new-volunteer.md) | What should a new operator learn first, and how can we tell they are ready? | Training playbook |
+| 15 | [Help Trilorah recognise your preacher’s references](articles/15-preacher-sound-check-and-review.md) | How do sound checks, corrections, and teaching help without promising perfect recognition? | Tutorial |
+| 16 | [Turn the programme in your group chat into a service plan](articles/16-turn-a-programme-into-a-service.md) | How do I scan or paste a programme, review it, and finish the service preparation? | Workflow / reusable example |
 
-The mix intentionally favors useful beginner search content at launch. Articles 01 and 14 can also be shared as product and training stories; 02 and 16 can become practical checklists. There is no keyword-volume evidence behind this plan. The current search-result review and each article's distinct contribution are recorded in [research notes](research-notes.md).
+## Feature introductions and the launch story
 
-## What not to turn into a launch article yet
+| No. | Draft | Publish when |
+| --- | --- | --- |
+| 17 | [Your phone has been promoted.](future-features/17-mobile-remote.md) | Mobile remote passes paired-phone and desktop release checks. |
+| 18 | [The verse wasn't on the service plan.](future-features/18-scripture-catches.md) | Recorded reference and quotation demonstrations pass the release review. |
+| 19 | [Show me where.](future-features/19-in-app-guide.md) | Supported guide walkthroughs and setup recovery pass the release review. |
+| 20 | [You already typed the programme once.](future-features/20-programme-import.md) | The pictured text and scan examples pass review in the release build. |
+| 21 | [Tell Trilorah what it got wrong.](future-features/21-preacher-corrections.md) | A verified correction, replay, and local sound check pass release review. |
+| 22 | [The next volunteer needs more than a file name.](future-features/22-service-handoff.md) | The demonstrated package passes save, transfer, open, and import checks. |
+| 23 | [Why I started Trilorah](stories/23-why-i-started-trilorah.md) | Launch introduction is ready and the founder has reviewed this first-person draft |
 
-Do not commission a separate article for every settings row. Keep font choices, minor controls, keyboard references, and error explanations close to their relevant guide or in-app help.
+## What happens after launch
 
-Full cloud account/congregation sharing, phone remote operation, timers, and language configuration can receive dedicated guides after the relevant release workflow is exercised. Phone microphone setup is introduced in article 03, but a separate phone/network troubleshooting article should be driven by real demand.
+Use two substantial blog pieces a month as an initial production budget, then review it after four weeks. Release notes follow actual releases. Help follows actual need. A recurring volunteer question can justify improving an existing page instead of commissioning a duplicate article.
 
-Hold claims about fully automatic scripture projection, fully offline generated sermon notes, automatic giving setup, integration onboarding, and broad provider-key setup until the product actually supports and verifies the claimed path. Existing map entries or visible controls alone are not proof. The current guide companion is a preview with registered workflows, not a system proven to understand every possible instruction.
+The first-year queue covers preparation, scripture, phone control, training, handoffs, verified corrections and real customer experience. Dates move with release readiness. Customer stories need customers and their consent; seasonal posts need the relevant calendar and useful preparation time. An evaluation page about availability, supported platforms and setup requirements remains a brief until the release facts are verified.
 
-## Assets: enough to teach, not an image on every paragraph
+Each main story can yield a short captioned demonstration and a screenshot-led excerpt. The [18 prepared feature previews](future-features/launch-snippets.md) are reusable drafts, not published posts.
 
-Use actual release screenshots for UI. Crop to the relevant control while preserving enough surrounding interface for a beginner to find it. Label the app version and capture date in the editorial record. Use a short captioned recording when the change over time matters: cursor guidance, a drag/drop, recognition arriving, or preview becoming live.
+## Visuals and review
 
-The [editorial notes](editorial-notes.md) specify each shot and proposed alt text. They also distinguish required screenshots from optional clips. Use original sample lyrics, sample service names, and non-sensitive demo data. Do not expose API keys, private QR codes, personal transcript material, or real attendees in training assets. Do not generate fake product screenshots.
+Use actual product screenshots to locate controls, clips to show interactions, a diagram to explain connected devices, and a checklist to help someone rehearse. Do not add every component to every article. Specific shot lists are in the [editorial notes](editorial-notes.md) and [feature-story visual plan](future-features/README.md#components-and-visuals). These assets still need to be captured against the release build.
 
-## Publication and upkeep
+The rebuild corrected current control names and paths, including Add a section / Add items, programme Paste / Scan in the run footer, and the current preacher-teaching labels. Source evidence is recorded alongside remaining runtime checks. Scripture suggestions still need explicit publication; configured voice commands are a separate control.
 
-The current status is **source-reviewed draft**, not release-certified documentation. Before each publication, follow the article's workflow in the release build, capture the required visuals, check its internal links, and resolve the specific limitation in its editorial notes. This is especially important for hardware, conversion, cloud, and provider-dependent steps.
+## Working references
 
-When app behavior changes, recheck the affected articles against their listed task IDs and source files. The product-map checker can flag source drift; it does not rewrite or certify the copy. No background monitor or automatic publishing has been installed by this content task.
+- [Website and launch review packet](website/README.md)
+- [Privacy draft, applied source licence and publication checklist](../legal/README.md)
+- [Community installation and source-build docs](../community/README.md)
+- [Support information draft](../support/SUPPORT-PAGE.draft.md)
+- [Shared coding-agent product context](../../.agents/product-marketing.md)
+- [Website writing briefs and documentation priorities](WEBSITE-WRITING.md)
+- [Privacy and terms drafting brief](LEGAL-BRIEF.md)
+- [Voice guide](TONE.md) and [founder feedback record](voice-calibration.md)
+- [Linear, Stripe, Vercel, Notion and Slack research](brand-study-tech.md)
+- [Apple, Mailchimp, Basecamp, Monzo and Oatly research](brand-study-voice.md)
+- [Original search and competitor research](research-notes.md)
+- [Current headline alternatives](headline-options.md)
+- [Rewrite review for 01–08](rewrite-review-01-08.md) and [09–16](rewrite-review-09-16.md)
+- [Feature claims and release checks](future-features/evidence.md)
+- [Founder-story source record](stories/editorial-notes.md)
+- [Machine-readable manifest](manifest.json) and [validation record](validation.json)
 
-Review the calendar after the first few volunteer rehearsals. Promote a frequently asked troubleshooting topic, combine overlapping pieces, and delay an article about a workflow that is not ready. Sixteen is a starting commitment to useful coverage, not a quota to defend.
-
-Each published article can yield two smaller pieces without inventing extra claims: one short demonstration or annotated image, and one practical excerpt for the channels the church team already uses. Keep the complete instructions on the website and point those smaller pieces back to them. This plan does not authorize posting or messaging externally.
-
-## Review materials
-
-- [All article drafts](articles/)
-- [Visual shot lists, source evidence, and release checks](editorial-notes.md)
-- [Search-result research and information gain](research-notes.md)
-- [Ten headline options per article](headline-options.md)
-- [Machine-readable article manifest](manifest.json)
+The ten-brand research examines selected official pages and techniques. It is not an objective ranking or evidence that Trilorah will reproduce those brands' results. No recurring monitor, CMS integration or automatic publishing process was created.

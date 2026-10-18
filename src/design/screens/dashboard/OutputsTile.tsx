@@ -163,6 +163,7 @@ export function OutputsTile({ className }: { className?: string }) {
   return (
     <div className={cx('relative flex min-h-0 min-w-0', className)}>
       <Expandable
+        guideArea="outputs"
         className="min-h-0 min-w-0 flex-1"
         title="Outputs"
         glyph={false}
@@ -172,11 +173,11 @@ export function OutputsTile({ className }: { className?: string }) {
           ? <Panel empty title="outputs" onOpen={onOpen} className="min-h-0 w-full flex-1">
               <EmptyMark w={180} h={170} plain art={<DisplayConnectionArt reference={latestReference ?? undefined} />}
                 line="choose where the room sees it"
-                below={<div className="mt-3"><Button label="select display" onClick={onOpen} /></div>} />
+                below={<div className="mt-3"><Button guideId="outputs-select" label="select display" onClick={onOpen} /></div>} />
             </Panel>
           : <Face screens={screens} onRole={onRole} onOpen={onOpen} className="min-h-0 w-full flex-1" />}
       >
-        <div data-guide="outputs-settings">
+        <div data-guide="outputs-settings" data-guide-area="outputs">
           {rowsFor(screens, picker, onRole, onDisplay).map(({ row, onChange }) => (
             <SettingRow key={row.key} row={row} value={'value' in row ? row.value : undefined} onChange={onChange ?? (() => undefined)} />
           ))}

@@ -175,6 +175,33 @@ describe('verified review lifecycle', () => {
     expect(ledger.correctedUtterance('p2', 'rome and eight one')).toBeNull()
   })
 
+  it('a missed reference typed in with no service running never opens one', () => {
+    const ledger = makeLedger()
+    const item = ledger.addReviewItem({ preacherId: 'p1', ts: now, kind: 'miss', heard: 'turn with me to first john four eight', proposed: null })
+    expect(item.serviceId).toBeUndefined()
+    expect(ledger.hasOpenService('p1')).toBe(false)
+    expect(makeLedger().hasOpenService('p1')).toBe(false)
+    ledger.resolveReviewItem(null, item.id, 'amended', { book: '1 John', chapter: 4, verse: 8 })
+    expect(ledger.hasOpenService('p1')).toBe(false)
+    expect(ledger.load('p1').services).toHaveLength(0)
+    expect(ledger.correctedUtterance('p1', 'turn with me to first john four eight')).toBe('1 John 4:8')
+  })
+
+  it('a missed reference belongs to the open service, else the last one', () => {
+    const ledger = makeLedger()
+    const detection = candidate(ledger)
+    const during = ledger.addReviewItem({ preacherId: 'p1', ts: now, kind: 'miss', heard: 'rome and eight one', proposed: null })
+    expect(during.serviceId).toBe(detection.serviceId)
+    ledger.endService('p1')
+    const after = ledger.addReviewItem({ preacherId: 'p1', ts: now, kind: 'miss', heard: 'habba cook two two', proposed: null })
+    expect(after.serviceId).toBe(detection.serviceId)
+    expect(ledger.hasOpenService('p1')).toBe(false)
+    ledger.resolveReviewItem(null, after.id, 'amended', { book: 'Habakkuk', chapter: 2, verse: 2 })
+    expect(ledger.hasOpenService('p1')).toBe(false)
+    expect(ledger.load('p1').services).toHaveLength(1)
+    expect(ledger.load('p1').services[0]).toMatchObject({ detections: 0, corrections: 1 })
+  })
+
   it('preserves legacy totals but excludes silent confirmations from eligibility', () => {
     fs.writeFileSync(path.join(dir, 'old.json'), JSON.stringify({ preacherId: 'old', name: 'Old', samples: [], aliases: {}, mature: true, autoModeEnabled: true,
       services: Array.from({ length: 5 }, () => ({ date: '2025-01-01', detections: 100, confirmed: 100, corrections: 0 })) }))

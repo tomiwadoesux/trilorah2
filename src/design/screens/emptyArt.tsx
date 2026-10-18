@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { ExpandIcon } from '../../ui';
-import { createPatches } from './dottedSurface';
+import { DitheredPatches } from './DitheredPatches';
 import { useEmptyHover } from './useEmptyHover';
 import './dottedSurface.css';
 import './emptyArt.css';
@@ -46,9 +46,9 @@ export function EmptyMotion({ children, className = '', play = 'hover' }: {
   play?: 'always' | 'hover';
 }) {
   const root = useEmptyHover(play === 'hover');
-  const [patches] = useState(() => createPatches(false, true));
   return (
-    <div ref={root} style={patches} className={`tri-empty-surface ${play === 'hover' ? 'tri-play-hover ' : ''}${className}`}>
+    <div ref={root} className={`tri-empty-surface ${play === 'hover' ? 'tri-play-hover ' : ''}${className}`}>
+      <DitheredPatches />
       {children}
     </div>
   );

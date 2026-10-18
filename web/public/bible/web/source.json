@@ -1,0 +1,13 @@
+{
+  "version": "WEB",
+  "translation": "World English Bible",
+  "sourceId": "ENGWEBP",
+  "sourceUrl": "https://bible.helloao.org/api/ENGWEBP/books.json",
+  "licenseUrl": "https://ebible.org/Scriptures/details.php?id=engwebp",
+  "rights": "Public domain (no copyright).",
+  "retrieved": "2026-10-07",
+  "rowsSha256": "b9fa71e9ddc445b195e20cae7f01ce0ceaec720035504e62f2129a7268d02bbd",
+  "books": 66,
+  "chapters": 1189,
+  "verses": 31098
+}

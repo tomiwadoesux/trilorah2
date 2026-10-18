@@ -59,6 +59,7 @@ export function CallSheetOutputs({ screens, onRole, onOpen, className }: Outputs
                 <button
                   key={r}
                   type="button"
+                  data-guide={`outputs-role-${r}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onRole?.(s.id, r);

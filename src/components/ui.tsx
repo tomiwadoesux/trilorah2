@@ -20,9 +20,11 @@ interface ButtonProps {
   title?: string;
   /** Larger hit target for the actions operators press under pressure. */
   big?: boolean;
+  /** Stable anchor for the in-app guide (data-guide). */
+  guideId?: string;
 }
 
-export function Button({ label, onClick, variant = 'outline', disabled, title, big }: ButtonProps) {
+export function Button({ label, onClick, variant = 'outline', disabled, title, big, guideId }: ButtonProps) {
   const size = big ? 'px-5 py-2.5 text-sm' : 'px-3 py-1.5 text-xs';
   const look =
     variant === 'solid'
@@ -33,6 +35,7 @@ export function Button({ label, onClick, variant = 'outline', disabled, title, b
   return (
     <button
       type="button"
+      data-guide={guideId}
       onClick={onClick}
       disabled={disabled}
       title={title}
@@ -50,12 +53,15 @@ interface TextButtonProps {
   primary?: boolean;
   disabled?: boolean;
   title?: string;
+  /** Stable anchor for the in-app guide (data-guide). */
+  guideId?: string;
 }
 
-export function TextButton({ label, onClick, primary, disabled, title }: TextButtonProps) {
+export function TextButton({ label, onClick, primary, disabled, title, guideId }: TextButtonProps) {
   return (
     <button
       type="button"
+      data-guide={guideId}
       onClick={onClick}
       disabled={disabled}
       title={title}

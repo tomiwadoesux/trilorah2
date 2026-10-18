@@ -1,4 +1,4 @@
-import { usesWindowCapture } from '../../shared/audioInput'
+import { isNetworkSound, usesWindowCapture } from '../../shared/audioInput'
 
 /**
  * Local Whisper ASR — the free-tier ears. No API key, nothing leaves the
@@ -21,7 +21,7 @@ import { spawn, execFile, type ChildProcess } from 'node:child_process'
 import { app } from 'electron'
 import { getSetting } from '../data/settings'
 import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
-import { emitMicRequest, emitMicStop } from '../emitters'
+import { requestCapture, stopCapture } from './captureRoute'
 import { cleanWhisperStdout, explainWhisperFailure, whisperArgs } from './whisperOutput'
 import { downloadedWhisperBinary, ensureOfflineRuntime } from './offlineRuntime'
 
@@ -231,11 +231,11 @@ export function startWhisperLocal(
   }
 
   // No SoX → capture the mic in the app window (getUserMedia → IPC).
-  if (usesWindowCapture(deviceLabel) || !soxAvailable()) {
+  if (usesWindowCapture(deviceLabel) || isNetworkSound(deviceLabel) || !soxAvailable()) {
     console.log('🎙️ SoX not found — capturing microphone via the app window')
     usingWindowMic = true
     setAudioSink(accumulate)
-    emitMicRequest({ sampleRate: SAMPLE_RATE, deviceLabel })
+    requestCapture({ sampleRate: SAMPLE_RATE, deviceLabel })
     // The model is loaded and the mic has been asked for: this is the moment
     // the app is listening. Said here, for both the first-run download path
     // and the ordinary one, because the caller no longer says it on faith.
@@ -358,7 +358,7 @@ export function stopWhisperLocal(): void {
   }
   if (usingWindowMic) {
     clearAudioSink()
-    emitMicStop()
+    stopCapture()
     usingWindowMic = false
   }
   pending = Buffer.alloc(0)

@@ -65,6 +65,7 @@ function Step({ back, onClick, disabled }: { back?: boolean; onClick: () => void
         onClick();
       }}
       disabled={disabled}
+      data-guide={back ? 'outputs-previous' : 'outputs-next'}
       aria-label={back ? 'previous screen' : 'next screen'}
       className={cx(
         'grid size-6 place-items-center rounded-md transition-colors',

@@ -1,3 +1,4 @@
+import { DitheredPatches } from '../design/screens/DitheredPatches';
 import { useEffect, useId, useRef, useState, type MouseEventHandler, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useNotificationStore, type NotificationEntry } from '../stores/notificationStore';
@@ -5,7 +6,7 @@ import { openNoticeTarget } from '../lib/notificationNavigation';
 import { runNoticeAction } from '../lib/notificationActions';
 import { noticeDetail, type NoticeAction } from '../../shared/serviceNotice';
 import { usePopupPlacement } from '../ui/primitives/usePopupPlacement';
-import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from '../ui/icons';
+import { ArrowUpRightIcon, CheckIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon, CloseIcon } from '../ui/icons';
 import { NotificationBellArt } from '../design/screens/NotificationBellArt';
 import { useEmptyHover } from '../design/screens/useEmptyHover';
 import './notificationCenter.css';
@@ -90,10 +91,10 @@ export function NotificationCenter({ renderTrigger, statusMessage, portrait }: {
       </button>
     </div>}
     <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{top ? `${top.status === 'resolved' ? 'Resolved: ' : ''}${top.title}. ${top.detail}` : ''}</span>
-    {open && createPortal(<div ref={panel} id={id} role="dialog" aria-label="Service notifications" className="tri-notification-panel" data-keyboard={keyboard} data-empty={empty} data-orb={!!renderTrigger}
+    {open && createPortal(<div ref={panel} id={id} role="dialog" aria-label="Service notifications" data-guide-area="notifications" className="tri-notification-panel" data-keyboard={keyboard} data-empty={empty} data-orb={!!renderTrigger}
       style={{ left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? 'visible' : 'hidden' }}>
       <div className="tri-notification-heading"><div><strong>{renderTrigger ? 'A word from your orb' : 'notifications'}</strong>{!renderTrigger && !empty && <span>{active.length ? `${active.length} need attention` : 'all quiet for now'}</span>}</div>
-        <button type="button" data-close aria-label="Close notifications" onClick={() => { setOpen(false); trigger.current?.focus(); }}><CloseIcon size={16} /></button>
+        <button type="button" data-guide="notifications-close" data-close aria-label="Close notifications" onClick={() => { setOpen(false); trigger.current?.focus(); }}><CloseIcon size={16} /></button>
       </div>
       {renderTrigger && <div className="tri-orb-conversation-intro">
         <div className="tri-orb-conversation-portrait" aria-hidden="true">{portrait}</div>
@@ -101,11 +102,11 @@ export function NotificationCenter({ renderTrigger, statusMessage, portrait }: {
           <p>{history ? 'Our updates from this session, newest first.' : active.length ? `${active.length === 1 ? 'One thing needs' : `${active.length} things need`} a look. I’ll point you to the right controls.` : statusMessage?.text ?? 'No new issues need your attention.'}</p></div>
       </div>}
       <div className="tri-notification-tabs" role="group" aria-label="Notification filter">
-        <button type="button" aria-pressed={!history} onClick={() => setHistory(false)}>Active <span>{active.length}</span></button>
-        <button type="button" aria-pressed={history} onClick={() => setHistory(true)}>History <span>{entries.length + statusHistory.length}</span></button>
+        <button type="button" data-guide="notifications-active" aria-pressed={!history} onClick={() => setHistory(false)}>Active <span>{active.length}</span></button>
+        <button type="button" data-guide="notifications-history" aria-pressed={history} onClick={() => setHistory(true)}>History <span>{entries.length + statusHistory.length}</span></button>
       </div>
       <div className="tri-notification-list">
-        {empty && (renderTrigger ? <div className="tri-orb-conversation-empty"><span aria-hidden="true">{history ? '◷' : '✓'}</span>
+        {empty && (renderTrigger ? <div className="tri-orb-conversation-empty"><span aria-hidden="true">{history ? <ClockIcon size={24} /> : <CheckIcon size={24} />}</span>
           <p>{history ? 'We’re just getting started.' : 'Nothing else needs your attention.'}</p>
           <small>{history ? 'I’ll keep our updates here.' : 'I’ll let you know when something comes up.'}</small>
         </div> : <NotificationEmptyState history={history} />)}
@@ -126,6 +127,7 @@ export function NotificationCenter({ renderTrigger, statusMessage, portrait }: {
 export function NotificationEmptyState({ history = false }: { history?: boolean }) {
   const hover = useEmptyHover(true);
   return <div ref={hover} className="tri-empty-surface tri-notification-empty-state">
+    <DitheredPatches />
     <div className="tri-notification-empty-state__art" aria-hidden="true"><NotificationBellArt /></div>
     <h3>{history ? 'No notifications yet' : 'All quiet for now'}</h3>
     <p>{history ? 'Your service history will appear here.' : 'Service updates will appear here.'}</p>
@@ -149,14 +151,14 @@ export function NotificationCards({ entries, onNavigate }: { entries: Notificati
   };
   return <>
         {entries.map(e => <article key={`${e.id}:${e.episode}`} className="tri-notification-card" data-tone={e.status === 'resolved' ? 'resolved' : e.severity}>
-          <button type="button" className="tri-notification-link" onClick={() => navigate(e)}>
-            <span className="tri-notification-card-title"><span className="tri-notification-dot" aria-hidden /><strong>{e.title}</strong><span aria-hidden>↗</span></span>
+          <button type="button" data-guide="notification-open" className="tri-notification-link" onClick={() => navigate(e)}>
+            <span className="tri-notification-card-title"><span className="tri-notification-dot" aria-hidden /><strong>{e.title}</strong><span aria-hidden><ArrowUpRightIcon size={12} /></span></span>
             <span className="tri-notification-detail">{e.detail}</span>
             <span className="tri-notification-meta">{e.status === 'resolved' ? 'resolved · ' : e.dismissed ? 'dismissed · ' : ''}{new Date(e.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
           </button>
           {e.status === 'active' && <div className="tri-notification-actions">
-            {(e.actions?.length ? e.actions : [{ kind: 'navigate' as const, target: e.target, label: 'Open controls' }]).map((action, i) => <button type="button" key={`${action.label}:${i}`} disabled={busy !== null} onClick={() => void act(e, action)}>{busy === e.id && i === 0 ? 'checking…' : action.label}</button>)}
-            {!e.dismissed && <button type="button" className="tri-notification-dismiss" aria-label={`Dismiss ${e.title}`} onClick={() => useNotificationStore.getState().dismiss(e.id)}>dismiss</button>}
+            {(e.actions?.length ? e.actions : [{ kind: 'navigate' as const, target: e.target, label: 'Open controls' }]).map((action, i) => <button type="button" key={`${action.label}:${i}`} data-guide="notification-action" disabled={busy !== null} onClick={() => void act(e, action)}>{busy === e.id && i === 0 ? 'checking…' : action.label}</button>)}
+            {!e.dismissed && <button type="button" data-guide="notification-dismiss" className="tri-notification-dismiss" aria-label={`Dismiss ${e.title}`} onClick={() => useNotificationStore.getState().dismiss(e.id)}>dismiss</button>}
           </div>}
           {feedback?.id === e.id && <p className="tri-notification-feedback" role="status">{feedback.text}</p>}
         </article>)}

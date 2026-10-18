@@ -60,6 +60,8 @@ export interface ActionMenuProps {
   /** An arranged submenu was committed — the picks, in the order set. */
   onArrange?: (parent: ActionMenuItem, picked: ActionMenuItem[]) => void;
   className?: string;
+  /** Stable anchor prefix for the in-app guide: each row gets `${guideId}-${item.id}`. */
+  guideId?: string;
 }
 
 /** Gap between the trigger and the menu it opens. */
@@ -74,7 +76,7 @@ const BUBBLE = {
   boxShadow: '0 14px 36px rgb(0 0 0 / 0.75), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
 } as const;
 
-export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '' }: ActionMenuProps) {
+export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '', guideId }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   /* Ids drilled into. Empty = the top level. */
   const [path, setPath] = useState<string[]>([]);
@@ -246,6 +248,7 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
                         key={item.id}
                         type="button"
                         role="menuitem"
+                        data-guide={guideId ? `${guideId}-${item.id}` : undefined}
                         onClick={() => {
                           onSelect?.(item);
                           close();
@@ -274,6 +277,7 @@ export function ActionMenu({ trigger, groups, onSelect, onArrange, className = '
                       key={item.id}
                       type="button"
                       role="menuitem"
+                      data-guide={guideId ? `${guideId}-${item.id}` : undefined}
                       onClick={() => {
                         if (item.items) setPath((p) => [...p, item.id]);
                         else {

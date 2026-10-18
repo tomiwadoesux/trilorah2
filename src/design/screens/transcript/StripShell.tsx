@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { cx } from '../../../ui';
 import '../dottedSurface.css';
-import { dottedSurfaceStyles } from '../dottedSurface';
+import { DitheredPatches } from '../DitheredPatches';
 
 /*
  * The pill every transcript design sits in: the same frame, height, hover,
@@ -39,6 +39,7 @@ export function StripShell({
   return (
     <button
       type="button"
+      data-guide="transcript-open"
       onClick={onOpen}
       className={cx(
         'tri-dotted-surface @container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',
@@ -46,10 +47,11 @@ export function StripShell({
         'transition-colors hover:border-white/20',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tri-accent-yellow)]',
       )}
-      style={{ ...dottedSurfaceStyles.transcript, height, paddingBlock: '6px', paddingInline: padInline, ...style }}
+      style={{ height, paddingBlock: '6px', paddingInline: padInline, ...style }}
       title="live preacher transcript — click to open the dashboard, where the full transcript is"
       aria-label="Live preacher transcript. Opens the dashboard, where the full transcript is."
     >
+      <DitheredPatches />
       {dot && <span
         aria-label={live ? 'listening' : 'not listening'}
         className={cx(

@@ -1,4 +1,6 @@
-# Trilorah Cutout icons
+# Trilorah Cutout icons (archived)
+
+Production UI icons now use Nubo. See [ICONS.md](ICONS.md). This document describes the retained historical design study.
 
 Cutout is Trilorah’s original UI icon family: solid silhouettes, angular cuts, square terminals, and real transparent openings. The approved **Original Cutout** drawings are `bible`, `microphone`, `songs`, `search`, and `media`. Their geometry in `shared/cutout/core.ts` is fixed; the original study is in `src/design/entries/iconStudiesData.ts`. Use these five as the visual reference when extending the family.
 
@@ -15,14 +17,13 @@ The initial catalog contains 91 glyphs for the current interface. Add new meanin
 | `shared/cutout/types.ts` | Definitions, semantic parts, category names, and motion names. |
 | `shared/cutout/index.ts` | Combined registry, inferred icon names, SVG body generation, and standalone SVG generation. |
 | `shared/cutout/motion.css` | Shared opt-in motion and reduced-motion behavior. |
-| `src/ui/CutoutIcon.tsx` and `src/ui/icons.tsx` | Desktop React renderer and public component aliases. |
-| `web/src/components/icons.tsx` | Web React renderer and public component aliases. |
+| `src/ui/CutoutIcon.tsx` | Historical React renderer. |
 
 Choose the nearest existing definition module. A module may contain multiple categories; `category` describes the glyph’s meaning rather than its filename. The available categories are `Service`, `Actions`, `Navigation`, `Devices`, `Status`, and `Giving`.
 
 Keep geometry in the shared definitions. React aliases and generated SVG files must consume that geometry rather than contain separate copies. `markup` is trusted source code: never place user input, external SVG markup, scripts, or event handlers into it.
 
-`npm run icons:build` runs `scripts/build-cutout-icons.mts`. It writes `public/cutout-icons/<name>.svg`, `manifest.json`, `sprite.svg`, `motion.css`, `CREATE-ICON.md` (a copy of this guide), and `trilorah-cutout-icons.zip`. It also rebuilds the marked icon-template block in `public/mobile-remote.html`. The manifest preserves labels, categories, geometry, part names, motion hints, and origins.
+`npm run icons:build:cutout` runs `scripts/build-cutout-icons.mts`. It writes `public/cutout-icons/<name>.svg`, `manifest.json`, `sprite.svg`, `motion.css`, `CREATE-ICON.md` (a copy of this guide), and `trilorah-cutout-icons.zip`. It does not change production icons or the phone remote. The manifest preserves labels, categories, geometry, part names, motion hints, and origins.
 
 ## Drawing rules
 
@@ -101,7 +102,7 @@ The available motion hints are `lift`, `turn`, `pulse`, `sway`, `scan`, `press`,
 7. Rebuild the exported catalog and check types from the repository root:
 
    ```sh
-   npm run icons:build
+   npm run icons:build:cutout
    npx vitest run shared/cutout/cutout.test.ts
    npm run typecheck
    ```
@@ -203,7 +204,7 @@ off by default and preserve reduced-motion behavior.
 
 Use the shared registry for all rendering and exports. Add a public
 React alias only where useful, preserving existing aliases and sizes.
-Run npm run icons:build, npx vitest run shared/cutout/cutout.test.ts,
+Run npm run icons:build:cutout, npx vitest run shared/cutout/cutout.test.ts,
 and npm run typecheck, then inspect the icon
 beside the approved references at its real UI size and at 14, 16, 20,
 24, and 32 px on light and dark backgrounds. Check repeated instances

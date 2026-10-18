@@ -1,11 +1,11 @@
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk'
-import { usesWindowCapture } from '../../shared/audioInput'
+import { isNetworkSound, usesWindowCapture } from '../../shared/audioInput'
 import { spawn, type ChildProcess } from 'node:child_process'
 // post-recovery: ASR language is a setting (multilingual support)
 import { getSetting } from '../data/settings'
 // post-recovery: window-mic capture path (no SoX dependency)
 import { setAudioSink, clearAudioSink, soxAvailable } from './audioBus'
-import { emitMicRequest, emitMicStop } from '../emitters'
+import { requestCapture, stopCapture } from './captureRoute'
 import { toWordTimings, type WordTiming } from '../../shared/wordTimings'
 
 let usingWindowMic = false
@@ -188,7 +188,7 @@ function startMicrophoneCapture(): void {
   console.log(`🎙️ Starting microphone at ${SAMPLE_RATE}Hz...`)
   // No SoX on this machine → capture the mic in the app window instead
   // (getUserMedia → PCM chunks over IPC → audio bus → Deepgram).
-  if (usesWindowCapture(currentDeviceLabel) || !soxAvailable()) {
+  if (usesWindowCapture(currentDeviceLabel) || isNetworkSound(currentDeviceLabel) || !soxAvailable()) {
     console.log('🎙️ SoX not found — capturing microphone via the app window')
     usingWindowMic = true
     setAudioSink((chunk) => {
@@ -197,7 +197,7 @@ function startMicrophoneCapture(): void {
         lastAudioAt = Date.now()
       }
     })
-    emitMicRequest({ sampleRate: SAMPLE_RATE, deviceLabel: currentDeviceLabel })
+    requestCapture({ sampleRate: SAMPLE_RATE, deviceLabel: currentDeviceLabel })
     return
   }
   const spawnEnv = { ...process.env }
@@ -265,7 +265,7 @@ export function stopDeepgram(): void {
   }
   if (usingWindowMic) {
     clearAudioSink()
-    emitMicStop()
+    stopCapture()
     usingWindowMic = false
   }
   if (deepgramConnection) {

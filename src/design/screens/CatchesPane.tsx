@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent } from 'react';
-import { CheckIcon, CloseIcon, cx, surface } from '../../ui';
+import { useScriptureMemoryStore, recallScripture } from '../../stores/scriptureMemoryStore';
+import { SaveScriptureButton } from './ScriptureTools';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type MouseEvent } from 'react';
+import { CloseIcon, TrashIcon, UndoIcon, cx, surface } from '../../ui';
 import { useEngine, type Proposal } from './engine';
 import { useProjector, type LiveItem } from './projector';
 import { useCatchStore } from '../../stores/catchStore';
-import { useSongListeningStore } from '../../stores/songListeningStore';
+import { useSongListeningStore, type HeardSong } from '../../stores/songListeningStore';
 import { catchEntries, nextInSet, spotlightIndex, type CatchEntry, type CatchKind } from '../../lib/catchSets';
 import { clockShare, type CatchClock } from '../../lib/catchClock';
-import { lyricScore } from '../../lib/songMatch';
+import { recentSongWords, type SongMatch } from '../../lib/songMatch';
+import { useSongMatches } from './songs/useSongMatches';
 import { songCards } from '../../../shared/songCards';
 import { EmptyMark } from './emptyArt';
 import { ScriptureQuoteArt } from './ScriptureQuoteArt';
@@ -101,6 +104,14 @@ export function CatchCountdown({ clock }: { clock: CatchClock }) {
   );
 }
 
+/** A double-click puts a verse live; it should not also select a word of it. */
+function noSelectOnDoubleClick(e: MouseEvent) {
+  if (e.detail > 1) e.preventDefault();
+}
+
+/** A double-click on a card's own buttons (✕, save) is theirs, never "live". */
+const fromButton = (e: MouseEvent) => !!(e.target as Element).closest('button');
+
 /** Hold a card's clock while the pointer or the keyboard is on it — and let
     go when the card goes, since a card that leaves from under a resting
     pointer never hears it leave. */
@@ -120,52 +131,6 @@ function useHoldHandlers(id: string, hold: (id: string, on: boolean) => void) {
 /* Songs                                                               */
 /* ------------------------------------------------------------------ */
 
-interface SongMatch {
-  song: { id: string; title: string; sections: { label: string; lines: string[] }[] };
-  section: number;
-  lines: string[];
-  label: string;
-  score: number;
-}
-
-/**
- * The songs in the library whose words match what the room is singing — the
- * newest words, so the match follows the song as it moves (lib/songMatch).
- * Loads the library only while song search is on.
- */
-function useSongMatches(active: boolean): SongMatch[] {
-  const engine = useEngine();
-  const [songs, setSongs] = useState<SongMatch['song'][]>([]);
-  useEffect(() => {
-    if (!active) return;
-    let alive = true;
-    const reload = () => {
-      void window.api?.songs?.list().then((list) => {
-        if (alive) setSongs(list.map((song) => ({ id: song.id, title: song.title, sections: song.sections.map((s) => ({ label: s.label, lines: s.lines })) })));
-      }).catch(() => undefined);
-    };
-    reload();
-    window.addEventListener('trilorah-package-imported', reload);
-    window.addEventListener('trilorah-library-changed', reload);
-    return () => {
-      alive = false;
-      window.removeEventListener('trilorah-package-imported', reload);
-      window.removeEventListener('trilorah-library-changed', reload);
-    };
-  }, [active]);
-  const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial]
-    .join(' ').split(/\s+/).slice(-16).join(' ');
-  return useMemo(() => {
-    if (!active) return [];
-    return songs
-      .flatMap((song) => song.sections.map((s, section) => ({ song, section, lines: s.lines, label: s.label, score: lyricScore(heard, s.lines.join(' ')) })))
-      .filter((m) => m.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .filter((m, i, all) => all.findIndex((a) => a.song.id === m.song.id) === i)
-      .slice(0, 4);
-  }, [active, songs, heard]);
-}
-
 function songItem(match: SongMatch): LiveItem {
   const card = songCards({ id: match.song.id, sections: match.song.sections })
     .find((c) => c.sectionIndex === match.section && c.offset === 0);
@@ -176,6 +141,8 @@ function songItem(match: SongMatch): LiveItem {
 
 function SongResults({ matches }: { matches: SongMatch[] }) {
   const projector = useProjector();
+  const engine = useEngine();
+  const clear = useSongListeningStore(state => state.clear);
   const send = (m: SongMatch) => {
     const item = songItem(m);
     projector.stage(item);
@@ -184,7 +151,7 @@ function SongResults({ matches }: { matches: SongMatch[] }) {
   const [top, ...rest] = matches;
   return (
     <section className="catch-songs" aria-label="songs heard">
-      <p className="catch-eyebrow"><span className="catch-songs__dot" aria-hidden />song search · listening</p>
+      <div className="flex items-center justify-between gap-2"><p className="catch-eyebrow"><span className="catch-songs__dot" aria-hidden />song search · listening</p>{matches.length > 0 && <button type="button" data-guide="catches-song-clear" className="text-xs text-white/50 hover:text-white" onClick={() => clear(recentSongWords(engine.spoken))}>clear results</button>}</div>
       {!top ? (
         <p className="catch-songs__waiting">listening for songs in your library</p>
       ) : (
@@ -199,19 +166,19 @@ function SongResults({ matches }: { matches: SongMatch[] }) {
             </div>
             <p className="catch-spot__lines">{top.lines.slice(0, 4).map((line, i) => <span key={i}>{line}</span>)}</p>
             <div className="catch-spot__foot">
-              <span className="catch-why">matched on what is being sung</span>
-              <button type="button" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live')}
+              <span className="catch-why">kept here until you clear or stop search</span>
+              <button type="button" data-guide="catches-song-live" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live')}
                 onClick={(e) => { e.stopPropagation(); send(top); }}>live</button>
             </div>
           </div>
           {rest.map((m) => (
-            <div key={m.song.id} className="catch-row" role="button" tabIndex={0} title="show it in the preview"
+            <div key={m.song.id} data-guide="catches-song-row" className="catch-row" role="button" tabIndex={0} title="show it in the preview"
               onClick={() => projector.stage(songItem(m))}
               onKeyDown={(e) => { if (e.key === 'Enter') projector.stage(songItem(m)); }}>
               <span className="catch-pill is-song">song</span>
               <span className="catch-row__title">{m.song.title}</span>
               <span className="catch-row__text">{m.label}</span>
-              <button type="button" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live is-small')}
+              <button type="button" data-guide="catches-song-live" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live is-small')}
                 onClick={(e) => { e.stopPropagation(); send(m); }}>live</button>
             </div>
           ))}
@@ -221,11 +188,46 @@ function SongResults({ matches }: { matches: SongMatch[] }) {
   );
 }
 
+/* A song heard without "search song" being pressed (owner, 2026-10-17):
+   offered over the verses, which stay where they are, until it is put up,
+   turned away, or a minute passes (songs/useHeardSongs). */
+function HeardSongs({ heard }: { heard: HeardSong[] }) {
+  const projector = useProjector();
+  const dropHeard = useSongListeningStore((state) => state.dropHeard);
+  const send = (m: SongMatch) => {
+    const item = songItem(m);
+    projector.stage(item);
+    void projector.send(item);
+    dropHeard(m.song.id, Date.now());
+  };
+  return (
+    <section className="catch-songs" aria-label="songs heard">
+      <p className="catch-eyebrow"><span className="catch-songs__dot is-heard" aria-hidden />song heard</p>
+      {heard.map(({ match: m }) => (
+        <div key={m.song.id} data-guide="catches-song-row" className="catch-row" role="button" tabIndex={0} title="show it in the preview"
+          onClick={() => projector.stage(songItem(m))}
+          onKeyDown={(e) => { if (e.key === 'Enter') projector.stage(songItem(m)); }}>
+          <span className="catch-pill is-heard">song</span>
+          <span className="catch-row__title">{m.song.title}</span>
+          <span className="catch-row__text">{m.label}</span>
+          <button type="button" data-guide="catches-dismiss" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x is-small')} aria-label="dismiss" title="not this song"
+            onClick={(e) => { e.stopPropagation(); dropHeard(m.song.id, Date.now()); }}>
+            <CloseIcon size={10} />
+          </button>
+          <button type="button" data-guide="catches-song-live" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live is-small')}
+            onClick={(e) => { e.stopPropagation(); send(m); }}>live</button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Scripture                                                           */
 /* ------------------------------------------------------------------ */
 
 interface Acts {
+  error: string;
   hold: (id: string, on: boolean) => void;
   select: (p: Proposal) => void;
   live: (entry: CatchEntry<Proposal>, p: Proposal) => void;
@@ -238,38 +240,17 @@ function Spotlight({ entry, clock, leaving, acts }: { entry: CatchEntry<Proposal
   const p = entry.current;
   const holdHandlers = useHoldHandlers(p.id, acts.hold);
   const why = whyOf(p);
-  let n = 0;
   return (
     <div
       data-catch={p.id}
       data-leaving={leaving || undefined}
       className={cx('catch-spot', !p.missing && 'is-pressable', p.missing && 'is-missing')}
       onClick={() => acts.select(p)}
-      title={p.missing ? undefined : 'show it in the preview'}
+      onMouseDown={noSelectOnDoubleClick}
+      onDoubleClick={(e) => { if (!p.missing && !fromButton(e)) acts.live(entry, p); }}
+      title={p.missing ? undefined : 'show it in the preview · double-click to put it live'}
       {...holdHandlers}
     >
-      {entry.steps.length > 1 && (
-        <div className="catch-steps" aria-label={`${entry.steps.length} said together`}>
-          {entry.steps.map((step, i) => {
-            if (step.state === 'sent') {
-              n += 1;
-              return (
-                <span key={`sent-${i}`} className="catch-step is-sent" title="already on the wall">
-                  <CheckIcon size={11} /> {step.reference}
-                </span>
-              );
-            }
-            n += 1;
-            const on = step.item.id === p.id;
-            return (
-              <button key={step.item.id} type="button" className={cx('catch-step', on && 'is-current')} aria-pressed={on}
-                onClick={(e) => { e.stopPropagation(); acts.pick(entry, step.item.id); }}>
-                {n} · {step.item.reference}
-              </button>
-            );
-          })}
-        </div>
-      )}
       <div className="catch-spot__head">
         <KindPill kind={p.kind} />
         {p.alternates?.length ? <span className="catch-pill is-maybe" title="the engine heard something close to this too">not sure</span> : null}
@@ -287,56 +268,26 @@ function Spotlight({ entry, clock, leaving, acts }: { entry: CatchEntry<Proposal
         <div className="catch-or">
           <span className="catch-meta__dim">or</span>
           {p.alternates.map((a) => (
-            <button key={a} type="button" className="catch-alt" title={`it may have been ${a}`}
+            <button key={a} type="button" data-guide="catches-alternate" className="catch-alt" title={`it may have been ${a}`}
               onClick={(e) => { e.stopPropagation(); acts.swap(p, a); }}>{a}</button>
           ))}
         </div>
       ) : null}
       <div className="catch-spot__foot">
         <span className="catch-why" title={why}>{why}</span>
-        <button type="button" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x')} title="dismiss — the engine misheard" aria-label="dismiss"
+        {!p.missing && <SaveScriptureButton item={itemOf(p)} />}
+        <button type="button" data-guide="catches-dismiss" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x')} title="dismiss — the engine misheard" aria-label="dismiss"
           onClick={(e) => { e.stopPropagation(); acts.dismiss(entry, p); }}>
           <CloseIcon size={12} />
         </button>
         {!p.missing && (
-          <button type="button" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live')} title="put it on the projector"
+          <button type="button" data-guide="catches-live" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live')} title="put it on the projector"
             onClick={(e) => { e.stopPropagation(); acts.live(entry, p); }}>
             live
           </button>
         )}
       </div>
-      {clock && <CatchCountdown clock={clock} />}
-    </div>
-  );
-}
-
-function CatchRow({ entry, clock, leaving, acts }: { entry: CatchEntry<Proposal>; clock?: CatchClock; leaving: boolean; acts: Acts }) {
-  const p = entry.current;
-  const holdHandlers = useHoldHandlers(p.id, acts.hold);
-  const more = entry.waiting.length - 1;
-  return (
-    <div
-      data-catch={p.id}
-      data-leaving={leaving || undefined}
-      className={cx('catch-row', p.missing && 'is-missing')}
-      onClick={() => acts.select(p)}
-      title={p.missing ? undefined : 'show it in the preview'}
-      {...holdHandlers}
-    >
-      <KindPill kind={p.kind} />
-      <span className="catch-row__ref">{p.reference}</span>
-      {more > 0 && <span className="catch-meta__dim catch-row__more">+{more} with it</span>}
-      <span className="catch-row__text" title={p.missing ? undefined : p.slides[0]?.credit}>{p.missing ? 'not in the bible' : p.text}</span>
-      <button type="button" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x is-small')} aria-label="dismiss" title="dismiss — the engine misheard"
-        onClick={(e) => { e.stopPropagation(); acts.dismiss(entry, p); }}>
-        <CloseIcon size={10} />
-      </button>
-      {!p.missing && (
-        <button type="button" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live is-small')} title="put it on the projector"
-          onClick={(e) => { e.stopPropagation(); acts.live(entry, p); }}>
-          live
-        </button>
-      )}
+      {acts.error && <p className="scripture-tools__error" role="alert">{acts.error}</p>}
       {clock && <CatchCountdown clock={clock} />}
     </div>
   );
@@ -354,6 +305,7 @@ function useCatchActions(select: (p: Proposal) => void): Acts {
   const markSent = useCatchStore((s) => s.markSent);
   const pickInStore = useCatchStore((s) => s.pick);
   const { holdProposal, dismissProposal, swapProposal, lookup } = engine;
+  const [error, setError] = useState('');
   const pointed = useRef(new Set<string>());
   const hold = useCallback((id: string, on: boolean) => {
     if (on) pointed.current.add(id);
@@ -369,22 +321,24 @@ function useCatchActions(select: (p: Proposal) => void): Acts {
   }, [holdProposal]);
 
   return {
+    error,
     hold,
     select,
     live: (entry, p) => {
       if (p.missing) return;
+      setError('');
       const item = itemOf(p);
       const next = nextInSet(entry, p.id);
       projector.stage(item);
-      if (entry.steps.length > 1) markSent(entry.group, { reference: p.reference, arrivedAt: p.arrivedAt });
-      if (next) pickInStore(entry.group, next.id);
-      hold(p.id, false);
-      dismissProposal(p.id);
+      hold(p.id, true);
       /* The set reads on: once this one is up, the next one said waits in
          the preview, one press from the wall. */
       void projector.send(item).then(() => {
+        dismissProposal(p.id);
+        if (entry.steps.length > 1) markSent(entry.group, { reference: p.reference, arrivedAt: p.arrivedAt });
+        if (next) pickInStore(entry.group, next.id);
         if (next && !next.missing) projector.stage(itemOf(next, 'engine'));
-      });
+      }).catch(() => setError(`Could not put ${p.reference} live. Try again.`)).finally(() => hold(p.id, false));
     },
     dismiss: (entry, p) => {
       const next = nextInSet(entry, p.id);
@@ -415,45 +369,99 @@ function useCatchEntries() {
 }
 
 export function CatchesPane() {
-  const engine = useEngine();
   const projector = useProjector();
-  const songsOn = useSongListeningStore((s) => s.active);
-  const songs = useSongMatches(songsOn);
+  const engine = useEngine();
+  const songsOn = useSongListeningStore(s => s.active);
+  const songs = useSongMatches();
+  const heard = useSongListeningStore(s => s.heard);
   const entries = useCatchEntries();
-  const spot = spotlightIndex(entries);
-  const acts = useCatchActions((p) => {
-    if (!p.missing) projector.stage(itemOf(p));
-  });
+  const history = useScriptureMemoryStore(s => s.history);
+  const dismissMemory = useScriptureMemoryStore(s => s.dismiss);
+  const dismissMemories = useScriptureMemoryStore(s => s.dismissMany);
+  /* The card under the tabs shows one tab, or none (owner, 2026-10-18): a
+     press on its tab again, its ✕, or putting it live puts it away. A verse
+     the preacher says opens it; a verse going live does not — the LIVE pane
+     already shows that one. */
+  const [selected, setSelected] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  /* "clear all" hides everything caught or shown before this moment. "undo"
+     brings it back until the list is folded with "show fewer" (or the card
+     goes); only then is it removed for good. */
+  const [clearedAt, setClearedAt] = useState<number | null>(null);
+  const newestGroup = entries[0]?.group;
+  const newestAt = entries[0]?.newestAt;
+  /* Only a verse newer than any seen opens it — the newest going (live or
+     ✕) must not pop the one under it open. */
+  const seenArrival = useRef(0);
+  useEffect(() => {
+    if (!newestGroup || newestAt == null || newestAt <= seenArrival.current) return;
+    seenArrival.current = newestAt;
+    setSelected(newestGroup);
+  }, [newestGroup, newestAt]);
+  const acts = useCatchActions(p => { if (!p.missing) projector.stage(itemOf(p)); });
+  /* A set keeps one tab while it reads on: keyed by its group, sending its
+     first verse brings the next one up in the same card. */
+  const allTabs = [
+    ...entries.map(entry => ({ key: entry.group, item: itemOf(entry.current), at: entry.current.arrivedAt, newest: entry.newestAt, entry })),
+    ...history.filter(old => !entries.some(entry => entry.current.reference === old.reference && entry.current.version === old.version))
+      .map(old => ({ key: old.key, item: recallScripture(old), at: old.at, newest: old.at, entry: null })),
+  ].sort((a, b) => b.at - a.at);
+  type Tab = typeof allTabs[number];
+  const tabs = clearedAt == null ? allTabs : allTabs.filter(tab => tab.newest > clearedAt);
+  const chosen = tabs.find(tab => tab.key === selected);
+  const visible = expanded ? tabs : tabs.slice(0, 3);
 
-  const leaving = new Set(engine.leavingProposals);
-  const rows = entries.filter((_, i) => songsOn || i !== spot);
+  const forgetCleared = useRef(() => {});
+  forgetCleared.current = () => {
+    if (clearedAt == null) return;
+    for (const entry of entries) if (entry.newestAt <= clearedAt) entry.waiting.forEach(w => engine.dismissProposal(w.id));
+    dismissMemories(useScriptureMemoryStore.getState().history.filter(old => old.at <= clearedAt).map(old => old.key));
+  };
+  useEffect(() => () => forgetCleared.current(), []);
+  const fold = () => { forgetCleared.current(); setClearedAt(null); setExpanded(false); };
 
-  if (!songsOn && entries.length === 0) {
-    return (
-      <div className="catches-pane is-empty">
-        <EmptyMark w={120} h={100} plain art={<ScriptureQuoteArt />} play="hover" line="verses caught land here" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="catches-pane">
-      {songsOn && <SongResults matches={songs} />}
-      {!songsOn && spot >= 0 && (
-        <Spotlight key={`${entries[spot].current.id}:${entries[spot].current.arrivedAt}`} entry={entries[spot]} clock={engine.proposalClocks[entries[spot].current.id]}
-          leaving={leaving.has(entries[spot].current.id)} acts={acts} />
-      )}
-      {rows.length > 0 && (
-        <div className="catch-rows">
-          {(songsOn || spot >= 0) && <p className="catch-eyebrow">{songsOn ? 'verses heard' : 'also caught'}</p>}
-          {rows.map((entry) => (
-            <CatchRow key={entry.group} entry={entry} clock={engine.proposalClocks[entry.current.id]}
-              leaving={leaving.has(entry.current.id)} acts={acts} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  /* The second press of a double-click belongs to the double-click: it
+     must not put away the card the first press opened. */
+  const choose = (tab: Tab, e: MouseEvent) => {
+    if (e.detail > 1) return;
+    if (chosen?.key === tab.key) { setSelected(null); return; }
+    setSelected(tab.key);
+    if (!tab.entry?.current.missing) projector.stage(tab.item);
+  };
+  const goLive = (tab: Tab) => {
+    if (tab.entry) { if (!tab.entry.current.missing) acts.live(tab.entry, tab.entry.current); return; }
+    void projector.send(tab.item).then(() => setSelected(key => key === tab.key ? null : key));
+  };
+  return <div data-guide-area="catches" className="catches-pane">
+    {(tabs.length > 0 || clearedAt != null) && <div className="scripture-tabs" aria-label="Caught and previously live scriptures">
+      {visible.map(tab => <div key={tab.key} className={cx('scripture-tab', chosen?.key === tab.key && 'is-active')}>
+        <button type="button" className="scripture-tab__select" aria-pressed={chosen?.key === tab.key}
+          title={chosen?.key === tab.key ? `Close ${tab.item.reference} · double-click to put it live` : `Preview ${tab.item.reference} · double-click to put it live`}
+          onMouseDown={noSelectOnDoubleClick} onClick={(e) => choose(tab, e)} onDoubleClick={() => goLive(tab)}>
+          <span>{tab.item.reference}</span><small>{projector.live?.reference === tab.item.reference && projector.screen === 'live' ? 'live' : tab.entry ? KIND_WORD[tab.entry.current.kind] : 'shown'}</small>
+        </button>
+        <SaveScriptureButton item={tab.item} compact />
+        <button type="button" className="scripture-tab__close" aria-label={`Remove ${tab.item.reference}`} title="Remove from this list"
+          onClick={() => { if (tab.entry) acts.dismiss(tab.entry, tab.entry.current); else dismissMemory(tab.key); }}><CloseIcon size={12} /></button>
+      </div>)}
+      {expanded && clearedAt == null && tabs.length > 0 && <button type="button" className="scripture-tabs__more" title="Remove every scripture from this list. You can undo until you press show fewer."
+        onClick={() => setClearedAt(Date.now())}><TrashIcon size={12} />clear all</button>}
+      {clearedAt != null && <button type="button" className="scripture-tabs__more is-undo" title="Bring the cleared scriptures back"
+        onClick={() => setClearedAt(null)}><UndoIcon size={12} />undo<small>{allTabs.length - tabs.length} cleared</small></button>}
+      {(tabs.length > 3 || expanded) && <button type="button" className="scripture-tabs__more" aria-expanded={expanded}
+        onClick={() => expanded ? fold() : setExpanded(true)}>{expanded ? 'show fewer' : `+${tabs.length - 3}`}</button>}
+    </div>}
+    {songsOn && <SongResults matches={songs} />}
+    {!songsOn && heard.length > 0 && <HeardSongs heard={heard} />}
+    {chosen?.entry ? <Spotlight key={chosen.key} entry={chosen.entry} leaving={false} acts={acts} /> : chosen ?
+      <div className="catch-spot" title="double-click to put it live" onMouseDown={noSelectOnDoubleClick}
+        onDoubleClick={(e) => { if (!fromButton(e)) goLive(chosen); }}>
+        <div className="catch-spot__head"><span className="catch-pill">{projector.live?.reference === chosen.item.reference && projector.screen === 'live' ? 'live now' : 'previously live'}</span><span className="catch-meta catch-push">{chosen.item.version}</span></div>
+        <div className="catch-spot__ref">{chosen.item.reference}</div><p className="catch-spot__text">{chosen.item.text}</p>
+        <div className="catch-spot__foot"><SaveScriptureButton item={chosen.item} /><button type="button" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live')}
+          onClick={() => goLive(chosen)}>live</button></div></div> :
+      !songsOn && !heard.length ? <div className="catches-pane is-empty"><EmptyMark w={120} h={100} plain art={<ScriptureQuoteArt />} play="hover" line="verses caught land here" /></div> : null}
+  </div>;
 }
 
 /*
@@ -515,18 +523,19 @@ function PeekCard({ entry, more, clock, leaving, acts }: { entry: CatchEntry<Pro
         <p className="catch-spot__text">{p.missing ? 'not in the bible — nothing to show' : p.text}</p>
         <CatchCredit p={p} />
         <div className="catch-spot__foot">
-          <button type="button" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x')} title="dismiss — the engine misheard" aria-label="dismiss"
+          <button type="button" data-guide="catches-dismiss" className={cx(surface({ tone: 'ash', interactive: true }), 'catch-x')} title="dismiss — the engine misheard" aria-label="dismiss"
             onClick={(e) => { e.stopPropagation(); acts.dismiss(entry, p); }}>
             <CloseIcon size={12} />
           </button>
           {!p.missing && (
-            <button type="button" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live catch-grow')} title="put it on the projector"
+            <button type="button" data-guide="catches-live" className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), 'catch-live catch-grow')} title="put it on the projector"
               onClick={(e) => { e.stopPropagation(); acts.live(entry, p); }}>
               live
             </button>
           )}
         </div>
-        {clock && <CatchCountdown clock={clock} />}
+        {acts.error && <p className="scripture-tools__error" role="alert">{acts.error}</p>}
+      {clock && <CatchCountdown clock={clock} />}
       </div>
     </div>
   );

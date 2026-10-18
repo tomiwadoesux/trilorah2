@@ -1,4 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { loadScriptureChapter } from '../../lib/loadScriptureChapter';
+import { BOOKS } from '../../lib/books';
+import { buildVerseSlides } from '../../../shared/verseDisplay';
+import { fitRules } from '../../lib/slideRules';
+import { useScriptureMemoryStore } from '../../stores/scriptureMemoryStore';
+import type { ReadAlongGuard } from '../../../shared/readAlongGuard';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VerseSlide } from '../../../shared/verseDisplay';
 import { publishLiveItem } from '../../lib/publishLiveItem';
 import { withdrawRecognizedPreview } from '../../lib/recognitionWithdrawal';
@@ -73,6 +79,8 @@ export interface LiveItem {
   origin?: Origin;
   /** Identifies an automatically staged provisional speech suggestion. */
   recognitionSuggestionId?: string;
+  /** Guard for an automatic step; stripped after delivery. */
+  followFrom?: ReadAlongGuard;
 
   /** A song section's words, one slide's worth. What the projector draws. */
   lines?: string[];
@@ -126,6 +134,7 @@ interface ProjectorValue {
   promote: () => Promise<void>;
   clear: () => void;
   setSlide: (n: number) => void;
+  stepScripture: (delta: -1 | 1) => Promise<void>;
   /** Step within the live reading, clamped. Returns whether it moved. */
   stepSlide: (delta: -1 | 1) => boolean;
   setScreen: (s: ScreenState) => void;
@@ -148,6 +157,8 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const [live, setLive] = useState<LiveItem | null>(null);
   const [preview, setPreview] = useState<LiveItem | null>(null);
   const [slide, setSlideIndex] = useState(0);
+  const slideRef = useRef(0);
+  const previewRef = useRef<LiveItem | null>(null);
   const [screen, setScreen] = useState<ScreenState>('live');
   /*
    * The live item as of the last set, readable inside a callback, and the
@@ -177,11 +188,12 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     return off;
   }, []);
 
-  const stage = useCallback((item: LiveItem | null) => setPreview(item), []);
+  const stage = useCallback((item: LiveItem | null) => { previewRef.current = item; setPreview(item); }, []);
   const stageUnlessOperator = useCallback((item: LiveItem) => {
-    setPreview((cur) => (cur?.origin === 'operator' ||
+    setPreview((cur) => ((cur?.origin === 'operator' && cur.source !== 'scripture') ||
       (cur?.source === 'scripture' && cur.id === item.id && cur.version === item.version) ? cur : item));
   }, []);
+  useLayoutEffect(() => { previewRef.current = preview; }, [preview]);
   const withdrawRecognition = useCallback((suggestionId: string) => {
     setPreview(current => withdrawRecognizedPreview(current, suggestionId));
   }, []);
@@ -200,7 +212,8 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     if (!item && (liveRef.current?.source === 'background' || [...inFlight.current.keys()].some(key => key.startsWith('background:')))) return;
     if (item && (inFlight.current.has(spanKey(item)) || liveKey(item) === liveKey(liveRef.current))) return;
     liveRef.current = item;
-    setLive(item); setDelivery(n => n + 1); setSlideIndex(0);
+    if (item) useScriptureMemoryStore.getState().record(item);
+    setLive(item); stage(item); setDelivery(n => n + 1); slideRef.current = 0; setSlideIndex(0);
   }, []);
 
   /* Which send is the newest. A verse in an online Bible can wait on its
@@ -209,7 +222,7 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
   const sends = useRef(0);
   const deliver = useCallback(async (item: LiveItem, prepareTheme: boolean) => {
     const sent = ++sends.current;
-    if (prepareTheme) await prepareOutput.current?.();
+    if (prepareTheme && !item.followFrom) await prepareOutput.current?.();
     const key = spanKey(item);
     inFlight.current.set(key, (inFlight.current.get(key) ?? 0) + 1);
     let delivered: LiveItem | null;
@@ -222,59 +235,80 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
     }
     if (!delivered || sent !== sends.current) return;
     liveRef.current = delivered;
+    useScriptureMemoryStore.getState().record(delivered);
     setLive(delivered);
+    stage(delivered);
     setDelivery(n => n + 1);
     /* A new reading starts at its first slide. Carrying the old index over
        lands the congregation on slide 3 of a reading that has two. */
-    setSlideIndex(0);
+    slideRef.current = 0; setSlideIndex(0);
     /* Pushing lifts a clear, the way the app's own screen state machine
        does when content arrives — but deliberately NOT a black or a logo.
        Those are held on purpose and only a person lifts them. */
     if (item.source !== 'background') setScreen((s) => (s === 'clear' ? 'live' : s));
   }, []);
 
-  const send = useCallback((item: LiveItem) => deliver(item, true), [deliver]);
+  const send = useCallback((item: LiveItem) => deliver(item, false), [deliver]);
   const sendBackground = useCallback((item: LiveItem & { source: 'background' }) => deliver(item, false), [deliver]);
 
   const promote = useCallback(async () => {
-    if (preview) await send(preview);
-  }, [preview, send]);
+    if (preview) await deliver(preview, true);
+  }, [preview, deliver]);
 
   const clear = useCallback(() => {
     clearWall();
     liveRef.current = null;
     setLive(null);
-    setSlideIndex(0);
+    slideRef.current = 0; setSlideIndex(0);
   }, []);
 
-  const setSlide = useCallback((n: number) => setSlideIndex(Math.max(0, n)), []);
+  const setSlide = useCallback((n: number) => {
+    const next = Math.max(0, Math.min(n, (liveRef.current?.slides?.length ?? 1) - 1));
+    slideRef.current = next;
+    setSlideIndex(next);
+    window.api?.setLiveSlide?.(next);
+  }, []);
 
-  /* The page of the live reading the operator is on is the page every
-     output shows — before this the pager moved this panel and nothing else. */
-  useEffect(() => {
-    window.api?.setLiveSlide?.(slide);
-  }, [slide, delivery]);
+  const stepSlide = useCallback((delta: -1 | 1) => {
+    const next = slideRef.current + delta;
+    if (next < 0 || next >= (liveRef.current?.slides?.length ?? 0)) return false;
+    setSlide(next);
+    return true;
+  }, [setSlide]);
 
-  /*
-   * Returns whether it actually moved, so a caller can tell the difference
-   * between "advanced" and "already at the end" — which is what lets one
-   * key both step through a reading and fall through to the next thing in
-   * the run when the reading is done.
-   */
-  const stepSlide = useCallback(
-    (delta: -1 | 1) => {
-      const total = live?.slides?.length ?? 0;
-      if (total <= 1) return false;
-      let moved = false;
-      setSlideIndex((i) => {
-        const next = Math.min(total - 1, Math.max(0, i + delta));
-        moved = next !== i;
-        return next;
-      });
-      return moved;
-    },
-    [live],
-  );
+  // All scripture controls use the same queue. Fast presses remain ordered.
+  const navigation = useRef(Promise.resolve());
+  const stepScripture = useCallback((delta: -1 | 1) => {
+    const move = async () => {
+      const item = previewRef.current?.source === 'scripture' ? previewRef.current : liveRef.current;
+      if (item?.source !== 'scripture') return;
+      const match = item.reference?.match(/^(.+?) (\d+):(\d+)(?:[-–](\d+))?$/);
+      if (!match) return;
+      const same = liveKey(item) === liveKey(liveRef.current);
+      const page = (same ? slideRef.current : 0) + delta;
+      if (page >= 0 && page < (item.slides?.length ?? 0)) {
+        if (!same) await send(item);
+        setSlide(page);
+        return;
+      }
+      const book = BOOKS.indexOf(match[1]);
+      if (book < 0) return;
+      const chapter = Number(match[2]);
+      const version = item.version ?? 'KJV';
+      const result = await loadScriptureChapter(window.api, book, chapter, version);
+      if (result.error) throw new Error(result.error);
+      const first = Number(match[3]), last = Number(match[4] ?? match[3]);
+      const row = delta > 0 ? result.data.find(row => row.id > last) : [...result.data].reverse().find(row => row.id < first);
+      if (!row) return;
+      const verses = [{ verse: row.id, text: row.text }];
+      const reference = `${match[1]} ${chapter}:${row.id}`;
+      await send({ source: 'scripture', id: reference, label: reference, reference, version, text: row.text,
+        verses, slides: buildVerseSlides({ book: match[1], chapter, version }, verses, fitRules(verses)), origin: 'operator' });
+    };
+    const pending = navigation.current.then(move);
+    navigation.current = pending.catch(() => undefined);
+    return pending;
+  }, [send, setSlide]);
 
   const isLive = useCallback(
     (source: LiveSource, id: string) => live?.source === source && live.id === id,
@@ -303,11 +337,12 @@ export function ProjectorProvider({ children }: { children: ReactNode }) {
       clear,
       setSlide,
       stepSlide,
+      stepScripture,
       setScreen,
       isLive,
       isStaged,
     }),
-    [delivery, beforeSend, live, preview, slide, screen, stage, stageUnlessOperator, withdrawRecognition, send, sendBackground, promote, clear, setSlide, stepSlide, isLive, isStaged],
+    [delivery, beforeSend, live, preview, slide, screen, stage, stageUnlessOperator, withdrawRecognition, send, sendBackground, promote, clear, setSlide, stepSlide, stepScripture, isLive, isStaged],
   );
   return <ProjectorContext.Provider value={value}>{children}</ProjectorContext.Provider>;
 }

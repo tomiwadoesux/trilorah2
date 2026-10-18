@@ -1,21 +1,37 @@
 import { guideReadiness } from '../lib/guidePrerequisites';
 import guideIndex from 'virtual:trilorah-guide-index';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { CloseIcon, SearchIcon, ChevronRightIcon, CheckIcon } from '../ui';
+import { CloseIcon, SearchIcon, ChevronRightIcon, CheckIcon, CircleIcon, ArrowLeftIcon, ArrowUpIcon, ArrowUpRightIcon, SwapIcon } from '../ui';
 import { useAppStore } from '../stores/appStore';
 import { useLiveStore } from '../stores/liveStore';
 import { usePracticeStore } from '../stores/practiceStore';
-import { destinationFor, guideTasks, microphoneCheckComplete, searchGuideTasks, type GuideDestination, type GuideTask } from '../lib/productGuide';
-import { defaultGuideAnswers, microphoneTask, shortTitle, walkthroughFor, type GuideAnswers } from '../lib/guideWalkthroughs';
+import { destinationFor, guideTasks, microphoneCheckComplete, searchGuideTasks, tasksNear, tasksSince, troubleFor, type GuideDestination, type GuideTask } from '../lib/productGuide';
+import { defaultGuideAnswers, lineFor, microphoneTask, rephraseCount, shortTitle, walkthroughFor, type GuideAnswers } from '../lib/guideWalkthroughs';
+import { markDone, noteSeenVersion, readProgress } from '../lib/messengerProgress';
+import { useNotificationStore } from '../stores/notificationStore';
 import { guideElement, useGuideCursor } from './useGuideCursor';
+import { CONTEXT_GUIDE_EVENT, describeGuideControl, type ControlGuide } from '../lib/contextGuide';
+import { GuideContextMenu } from './GuideContextMenu';
 import './productGuide.css';
 
 const starters = ['audio.choose-input', 'songs.create-edit-slides', 'bible.lookup-preview-reference', 'media.find-online', 'media.import-preview-local', 'outputs.assign', 'run.build-edit'];
-function Triangle({ small = false }: { small?: boolean }) { return <svg width={small ? 15 : 25} height={small ? 17 : 29} viewBox="0 0 25 29" fill="none" aria-hidden="true"><path d="M2 2 22 12 7 25Z" fill="currentColor" stroke="#0b1815" strokeWidth="1.5" strokeLinejoin="round" /></svg>; }
+// The nerves: whichever area the pointer last crossed is what the Messenger assumes you are asking about.
+const lastArea = { current: null as string | null };
+if (typeof window !== 'undefined') window.addEventListener('pointermove', event => {
+  const area = (event.target instanceof Element ? event.target : null)?.closest<HTMLElement>('[data-guide-area]')?.dataset.guideArea;
+  if (area) lastArea.current = area;
+}, { passive: true, capture: true });
+const pick = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)];
+/** The Messenger: the brand triangle. The eye (circle) is driven by useGuideCursor when a ref is given. */
+function Triangle({ small = false, eye }: { small?: boolean; eye?: RefObject<SVGCircleElement | null> }) {
+  if (small) return <svg width={14} height={13} viewBox="0 0 28 25" fill="none" aria-hidden="true"><path d="M14 1.5 26.5 22.5H1.5Z" fill="currentColor" /><circle cx="20.25" cy="12" r="3.6" fill="#0b1815" /></svg>;
+  return <svg width={28} height={25} viewBox="0 0 28 25" fill="none" aria-hidden="true"><path d="M14 1.5 26.5 22.5H1.5Z" fill="currentColor" stroke="#0b1815" strokeWidth="1.5" strokeLinejoin="round" /><circle ref={eye} cx="20.25" cy="12" r="3.6" fill="#0b1815" stroke="currentColor" strokeWidth="0.9" /></svg>;
+}
 
 export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDestination) => string }) {
   const [open, setOpen] = useState(false);
+  const [context, setContext] = useState<(ControlGuide & { element: HTMLElement }) | null>(null);
   const [query, setQuery] = useState('');
   const [all, setAll] = useState(false);
   const [selected, setSelected] = useState<GuideTask | null>(null);
@@ -45,6 +61,14 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
   const [externalDisplay, setExternalDisplay] = useState<boolean | null>(null);
   const [stockState, setStockState] = useState('');
   const [mapRevision, setMapRevision] = useState(guideIndex.revision);
+  const [phrase, setPhrase] = useState(0);
+  const [area, setArea] = useState<string | null>(null);
+  const [seenVersion, setSeenVersion] = useState<string | null>(null);
+  const [progress, setProgress] = useState(() => readProgress());
+  const [whisper, setWhisper] = useState<{ key: string; line: string; task: GuideTask } | null>(null);
+  const noticeEntries = useNotificationStore(s => s.entries);
+  const mounted = useRef(Date.now());
+  const whisperTimer = useRef(0);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
@@ -53,12 +77,16 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
   const transcriptBaseline = useRef(0);
   const pickedInput = useRef(false);
   const dialogId = useId();
+  const contextId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const contextElement = useRef<HTMLElement | null>(null);
   const status = useAppStore(s => s.asrStatus);
   const detail = useAppStore(s => s.asrDetail);
   const input = useAppStore(s => s.settings?.micDeviceLabel);
   const practice = usePracticeStore(s => s.on);
   const lastLine = useLiveStore(s => s.lines.at(-1)?.id ?? 0);
   const bridge = typeof window !== 'undefined' && !!window.api?.startListening;
+  // Mid-service rule: while the room is listening the Messenger points and speaks, never presses.
+  const serviceOn = status === 'listening' && !practice;
   const voiceSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
   const steps = useMemo(() => selected ? walkthroughFor(selected, demo, answers) : [], [selected, demo, answers]);
   const current = steps[step];
@@ -78,7 +106,31 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
     import.meta.hot?.on('trilorah-guide-map-update', updated);
     return () => import.meta.hot?.off('trilorah-guide-map-update', updated);
   }, [walking, pauseGuide]);
-  const close = useCallback(() => { stop(); setOpen(false); setWalking(false); setVoice(false); trigger.current?.focus(); }, [stop]);
+  const close = useCallback(() => { stop(); setOpen(false); setWalking(false); setVoice(false); setContext(null); (contextElement.current?.isConnected ? contextElement.current : trigger.current)?.focus(); }, [stop]);
+  useEffect(() => {
+    const requested = (event: Event) => {
+      const element = (event as CustomEvent<unknown>).detail;
+      if (!(element instanceof HTMLElement)) return;
+      stop();
+      setSelected(null); setWalking(false); setDemo(false); setPaused(false); setError(''); setSetup(null); setWhisper(null);
+      setContext({ ...describeGuideControl(element), element });
+      setDock(element.getBoundingClientRect().left > innerWidth / 2 ? 'left' : 'right');
+      setOpen(true);
+    };
+    window.addEventListener(CONTEXT_GUIDE_EVENT, requested);
+    return () => window.removeEventListener(CONTEXT_GUIDE_EVENT, requested);
+  }, [stop]);
+  useEffect(() => {
+    if (!context || !open) return;
+    const element = context.element;
+    contextElement.current = element;
+    element.dataset.guideContextTarget = contextId;
+    let active = true;
+    void run({ id: 'context-control', title: context.title, prompt: context.prompt, target: `[data-guide-context-target="${contextId}"]`, action: 'point' }, false)
+      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : 'Reopen this control to point to it again.'); });
+    panel.current?.querySelector<HTMLElement>('h3')?.focus({ preventScroll: true });
+    return () => { active = false; cancel(); delete element.dataset.guideContextTarget; contextElement.current = null; };
+  }, [context, open, contextId, run, cancel]);
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -92,13 +144,13 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
     if (!open || walking) return;
     const keys = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); close(); }
-      if (event.key === 'Tab') {
+      if (event.key === 'Tab' && !context) {
         const controls = [...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input, textarea, summary, a[href]') ?? [])].filter(el => el.getClientRects().length);
         const first = controls[0], last = controls.at(-1);
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }
-      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !selected) {
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && !selected && !context) {
         const results = [...(panel.current?.querySelectorAll<HTMLButtonElement>('.product-guide-result') ?? [])];
         const index = results.indexOf(document.activeElement as HTMLButtonElement);
         event.preventDefault(); results[(index + (event.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length]?.focus();
@@ -106,10 +158,33 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
     };
     window.addEventListener('keydown', keys);
     return () => window.removeEventListener('keydown', keys);
-  }, [open, walking, selected, close]);
-  const results = useMemo(() => query.trim() ? searchGuideTasks(query).slice(0, 12) : all ? guideTasks : starters.map(id => guideTasks.find(task => task.id === id)!).filter(Boolean), [query, all]);
+  }, [open, walking, selected, context, close]);
+  const fresh = useMemo(() => tasksSince(seenVersion).filter(task => !progress.done[task.id]), [seenVersion, progress]);
+  const nearby = useMemo(() => tasksNear(area).filter(task => !progress.done[task.id]), [area, progress]);
+  const results = useMemo(() => {
+    if (query.trim()) return searchGuideTasks(query).slice(0, 12);
+    if (all) return guideTasks;
+    const seen = new Set<string>();
+    const ordered = [...fresh, ...nearby, ...starters.map(id => guideTasks.find(task => task.id === id)!).filter(task => task && !progress.done[task.id]), ...starters.map(id => guideTasks.find(task => task.id === id)!)].filter(task => task && !seen.has(task.id) && seen.add(task.id));
+    return ordered.slice(0, 7);
+  }, [query, all, fresh, nearby, progress]);
+  useEffect(() => { if (open) { setArea(lastArea.current); setSeenVersion(noteSeenVersion()); setProgress(readProgress()); } }, [open]);
+  useEffect(() => { setPhrase(0); }, [step, selected]);
+  useEffect(() => { if (complete && selected && !demo) { markDone(selected.id); setProgress(readProgress()); } }, [complete, selected, demo]);
+  // One line, unprompted, only when something goes wrong. Never while a walkthrough is running.
+  useEffect(() => {
+    const entry = noticeEntries.find(e => e.status === 'active' && !e.read && !e.dismissed && e.updatedAt >= mounted.current && e.severity !== 'info');
+    if (!entry || walking) return;
+    const trouble = troubleFor(entry);
+    if (!trouble) return;
+    const key = `${entry.id}:${entry.episode}`;
+    setWhisper(current => current?.key === key ? current : { key, line: pick(trouble.say), task: trouble.task });
+    clearTimeout(whisperTimer.current);
+    whisperTimer.current = window.setTimeout(() => setWhisper(current => current?.key === key ? null : current), 14000);
+  }, [noticeEntries, walking]);
+  useEffect(() => () => clearTimeout(whisperTimer.current), []);
 
-  useEffect(() => { if (open && !selected) search.current?.focus(); }, [open, selected]);
+  useEffect(() => { if (open && !selected && !context) search.current?.focus(); }, [open, selected, context]);
   useEffect(() => {
     // Keep the caret where the user put it when a field interaction advances us.
     if (open && selected && (document.activeElement === document.body || panel.current?.contains(document.activeElement) || !walking)) panel.current?.querySelector<HTMLElement>('h3')?.focus();
@@ -133,13 +208,13 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
           if (state === 'empty') throw new Error('No images for those words yet. Try a simpler subject.');
         }
       }
-      const actionable = ['click', 'focus', 'write'].includes(current.action);
-      const success = await run(current, perform && actionable);
+      const actionable = ['click', 'focus', 'write'].includes(current.action) && !serviceOn;
+      const success = await run({ ...current, prompt: lineFor(current, phrase) }, perform && actionable);
       if (generation.current !== token || !success) return;
       if (perform && actionable) advance();
       else { setManual(true); setWaiting(true); }
     } catch (reason) { if (generation.current === token) { setError(reason instanceof Error ? reason.message : 'Let’s try that step again.'); setManual(false); } }
-  }, [current, run, advance, cancel, cancelVoice]);
+  }, [current, run, advance, cancel, cancelVoice, serviceOn, phrase]);
   // A demo is explicitly opted into. Real workflows stop at each question.
   useEffect(() => {
     if (!open || !walking || !demo || paused || !current || error) return;
@@ -222,7 +297,7 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
     return cancelVoice;
   }, [open, walking, voice, paused, voiceSupported, current, demo, status, cancelVoice]);
 
-  const choose = (task: GuideTask) => { stop(); setSetup(null); setFollowup(''); setFollowupOpen(false); setSelected(task); setWalking(false); setDemo(false); setPaused(false); setError(''); setLocated(false); };
+  const choose = (task: GuideTask) => { stop(); setContext(null); setSetup(null); setFollowup(''); setFollowupOpen(false); setSelected(task); setWalking(false); setDemo(false); setPaused(false); setError(''); setLocated(false); };
   const begin = (isDemo: boolean, byHand = false) => {
     stop(); setSetup(null); setFollowupOpen(false); setDemo(isDemo); setStep(0); setPaused(false); setError(''); setManual(byHand); setSignal(false); setFreshText(false); pickedInput.current = false;
     setDemoMenu(false); setDemoInput(false); setDemoListening(false); setDemoSpoken(false); setWaiting(false); setWalking(true); setWalkSession(n => n + 1);
@@ -287,14 +362,16 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
   };
 
   return <>
+    <GuideContextMenu />
     <button ref={trigger} type="button" className="tri-header-control product-guide-trigger" aria-label="Open Trilorah guide" title="Trilorah guide" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? dialogId : undefined} onClick={() => open ? close() : setOpen(true)}><span aria-hidden="true" className="product-guide-info">i</span><span className="product-guide-trigger-label">guide</span></button>
+    {whisper && !walking && createPortal(<div className="product-guide-whisper" role="status" data-dock={open ? dock === 'right' ? 'left' : 'right' : dock}><span className="product-guide-mark"><Triangle small /></span><p>{whisper.line}</p><button type="button" onClick={() => { const task = whisper.task; setWhisper(null); choose(task); setOpen(true); }}>show me</button><button type="button" aria-label="Dismiss" onClick={() => setWhisper(null)}><CloseIcon size={11} /></button></div>, document.body)}
     {open && createPortal(<>
-      {!walking && <div className="product-guide-scrim" onClick={close} />}
+      {!walking && !context && <div className="product-guide-scrim" onClick={close} />}
       {cursor.rect && cursor.visible && <div aria-hidden="true" className="product-guide-highlight" style={{ left: cursor.rect.left - 3, top: cursor.rect.top - 3, width: cursor.rect.width + 6, height: cursor.rect.height + 6 }} />}
       <div ref={cursor.cursor} aria-hidden="true" className="product-guide-cursor" data-visible={cursor.visible}>
-        {cursor.pulse > 0 && <span key={cursor.pulse} className="product-guide-click" />}<Triangle /><span className="product-guide-cursor-name">trilorah</span>
+        {cursor.pulse > 0 && <span key={cursor.pulse} className="product-guide-click" />}<Triangle eye={cursor.eye} /><span className="product-guide-cursor-name">trilorah</span>
       </div>
-      {cursor.visible && walking && !setup && <div className="product-guide-subtitle" aria-live="polite" style={{ left: cursor.bubble.x, top: cursor.bubble.y }}><span>trilorah</span><p key={cursor.busy ? cursor.caption : current?.id}>{paused ? 'I’ll wait here.' : cursor.busy ? cursor.caption : current?.prompt ?? 'Ready when you are.'}</p></div>}
+      {cursor.visible && (walking || context) && !setup && <div className="product-guide-subtitle" aria-live="polite" style={{ left: cursor.bubble.x, top: cursor.bubble.y }}><span>trilorah</span><p key={cursor.busy ? cursor.caption : `${current?.id}:${phrase}`}>{context ? context.prompt : paused ? 'I’ll wait here.' : cursor.busy ? cursor.caption : current ? lineFor(current, phrase) : 'Ready when you are.'}</p></div>}
       {walking && demo && !complete && <section className="product-guide-demo" data-guide-demo data-typing-scope="local" aria-label="Microphone demo" data-dock={dock}>
         <div className="product-guide-demo-top"><span>microphone demo</span><span>simulated</span></div>
         <div className="product-guide-demo-controls"><button type="button" data-guide="demo-audio" aria-expanded={demoMenu} onClick={() => setDemoMenu(!demoMenu)}>audio <span>⌄</span></button>
@@ -304,19 +381,29 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
         <div className="product-guide-demo-transcript">{demoSpoken ? <p data-guide="demo-transcript">“Welcome. It’s good to be here together.”</p> : <div className="product-guide-wave" data-listening={demoListening} aria-label={demoListening ? 'Demo listening' : 'Demo stopped'}>{[12, 22, 34, 18, 28, 42, 20, 32, 16, 26, 12].map((h, i) => <span key={i} style={{ height: h }} />)}</div>}</div>
         <div className="product-guide-demo-bottom"><button type="button" data-guide="demo-listen" aria-pressed={demoListening} onClick={() => setDemoListening(!demoListening)}>{demoListening ? 'listening' : 'start listening'}</button><button type="button" data-guide="demo-speech" disabled={!demoListening} onClick={() => setDemoSpoken(true)}>try a sentence</button></div>
       </section>}
-      <aside ref={panel} id={dialogId} role="dialog" aria-modal={!walking} aria-label="Trilorah guide" data-typing-scope="local" className="product-guide-panel" data-centered={!walking} data-dock={dock}>
+      <aside ref={panel} id={dialogId} role="dialog" aria-modal={!walking && !context} aria-label="Trilorah guide" data-typing-scope="local" className="product-guide-panel" data-centered={!walking && !context} data-dock={dock}>
         <header className="product-guide-header"><span className="product-guide-mark"><Triangle small /></span><h2>trilorah guide</h2><span className="product-guide-presence">{cursor.busy ? 'showing you' : paused ? 'paused' : 'with you'}</span>
-          {walking && <button type="button" aria-label={`Move guide to the ${dock === 'right' ? 'left' : 'right'}`} title="Move guide" onClick={() => setDock(dock === 'right' ? 'left' : 'right')}>⇄</button>}<button type="button" aria-label="Close guide" onClick={close}><CloseIcon size={14} /></button>
+          {(walking || context) && <button type="button" aria-label={`Move guide to the ${dock === 'right' ? 'left' : 'right'}`} title="Move guide" onClick={() => setDock(dock === 'right' ? 'left' : 'right')}><SwapIcon size={14} style={{ transform: 'rotate(90deg)' }} /></button>}<button type="button" aria-label="Close guide" onClick={close}><CloseIcon size={14} /></button>
         </header>
         <div className="product-guide-scroll">
-          {!selected ? <>
-            <h3>What shall we do?</h3>
+          {context ? <>
+            <span className="product-guide-context-label">Guide to use</span>
+            <h3 tabIndex={-1}>{context.title}</h3>
+            <p className="product-guide-caption">{context.prompt}</p>
+            <div className="product-guide-choices">
+              {context.task && <button type="button" className="product-guide-primary" onClick={() => choose(context.task!)}>Related guide <ChevronRightIcon size={14} /></button>}
+              <button type="button" onClick={close}>Got it</button>
+            </div>
+            <button type="button" className="product-guide-browse" onClick={() => { stop(); setContext(null); setQuery(''); }}>Browse all guides <ArrowUpRightIcon size={12} /></button>
+            {error && <p role="status" className="product-guide-note">{error}</p>}
+          </> : !selected ? <>
+            <h3>{fresh.length && !query ? 'New since last time.' : nearby.length && !query ? 'Around here.' : 'What shall we do?'}</h3>
             <form onSubmit={event => { event.preventDefault(); panel.current?.querySelector<HTMLButtonElement>('.product-guide-result')?.focus(); }}><label className="product-guide-search"><SearchIcon size={15} /><input ref={search} value={query} onChange={event => setQuery(event.target.value)} placeholder="Ask me anything about Trilorah…" aria-label="Ask the Trilorah guide" autoComplete="off" />{query && <button type="button" aria-label="Clear guide search" onClick={() => { setQuery(''); search.current?.focus(); }}><CloseIcon size={12} /></button>}</label></form>
-            <div className="product-guide-results">{results.map(task => <button type="button" key={task.id} className="product-guide-result" onClick={() => choose(task)}><span>{shortTitle(task)}</span><ChevronRightIcon size={13} /></button>)}</div>
+            <div className="product-guide-results">{results.map(task => <button type="button" key={task.id} className="product-guide-result" onClick={() => choose(task)}><span>{shortTitle(task)}{!query && fresh.includes(task) ? <small className="product-guide-tag">new</small> : !query && progress.done[task.id] ? <small className="product-guide-tag" data-done>done</small> : null}</span><ChevronRightIcon size={13} /></button>)}</div>
             {!results.length && <p className="product-guide-note">Try “microphone”, “song”, or “screen”.</p>}
-            {!query && <button type="button" className="product-guide-browse" onClick={() => setAll(!all)}>{all ? 'back to essentials' : 'all topics'} <span>{all ? '↑' : '↗'}</span></button>}
+            {!query && <button type="button" className="product-guide-browse" onClick={() => setAll(!all)}>{all ? 'back to essentials' : 'all topics'} <span>{all ? <ArrowUpIcon size={12} /> : <ArrowUpRightIcon size={12} />}</span></button>}
           </> : <>
-            <div className="product-guide-breadcrumb"><button type="button" onClick={back}>← {walking ? shortTitle(selected) : 'all guides'}</button>{walking && <span>{Math.min(step + 1, steps.length)} / {steps.length}</span>}</div>
+            <div className="product-guide-breadcrumb"><button type="button" onClick={back}><ArrowLeftIcon size={12} /> {walking ? shortTitle(selected) : 'all guides'}</button>{walking && <span>{Math.min(step + 1, steps.length)} / {steps.length}</span>}</div>
             {!walking ? <>
               <h3 tabIndex={-1}>{shortTitle(selected)}</h3>
               {walkthroughFor(selected).length ? <><p className="product-guide-caption">How would you like to try it?</p><div className="product-guide-choices"><button type="button" className="product-guide-primary" onClick={() => begin(false)}>Show me <Triangle small /></button><button type="button" onClick={() => begin(false, true)}>I’ll do it</button></div>{microphoneTask(selected) && <button type="button" className="product-guide-demo-link" onClick={() => begin(true)}>▷ watch a demo <span>no microphone needed</span></button>}</> : selected.status !== 'wired' ? <p className="product-guide-caption">This walkthrough is still being prepared.</p> : <><p className="product-guide-caption">{selected.entry.replace(/;.*$/, '')}</p>{destinationFor(selected) && <div className="product-guide-choices"><button type="button" className="product-guide-primary" onClick={() => void locate()} disabled={cursor.busy}>{located ? 'Show me again' : 'Take me there'} <Triangle small /></button></div>}<details className="product-guide-details"><summary>quick steps</summary><ul>{selected.controls.map((control, i) => <li key={i}>{control}</li>)}</ul></details></>}
@@ -327,22 +414,24 @@ export function ProductGuide({ onNavigate }: { onNavigate: (destination: GuideDe
               {setup === 'stock' && <div className="product-guide-suggestions"><button type="button" onClick={() => choose(guideTasks.find(task => task.id === 'media.import-preview-local')!)}>Use a local picture</button></div>}
             </> : complete ? <><span className="product-guide-complete"><CheckIcon size={18} /></span><h3 tabIndex={-1}>{demo ? 'That’s how it works.' : microphoneTask(selected) ? 'I can hear you.' : 'You’re in the right place.'}</h3><p className="product-guide-caption">{demo ? 'Ready to try your real microphone?' : microphoneTask(selected) ? 'Sound and new words arrived. Check that the words are right.' : selected.id === 'songs.create-edit-slides' ? 'Add your words, then arrange your slides.' : selected.id === 'run.build-edit' ? 'Review your run before rehearsing. Programme text is only added when you press Add to run.' : selected.id.startsWith('outputs.') ? 'Check the physical screen before your service.' : 'Take it from here. I’m a click away.'}</p><div className="product-guide-choices"><button type="button" className="product-guide-primary" onClick={() => demo ? begin(false) : back()}>{demo ? 'Try in the app' : 'What’s next?'} <ChevronRightIcon size={14} /></button><button type="button" onClick={() => demo ? begin(true) : close()}>{demo ? 'Replay' : 'Done'}</button></div></> : <>
               <div className="product-guide-progress" aria-label={`Step ${step + 1} of ${steps.length}`}>{steps.map((s, n) => <span key={s.id} data-done={step > n} data-current={step === n} />)}</div>
-              <h3 tabIndex={-1}>{paused ? 'Your turn. I’ll wait.' : current.title}</h3>
-              <p className="product-guide-caption" aria-live="polite">{paused ? 'Pick up where we left off whenever you’re ready.' : current.prompt}</p>
+              <h3 tabIndex={-1} key={`${current.id}:${phrase}`}>{paused ? 'Your turn. I’ll wait.' : lineFor(current, phrase)}</h3>
+              {paused ? <p className="product-guide-caption" aria-live="polite">Pick up where we left off whenever you’re ready.</p> : current.say ? <button type="button" className="product-guide-rephrase" disabled={rephraseCount(current) < 2} onClick={() => setPhrase(n => n + 1)} aria-label="Say it another way"><SwapIcon size={11} /> another way <span>{(phrase % rephraseCount(current)) + 1}/{rephraseCount(current)}</span></button> : <p className="product-guide-caption" aria-live="polite">{current.prompt}</p>}
+              {!paused && serviceOn && <p className="product-guide-note">Service is on. I’ll point; you press.</p>}
+              {!paused && current.consequential && current.action === 'choose' && <p className="product-guide-note">This one goes to the wall. Your press, not mine.</p>}
               {!demo && current.field && !paused && <div className="product-guide-draft"><label htmlFor={`${dialogId}-words`}>{current.field === 'programme' ? 'your programme · example below' : current.field === 'reference' ? 'Bible reference' : current.field === 'search' ? 'search words' : 'your words'}</label><textarea id={`${dialogId}-words`} rows={current.field === 'programme' || current.field === 'lyrics' ? 4 : 2} value={answers[current.field]} onChange={event => setAnswers(value => ({ ...value, [current.field!]: event.target.value.slice(0, 12000) }))} disabled={cursor.busy} placeholder="Write what you’d like me to type…" />{current.field === 'search' && <div className="product-guide-suggestions">{['mountains at sunrise', 'open Bible', 'calm ocean'].map(text => <button type="button" key={text} disabled={cursor.busy} onClick={() => setAnswers(value => ({ ...value, search: text }))}>{text}</button>)}</div>}</div>}
               {!demo && current.id.startsWith('outputs-') && externalDisplay === false && <p className="product-guide-note">I don’t see an external screen yet. Connect it, then reopen the display picker.</p>}
               {!demo && current.id === 'stock-pick' && ['loading', 'empty', 'error'].includes(stockState) && <p className="product-guide-note">{stockState === 'loading' ? 'Images are loading…' : stockState === 'empty' ? 'Nothing found. Try a simpler subject.' : 'Search couldn’t load. Check the provider message.'} {stockState !== 'loading' && <button type="button" onClick={() => { stop(); setStep(1); setError(''); }}>Change search</button>}</p>}
               {!demo && current.action === 'input' && <div className="product-guide-input">{practice ? 'Practice input selected' : typeof input === 'string' && input ? input : 'System default'}</div>}
-              {!demo && current.action === 'check' && <div className="product-guide-checks"><span data-ok={signal}>{signal ? <CheckIcon size={12} /> : '○'} sound</span><span data-ok={freshText}>{freshText ? <CheckIcon size={12} /> : '○'} words</span></div>}
+              {!demo && current.action === 'check' && <div className="product-guide-checks"><span data-ok={signal}>{signal ? <CheckIcon size={12} /> : <CircleIcon size={12} />} sound</span><span data-ok={freshText}>{freshText ? <CheckIcon size={12} /> : <CircleIcon size={12} />} words</span></div>}
               {!demo && microphoneTask(selected) && !bridge && <p className="product-guide-note">Open the desktop app to use a real microphone.</p>}
               {!demo && microphoneTask(selected) && practice && <p className="product-guide-note">Choose a real input to check your microphone.</p>}
               {!demo && microphoneTask(selected) && status === 'error' && <p role="alert" className="product-guide-note">{detail || 'Check your microphone permission and speech service.'}</p>}
               {paused ? <div className="product-guide-choices"><button type="button" className="product-guide-primary" onClick={resumeGuide}>Continue <ChevronRightIcon size={14} /></button></div> : !demo && <div className="product-guide-choices">
-                {['click', 'focus', 'write'].includes(current.action) ? <><button type="button" className="product-guide-primary" disabled={cursor.busy} onClick={() => void showStep(true)}>{cursor.busy ? 'Showing you…' : current.action === 'write' ? 'Type this for me' : manual ? 'Do it for me' : 'Show me'} <Triangle small /></button><button type="button" disabled={cursor.busy} onClick={() => void showStep(false)}>{manual ? 'Point again' : 'I’ll do it'}</button>{current.action === 'write' && <button type="button" onClick={fieldDone} disabled={cursor.busy}>I’ve entered it</button>}</> : current.action === 'choose' ? <><button type="button" className="product-guide-primary" onClick={() => void showStep(false)} disabled={cursor.busy}>Show me where <Triangle small /></button><button type="button" onClick={fieldDone}>I’m ready to continue</button></> : current.action === 'input' ? <><button type="button" className="product-guide-primary" disabled={practice || !bridge} onClick={() => { pickedInput.current = false; advance(); }}>Use this input <ChevronRightIcon size={14} /></button><button type="button" onClick={() => { stop(); setStep(0); }}>Choose another</button></> : current.action === 'listen' ? <button type="button" onClick={() => void showStep(false)} disabled={cursor.busy}>Point me there <Triangle small /></button> : <button type="button" onClick={() => { stop(); setStep(0); setPaused(false); }}>Check my input</button>}
+                {['click', 'focus', 'write'].includes(current.action) ? serviceOn ? <><button type="button" className="product-guide-primary" disabled={cursor.busy} onClick={() => void showStep(false)}>{cursor.busy ? 'Pointing…' : 'Point me there'} <Triangle small /></button>{current.action === 'write' && <button type="button" onClick={fieldDone} disabled={cursor.busy}>I’ve entered it</button>}</> : <><button type="button" className="product-guide-primary" disabled={cursor.busy} onClick={() => void showStep(true)}>{cursor.busy ? 'Showing you…' : current.action === 'write' ? 'Type this for me' : manual ? 'Do it for me' : 'Show me'} <Triangle small /></button><button type="button" disabled={cursor.busy} onClick={() => void showStep(false)}>{manual ? 'Point again' : 'I’ll do it'}</button>{current.action === 'write' && <button type="button" onClick={fieldDone} disabled={cursor.busy}>I’ve entered it</button>}</> : current.action === 'choose' ? <><button type="button" className="product-guide-primary" onClick={() => void showStep(false)} disabled={cursor.busy}>Show me where <Triangle small /></button><button type="button" onClick={fieldDone}>I’m ready to continue</button></> : current.action === 'input' ? <><button type="button" className="product-guide-primary" disabled={practice || !bridge} onClick={() => { pickedInput.current = false; advance(); }}>Use this input <ChevronRightIcon size={14} /></button><button type="button" onClick={() => { stop(); setStep(0); }}>Choose another</button></> : current.action === 'listen' ? <button type="button" onClick={() => void showStep(false)} disabled={cursor.busy}>Point me there <Triangle small /></button> : <button type="button" onClick={() => { stop(); setStep(0); setPaused(false); }}>Check my input</button>}
               </div>}
               {manual && !cursor.busy && !error && <p className="product-guide-note">Your click. I’ll follow along.</p>}
             </>}
-            {!setup && <div className="product-guide-followup"><button type="button" className="product-guide-browse" onClick={() => setFollowupOpen(!followupOpen)}>{followupOpen ? 'Close follow-up' : 'Something else? Ask me'} <span>↗</span></button>{followupOpen && <><input aria-label="Guide follow-up" placeholder="e.g. connect a screen…" value={followup} onChange={event => setFollowup(event.target.value)} /><div className="product-guide-results">{followupResults.map(task => <button type="button" className="product-guide-result" key={task.id} onClick={() => choose(task)}>{shortTitle(task)}<ChevronRightIcon size={12} /></button>)}</div>{followup && !followupResults.length && <p className="product-guide-note">Try naming what you want to do: find an image, add a song, or prepare a service.</p>}</>}</div>}
+            {!setup && <div className="product-guide-followup"><button type="button" className="product-guide-browse" onClick={() => setFollowupOpen(!followupOpen)}>{followupOpen ? 'Close follow-up' : 'Something else? Ask me'} <span><ArrowUpRightIcon size={12} /></span></button>{followupOpen && <><input aria-label="Guide follow-up" placeholder="e.g. connect a screen…" value={followup} onChange={event => setFollowup(event.target.value)} /><div className="product-guide-results">{followupResults.map(task => <button type="button" className="product-guide-result" key={task.id} onClick={() => choose(task)}>{shortTitle(task)}<ChevronRightIcon size={12} /></button>)}</div>{followup && !followupResults.length && <p className="product-guide-note">Try naming what you want to do: find an image, add a song, or prepare a service.</p>}</>}</div>}
             {error && <div role="alert" className="product-guide-note">{error}{demo && <button type="button" className="product-guide-retry" onClick={resumeGuide}>Try again</button>}</div>}
           </>}
         </div>

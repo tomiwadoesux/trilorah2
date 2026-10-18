@@ -9,16 +9,18 @@ import {
   type ReactNode,
 } from 'react';
 import { buildVerseSlides, type VerseSlide } from '../../../shared/verseDisplay';
+import { loadScriptureChapter } from '../../lib/loadScriptureChapter';
 import { SLIDE_RULES, fitRules } from '../../lib/slideRules';
 import { isScreenState, type LiveItem, type ScreenState } from './projector';
 import type { Spoken } from './transcript/types';
+import { capitalizeScriptureNames } from '../../../shared/scriptureNames';
 import { confirmTranscriptCommand, recordTranscriptLine } from '../../lib/transcriptCommands';
 import type { ScriptureRecognition } from '../../../shared/types';
 import { removeWithdrawnProposals } from '../../lib/recognitionWithdrawal';
 import { CatchClocks, type CatchClock } from '../../lib/catchClock';
 import { usePracticeStore } from '../../stores/practiceStore';
 import { PRACTICE_SERMON_DEVICE } from '../../../shared/practiceSermon';
-import { catchKind, groupFor, type CatchKind, type SetTail } from '../../lib/catchSets';
+import { catchKind, type CatchKind, type SetTail } from '../../lib/catchSets';
 
 /*
  * The one door between this surface and the real engine.
@@ -84,9 +86,15 @@ interface Detection {
   /** A catch shown first in the bundled fallback, now in the online Bible
       it was heard in: the version its card is showing (main.ts). */
   replaces?: string;
+  /** The session moved on by itself rather than a reference being named. */
+  stepped?: boolean;
 }
 
+export interface BookQuestion { books: string[]; chapter: number; verse: number; endVerse?: number }
+
 export interface EngineValue {
+  bookQuestion: BookQuestion | null;
+  dismissBookQuestion: () => void;
   caps: EngineCaps;
   asr: AsrStatus;
   /** The engine's own sentence behind `asr` — "Error: add a Deepgram key…",
@@ -164,6 +172,9 @@ export interface Proposal {
   recognition?: ScriptureRecognition;
   /** How it was caught: said, read out, a named passage, or a story. */
   kind: CatchKind;
+  /** Not named by the preacher: the session moved on by itself — the end of
+      a verse read out, "next", "back". Raises no signal (CatchSignals). */
+  stepped?: boolean;
   /** Verses named one straight after another share a set (lib/catchSets). */
   group: string;
   arrivedAt: number;
@@ -208,7 +219,7 @@ const TRANSCRIPT_CAP = 200;
 /** Finished sentences kept for the read-along. It shows six; this is slack. */
 /** How many unanswered proposals are held. Each leaves after six seconds, so
     this only bites when a preacher names a long list in one breath. */
-const PROPOSAL_CAP = 8;
+const PROPOSAL_CAP = 50;
 /** How close, in the engine's 0–100 points, a runner-up must be to be offered. */
 const ALTERNATE_MARGIN = 15;
 
@@ -263,6 +274,8 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   const setTail = useRef<SetTail | null>(null);
   const setCount = useRef(0);
   const lastArrival = useRef(0);
+  const [bookQuestion, setBookQuestion] = useState<BookQuestion | null>(null);
+  const dismissBookQuestion = useCallback(() => setBookQuestion(null), []);
   const [screen, setScreenState] = useState<ScreenState>('live');
   const [latestReference, setLatestReference] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -376,11 +389,16 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       }),
     );
 
+    off.push(api.onEngineEvent?.('on-scripture-ambiguity', payload => {
+      const question = payload as BookQuestion;
+      if (question?.books?.length && question.chapter && question.verse) setBookQuestion(question);
+    }));
+
     off.push(api.onAudioLevel?.((n: number) => setLevel(n)));
 
     off.push(
       api.onTranscriptUpdate?.((text: string) => {
-        const line = String(text || '').trim();
+        const line = capitalizeScriptureNames(String(text || '').trim());
         if (!line) return;
         setTranscript((t) => (t.length < TRANSCRIPT_CAP ? [...t, line] : [...t.slice(1), line]));
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
@@ -417,6 +435,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
      */
     off.push(
       api.onVersePreview?.((d: Detection) => {
+        setBookQuestion(null);
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
         /* A push the operator made — a step, a go live, a catch sent — goes
            through the engine's preview on its way to the wall. It was not
@@ -449,9 +468,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
            — the end of one spoken list — keep the order they were said. */
         const arrivedAt = again?.arrivedAt ?? Math.max(Date.now(), lastArrival.current + 1);
         if (!again) lastArrival.current = arrivedAt;
-        const tail = setTail.current;
-        const group = again?.group ?? groupFor(kind, arrivedAt, tail, !!tail && proposalsNow.current.some((p) => p.group === tail.group),
-          `set-${++setCount.current}`);
+        const group = again?.group ?? `set-${++setCount.current}`;
         if (kind === 'said' && !again) setTail.current = { group, at: arrivedAt };
         const proposal: Proposal = {
           id: replaced?.id ?? `${d.recognition?.suggestionId ?? reference}@${version}`,
@@ -467,6 +484,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           verses,
           missing,
           kind,
+          ...(d.stepped ? { stepped: true } : {}),
           group,
           arrivedAt,
           // A card turned into its online text still says what was heard then.
@@ -480,6 +498,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
           !(x.reference === proposal.reference && x.version === proposal.version))].slice(0, PROPOSAL_CAP));
         /* Its six seconds start now — or start again, if it was already up. */
         startProposalClock(proposal.id);
+        clocksRef.current?.hold(proposal.id, true, 'tab');
       }),
     );
 
@@ -516,6 +535,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
        reading it now and this surface must agree. */
     off.push(
       api.onVerseDetected?.((d: Detection) => {
+        setBookQuestion(null);
         setCaps((c) => (c.resolver === 'yes' ? c : { ...c, resolver: 'yes' }));
         const reference = referenceOf(d);
         setLatestReference(reference);
@@ -651,8 +671,8 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       const { BOOKS } = await import('../../lib/books');
       const bookId = BOOKS.findIndex((b) => b.toLowerCase() === book.toLowerCase());
       if (bookId < 0) return null;
-      const res = await api.getChapter(bookId, chapter, version).catch(() => null);
-      if (!res?.success || !res.data?.length) return null;
+      const res = await loadScriptureChapter(api, bookId, chapter, version ?? 'KJV');
+      if (res.status !== 'idle' || !res.data.length) return null;
       const last = endVerse && endVerse >= verse ? endVerse : verse;
       const picked = res.data.filter((row) => row.id >= verse && row.id <= last);
       if (!picked.length) return null;
@@ -708,6 +728,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
+      bookQuestion, dismissBookQuestion,
       caps,
       asr,
       asrMessage,
@@ -733,6 +754,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
       onEngineLive,
     }),
     [
+      bookQuestion, dismissBookQuestion,
       caps,
       asr,
       asrMessage,
@@ -772,6 +794,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
  * it to say.
  */
 const DEAD: EngineValue = {
+  bookQuestion: null, dismissBookQuestion: () => undefined,
   caps: { bridge: false, db: false, outputs: false, resolver: 'no' },
   asr: 'idle',
   asrMessage: '',

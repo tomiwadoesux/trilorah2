@@ -17,6 +17,13 @@
 
 type Unsubscribe = () => void;
 
+/** Sender mode's view of itself: its name on the network and who is listening. */
+interface NetworkSoundStatus {
+  name: string;
+  connections: number;
+  error?: string;
+}
+
 /** Stock backgrounds — mirrors electron/media/stockImages.ts. */
 type StockKind = 'photo' | 'video';
 type StockProvider = 'pixabay' | 'pexels';
@@ -91,6 +98,8 @@ interface VerseDetection {
   version?: string;
   /** The operator's own push on its way through the preview — not a catch. */
   operatorPush?: boolean;
+  /** The session moved on by itself (a verse read to its end, "next", "back") rather than a reference named. */
+  stepped?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -533,7 +542,7 @@ interface WindowApi extends Partial<TriPackageApi> {
   mobileApprove(id:string,allow:boolean): Promise<boolean>;
   mobileQr(url:string): Promise<string>;
   /** `superseded`: a live press overtaken while its online chapter loaded — main did not put it up. */
-  mobileVerse(reference:string,version:string,live:boolean): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string;superseded?:boolean}>;
+  mobileVerse(reference:string,version:string,live:boolean,followFrom?:import('../../shared/readAlongGuard').ReadAlongGuard): Promise<{book:string;chapter:number;verse:number;endVerse?:number;text:string;verses:{verse:number;text:string}[];version:string;superseded?:boolean}>;
   onMobileRequest(callback:(request:{id:string;command:string;args:Record<string,unknown>;deadline:number})=>void): Unsubscribe;
   mobileReply(reply:{id:string;result?:unknown;error?:string}):void;
   remoteGenerateCode():Promise<string|null>;
@@ -568,6 +577,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   onNotesUpdated(callback: (snapshot: NotesSnapshot) => void): Unsubscribe;
   onExternalCommand(callback: (data: ExternalCommand) => void): Unsubscribe;
   /** Which page of the live reading every output should show. */
+  setReadAlong?(enabled: boolean): void;
+  onReadAlongNav?(callback: (direction: 'next' | 'previous') => void): Unsubscribe;
   setLiveSlide?(index: number): void;
   onLiveSlide?(callback: (index: number) => void): Unsubscribe;
 
@@ -577,6 +588,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   sendText(text: string): void;
   pushToLive(reference?: string, version?: string): void;
   openOutput(outputId?: string | number): void;
+  /** Ask to show a catch's signal on this window's edges or over the whole screen; main answers where it may go — never an output's screen. */
+  catchSignal?(signal: import('../../shared/catchSignal').CatchSignal, place: import('../../shared/catchSignal').SignalRequest): Promise<import('../../shared/catchSignal').SignalAnswer>;
 
   /* Presentations ---------------------------------------------------- */
   importPresentation(): Promise<any>;
@@ -623,9 +636,10 @@ interface WindowApi extends Partial<TriPackageApi> {
   savePreacherLearning?(id: string, patch: Partial<import('../../shared/preacherLearning').PreacherTeaching>): Promise<import('../../shared/preacherLearning').PreacherTeaching>;
   addMissedReference?(id: string, heard: string): Promise<ReviewItem>;
   useOfflineSpeech?(): Promise<{ success: boolean }>;
-  startPreacherSoundCheck?(id: string, promptIndex: number, deviceLabel?: string): Promise<import('../../shared/preacherLearning').SoundCheckState>;
-  getPreacherSoundCheck?(): Promise<import('../../shared/preacherLearning').SoundCheckState | null>;
-  stopPreacherSoundCheck?(sessionId: string): Promise<import('../../shared/preacherLearning').SoundCheckState | null>;
+  getTrainingOptions?(): Promise<{ service: import('../../shared/preacherLearning').TrainingEngine; online: boolean }>;
+  startPreacherTraining?(id: string, engine: import('../../shared/preacherLearning').TrainingEngine, books?: string[], deviceLabel?: string): Promise<import('../../shared/preacherLearning').TrainingState>;
+  getPreacherTraining?(): Promise<import('../../shared/preacherLearning').TrainingState | null>;
+  preacherTrainingAction?(sessionId: string, action: 'skip' | 'again' | 'undo' | 'stop', index?: number): Promise<import('../../shared/preacherLearning').TrainingState | null>;
   reportMicCaptureError?(message: string): void;
   setActivePreacher(preacherId: string): Promise<{ success: boolean; name?: string; error?: string }>;
   listPreacherProfiles(): Promise<PreacherProfileSummary[]>;
@@ -713,6 +727,17 @@ interface WindowApi extends Partial<TriPackageApi> {
   sendAudioLevel?(level: number): void;
   onMicRequest?(callback: (req: { sampleRate: number; deviceLabel?: string }) => void): Unsubscribe;
   onMicStop?(callback: () => void): Unsubscribe;
+  // Sound over the network (NDI®): sender mode and the audio picker's network inputs
+  listNetworkSounds?(): Promise<string[]>;
+  enterSenderMode?(): Promise<boolean>;
+  exitSenderMode?(): Promise<boolean>;
+  startNetworkSound?(): Promise<NetworkSoundStatus>;
+  stopNetworkSound?(): Promise<NetworkSoundStatus>;
+  sendNetworkSoundFrame?(frame: { sampleRate: number; channels: number; samples: number; data: ArrayBuffer }): void;
+  onNetworkSoundStatus?(callback: (status: NetworkSoundStatus) => void): Unsubscribe;
+  /** Trilorah Sender only (electron/sender/preload.ts): whether it opens with the computer. */
+  senderOpensAtLogin?(): Promise<boolean>;
+  setSenderOpensAtLogin?(open: boolean): Promise<boolean>;
   phoneMicStart(): Promise<import('../../shared/phoneMic').PhoneMicStatus>;
   phoneMicStop(): Promise<import('../../shared/phoneMic').PhoneMicStatus>;
   phoneMicApprove(allow: boolean): Promise<import('../../shared/phoneMic').PhoneMicStatus>;

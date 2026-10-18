@@ -105,3 +105,30 @@ describe('ScriptureSession — explicit references replace old context', () => {
     expect(shown).toEqual([1, 5])
   })
 })
+
+describe('ScriptureSession — a step is marked as one', () => {
+  it('marks the verses it moves to by itself, not the one named', () => {
+    const marks: (boolean | undefined)[] = []
+    const session = new ScriptureSession((d) => marks.push(d.stepped))
+    session.onReferenceDetected({ book: 'John', chapter: 3, verse: 16 })
+    session.advance()
+    session.goBack()
+    expect(marks).toEqual([undefined, true, true])
+  })
+})
+
+describe('ScriptureSession — a step left to auto advance', () => {
+  it('names a spoken next or back without moving, debounced like a command', () => {
+    const shown: number[] = []
+    const session = new ScriptureSession((d) => shown.push(d.verseStart))
+    session.onReferenceDetected({ book: 'John', chapter: 3, verse: 16 })
+    expect(session.navCommand('Next verse.')).toBe('next')
+    // The same words again a moment later: the partial and its final.
+    expect(session.navCommand('next verse')).toBeNull()
+    session.lastCommandTime -= session.COMMAND_DEBOUNCE_MS + 1
+    expect(session.navCommand('previous verse')).toBe('previous')
+    session.lastCommandTime -= session.COMMAND_DEBOUNCE_MS + 1
+    expect(session.navCommand('the earth also was corrupt before God')).toBeNull()
+    expect(shown).toEqual([16])
+  })
+})

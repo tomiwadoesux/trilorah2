@@ -322,6 +322,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
       onRequestClose={close}
       onClosed={onClosed}
       layer={layer}
+      guideArea="editor"
       attention={attention}
       overlay={closePrompt && open ? <SongClosePrompt
         onKeepEditing={() => setClosePrompt(false)}
@@ -338,6 +339,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
           <span className="song-entry-heading-icon"><MusicIcon size={20} /></span>
           <div className="song-editor-details">
             <input
+              data-guide="song-editor-title"
               value={title}
               onChange={(e) => {
                 setProblem(null);
@@ -350,6 +352,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
             />
             <div className="flex min-w-0 items-center gap-2">
               <input
+                data-guide="song-editor-author"
                 value={author}
                 onChange={(e) => {
                   setProblem(null);
@@ -375,13 +378,13 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
             <div className="song-entry-footer-status">
               {ask ? <>
                 <span>{ask.text}</span>
-                <button type="button" className="song-entry-secondary" onClick={doReset}>reset</button>
-                <button type="button" className="song-entry-secondary" onClick={() => setAsk(null)}>keep editing</button>
+                <button type="button" data-guide="song-reset-confirm" className="song-entry-secondary" onClick={doReset}>reset</button>
+                <button type="button" data-guide="song-keep-editing" className="song-entry-secondary" onClick={() => setAsk(null)}>keep editing</button>
               </> : <><CheckIcon size={12} /><span>Review and arrange before saving.</span></>}
             </div>
             <div className="song-entry-footer-actions">
-              {Boolean(title.trim() || author.trim() || sourceLyrics.trim()) && !ask ? <button type="button" className="song-entry-secondary" onClick={reset}>reset</button> : null}
-              <button type="button" className="song-entry-primary" disabled={!hasWords || !!ask} onClick={arrangeSlides}>
+              {Boolean(title.trim() || author.trim() || sourceLyrics.trim()) && !ask ? <button type="button" data-guide="song-reset" className="song-entry-secondary" onClick={reset}>reset</button> : null}
+              <button type="button" data-guide="song-arrange" className="song-entry-primary" disabled={!hasWords || !!ask} onClick={arrangeSlides}>
                 arrange slides <ArrowIcon size={14} />
               </button>
             </div>
@@ -390,20 +393,20 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
           <div className="song-entry-footer-status" aria-live="polite">
             {ask ? <>
               <span>{ask.text}</span>
-              <button type="button" className="song-entry-secondary" onClick={ask.kind === 'reset' ? doReset : doResplit}>
+              <button type="button" data-guide="song-ask-confirm" className="song-entry-secondary" onClick={ask.kind === 'reset' ? doReset : doResplit}>
                 {ask.kind === 'reset' ? 'reset' : 're-split'}
               </button>
-              <button type="button" className="song-entry-secondary" onClick={() => setAsk(null)}>keep editing</button>
+              <button type="button" data-guide="song-keep-editing" className="song-entry-secondary" onClick={() => setAsk(null)}>keep editing</button>
             </> : <span className={problem ? 'song-editor-error' : undefined}>
               {problem ?? (!title.trim() ? 'Add a song title to save.' : !hasWords ? 'Add lyrics to at least one slide.' :
                 isNew ? 'Not in your library yet' : dirty ? 'Unsaved changes' : 'All changes saved')}
             </span>}
           </div>
           <div className="song-entry-footer-actions">
-            {dirty && !ask ? <button type="button" className="song-entry-secondary" disabled={saving} onClick={reset}>
+            {dirty && !ask ? <button type="button" data-guide="song-reset" className="song-entry-secondary" disabled={saving} onClick={reset}>
               <ResetIcon size={14} /> reset
             </button> : null}
-            <button type="button" className="song-entry-primary" disabled={!canSave || !!ask} onClick={() => void save()}>
+            <button type="button" data-guide="song-save" className="song-entry-primary" disabled={!canSave || !!ask} onClick={() => void save()}>
               <CheckIcon size={14} />{saving ? 'saving…' : isNew ? 'save to library' : 'save changes'}
             </button>
           </div>
@@ -436,6 +439,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
             <div className="song-editor-tools">
               <button
                 type="button"
+                data-guide="song-resplit"
                 className="song-editor-tool"
                 disabled={!!ask || !hasWords}
                 title="Automatically split the lyrics into slides again"
@@ -443,7 +447,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
               >
                 <SparkleIcon size={14} /> re-split
               </button>
-              <button type="button" className="song-editor-tool song-editor-tool--accent" onClick={addCard}>
+              <button type="button" data-guide="song-add-slide" className="song-editor-tool song-editor-tool--accent" onClick={addCard}>
                 <PlusIcon size={14} /> add slide
               </button>
             </div>
@@ -474,6 +478,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
                   <div className="song-editor-card-heading">
                     <span className="song-editor-number">{String(i + 1).padStart(2, '0')}</span>
                     <input
+                      data-guide="song-card-label"
                       value={card.label}
                       onChange={(e) => patch(card.key, { label: e.target.value })}
                       placeholder="section name"
@@ -503,6 +508,7 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
 
                   <div className="song-editor-canvas">
                     <textarea
+                      data-guide="song-card-text"
                       ref={(el) => {
                         if (el) areas.current.set(card.key, el);
                         else areas.current.delete(card.key);
@@ -526,13 +532,13 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
                   </div>
 
                   <div className="song-editor-card-tools">
-                    <CardAction label="split here — the cursor’s line starts a new slide" text="split here" disabled={lines.length < 2} onClick={() => splitAt(i)}>
+                    <CardAction guideId="song-card-split" label="split here — the cursor’s line starts a new slide" text="split here" disabled={lines.length < 2} onClick={() => splitAt(i)}>
                       <SplitIcon size={14} />
                     </CardAction>
-                    <CardAction label="merge with the next slide" text="merge" disabled={i === cards.length - 1} onClick={() => change(mergeWithNext(cards, i))}>
+                    <CardAction guideId="song-card-merge" label="merge with the next slide" text="merge" disabled={i === cards.length - 1} onClick={() => change(mergeWithNext(cards, i))}>
                       <MergeIcon size={14} />
                     </CardAction>
-                    <CardAction label="duplicate this slide" text="duplicate" onClick={() => change(duplicateCard(cards, i))}>
+                    <CardAction guideId="song-card-duplicate" label="duplicate this slide" text="duplicate" onClick={() => change(duplicateCard(cards, i))}>
                       <CopyIcon size={14} />
                     </CardAction>
                   </div>
@@ -546,14 +552,14 @@ export function SongEditor({ session, open, origin, onSave, onDraft, onRequestCl
                       {lines.length ? `${lines.length} ${lines.length === 1 ? 'line' : 'lines'} · ${FIT_COPY[fit.fit]}` : 'empty slide'}
                     </span>
                     <div className="song-editor-order">
-                      <CardAction label="move earlier" disabled={i === 0} onClick={() => move(i, i - 1)}>
+                      <CardAction guideId="song-card-earlier" label="move earlier" disabled={i === 0} onClick={() => move(i, i - 1)}>
                         <ArrowIcon size={14} className="rotate-180" />
                       </CardAction>
-                      <CardAction label="move later" disabled={i === cards.length - 1} onClick={() => move(i, i + 1)}>
+                      <CardAction guideId="song-card-later" label="move later" disabled={i === cards.length - 1} onClick={() => move(i, i + 1)}>
                         <ArrowIcon size={14} />
                       </CardAction>
                       <span className="song-editor-action-divider" />
-                      <CardAction label="delete this slide" danger disabled={cards.length <= 1} onClick={() => change(deleteCard(cards, i))}>
+                      <CardAction guideId="song-card-delete" label="delete this slide" danger disabled={cards.length <= 1} onClick={() => change(deleteCard(cards, i))}>
                         <TrashIcon size={13} />
                       </CardAction>
                     </div>
@@ -575,8 +581,10 @@ function CardAction({
   disabled = false,
   danger = false,
   children,
+  guideId,
 }: {
   label: string;
+  guideId?: string;
   text?: string;
   onClick: () => void;
   disabled?: boolean;
@@ -586,6 +594,7 @@ function CardAction({
   return (
     <button
       type="button"
+      data-guide={guideId}
       title={label}
       aria-label={label}
       disabled={disabled}
@@ -624,10 +633,10 @@ function SongClosePrompt({ onKeepEditing, onKeep, onDiscard }: {
       <h2 id="song-close-title">Leave this song?</h2>
       <p id="song-close-description">This draft will be deleted after 30 minutes unless you return to edit and save it. You can also discard these changes now.</p>
       <div className="song-close-actions">
-        <button type="button" className="song-entry-primary" onClick={onKeep}>leave and keep draft temporarily</button>
-        <button type="button" className="song-entry-secondary song-close-discard" onClick={onDiscard}>discard changes</button>
+        <button type="button" data-guide="song-close-keep" className="song-entry-primary" onClick={onKeep}>leave and keep draft temporarily</button>
+        <button type="button" data-guide="song-close-discard" className="song-entry-secondary song-close-discard" onClick={onDiscard}>discard changes</button>
       </div>
-      <button ref={stay} type="button" className="song-entry-secondary" onClick={onKeepEditing}>keep editing</button>
+      <button ref={stay} type="button" data-guide="song-close-stay" className="song-entry-secondary" onClick={onKeepEditing}>keep editing</button>
     </div>
   </div>;
 }

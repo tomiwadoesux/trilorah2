@@ -95,6 +95,8 @@ export interface ScriptureReferenceInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Stable anchor for the in-app guide (data-guide on the input). */
+  guideId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -171,6 +173,7 @@ export function ScriptureReferenceInput({
   placeholder = 'type a book name...',
   disabled = false,
   className = '',
+  guideId,
 }: ScriptureReferenceInputProps) {
   const [internal, setInternal] = useState('');
   const text = value ?? internal;
@@ -630,6 +633,7 @@ export function ScriptureReferenceInput({
         <div className="relative min-w-0 flex-1">
           <input
             ref={inputRef}
+            data-guide={guideId}
             type="text"
             value={text}
             disabled={disabled}

@@ -1,0 +1,123 @@
+{
+  "reference": "https://mont-fort.com/",
+  "retrieved": "2026-10-15",
+  "assets": [
+    {
+      "file": "assets/textures/perlinNoise.webp",
+      "source": "https://mont-fort.com/assets/textures/perlinNoise.webp",
+      "sha256": "a61440777841c434f81dd53baead30674f08cb17600cd02a30599ca1228a9afa",
+      "bytes": 89878
+    },
+    {
+      "file": "assets/textures/rock_diffuse.webp",
+      "source": "https://mont-fort.com/assets/textures/rock_diffuse.webp",
+      "sha256": "00ef6c5983c00ee8e715707eaa551103009453eece014891f7269c9c9385e23d",
+      "bytes": 149676
+    },
+    {
+      "file": "assets/textures/voronoi.webp",
+      "source": "https://mont-fort.com/assets/textures/voronoi.webp",
+      "sha256": "90d1bd698a108b5a7396a28b1f52468ab132e8a40f1b1b176f75aa361e1be6a6",
+      "bytes": 8330
+    },
+    {
+      "file": "assets/textures/rock_normal.webp",
+      "source": "https://mont-fort.com/assets/textures/rock_normal.webp",
+      "sha256": "dd11cca934c69bb431537064b7265dbf6717a1a0830283297e437bcd4078d88c",
+      "bytes": 169772
+    },
+    {
+      "file": "assets/textures/envmap-min.exr",
+      "source": "https://mont-fort.com/assets/textures/envmap-min.exr",
+      "sha256": "d1e559e6be11b8568fa81ec94b33f6391f603c277bf023b7ac105d934625873a",
+      "bytes": 111970
+    },
+    {
+      "file": "assets/textures/noise-solid-normal.webp",
+      "source": "https://mont-fort.com/assets/textures/noise-solid-normal.webp",
+      "sha256": "855e37cd7f48d7fac30e8a264d5d6c953daec422e59061349f9db22cd29b6c20",
+      "bytes": 26346
+    },
+    {
+      "file": "assets/textures/snowRockMix.webp",
+      "source": "https://mont-fort.com/assets/textures/snowRockMix.webp",
+      "sha256": "e20d96c26fb2b8797bfdcb9215e393b9647c0ad70d02a7a240c1b93babaaf4ce",
+      "bytes": 41500
+    },
+    {
+      "file": "assets/textures/noise.webp",
+      "source": "https://mont-fort.com/assets/textures/noise.webp",
+      "sha256": "4c65d7c41c126a5662fea82318cea3ca6778e9ebcf5e42362e6080de4cf04ad0",
+      "bytes": 16692
+    },
+    {
+      "file": "assets/textures/homepage/snow_diffuse.webp",
+      "source": "https://mont-fort.com/assets/textures/homepage/snow_diffuse.webp",
+      "sha256": "fc4cc819d03f5c6f3bea13002d6d8bf63f1a197224bef5a5373b18efb37bed9f",
+      "bytes": 46
+    },
+    {
+      "file": "assets/textures/homepage/homepage-lightmap.webp",
+      "source": "https://mont-fort.com/assets/textures/homepage/homepage-lightmap.webp",
+      "sha256": "acee53395326d7fb055c9e705135610355ab5846a8785edaa5467b447b5cc73a",
+      "bytes": 77132
+    },
+    {
+      "file": "assets/models/mountains.glb",
+      "source": "https://mont-fort.com/assets/models/mountains.glb",
+      "sha256": "b6cda298c8b377105ed337eca4196a0a2f3da099de61dad8a5c6ecf35dd0dbee",
+      "bytes": 1496440
+    },
+    {
+      "file": "assets/models/homepage/TopChapters.glb",
+      "source": "https://mont-fort.com/assets/models/homepage/TopChapters.glb",
+      "sha256": "648be95c9c4acfcb2d1324cd173acfa7fa99eb2409457eaf4ef1cce82ddc15e4",
+      "bytes": 13052
+    },
+    {
+      "file": "assets/models/homepage/Homepage.glb",
+      "source": "https://mont-fort.com/assets/models/homepage/Homepage.glb",
+      "sha256": "74d2f49bfc3a207cb65a73f21966780d3a26b5430ebda66a8b23ae501b7476af",
+      "bytes": 86904
+    },
+    {
+      "file": "vendor/visitedNews.BmN7K1ri.js",
+      "source": "https://mont-fort.com/_astro/visitedNews.BmN7K1ri.js",
+      "originalSha256": "e6d7e198477deddeaa76e886a19dc9b148144ca256e2a0ba4019e9fb7ff2b943",
+      "localSha256": "e6d7e198477deddeaa76e886a19dc9b148144ca256e2a0ba4019e9fb7ff2b943",
+      "modifications": []
+    },
+    {
+      "file": "vendor/index.D-nlVayj.js",
+      "source": "https://mont-fort.com/_astro/index.D-nlVayj.js",
+      "originalSha256": "df21cea3db8d72a5732c3ee68447bc7e4cb1f2008467df4c878c1b7f9d0f82f4",
+      "localSha256": "df21cea3db8d72a5732c3ee68447bc7e4cb1f2008467df4c878c1b7f9d0f82f4",
+      "modifications": []
+    },
+    {
+      "file": "vendor/ScrollTrigger.CcwueB8r.js",
+      "source": "https://mont-fort.com/_astro/ScrollTrigger.CcwueB8r.js",
+      "originalSha256": "55b0d971e46c1ea7c04e15878b754a39326557e228276049a4bdbbdac3917e6c",
+      "localSha256": "55b0d971e46c1ea7c04e15878b754a39326557e228276049a4bdbbdac3917e6c",
+      "modifications": []
+    },
+    {
+      "file": "vendor/App.ST3WWojO.js",
+      "source": "https://mont-fort.com/_astro/App.ST3WWojO.js",
+      "originalSha256": "e412900dae00e01485129a16fbed126e0e95124eaa0ea2c56810370b5e137530",
+      "localSha256": "ae0fdf8ef2260f1bfad5c3bb1110941ca0cee89e7c255aacab5ba77f83259a5a",
+      "modifications": [
+        "Resolve assets relative to this module",
+        "Export sceneUniforms",
+        "Disable unrelated page font preloads"
+      ]
+    },
+    {
+      "file": "vendor/router.2W7FzLmj.js",
+      "source": "https://mont-fort.com/_astro/router.2W7FzLmj.js",
+      "originalSha256": "aa577469061359892ee9140f9eaec0bfa78eeb332ddb11d18c8f085c871b8a19",
+      "localSha256": "aa577469061359892ee9140f9eaec0bfa78eeb332ddb11d18c8f085c871b8a19",
+      "modifications": []
+    }
+  ]
+}

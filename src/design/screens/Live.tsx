@@ -1,3 +1,6 @@
+import { StageGradient } from './StageGradient';
+import { AutoAdvance } from './AutoAdvance';
+import { BookClarification, ScriptureTools } from './ScriptureTools';
 import { useLibraryNavigation } from '../../stores/libraryNavigation';
 import { mediaPreview } from '../../lib/mediaPreview';
 import { useOperatorTyping } from '../../lib/useOperatorTyping';
@@ -21,7 +24,6 @@ import './listeningSign.css';
 import { presentationImageSrc } from '../../lib/presentationImport';
 import { stageSlide } from '../../lib/stageSlide';
 import { liveKey } from '../../lib/liveKey';
-import { readingStep } from '../../lib/readingStep';
 import { outputThemeSettings } from '../../lib/outputTheme';
 import { NO_BACKGROUND, backgroundDropAction, backgroundSrc, backgroundFor, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
 import { toDisplayUrl } from '../../../shared/mediaUrl';
@@ -32,7 +34,8 @@ import { forgetTriMedia, normalizeTriTheme, readTriLocal, stageTriDisplay, updat
 import { arrangeSongCards, editSongCard, songCards } from '../../../shared/songCards';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
-import { lyricScore } from '../../lib/songMatch';
+import { recentSongWords } from '../../lib/songMatch';
+import { useSongMatches } from './songs/useSongMatches';
 import { Children, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useMobileRemote } from './useMobileRemote';
 import { MicPicker } from '../../components/MicPicker';
@@ -56,15 +59,12 @@ import {
   CheckIcon,
   CloseIcon,
   AddSongIcon,
-  type ActionMenuGroup,
   DisplayFontPicker,
   TextTransitionPicker,
   ScriptureReferenceInput,
   MediaIcon,
   MicIcon,
-  NoteIcon,
   SearchField,
-  SearchIcon,
   Select,
   surface,
   toneClass,
@@ -94,6 +94,7 @@ import {
   DashboardIcon,
   ProfileIcon,
   SettingsIcon,
+  type IconProps,
 } from '../../ui';
 import { BOOKS, CHAPTER_COUNTS } from '../../lib/books';
 import { STOCK_PRESETS } from '../../lib/stockPresets';
@@ -105,7 +106,6 @@ import { useOutputsStatus, saveDisplay } from './dashboard/outputs/fromEngine';
 import { ProfileView } from './dashboard/ProfileView';
 import { SettingsSurface } from './Settings';
 import { ViewEnter } from './viewEnter';
-import { RunHeaderActions } from './run/RunHeaderActions';
 import { RunOfService } from './run/RunRail';
 import { EmptyMark, EqBars } from './emptyArt';
 import { TranscriptFace } from './dashboard/PreachingTile';
@@ -121,6 +121,7 @@ import { useCatchStore } from '../../stores/catchStore';
 import { useLiveStore } from '../../stores/liveStore';
 import { versionOptions, versionRowOptions, type BibleVersionRow } from '../../../shared/bibleVersions';
 import { CatchPeek, CatchesPane } from './CatchesPane';
+import { CatchSignals } from './CatchSignals';
 import { ScriptureTravel } from './ScriptureTravel';
 import { chapterOrdinal, liveSpan, passingRows, spanReference, travelShape, type LiveSpan, type ReelRow } from '../../lib/scriptureReel';
 import { reducedMotion } from './dashboard/expand';
@@ -148,12 +149,12 @@ import { finderPaneHint, finderStageHint, finderStagePick, shelfFor, type Finder
 import { ProjectorProvider, useProjector, type LiveItem, type ScreenState } from './projector';
 import { previewClearPlan } from '../../lib/previewClear';
 import { EngineProvider, useEngine, SLIDE_RULES, fitRules, fitOf, wordCount, FIT_WORDS, type Proposal } from './engine';
-import { RunProvider, useRun, type RunSegment } from './run';
+import { RunProvider, useRun } from './run';
 import { DragKeyframes, DragProvider, useDrag, type DragItem, type DropTargetProps } from './drag';
 import { Panel } from './parts';
 import './liveHeader.css';
 import './dottedSurface.css';
-import { dottedSurfaceStyles } from './dottedSurface';
+import { DitheredPatches } from './DitheredPatches';
 
 /*
  * S-02 — LIVE, the control surface.
@@ -192,10 +193,6 @@ const TABS = [
   { id: 'songs', label: 'songs' },
   { id: 'slides', label: 'slides' },
   { id: 'media', label: 'media' },
-  /* The free photo and video library on the internet, one click away
-     instead of a shelf inside media. The media tab keeps its search shelf
-     too: that is where it was, and moving it would break a habit. */
-  { id: 'online', label: 'online' },
 ];
 
 /*
@@ -232,13 +229,12 @@ const TABS = [
 /** Where the verses card sits in the library's tabs. */
 const SCRIPTURES_TAB = Math.max(0, TABS.findIndex((t) => t.id === 'scriptures'));
 
-const TAB_ICONS: Record<string, (p: { size?: number; className?: string }) => ReactNode> = {
+const TAB_ICONS: Record<string, (p: IconProps) => ReactNode> = {
   scriptures: BookIcon,
   themes: PaletteIcon,
   songs: MusicIcon,
   slides: PresentationIcon,
   media: MediaIcon,
-  online: GlobeIcon,
 };
 
 /** Intrinsic width shared by the library rail and its compact selectors. */
@@ -284,14 +280,15 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
       aria-label="library navigation"
       className="tri-library-tabs tri-dotted-surface relative min-h-0 min-w-0 shrink-0 self-start max-h-full overflow-x-hidden overflow-y-auto overscroll-contain"
       style={{
-        ...dottedSurfaceStyles.library,
         ...EDGE,
       }}
     >
+      <DitheredPatches />
       {/* The whole rail scrolls, including its padding. Decorative layers
           never sit between the pointer and the native scroll container. */}
       <div
         role="tablist"
+        data-guide-area="library"
         aria-orientation="vertical"
         aria-label="library"
         /* A real border keeps the active fill inside the group's edge. */
@@ -350,6 +347,7 @@ function LibraryTabs({ tab, onChange }: { tab: number; onChange: (i: number) => 
             >
               {Icon && (
                 <Icon
+                  selected={on}
                   size={14}
                   className={cx('shrink-0 transition-opacity duration-150', on ? 'opacity-100' : 'opacity-60')}
                 />
@@ -474,7 +472,7 @@ const REF_GAP = { min: 0, max: 3, step: 0.05 } as const;
  * the writes fall away and the picker still works on the canvas.
  */
 function useTextTransition() {
-  const [id, setId] = useState<TextTransition>('fade');
+  const [id, setId] = useState<TextTransition>('blur');
   const [ms, setMs] = useState<number>(TRANSITION_MS.default);
   const [play, setPlay] = useState(0);
 
@@ -485,7 +483,7 @@ function useTextTransition() {
       ?.then((s: Record<string, unknown> | undefined) => {
         if (gone || !s) return;
         const appearance = { ...s, ...readTriLocal<Record<string, unknown>>(TRI_DISPLAY_KEY, {}) };
-        if (isTextTransition(appearance.textTransition)) setId(appearance.textTransition);
+        if (isTextTransition(appearance.textTransition)) setId(appearance.textTransition === 'zoom' ? 'zoom' : 'blur');
         if (appearance.textTransitionMs != null) setMs(clampTransitionMs(appearance.textTransitionMs));
       })
       .catch(() => undefined);
@@ -497,7 +495,7 @@ function useTextTransition() {
   useEffect(() => {
     const imported = (event: Event) => {
       const display = (event as CustomEvent<Record<string, unknown>>).detail;
-      if (isTextTransition(display.textTransition)) setId(display.textTransition);
+      if (isTextTransition(display.textTransition)) setId(display.textTransition === 'zoom' ? 'zoom' : 'blur');
       if (display.textTransitionMs != null) setMs(clampTransitionMs(display.textTransitionMs));
     };
     window.addEventListener(TRI_DISPLAY_EVENT, imported);
@@ -606,91 +604,75 @@ function ThemesEditor({
 }) {
   const media = useMediaLibrary();
   const hasVideo = media.find(item => item.id === theme.backgroundId)?.kind === 'video';
+  const [query, setQuery] = useState('');
+  const searchToolbar = useRef<HTMLDivElement>(null);
+  const terms = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+  const matches = (keywords: string) => terms.every(term => keywords.includes(term));
+  const clearSearch = () => { setQuery(''); searchToolbar.current?.querySelector('input')?.focus(); };
+  const textGroups = [
+    { id: 'font', keywords: 'text font typeface typography case uppercase lowercase capital spacing letters tracking', content:
+      <DisplayFontPicker
+        value={theme.font}
+        textCase={resolveTextCase(theme.textCase, theme.font)}
+        textSpacing={resolveTextSpacing(theme.textSpacing)}
+        onChange={(font) => onChange({ ...theme, font, textCase: resolveTextCase(theme.textCase, theme.font) })}
+        onTextCaseChange={(textCase) => onChange({ ...theme, font: theme.font === 'uppercase' ? 'default' : theme.font, textCase })}
+        onTextSpacingChange={(textSpacing) => onChange({ ...theme, textSpacing })}
+      /> },
+    { id: 'size', keywords: 'text font size shadow strength readability', content:
+      <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
+        <Slider guideId="themes-text-size" label="text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
+        <Slider guideId="themes-shadow" label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
+      </div> },
+    { id: 'reference', keywords: 'reference scripture verse size gap spacing', content:
+      <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
+        <Slider guideId="themes-reference-size" label="reference size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
+        <Slider guideId="themes-ref-gap" label="gap from the verse" value={theme.refGap} onChange={(refGap) => onChange({ ...theme, refGap })} min={REF_GAP.min} max={REF_GAP.max} step={REF_GAP.step} />
+      </div> },
+    { id: 'transition', keywords: 'text transition animation motion fade cut speed duration milliseconds ms', content: <>
+      <TextTransitionPicker value={tx.id} duration={tx.ms} play={tx.play} onChange={tx.choose} />
+      <Slider guideId="themes-transition-speed" label="speed · ms" value={tx.ms} onChange={tx.pace} min={TRANSITION_MS.min} max={TRANSITION_MS.max} step={50} disabled={tx.id === 'cut'} />
+    </> },
+  ].filter(group => matches(group.keywords));
+  const backgroundGroups = [
+    { id: 'background', keywords: 'background dimness dim brightness dark blur image picture photo gif video media', content: <>
+      <Slider guideId="themes-dimness" label="dimness" value={theme.dimness} onChange={(dimness) => onChange({ ...theme, dimness })} />
+      <Slider guideId="themes-blur" label="blur" value={theme.blur} onChange={(blur) => onChange({ ...theme, blur })} min={0} max={12} />
+      <p className="text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">choose a background in media › themes, or drop a picture, GIF or video on the preview or the live screen</p>
+    </> },
+    ...(hasVideo ? [{ id: 'video', keywords: 'background video speed playback sound audio bass boost volume soundtrack', content: <>
+      <Slider guideId="themes-video-speed" label="video speed" value={videoSpeed(theme.videoSpeed)} min={.25} max={2} step={.25} valueSuffix="×" onChange={(videoSpeed) => onChange({ ...theme, videoSpeed })}/>
+      <Button guideId="themes-video-sound" label={theme.videoSound ? 'background audio on' : 'background audio off'} pressed={!!theme.videoSound} onClick={() => onChange({ ...theme, videoSound: !theme.videoSound })}/>
+      <Slider guideId="themes-video-bass" label="bass boost" value={videoBass(theme.videoBass)} min={0} max={12} step={1} valueSuffix=" dB" disabled={!theme.videoSound} onChange={(videoBass) => onChange({ ...theme, videoBass })}/>
+      <p className="text-xs text-[var(--tri-ink-muted)]">Audio plays on the main live screen. Clips without a soundtrack stay silent.</p>
+    </> }] : []),
+    { id: 'position', keywords: 'text layout position alignment screen top middle center bottom left right', content:
+      <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} /> },
+    { id: 'spacing', keywords: 'text layout width safe margin spacing edges screen', content: <>
+      <div className="grid min-w-0 grid-cols-2 gap-x-4">
+        <Slider guideId="themes-safe-margin" label="safe margin" value={theme.safeMargin} onChange={(safeMargin) => onChange({ ...theme, safeMargin })} min={SAFE_MARGIN.min} max={SAFE_MARGIN.max} step={SAFE_MARGIN.step} valueSuffix="%" ticks={5} />
+        <Slider guideId="themes-text-width" label="width" value={theme.textWidth} onChange={(textWidth) => onChange({ ...theme, textWidth })} min={TEXT_WIDTH.min} max={TEXT_WIDTH.max} step={TEXT_WIDTH.step} valueSuffix="%" ticks={5} />
+      </div>
+      <p className="text-[length:var(--tri-size-xs)] text-[var(--tri-ink-muted)]">width can extend beyond the safe guide; 100% fills the screen</p>
+    </> },
+    { id: 'reset', keywords: 'reset theme default restore', content:
+      <div className="flex justify-end"><Button guideId="themes-reset" label="reset theme" tone="danger" icon={<ResetIcon size={15} />} title="reset theme" onClick={onReset} /></div> },
+  ].filter(group => matches(group.keywords));
 
   return (
-    <div className="tri-themes-editor grid h-full min-h-0 min-w-0 grid-cols-2">
-      <ThemeControls label="text">
-        <DisplayFontPicker
-          value={theme.font}
-          textCase={resolveTextCase(theme.textCase, theme.font)}
-          textSpacing={resolveTextSpacing(theme.textSpacing)}
-          onChange={(font) => onChange({ ...theme, font, textCase: resolveTextCase(theme.textCase, theme.font) })}
-          onTextCaseChange={(textCase) => onChange({ ...theme, font: theme.font === 'uppercase' ? 'default' : theme.font, textCase })}
-          onTextSpacingChange={(textSpacing) => onChange({ ...theme, textSpacing })}
-        />
-        <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
-          <Slider label="text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
-          <Slider label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
-          <Slider label="reference size" value={theme.verseSize} onChange={(verseSize) => onChange({ ...theme, verseSize })} min={-2} max={8} />
-          <Slider
-            label="gap from the verse"
-            value={theme.refGap}
-            onChange={(refGap) => onChange({ ...theme, refGap })}
-            min={REF_GAP.min}
-            max={REF_GAP.max}
-            step={REF_GAP.step}
-          />
-        </div>
-        <TextTransitionPicker value={tx.id} duration={tx.ms} play={tx.play} onChange={tx.choose} />
-        <Slider
-          label="speed · ms"
-          value={tx.ms}
-          onChange={tx.pace}
-          min={TRANSITION_MS.min}
-          max={TRANSITION_MS.max}
-          step={50}
-          disabled={tx.id === 'cut'}
-        />
-      </ThemeControls>
-
-      <ThemeControls label="background & layout">
-        <Slider label="dimness" value={theme.dimness} onChange={(dimness) => onChange({ ...theme, dimness })} />
-        <Slider label="blur" value={theme.blur} onChange={(blur) => onChange({ ...theme, blur })} min={0} max={12} />
-        <p className="text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
-          choose a background in media › themes, or drop a picture, GIF or video on the preview or the live screen
-        </p>
-        {hasVideo && <div className="grid min-w-0 gap-3">
-          <Slider label="video speed" value={videoSpeed(theme.videoSpeed)} min={.25} max={2} step={.25} valueSuffix="×" onChange={(videoSpeed) => onChange({ ...theme, videoSpeed })}/>
-          <Button label={theme.videoSound ? 'background audio on' : 'background audio off'} pressed={!!theme.videoSound} onClick={() => onChange({ ...theme, videoSound: !theme.videoSound })}/>
-          <Slider label="bass boost" value={videoBass(theme.videoBass)} min={0} max={12} step={1} valueSuffix=" dB" disabled={!theme.videoSound} onChange={(videoBass) => onChange({ ...theme, videoBass })}/>
-          <p className="text-xs text-[var(--tri-ink-muted)]">Audio plays on the main live screen. Clips without a soundtrack stay silent.</p>
-        </div>}
-        <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} />
-        <div className="grid min-w-0 grid-cols-2 gap-x-4">
-          <Slider
-            label="safe margin"
-            value={theme.safeMargin}
-            onChange={(safeMargin) => onChange({ ...theme, safeMargin })}
-            min={SAFE_MARGIN.min}
-            max={SAFE_MARGIN.max}
-            step={SAFE_MARGIN.step}
-            valueSuffix="%"
-            ticks={5}
-          />
-          <Slider
-            label="width"
-            value={theme.textWidth}
-            onChange={(textWidth) => onChange({ ...theme, textWidth })}
-            min={TEXT_WIDTH.min}
-            max={TEXT_WIDTH.max}
-            step={TEXT_WIDTH.step}
-            valueSuffix="%"
-            ticks={5}
-          />
-        </div>
-        <p className="text-[length:var(--tri-size-xs)] text-[var(--tri-ink-muted)]">
-          width can extend beyond the safe guide; 100% fills the screen
-        </p>
-        <div className="flex justify-end">
-          <Button
-            label="reset theme"
-            tone="danger"
-            icon={<ResetIcon size={15} />}
-            title="reset theme"
-            onClick={onReset}
-          />
-        </div>
-      </ThemeControls>
+    <div data-guide-area="themes" className="tri-themes-editor flex h-full min-h-0 min-w-0 flex-col">
+      <div ref={searchToolbar} className="tri-themes-search" onKeyDown={event => { if (event.key === 'Escape' && query) { event.stopPropagation(); clearSearch(); } }}>
+        <SearchField guideId="themes-search" operatorSearch value={query} onChange={setQuery} ariaLabel="Search theme controls" placeholder="Start typing to search" />
+        {!!query && <Button guideId="themes-search-clear" label="clear" icon={<CloseIcon size={13} />} tone="ash" onClick={clearSearch} />}
+      </div>
+      {textGroups.length || backgroundGroups.length ? <div className="tri-theme-control-columns grid min-h-0 min-w-0 flex-1 grid-cols-2" data-single={!textGroups.length || !backgroundGroups.length || undefined}>
+        {!!textGroups.length && <ThemeControls key={`text:${query}`} label="text">
+          {textGroups.map(group => <div key={group.id} className="tri-theme-control-group">{group.content}</div>)}
+        </ThemeControls>}
+        {!!backgroundGroups.length && <ThemeControls key={`background:${query}`} label="background & layout">
+          {backgroundGroups.map(group => <div key={group.id} className="tri-theme-control-group">{group.content}</div>)}
+        </ThemeControls>}
+      </div> : <div className="tri-themes-no-results" role="status"><p>No matching theme controls</p><span>Try font, text size, blur, transition, or layout.</span><Button guideId="themes-search-reset" label="clear search" tone="ash" onClick={clearSearch} /></div>}
     </div>
   );
 }
@@ -1043,17 +1025,16 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
   const pill = 'flex h-[var(--tri-field-h)] min-w-0 items-center gap-1 tri-rounded-control border border-white/10 bg-white/[0.035] p-1';
   const button = 'flex h-[calc(var(--tri-field-h)-10px)] shrink-0 items-center justify-center rounded-md px-3 text-xs transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2';
   return (
-    <div ref={root} className="media-browser relative -mx-3 flex h-full min-h-0 flex-col gap-3 px-[var(--tri-card-gap)]" {...dropHere}>
+    <div ref={root} data-guide-area="media" className="media-browser relative -mx-3 flex h-full min-h-0 flex-col gap-3 px-[var(--tri-card-gap)]" {...dropHere}>
       {/* A container, so the add action can drop its words before the row —
           which does not wrap — runs out of room. */}
-      <div role="toolbar" aria-label="media library" className="@container/mediabar flex shrink-0 items-center gap-2">
-        <div className={`${pill} flex-1`}>
-          <button type="button" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" title="search online" aria-pressed={online} onClick={() => { setOnline(true); }}><GlobeIcon size={15} /></button>
+      <div role="toolbar" aria-label="media library" className="library-toolbar @container/mediabar flex shrink-0 items-center gap-2">
+        <div className="library-toolbar-search"><SearchField guideId="media-search" operatorSearch ariaLabel={`Search ${view}`} placeholder="Start typing to search" value={query} onChange={setQuery} /></div>
+        <div className={pill} role="group" aria-label="Search source">
+          <button type="button" data-guide="media-online" className={`${button} ${online ? 'bg-white/10' : ''}`} aria-label="search online" title="search online" aria-pressed={online} onClick={() => { setOnline(true); }}><GlobeIcon selected={online} size={15} /></button>
           {/* A filter, not an add: it shows what is already on this laptop's
               shelf. It used to sit beside the add button and read as one. */}
-          <button type="button" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="show what is on this laptop" title="show what is on this laptop" aria-pressed={!online} onClick={() => { setOnline(false); }}><LaptopIcon size={15} /></button>
-          <span aria-hidden className="mx-1 h-3 w-px bg-white/15" />
-          <input type="text" aria-label={`search ${view}`} placeholder={`search ${view}…`} value={query} onChange={e => { setQuery(e.target.value); }} className="min-w-0 flex-1 bg-transparent px-1 text-xs outline-none" />
+          <button type="button" data-guide="media-local" className={`${button} ${!online ? 'bg-white/10' : ''}`} aria-label="show what is on this laptop" title="show what is on this laptop" aria-pressed={!online} onClick={() => { setOnline(false); }}><LaptopIcon selected={!online} size={15} /></button>
         </div>
         {/* Its own control in the library toolbars' material — the slides
             tab's "import slides" is the same act — rather than a + tucked
@@ -1070,9 +1051,9 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
             onClick: () => void addHere(),
           }}
         />
-        <div className={pill} role="group" aria-label="library collection">
+        <div className={`${pill} ml-auto`} role="group" aria-label="library collection">
           {/* Only the carried media is used as a background; parked run items stay put. */}
-          {(['themes','media'] as const).map(value => <button key={value} type="button" {...(value === 'themes' && carried ? drag.dropProps('media-themes', { solo: true }) : {})}
+          {(['themes','media'] as const).map(value => <button key={value} type="button" data-guide={`media-view-${value}`} {...(value === 'themes' && carried ? drag.dropProps('media-themes', { solo: true }) : {})}
             className={`${button} ${view === value || (value === 'themes' && drag.over === 'media-themes') ? 'bg-white/15 text-[var(--tri-ink)]' : 'text-[var(--tri-ink-muted)]'}`}
             aria-pressed={view === value} onClick={() => { setView(value); setQuery(''); setNotice(''); }}>{value}</button>)}
         </div>
@@ -1098,20 +1079,20 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
           onPointerDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
           {/* The double-click's twin, for a keyboard or a hand that does
               not know to double-click: the wall's background, now. */}
-          {view === 'themes' && canBeBackground(media) ? <button type="button" title="on the wall now — the background only, the words stay" aria-label={`put ${media.label} on the wall now`}
+          {view === 'themes' && canBeBackground(media) ? <button type="button" data-guide="media-wall" title="on the wall now — the background only, the words stay" aria-label={`put ${media.label} on the wall now`}
             className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), toneClass('gold'), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); void onChoose(media.id, 'live').then(setNotice); }}><MediaIcon size={12} /></button> : null}
-          {view === 'media' && canBeBackground(media) ? <button type="button" title="use as a background for text" aria-label={`use ${media.label} as a background`}
+          {view === 'media' && canBeBackground(media) ? <button type="button" data-guide="media-to-themes" title="use as a background for text" aria-label={`use ${media.label} as a background`}
             className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'themes' }); void onChoose(media.id, 'preview', 'pick').then((said) => setNotice(`added to themes · ${said}`)); }}><PaletteIcon size={12} /></button> : null}
-          {media.url ? <button type="button" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
+          {media.url ? <button type="button" data-guide="media-delete" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
             className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); remove(media); }}><TrashIcon size={12} /></button> : null}
         </div> : null}
       </div>)}</MediaGrid> : <div className="min-h-0 flex-1"><EmptyMark w={220} h={220} plain art={<GlobeEmptyArt />}
         line={query && !online ? 'nothing matches' : `no ${kind === 'video' ? 'videos' : 'pictures'} in ${view} yet`}
         hint={query && !online ? 'try another name' : 'add pictures and clips, or drop them here from Finder'}
-        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button label="add from laptop" icon={<ImportIcon size={13} />} disabled={!canAdd || adding} onClick={() => void addHere()} /><Button label="explore online" onClick={() => { setOnline(true); }} /></div>} /></div>}
+        below={<div className="mt-4 flex flex-wrap justify-center gap-2"><Button guideId="media-add-empty" label="add from laptop" icon={<ImportIcon size={13} />} disabled={!canAdd || adding} onClick={() => void addHere()} /><Button guideId="media-explore" label="explore online" onClick={() => { setOnline(true); }} /></div>} /></div>}
       </>}
       {/* Files from Finder over this pane: where they will land. Over
           everything, taking no pointer, so the drop still reaches the pane;
@@ -1139,9 +1120,9 @@ function MediaGrid({ children }: { children: ReactNode }) {
       {pages.map((page, i) => <div key={i} className="media-carousel__page" role="group" aria-label={`Media page ${i + 1} of ${pages.length}`}><div className="media-carousel__bento">{page}</div></div>)}
     </div>
     {pages.length > 1 && <div className="flex shrink-0 items-center justify-end gap-2">
-      <Button label="previous" disabled={at === 0} onClick={() => move(at - 1)}/>
+      <Button guideId="media-previous" label="previous" disabled={at === 0} onClick={() => move(at - 1)}/>
       <span className="text-xs text-white/50">{at + 1} / {pages.length}</span>
-      <Button label="next" disabled={at >= pages.length - 1} onClick={() => move(at + 1)}/>
+      <Button guideId="media-next" label="next" disabled={at >= pages.length - 1} onClick={() => move(at + 1)}/>
     </div>}
   </div>;
 }
@@ -1168,6 +1149,7 @@ function MediaCard({
   return (
     <button
       type="button"
+      data-guide="media-card"
       aria-pressed={selected}
       aria-label={`${label} — ${detail}`}
       className="media-picture-card group/card relative block w-full overflow-hidden text-left tri-rounded-control"
@@ -1576,6 +1558,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
         reference: r.ref,
         version,
         text,
+        verses: [{ verse: r.verse, text }],
         slides: buildVerseSlides(
           { book: target?.book ?? '', chapter: target?.chapter ?? 0, version },
           [{ verse: r.verse, text }],
@@ -1654,7 +1637,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
         id: ++journeys, dir, to: span, lead,
         departure: departure.rows, passing: passingRows(here, span, shape.passing),
         rowHeight: departure.rowHeight, height: departure.height, visible: departure.visible,
-        ms: shape.ms, done: false,
+        ms: Math.min(160, shape.ms), done: false,
       });
     } else {
       setJourney(null);
@@ -1691,7 +1674,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
   /* The reel has stopped. Hand over once the chapter is here — or has
      failed to come, so the list can say why. */
   useEffect(() => {
-    if (!journey?.done) return;
+    if (!journey) return;
     if (showing(journey.to) || status === 'error' || status === 'empty' || status === 'no-api') setJourney(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journey, loadedFor, status]);
@@ -1767,7 +1750,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
   return (
     /* A box-less wrapper: lets the list tell whether the field the operator
        is typing in is this one (see the follow above). */
-    <div data-scripture-browser className="contents"
+    <div data-scripture-browser data-guide-area="scripture" className="contents"
       style={refColumn ? ({
         '--scripture-ref-w': `${refColumn.column}px`,
         '--scripture-book-w': refColumn.book === null ? 'none' : `${refColumn.book}px`,
@@ -1780,13 +1763,14 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
         <div className="flex min-w-0 flex-1 items-center gap-[var(--tri-gap)]">
           <div className="relative grid shrink-0" style={{ width: 'var(--library-pill-width, max-content)' }}>
             <LibraryControlSizer />
-            <Select className="!absolute inset-0" options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
+            <Select guideId="scripture-version" className="!absolute inset-0" options={versions} value={version} onChange={setVersion} preserveCase menuMinWidth={300} />
           </div>
           {/* An online Bible that could not load is not a broken library: the
               operator can still type another reference, or change Bible. */}
           <LibrarySearch disabled={(status === 'error' && !onlineVersion) || status === 'no-api' || status === 'empty'}>
           <ScriptureReferenceInput
             ref={searchRef}
+            guideId="scripture-reference"
             className="scripture-reference-search min-w-0 flex-1"
             books={BOOK_DATA}
             versesInChapter={versesInChapter}
@@ -1834,6 +1818,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
                 reference,
                 version,
                 text: verses.map((v) => v.text).join(' '),
+                verses,
                 slides,
                 origin: 'operator',
               };
@@ -1845,16 +1830,15 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
           />
           </LibrarySearch>
         </div>
-        <div className="flex min-w-0 flex-1 items-center">
+        <div className="flex min-w-0 basis-[40%] shrink-0 items-center">
           <ScriptureSearch />
         </div>
         </div>
       }
     >
-      {/* The verses take the left half; the search row above stays the
-          full width. The right half is kept empty on purpose (owner,
-          2026-10-06) — its own pane, so the header rule runs on across. */}
+      {/* Keep most of the reading space for scripture; catches stay beside it. */}
       <LibraryPane
+        grow={3 / 2}
         rule
         title={
           <>
@@ -1881,6 +1865,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
               <button
                 key={row.ref}
                 data-row={i}
+                data-guide="scripture-verse"
                 data-live={isLiveRow(i) || undefined}
                 type="button"
                 /* Hold to drag. A press that moves early is refused with a
@@ -1917,7 +1902,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
                   title={row.ref}
                   style={{ width: REFERENCE_COLUMN }}
                   className={cx(
-                    'flex min-w-0 shrink-0 text-[length:var(--tri-size)]',
+                    'scripture-reference-label flex min-w-0 shrink-0 text-[length:var(--tri-size)]',
                     /* The accent yellow, held back: references read as the
                        list's index, the live row's at full strength. */
                     isLiveRow(i)
@@ -1977,14 +1962,7 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
       {/* Everything the engine catches lands here, beside the Bible it came
           from — see CatchesPane. */}
       <LibraryPane header={false} scroll={false}>
-        <div className="flex h-full min-h-0 flex-col">
-          <div className="shrink-0 p-[var(--tri-gap)]">
-            <CatchActions />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <CatchesPane />
-          </div>
-        </div>
+        <ScriptureTools><CatchesPane /></ScriptureTools>
       </LibraryPane>
     </LibraryBrowser>
     </div>
@@ -2326,31 +2304,32 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
       ) : null}
       {!open && Object.keys(drafts).length > 0 ? (
         <details className="relative shrink-0 px-4 text-xs text-[var(--tri-ink-muted)]">
-          <summary className="cursor-pointer py-2">continue editing · {Object.keys(drafts).length}</summary>
+          <summary data-guide="songs-drafts" className="cursor-pointer py-2">continue editing · {Object.keys(drafts).length}</summary>
           <div className="absolute left-4 top-full z-30 min-w-64 rounded-xl border border-white/15 bg-[#141719] p-2 shadow-xl">
             {Object.entries(drafts).sort((a,b) => b[1].updatedAt-a[1].updatedAt).map(([id,draft]) => (
-              <button key={id} type="button" className="block w-full rounded-lg px-3 py-2 text-left hover:bg-white/10" onClick={() => edit(songs.find(song => song.id === id) ?? songFromDraft(id,draft),null)}>
+              <button key={id} type="button" data-guide={`songs-draft-${id}`} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-white/10" onClick={() => edit(songs.find(song => song.id === id) ?? songFromDraft(id,draft),null)}>
                 {draft.title || 'new song'} · {Math.max(1,Math.ceil((draft.updatedAt + 1800000-Date.now())/60000))} min left
               </button>
             ))}
           </div>
         </details>
       ) : null}
-      {loading ? <div className="song-library-loading" role="status" aria-label="Loading songs"><span/><span/><span/><span/></div> : loadProblem ? <div className="p-5"><p role="alert">{loadProblem}</p><Button label="retry" onClick={refresh}/></div> : open ? (
+      {loading ? <div className="song-library-loading" role="status" aria-label="Loading songs"><span/><span/><span/><span/></div> : loadProblem ? <div className="p-5"><p role="alert">{loadProblem}</p><Button guideId="songs-retry" label="retry" onClick={refresh}/></div> : open ? (
         <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} onSave={(base) => saveSong(open.id, false, base)} />
       ) : (
         <SongGrid
           songs={songs}
           query={query}
           onQuery={setQuery}
-          onOpen={(id) => {
+          onOpen={(id, cardId) => {
             /* A song that is only a draft has nothing to put on the wall
                yet; opening it means carrying on editing it. */
             const song = songs.find((s) => s.id === id);
             if (song && isNewId(id)) edit(song, null);
             else {
               setQuery(''); setOpenId(id);
-              const card = song && songCards({id:song.id,sections:song.verses})[0];
+              const cards = song && songCards({id:song.id,sections:song.verses});
+              const card = cards && (cards.find(card => card.id === (cardId ?? projector.live?.id)) ?? cards[0]);
               if (song && card) projector.stage({source:'song',id:card.id,label:`${song.title} — ${card.label}`,title:song.title,section:card.label,lines:card.lines,origin:'operator'});
             }
           }}
@@ -2377,37 +2356,14 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
   );
 }
 
-/*
- * The library grid.
- *
- * One surface: every song is a card, and the card is a picture of the slide
- * the congregation would see. The two-pane version put a column of titles on
- * the left and made you pick one before anything appeared, which spent a
- * third of the width on words that were already printed on the cards and hid
- * fifteen songs behind a click. Search narrows the grid instead.
- *
- * A card OPENS its song now rather than previewing it. It used to carry the
- * whole gesture — click to select, double-click to put a verse up — on a
- * thumbnail showing two of the song's five sections, so the third verse was
- * reachable only by paging a card with two small arrows. The card is a good
- * picture of a song and a bad list of one, and opening it is how you get the
- * list.
- */
+/** Song titles and lyric excerpts share one card; paging never opens the song. */
 function SongGrid({
-  songs,
-  query,
-  onQuery,
-  onOpen,
-  onEdit,
-  onDelete,
-  onAdd,
-  onSource,
+  songs, query, onQuery, onOpen, onEdit, onDelete, onAdd, onSource,
 }: {
   songs: readonly Song[];
   query: string;
   onQuery: (q: string) => void;
-  onOpen: (id: string) => void;
-  /** The card's own element comes too — it is what the editor lifts off from. */
+  onOpen: (id: string, cardId?: string) => void;
   onEdit?: (song: Song, origin: HTMLElement | null) => void;
   onDelete: (id: string) => void;
   onAdd?: () => void;
@@ -2416,309 +2372,116 @@ function SongGrid({
   const drag = useDrag();
   const projector = useProjector();
   const engine = useEngine();
-  const hearingSongs = useSongListeningStore((s) => s.active);
-  const setHearingSongs = useSongListeningStore((s) => s.setActive);
-  const heard = [...engine.spoken.lines.slice(-3).map((line) => line.text), engine.spoken.partial].join(' ').split(/\s+/).slice(-16).join(' ');
+  const hearingSongs = useSongListeningStore(state => state.active);
+  const setHearingSongs = useSongListeningStore(state => state.setActive);
+  const clearMatches = useSongListeningStore(state => state.clear);
+  const heardByItself = useSongListeningStore(state => state.heard);
+  const [searchMode, setSearchMode] = useState<'songs' | 'lyrics'>('songs');
+  const [pageBySong, setPageBySong] = useState<Record<string, number>>({});
+  const [sending, setSending] = useState<string | null>(null);
+  const [sendProblem, setSendProblem] = useState<string | null>(null);
   const searchRow = useRef<HTMLDivElement>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  useEffect(() => { onQuery(''); }, []);
-
-  /*
-   * Which verse each card is showing, once the operator has paged it off
-   * its default. Keyed by song, so filtering the grid and coming back finds
-   * the card where it was left. Sparse: a card that was never paged is not
-   * in here, and reads its default from cardVerseIndex.
-   */
-  const verseOf = (song: Song, _i: number) => song.verses[hearingSongs
-    ? song.verses.reduce((best, v, at) => lyricScore(heard, v.lines.join(' ')) > lyricScore(heard, song.verses[best].lines.join(' ')) ? at : best, 0)
-    : needle ? Math.max(0, song.verses.findIndex((v) => v.lines.join(' ').toLowerCase().includes(needle))) : 0];
-
-  /*
-   * Lyrics are searched as well as titles — "type a song name or lyrics" is
-   * what the field promises, and half-remembered words are how a song usually
-   * gets found.
-   */
+  const matchable = useMemo(() => songs.map(song => ({ id: song.id, title: song.title, sections: song.verses })), [songs]);
+  const heardMatches = useSongMatches(matchable);
   const needle = query.trim().toLowerCase();
   const matches = useMemo(() => {
-    if (hearingSongs) return songs.map((song) => ({ song, score: Math.max(...song.verses.map((v) => lyricScore(heard, v.lines.join(' ')))) }))
-      .filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 6).map((item) => item.song);
-    return songs.filter((song) => !needle || song.title.toLowerCase().includes(needle) || song.verses.some((v) => v.lines.join(' ').toLowerCase().includes(needle)));
-  }, [songs, needle, hearingSongs, heard]);
-
-  /* A song is live when a section of it is. The gold ring belongs on the
-     card whose words the congregation is reading, and that is the only
-     thing the grid still needs from the projector. */
+    if (hearingSongs) return heardMatches.map(match => songs.find(song => song.id === match.song.id)).filter((song): song is Song => !!song);
+    if (!needle) {
+      // A song heard without asking comes to the front, open at what was heard (CatchSignals).
+      const first = heardByItself.map(heard => songs.find(song => song.id === heard.match.song.id)).filter((song): song is Song => !!song);
+      return first.length ? [...first, ...songs.filter(song => !first.includes(song))] : songs;
+    }
+    if (searchMode === 'lyrics') return songs.filter(song => song.verses.some(verse => verse.lines.join(' ').toLowerCase().includes(needle)));
+    return songs.filter(song => song.title.toLowerCase().includes(needle) || song.author.toLowerCase().includes(needle))
+      .sort((a, b) => Number(b.title.toLowerCase().startsWith(needle)) - Number(a.title.toLowerCase().startsWith(needle)));
+  }, [songs, needle, searchMode, hearingSongs, heardMatches, heardByItself]);
   const liveId = projector.live?.source === 'song' ? projector.live.id : null;
+  const focusSearch = () => searchRow.current?.querySelector('input')?.focus();
+  const sendCard = async (song: Song, card: ReturnType<typeof songCards>[number]) => {
+    if (sending) return;
+    setSending(song.id); setSendProblem(null);
+    const content: LiveItem = { source: 'song', id: card.id, label: `${song.title} — ${card.label}`, title: song.title, section: card.label, lines: card.lines, origin: 'operator' };
+    projector.stage(content);
+    try {
+      await projector.send(content);
+      // The opening view must keep the exact excerpt just sent, even when
+      // the overview card was paged past the first verse.
+      onOpen(song.id, card.id);
+    } catch (error) {
+      setSendProblem(error instanceof Error ? error.message : 'Could not send these lyrics live. Try again.');
+    } finally { setSending(null); }
+  };
 
   return (
-    <LibraryBrowser
-      searchInset="var(--tri-card-gap)"
-      gap={16}
-      search={
-        searchOpen || songs.length === 0 ? <div ref={searchRow} className="min-w-0 flex-1">
+    <LibraryBrowser guideArea="songs" searchInset="var(--tri-card-gap)" gap={10}
+      search={null}
+      dock={<LibraryToolbar label="songs"
+        search={<div ref={searchRow} className="song-library-search">
           <LibrarySearch disabled={songs.length === 0}>
-          <SearchField
-            value={query}
-            onChange={onQuery}
-            placeholder="type a song name or lyrics..."
-          />
+            <SearchField guideId="songs-search" operatorSearch value={query}
+              onChange={value => { onQuery(value); if (hearingSongs) setHearingSongs(false); }}
+              ariaLabel={searchMode === 'songs' ? 'Search song titles and artists' : 'Search lyrics in your song library'}
+              placeholder="Start typing to search" />
           </LibrarySearch>
-        </div> : null
-      }
-      dock={
-        <LibraryToolbar
-          label="songs"
-          actions={[
-            { id: 'add', label: 'add a song', text: 'add song', icon: <AddSongIcon size={13} />, onClick: onAdd },
-            { id: 'lyrics', label: 'search online', text: 'search online', icon: <GlobeIcon size={13} />, onClick: () => onSource('search') },
-          ]}
-          searchActions={[
-            { id: 'listen', label: hearingSongs ? 'stop microphone song search' : 'search songs with microphone', text: 'microphone search', icon: <MicIcon size={13} />, active: hearingSongs, disabled: songs.length === 0 && !hearingSongs, onClick: () => { setHearingSongs(!hearingSongs); if (!hearingSongs && engine.asr !== 'listening') engine.listen(true); } },
-            {
-              id: 'search',
-              label: 'search songs by name or lyrics',
-              disabled: songs.length === 0,
-              text: 'search songs',
-              icon: <SearchIcon size={13} />,
-              active: searchOpen,
-              onClick: () => {
-                setSearchOpen(!searchOpen);
-                if (searchOpen) onQuery('');
-                else requestAnimationFrame(() => searchRow.current?.querySelector('input')?.focus());
-              },
-            },
-          ]}
-        />
-      }
+        </div>}
+        searchModes={<div className="song-search-modes" aria-label="Search in">
+          <button type="button" data-guide="songs-search-titles" aria-pressed={searchMode === 'songs'} onClick={() => { setSearchMode('songs'); setHearingSongs(false); focusSearch(); }}>Songs</button>
+          <button type="button" data-guide="songs-search-lyrics" aria-pressed={searchMode === 'lyrics'} onClick={() => { setSearchMode('lyrics'); setHearingSongs(false); focusSearch(); }}>Lyrics</button>
+        </div>}
+        actions={[
+          { id: 'add', label: 'add a song', text: 'add song', icon: <AddSongIcon size={13} />, onClick: onAdd },
+          { id: 'lyrics', label: 'find lyrics online to add a song', text: 'find online lyrics', icon: <GlobeIcon size={13} />, onClick: () => onSource('search') },
+        ]} />}
     >
-      {/* No header band: the cards are titled, and a word above them
-          saying "songs" was a row of chrome between the search and the
-          thing being searched. */}
       <LibraryPane header={false}>
+        {sendProblem && <p role="alert" className="song-send-problem">{sendProblem}</p>}
+        {hearingSongs && matches.length > 0 && <div className="song-match-note"><span>Listening · suggestions stay here until cleared</span><button type="button" data-guide="songs-clear-matches" onClick={() => clearMatches(recentSongWords(engine.spoken))}>Clear results</button></div>}
         {matches.length === 0 ? (
           <EmptyMark w={220} h={220} plain art={<SongRackArt />} play="hover"
             line={hearingSongs ? 'listening for a song match' : songs.length === 0 ? 'no songs yet' : 'nothing matches'}
-            hint={hearingSongs ? 'matches appear here as more words arrive' : songs.length === 0 ? 'add your first song to the library' : 'try a line of the words'}
+            hint={hearingSongs ? 'checking the last 14 words heard, including words already said' : songs.length === 0 ? 'add your first song to the library' : searchMode === 'songs' ? 'try another title, or choose Lyrics to find the words' : 'try a shorter line of lyrics'}
             below={!hearingSongs && (songs.length === 0 && onAdd
-              ? <div className="mt-4"><Button label="add a song" icon={<PlusIcon size={14} />} onClick={onAdd} /></div>
-              : query.trim() ? <div className="mt-4"><Button label="clear search" onClick={() => onQuery('')} /></div> : null)}
-          />
-        ) : (
-          /*
-            Five across, fixed. Everywhere else in this app a grid counts
-            its own columns from the room it has — see the note in tokens
-            about a verse not growing — but a song grid is scanned as a
-            shape you learn: the fourth song is always fourth on the top
-            row, on any screen, and a count that changed with the window
-            would move it. Five is what leaves the lyrics readable at a
-            glance; seven had them down at the size you have to lean in for.
-          */
-          <div
-            className="grid auto-rows-min grid-cols-5 gap-4 px-4 pb-1"
-          >
-            {matches.map((song, i) => {
-              const verse = verseOf(song, i);
-              /* This verse and the next — the card shows where the song
-                 is going. The last verse stands alone; nothing follows. */
-              const shown = [{ ...verse, lines: verse.lines.slice(0, 4) }];
-              const live = liveId?.startsWith(`${song.id}/`) ?? false;
-              return (
-                /* Wrapped rather than teaching SlideThumb to be a drag
-                   source: the gesture belongs to this screen's run of
-                   service, not to a library component that knows nothing
-                   about it. */
-                <div
-                  key={song.id}
-                  {...drag.bind(() => ({
-                    source: 'song',
-                    label: `${song.title} — ${verse.label}`,
-                    title: song.title,
-                    section: verse.label,
-                    lines: verse.lines,
-                    songId: song.id,
-                  }))}
-                  /*
-                   * The whole cell opens the song, not just the picture.
-                   *
-                   * SlideThumb puts its onSelect on the <button> around the
-                   * image, so a click on the title, the artist or the
-                   * padding under the thumbnail hit this wrapper and did
-                   * nothing — the card reads as one object and behaved as
-                   * two. The pager arrows inside stopPropagation, so paging
-                   * a card still does not open it.
-                   *
-                   * onClick, not onPointerUp: a drag ends in a pointerup
-                   * too, and the drag layer already swallows the click that
-                   * follows a drop (see swallowNextClick). Listening for the
-                   * click is what keeps "dropped a song into the run" from
-                   * also meaning "opened that song".
-                   */
-                  onClick={() => onOpen(song.id)}
-                  /*
-                    The card is the slide and nothing else: its border is
-                    the slide's own edge, and the name lives under it the
-                    way a caption lives under a picture. Fencing the two
-                    inside a second box put a title on the card, which is
-                    exactly what a title is not — and gave every cell two
-                    concentric borders saying the same thing.
-
-                    Hover no longer lifts the cell. With twenty cards under
-                    a moving pointer the lift made the grid shimmer; what
-                    answers the pointer now is the pager arrow on the
-                    picture and the edit / delete pair — see songs.css.
-                  */
-                  /*
-                    A rule under each cell, like the foot of a list row.
-                    1px and faint — a line between rows, not an outline,
-                    so it is not --tri-border (see the token's note). It
-                    gives the grid a baseline the captions sit on, which
-                    the eye wants once there are two lines of text under
-                    every picture.
-                  */
-                  className="song-card group/card pb-3"
-                  style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
-                >
-                  <button type="button" className="song-sheet" onClick={() => onOpen(song.id)} aria-label={`open ${song.title}`}>
-                    <span className="song-sheet-section">{verse.label}</span>
-                    <span className="song-sheet-lines">{shown[0].lines.map((line, n) => <span key={n}>{line}</span>)}</span>
-                    <ExternalLinkIcon size={16} className="song-sheet-arrow" />
-                  </button>
-
-                  {/*
-                    Name over artist, the way every library the operator
-                    has ever used sets them. Two lines rather than one
-                    joined by a dot: at 208px a "title · artist" run
-                    truncates mid-name and the artist is the half that
-                    survives, which is backwards — you are looking for the
-                    song.
-
-                    The vertical rhythm, tightest first: 2px between the
-                    two lines (one unit), 8px from the card down to them
-                    (a caption belonging to the picture above), 20px to the
-                    next row (a different song). Each step is more than
-                    double the last, which is what lets the eye group them
-                    without a rule or a box drawn to say so.
-
-                    Both lines carry explicit leading. Left inherited they
-                    took the base 1.5, which is a reading line-height meant
-                    for paragraphs — on a two-line label it opened a gap
-                    between name and artist wider than the gap separating
-                    them from the card.
-                  */}
-                  {/*
-                    The caption is a row now: name and artist on the left,
-                    the two things you can do to a song on the right. They
-                    sit level with the pair of text lines rather than under
-                    them, so the row stays two lines tall and the grid's
-                    vertical rhythm is the one described above.
-                  */}
-                  <div
-                    className="mt-2 flex items-center gap-2 px-0.5"
-                    title={`${song.title} — ${song.author}`}
-                  >
-                    {/* min-w-0: without it the flex item refuses to shrink
-                        below its text's width and `truncate` never fires —
-                        a long title would push the buttons off the card. */}
-                    <div className="min-w-0 flex-1">
-                      {/* Ink, not the accent: gold is the colour of the one
-                          act that reaches the congregation, and sixteen gold
-                          titles would spend it on nothing. Live is the one
-                          that goes gold. */}
-                      <p
-                        className={cx(
-                          /* The caption step carrying weight, not the base
-                             step: that one scales with density and reached
-                             14px on a wide window, which put a heading under
-                             a 117px picture. */
-                          'flex min-w-0 items-center gap-1.5 text-[length:var(--tri-size-sm)] font-semibold leading-[1.25] transition-colors',
-                          live
-                            ? 'text-[var(--tri-accent-yellow)]'
-                            : 'text-[rgb(229_243_242_/_0.86)] group-hover/card:text-[var(--tri-ink)]',
-                        )}
-                      >
-                        <span className="truncate">{song.title}</span>
-                      </p>
-                      {/* Quiet by a wide margin. The artist settles ties
-                          between two songs of the same name; it is never
-                          what the eye should land on first. */}
-                      <p className="mt-[2px] flex min-w-0 items-center gap-1.5 text-[length:var(--tri-size-xs)] leading-[1.3] text-[rgb(229_243_242_/_0.42)]">
-                        {/* Unsaved editor work is waiting on this song. Gold
-                            dot and a word, the same mark "in use" makes on a
-                            background — and never hidden on hover, because
-                            it is a fact about the song, not an action. */}
-                        <span className="truncate">{song.author}</span>
-                      </p>
-                    </div>
-
-                    {/*
-                      Edit and delete, as a pair of equal squares — the
-                      system's surface at control shape, sized from the
-                      side rather than padded from a label, because an icon
-                      has no text to set the width. Teal then red: the two
-                      tones already mean "an action" and "a destructive
-                      one", so the colour says which is which before the
-                      glyph does.
-
-                      stopPropagation on both: the whole cell opens the song
-                      (see the wrapper's onClick), and a click on either of
-                      these is not that.
-                    */}
-                    {/* Hidden at rest; the card's hover or keyboard focus
-                        brings them in. Rounded squares — the control corner
-                        — like every other icon button in the app. */}
-                    <div
-                      className="song-card-actions flex shrink-0 items-center gap-1.5"
-                      /* The cell is a drag source and captures the pointer on
-                         pointerdown; a captured pointer's click is delivered
-                         to the CELL, so without this a real mouse press on
-                         edit or delete opened the song instead. (The pager
-                         arrows in SlideThumb do the same, for the same
-                         reason.) */
-                      onPointerDown={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        title={`edit ${song.title}`}
-                        aria-label={`edit ${song.title}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          /* The picture is what lifts off, not the caption. */
-                          const cell = e.currentTarget.closest<HTMLElement>('.song-card');
-                          const origin = cell?.querySelector<HTMLElement>('[data-row]') ?? cell ?? null;
-                          if (onEdit) onEdit(song, origin);
-                          else onOpen(song.id);
-                        }}
-                        className={cx(
-                          surface({ shape: 'control', interactive: true }),
-                          toneClass(),
-                          'grid size-7 place-items-center',
-                        )}
-                      >
-                        <PencilIcon size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        title={`delete ${song.title}`}
-                        aria-label={`delete ${song.title}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(song.id);
-                        }}
-                        className={cx(
-                          surface({ tone: 'danger', shape: 'control', interactive: true }),
-                          toneClass('danger'),
-                          'grid size-7 place-items-center',
-                        )}
-                      >
-                        <TrashIcon size={12} />
-                      </button>
-                    </div>
+              ? <div className="mt-4"><Button guideId="songs-add-empty" label="add a song" icon={<PlusIcon size={14} />} onClick={onAdd} /></div>
+              : query.trim() ? <div className="mt-4"><Button guideId="songs-clear-search" label="clear search" onClick={() => onQuery('')} /></div> : null)} />
+        ) : <div className="song-library-grid" data-has-live={liveId !== null}>
+          {matches.map(song => {
+            const cards = songCards({ id: song.id, sections: song.verses });
+            const hash = [...song.id].reduce((sum, letter) => (sum * 31 + letter.charCodeAt(0)) >>> 0, 0);
+            const heardNow = !hearingSongs && !needle ? heardByItself.find(heard => heard.match.song.id === song.id)?.match : undefined;
+            const heard = hearingSongs ? heardMatches.find(match => match.song.id === song.id) : heardNow;
+            const found = heard ? cards.findIndex(card => card.sectionIndex === heard.section) : needle && searchMode === 'lyrics' ? cards.findIndex(card => card.lines.join(' ').toLowerCase().includes(needle)) : -1;
+            const page = Math.min(pageBySong[song.id] ?? (found >= 0 ? found : hash % Math.max(1, cards.length)), Math.max(0, cards.length - 1));
+            const card = cards[page];
+            if (!card) return null;
+            const live = liveId?.startsWith(`${song.id}/`) ?? false;
+            const step = (delta: number) => setPageBySong(previous => ({ ...previous, [song.id]: (page + delta + cards.length) % cards.length }));
+            return <article key={song.id} className="song-card" data-tone={hash % 4} data-live={live} data-heard={heardNow ? 'true' : undefined} onClick={() => onOpen(song.id)}
+              {...drag.bind(() => ({ source: 'song', label: `${song.title} — ${card.label}`, title: song.title, section: card.label, lines: card.lines, songId: song.id }))}>
+              <button type="button" data-guide={`song-${song.id}`} className="song-card-open" aria-label={`Open ${song.title}`}>
+                <span className="song-card-topline"><MusicIcon size={14}/><span>{live ? 'Live now' : heardNow ? 'Heard just now' : `${cards.length} lyric ${cards.length === 1 ? 'slide' : 'slides'}`}</span><ExternalLinkIcon size={13}/></span>
+                <span className="song-card-title" title={song.title}>{song.title}</span>
+                <span className="song-card-artist" title={song.author}>{song.author || '\u00a0'}</span>
+                <span className="song-card-excerpt">{card.lines.slice(0, 4).map((line, index) => <span key={index}>{line || '\u00a0'}</span>)}</span>
+              </button>
+              <div className="song-card-footer" onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
+                <div className="song-card-navigation">
+                  <span className="song-card-section" title={card.label}>{card.label}<small>{page + 1} / {cards.length}</small></span>
+                  <div className="song-card-pager" aria-label={`Browse lyrics for ${song.title}`}>
+                    <button type="button" data-guide="song-card-previous" aria-label={`Previous lyrics for ${song.title}`} title="Previous lyrics" disabled={cards.length < 2} onClick={() => step(-1)}><ChevronLeftIcon size={15}/></button>
+                    <button type="button" data-guide="song-card-next" aria-label={`Next lyrics for ${song.title}`} title="Next lyrics" disabled={cards.length < 2} onClick={() => step(1)}><ChevronRightIcon size={15}/></button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div className="song-card-command-row">
+                  <div className="song-card-actions">
+                    <button type="button" data-guide={`song-edit-${song.id}`} aria-label={`Edit ${song.title}`} title={`Edit ${song.title}`} onClick={event => onEdit ? onEdit(song, event.currentTarget.closest<HTMLElement>('.song-card')) : onOpen(song.id)}><PencilIcon size={13}/></button>
+                    <button type="button" data-guide={`song-delete-${song.id}`} aria-label={`Delete ${song.title}`} title={`Delete ${song.title}`} className="song-card-delete" onClick={() => onDelete(song.id)}><TrashIcon size={13}/></button>
+                  </div>
+                  <Button guideId={`song-card-live-${song.id}`} className="song-card-go-live" label={sending === song.id ? 'sending…' : 'go live'} title={`Send ${song.title} — ${card.label} live and open the song`} tone="go" icon={<PlayIcon size={12}/>} disabled={sending !== null} onClick={() => void sendCard(song, card)}/>
+                </div>
+              </div>
+            </article>;
+          })}
+        </div>}
       </LibraryPane>
     </LibraryBrowser>
   );
@@ -2728,6 +2491,7 @@ function SongGrid({
 function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; onSave: (base: SongBase) => Promise<boolean> }) {
   const drag = useDrag();
   const projector = useProjector();
+  const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [words, setWords] = useState('');
   const [saving, setSaving] = useState(false);
@@ -2784,20 +2548,24 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
   const liveCard = useRef<HTMLElement>(null);
   useEffect(() => { liveCard.current?.scrollIntoView({block:'nearest'}); },[song.id,at]);
   const next = cards.length ? cards[(at + 1) % cards.length] : null;
-  return <LibraryBrowser framed search={null}>
-    <LibraryPane scroll={false} title={<button type="button" onClick={onBack} title="back to the song library" className="flex min-w-0 items-center gap-2 text-left">
-      <ChevronDownIcon size={11} className="rotate-90"/><span>{song.title}</span><span className="font-normal text-white/40">{song.author}</span>
-    </button>} footer={<div className="flex flex-wrap items-center gap-3 px-3 pb-2">
+  const visibleCards = cards.map((card, index) => ({ card, index })).filter(({ card }) => card.id === editing || !query.trim() || `${card.label} ${card.lines.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase()));
+  return <LibraryBrowser framed guideArea="songs" gap={8} searchInset="var(--tri-card-gap)" search={<div className="song-detail-header">
+    <button type="button" data-guide="song-back" className="song-detail-back" onClick={onBack} title="Back to the song library"><ChevronLeftIcon size={16}/><span>All songs</span></button>
+    <div className="song-detail-title"><strong title={song.title}>{song.title}</strong><span>{song.author || `${cards.length} lyric slides`}</span></div>
+    <div className="song-detail-search"><SearchField guideId="song-lyrics-search" operatorSearch value={query} onChange={setQuery} ariaLabel={`Search lyrics in ${song.title}`} placeholder="Start typing to search…"/></div>
+  </div>}>
+    <LibraryPane scroll={false} header={false} footer={<div className="flex flex-wrap items-center gap-3 px-3 pb-2">
       <span className="min-w-0 flex-1 text-xs text-white/45">{at < 0 ? `${cards.length} lyric cards` : `${cards[at].label} · live`}</span>
-      {changed && <Button label="back to default" disabled={saving} title="Restore the original imported lyrics and slide order" onClick={() => void changeSlides(original)} />}
-      <Button label={saving ? 'saving…' : 'rearrange'} disabled={saving || editing !== null} title="Regroup imported lyric cards into balanced slides, keeping named verses and choruses" onClick={() => void rearrange()}/>
-      {next && <Button label={at < 0 ? 'go live' : 'next lyrics'} tone="gold" icon={<PlayIcon size={12}/>} onClick={() => void send(next)}/>}
+      {changed && <Button guideId="song-restore" label="back to default" disabled={saving} title="Restore the original imported lyrics and slide order" onClick={() => void changeSlides(original)} />}
+      <Button guideId="song-rearrange" label={saving ? 'saving…' : 'rearrange'} disabled={saving || editing !== null} title="Regroup imported lyric cards into balanced slides, keeping named verses and choruses" onClick={() => void rearrange()}/>
+      {next && <Button guideId="song-next" label={at < 0 ? 'go live' : 'next lyrics'} tone="go" icon={<PlayIcon size={12}/>} onClick={() => void send(next)}/>}
     </div>}>
       <div className="flex h-full min-h-0 flex-col">
         {problem && <p role="alert" className="px-4 py-2 text-sm text-[var(--tri-accent-yellow)]">{problem}</p>}
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <div className="song-sections-grid">
-            {cards.map((card, index) => {
+        <div className="song-detail-content min-h-0 flex-1 overflow-y-auto">
+          {visibleCards.length === 0 && <div className="song-lyrics-empty"><p>No lyrics match “{query}”.</p><Button guideId="song-clear-lyrics-search" label="clear search" onClick={() => setQuery('')}/></div>}
+          <div className="song-sections-grid" data-has-live={projector.live?.source === 'song'}>
+            {visibleCards.map(({ card, index }) => {
               const live = index === at;
               const selected = index === previewAt;
               const edit = editing === card.id;
@@ -2808,14 +2576,14 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
                   onKeyDown={event => { const next = index + (event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0); if (next !== index) { event.preventDefault(); if (!saving && next >= 0 && next < cards.length) void changeSlides(arrangeSongCards(sections,index,next)); } }}
                   onDragStart={event => { setDragFrom(index); event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',card.id); }}
                   onDragEnd={() => { setDragFrom(null); setDragOver(null); }}>⠿</button><span>{card.label}</span><span>{live ? 'live' : selected ? 'preview' : String(index + 1).padStart(2, '0')}</span></div>
-                {edit ? <textarea aria-label={`Edit ${card.label} lyrics`} className="song-section-editor" autoFocus value={words} onChange={event => setWords(event.target.value)} disabled={saving}/> :
-                  <button type="button" className="song-section-lyrics" aria-label={`Preview ${card.label}`} onClick={() => projector.stage(item(card))}
+                {edit ? <textarea data-guide="song-slide-text" aria-label={`Edit ${card.label} lyrics`} className="song-section-editor" autoFocus value={words} onChange={event => setWords(event.target.value)} disabled={saving}/> :
+                  <button type="button" data-guide="song-slide" className="song-section-lyrics" aria-label={`Preview ${card.label}`} title="Click to preview · double-click to go live" onClick={() => projector.stage(item(card))} onDoubleClick={() => void send(card)}
                     {...drag.bind(() => ({source:'song',label:`${song.title} — ${card.label}`,title:song.title,section:card.label,lines:card.lines,songId:song.id}))}>
                     {card.lines.map((line,i) => <span key={i}>{line || '\u00a0'}</span>)}
                   </button>}
                 <div className="song-section-actions">
-                  {edit ? <><Button label="cancel" tone="ash" disabled={saving} onClick={() => setEditing(null)}/><Button label={saving ? 'saving…' : 'save lyrics'} disabled={saving} icon={<CheckIcon size={12}/>} onClick={() => void save(card)}/></> :
-                    <><button type="button" className="song-slide-delete" aria-label={`Delete slide ${index+1}`} title="Delete this slide" disabled={saving || cards.length <= 1} onClick={() => void changeSlides(arrangeSongCards(sections,index,null))}><TrashIcon size={14}/></button><Button label="edit" tone="ash" icon={<PencilIcon size={12}/>} onClick={() => { setEditing(card.id); setWords(card.lines.join('\n')); setProblem(null); }}/><Button label="go live" tone="gold" icon={<PlayIcon size={12}/>} onClick={() => void send(card)}/></>}
+                  {edit ? <><Button guideId="song-slide-cancel" label="cancel" tone="ash" disabled={saving} onClick={() => setEditing(null)}/><Button guideId="song-slide-save" label={saving ? 'saving…' : 'save lyrics'} disabled={saving} icon={<CheckIcon size={12}/>} onClick={() => void save(card)}/></> :
+                    <><button type="button" data-guide="song-slide-delete" className="song-slide-delete" aria-label={`Delete slide ${index+1}`} title="Delete this slide" disabled={saving || cards.length <= 1} onClick={() => void changeSlides(arrangeSongCards(sections,index,null))}><TrashIcon size={14}/></button><Button guideId="song-slide-edit" label="edit" tone="ash" icon={<PencilIcon size={12}/>} onClick={() => { setEditing(card.id); setWords(card.lines.join('\n')); setProblem(null); }}/><Button guideId="song-slide-live" label="go live" tone="go" icon={<PlayIcon size={12}/>} onClick={() => void send(card)}/></>}
                 </div>
               </article>;
             })}
@@ -2826,44 +2594,13 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
   </LibraryBrowser>;
 }
 
-/*
- * What a segment's own "+" offers, in the menu flow.
- *
- * Songs are the real library; scriptures are a short stub, because finding
- * a verse means the reference builder and that does not fit in a 200px
- * menu — which is itself one of the things this flow is here to show.
- */
-const SAMPLE_REFS = ['John 3:16', 'Psalm 23:1', 'Romans 8:28', 'Isaiah 40:31'];
-
-function segmentAddMenu(): ActionMenuGroup[] {
-  return [
-    {
-      items: [
-        { id: 'note', label: 'add note', icon: <NoteIcon size={14} />, accent: true },
-        {
-          id: 'song',
-          label: 'add song',
-          icon: <MediaIcon size={13} />,
-          items: SONGS.map((s) => ({ id: `song:${s.title}`, label: s.title })),
-        },
-        {
-          id: 'scripture',
-          label: 'add scripture',
-          icon: <SearchIcon size={13} />,
-          items: SAMPLE_REFS.map((r) => ({ id: `scripture:${r}`, label: r })),
-        },
-      ],
-    },
-  ];
-}
-
 /* ------------------------------------------------------------------ */
 /* The catches pane — the room's microphone, asked two things           */
 /* ------------------------------------------------------------------ */
 
 /*
- * The microphone actions sit above the caught verses in the right half
- * of the verses card, beside the Bible they came from.
+ * The microphone actions sit above the transcript in the left rail,
+ * where they stay available while browsing any library tab.
  */
 
 /* "search song": the songs it finds are drawn in the right half of the
@@ -2874,34 +2611,16 @@ function SongSearchTile() {
   const active = useSongListeningStore((s) => s.active);
   const setActive = useSongListeningStore((s) => s.setActive);
   return (
-    <Button className="catch-tile" label={active ? 'stop search' : 'search song'} icon={<MicIcon size={18} />} tone={active ? 'gold' : 'ash'} aria-pressed={active}
+    <Button guideId="catches-song-search" className="catch-tile" label={active ? 'stop search' : 'search song'} icon={<MicIcon selected={active} size={14} />} tone={active ? 'gold' : 'ash'} pressed={active}
+      title={active ? 'Stop song search and clear suggestions' : 'Find a song from the last 14 words heard, then keep listening'}
       onClick={() => { setActive(!active); if (!active && engine.asr !== 'listening') engine.listen(true); }} />
   );
 }
 
-/*
- * The two things an operator can ask the catches card to do, as a pair of
- * tiles across its top: glyph over word, like the tiles in the run's "+"
- * menu.
- */
+/* Compact microphone controls sit together above the transcript. */
 function CatchActions() {
   return (
-    <div
-      className="catch-actions grid w-full shrink-0 grid-cols-2 gap-[var(--tri-gap)]"
-      style={{ '--tri-control-h': '54px', '--tri-control-pad-x': '8px' } as CSSProperties}
-    >
-      <style>{`
-        .catch-actions > .catch-tile { flex-direction: column; gap: 6px; min-width: 0; padding-block: 8px; font-size: 11px; letter-spacing: .02em; }
-        /* The microphone sits in its own ring, so the two tiles read as the
-           two things the booth can ask the room's microphone for. */
-        .catch-actions > .catch-tile > svg { box-sizing: content-box; width: 18px; height: 18px; padding: 6px; border-radius: 999px; background: rgb(229 243 242 / .07); box-shadow: inset 0 0 0 1px rgb(229 243 242 / .14); transition: background 140ms ease, box-shadow 140ms ease; }
-        .catch-actions > .catch-tile:hover > svg { background: rgb(229 243 242 / .12); }
-        .catch-actions > .catch-tile[aria-pressed="true"] > svg { background: rgb(228 216 122 / .18); box-shadow: 0 0 0 1px rgb(228 216 122 / .55), 0 0 0 5px rgb(228 216 122 / .12); animation: catch-tile-listen 1.6s ease-in-out infinite; }
-        /* A tile's note ("no passage found…") runs under both tiles. */
-        .catch-actions > .catch-extra { grid-column: 1 / -1; order: 1; }
-        @keyframes catch-tile-listen { 0%, 100% { box-shadow: 0 0 0 1px rgb(228 216 122 / .55), 0 0 0 4px rgb(228 216 122 / .10); } 50% { box-shadow: 0 0 0 1px rgb(228 216 122 / .8), 0 0 0 8px rgb(228 216 122 / 0); } }
-        @media (prefers-reduced-motion: reduce) { .catch-actions > .catch-tile[aria-pressed="true"] > svg { animation: none; } }
-      `}</style>
+    <div data-guide-area="catches" className="catch-actions">
       <SongSearchTile />
       <ScriptureCatches />
     </div>
@@ -2921,44 +2640,6 @@ function CatchesTranscript({ onOpenTranscript }: { onOpenTranscript: () => void 
     <TranscriptFace rail spoken={engine.spoken} asr={engine.asr} className="h-full w-full" onOpen={onOpenTranscript} />
   ) : (
     <EmptyMark w={120} h={100} plain art={<ScriptureQuoteArt />} play="hover" line="what the preacher says shows here" />
-  );
-}
-
-/** The + on every segment — gold, the accent as a surface: adding to the
-    run is the one thing a card invites you to do, so its control carries
-    the look-here tone while everything around it rests. */
-function SegmentAdd({ seg, size = 22 }: { seg: RunSegment; size?: number }) {
-  const run = useRun();
-  return (
-    <ActionMenu
-      groups={segmentAddMenu()}
-      onSelect={(item) => {
-        if (item.id === 'note') {
-          /* Empty on purpose — the row is the editor, so the note starts as
-             a blank line waiting for the words, not as the word "note". */
-          run.queue(seg.key, { source: 'note', label: '' });
-          return;
-        }
-        const [source, label] = item.id.split(/:(.*)/s);
-        run.queue(seg.key, {
-          source: source === 'song' ? 'song' : 'scripture',
-          label: label ?? item.label,
-        });
-      }}
-      trigger={
-        <button
-          type="button"
-          title={`add to ${seg.label}`}
-          className={cx(
-            surface({ tone: 'gold', interactive: true }),
-            'flex shrink-0 items-center justify-center text-[rgb(228_216_122_/_0.92)]',
-          )}
-          style={{ width: size, height: size, borderRadius: 5 }}
-        >
-          <PlusIcon size={11} />
-        </button>
-      }
-    />
   );
 }
 
@@ -3557,6 +3238,7 @@ function ViewTabs({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) 
           <button
             key={m}
             type="button"
+            data-guide={`view-${m}`}
             onClick={() => {
               pointerView.current = null;
               focusView.current = null;
@@ -3570,7 +3252,7 @@ function ViewTabs({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode) 
             className="tri-header-control tri-header-view flex cursor-pointer items-center justify-center select-none"
           >
             <span className="tri-header-view-symbol">
-              <Icon size={18} className="tri-header-view-icon" />
+              <Icon selected={active} size={18} className="tri-header-view-icon" />
             </span>
             <span className="tri-header-view-label" aria-hidden="true">
               <span>{m}</span>
@@ -3673,6 +3355,7 @@ function DigitalClockBento() {
   return (
     <button
       type="button"
+      data-guide="header-clock"
       onClick={toggle}
       className="tri-header-control tri-header-clock relative flex shrink-0 cursor-pointer items-center gap-2 lowercase"
       title={
@@ -3919,6 +3602,7 @@ function SlidePager({
   const step = (delta: -1 | 1) => (
     <button
       type="button"
+      data-guide={delta < 0 ? "slide-previous" : "slide-next"}
       onClick={() => onStep(delta)}
       disabled={disabled || (delta < 0 ? at <= 0 : at >= total - 1)}
       aria-label={delta < 0 ? "previous slide" : "next slide"}
@@ -3995,6 +3679,7 @@ function PreviewScreenPicker() {
     >
       <LibraryControlSizer />
         <ActionMenu
+          guideId="preview-screen"
           className="!absolute inset-0 w-full [&>span]:w-full"
           groups={[{ items: screenChoices.map((choice) => ({ ...choice, icon: choice.id === chosenScreen ? <CheckIcon size={14} /> : undefined })) }]}
           onSelect={(choice) => {
@@ -4008,6 +3693,7 @@ function PreviewScreenPicker() {
           trigger={
             <button
               type="button"
+              data-guide="preview-screens"
               disabled={!outputs || routing}
               aria-label="screens — choose where the preview goes live"
               title={screenError || (!outputs ? 'Screen selection is available in the desktop app' : `Go live to: ${screenChoices.find((choice) => choice.id === chosenScreen)?.label ?? 'automatic'}`)}
@@ -4024,10 +3710,34 @@ function PreviewScreenPicker() {
   );
 }
 
+/*
+ * What a stage box shows around its picture.
+ *
+ * Not flat grey: the picture's own background, blurred and darkened well
+ * below the picture so the picture still reads as the bright thing, under
+ * the same faint dot patches as the library rail and the transcript strip
+ * (owner, 2026-10-17). Always a still — a clip's poster frame, never a
+ * second playing video under the one in the picture. Each box keeps its own
+ * patch layout for as long as it is mounted, as the empty states do.
+ */
+function StageBackdrop({ src }: { src: string | null }) {
+  return (
+    <div aria-hidden className="stage-backdrop">
+      {/* Keyed, so a new background fades in rather than swapping hard. */}
+      {src && <StageGradient src={src} />}
+      <span className="stage-backdrop-shade" />
+      <DitheredPatches className="stage-backdrop-dots" interactionParent />
+    </div>
+  );
+}
+
 function StageBox({
   label,
   screenPicker,
   tone = 'default',
+  broadcasting = false,
+  side = false,
+  backdrop = null,
   canvas,
   controls,
   onKeyDown,
@@ -4038,6 +3748,13 @@ function StageBox({
   label: string;
   screenPicker?: ReactNode;
   tone?: 'default' | 'live';
+  broadcasting?: boolean;
+  /** Controls beside the picture, not in a row under or over it — see
+      useSideControls, which decides it for both boxes at once. */
+  side?: boolean;
+  /** A still of what the picture has behind its words, for the box around
+      it (StageBackdrop); null leaves the box dark. */
+  backdrop?: string | null;
   canvas: ReactNode;
   controls: ReactNode;
   onKeyDown?: (e: React.KeyboardEvent) => void;
@@ -4051,7 +3768,10 @@ function StageBox({
 }) {
   return (
     <Panel
-      className="basis-1/2 !bg-[#111111]"
+      guideArea={label === 'live' ? 'live' : 'preview'}
+      /* Positioned and isolated for StageBackdrop, which sits behind
+         everything in the box. */
+      className="relative isolate basis-1/2 !bg-[#111111]"
       /* Panel already ships a gold ring as tone='live'. Using it rather
          than drawing a second highlight is what keeps "this is live" one
          visual idea across the whole app. */
@@ -4060,8 +3780,13 @@ function StageBox({
          bodyStyle in ./parts. */
       bodyStyle={{ padding: 'var(--tri-gap)' }}
     >
+      <StageBackdrop src={backdrop} />
       <div
-        className="flex h-full min-h-0 flex-col items-center outline-none"
+        className="stage-box flex h-full min-h-0 flex-col items-center outline-none"
+        /* The controls keep to the edge their row was on: the preview's
+           to the picture's foot, the live box's to its head. */
+        data-side={side || undefined}
+        data-edge={label === 'live' ? 'start' : 'end'}
         /* Focusable only when it has keys to answer, so Tab does not stop on
            a box that would do nothing with it. */
         tabIndex={onKeyDown ? 0 : undefined}
@@ -4081,10 +3806,28 @@ function StageBox({
           } as React.CSSProperties
         }
       >
+        <div className="stage-toolbar flex w-full shrink-0 flex-wrap items-center justify-between gap-[var(--tri-gap)]" style={{ minHeight: 'var(--stage-row)', order: label === 'live' ? 0 : 2, ...(label === 'live' ? { paddingBottom: 'var(--tri-gap)' } : { paddingTop: 'var(--tri-gap)', marginTop: 'auto' }) }}>
+          <div className="stage-toolbar-lead flex shrink-0 items-center gap-[var(--tri-gap)]">
+            {screenPicker}
+            {!screenPicker && <span className="stage-live-label" data-active={broadcasting || undefined}>
+              {label === 'live' && <span className="stage-live-signal" aria-hidden="true"><span /></span>}
+              {label}
+              {label === 'live' && <span className="sr-only">{broadcasting ? ' — on air' : ' — no content on air'}</span>}
+            </span>}
+          </div>
+          <div className="stage-toolbar-actions ml-auto flex min-w-0 flex-wrap items-center justify-end gap-[var(--tri-gap)]">
+            {controls}
+          </div>
+        </div>
         <div
-          className="relative shrink-0"
+          className="stage-picture relative shrink-0"
           style={{
-            width: 'min(100cqw, calc((100cqh - var(--stage-row)) * 16 / 9))',
+            /* Under a row, the picture gives up the row's height. Beside
+               its controls it has the whole height, and gives up a column
+               (--stage-side) and a gutter on each side instead. */
+            width: side
+              ? 'min(calc(100cqw - 2 * (var(--stage-side) + var(--tri-gap))), calc(100cqh * 16 / 9))'
+              : 'min(100cqw, calc((100cqh - var(--stage-row)) * 16 / 9))',
             aspectRatio: '16 / 9',
           }}
         >
@@ -4117,28 +3860,142 @@ function StageBox({
             </span>
           ) : null}
         </div>
-        {/* Bottom-anchored: the controls sit --tri-gap off the panel's bottom
-            edge exactly as the picture sits off its top, and whatever height
-            a 16:9 picture could not use falls between the two as air rather
-            than being split into two unequal margins. */}
-        <div className={cx('stage-footer flex min-h-[var(--stage-row)] w-full flex-1 flex-wrap items-end gap-[var(--tri-gap)]', screenPicker ? 'justify-start' : 'justify-between')}>
-          {/* Level with the controls' own text rather than the row's floor,
-              and stepped in so the word clears the panel's corner curve. */}
-          <div className="flex shrink-0 items-center gap-[var(--tri-gap)]">
-            {screenPicker}
-            {!screenPicker && <span className="tri-label flex h-[var(--tri-control-h)] shrink-0 items-center pl-2.5 lowercase text-[var(--tri-ink-muted)]">
-              {label}
-            </span>}
-          </div>
-          <div className={cx('stage-footer-actions flex min-w-0 flex-wrap items-center gap-[var(--tri-gap)]', !screenPicker && 'ml-auto')}>
-            {screenPicker && <span aria-hidden="true" className="h-3 w-px shrink-0 bg-white/20" />}
-            {controls}
-          </div>
-        </div>
+
       </div>
     </Panel>
   );
 }
+
+/*
+ * Whether the two boxes' controls stand beside their pictures.
+ *
+ * The handle makes the stage short, and a short stage leaves each 16:9
+ * picture narrower than its box: dead space either side, while the row of
+ * controls under (or over) it still takes height the picture could use.
+ * Beside, the controls fill the dead space and the picture gets the row's
+ * height back.
+ *
+ * Beside wins only when it makes the bigger picture — under a row the
+ * picture gives up the row's height, beside it gives up a column each side
+ * — and only while the tallest stack of controls fits the picture's height.
+ * Where the two are level the picture is the same size either way, so it
+ * does not jump; only the controls move.
+ *
+ * Both boxes switch together and keep the same column, as wide as the
+ * widest control in either. A pair (× and go live) counts as its wider
+ * half: it sits on one line where the column has room and stacks where it
+ * does not, which is what lets a laptop's narrower boxes switch at all.
+ * The pictures are equal by construction; deciding per box would undo
+ * that. Measured rather than tied to the handle, because how much room a
+ * side has depends on the window as much as on the handle.
+ *
+ * But only once the operator has set a height of their own, with a drag or
+ * the arrow keys (`allowed`). Opening, and each press of the handle, keep
+ * the row under (or over) the picture as it always was — owner, 2026-10-17.
+ *
+ * And the controls glide there and back rather than jump. Before a switch
+ * goes in, where every control and both pictures stand is noted; after,
+ * each is drawn back where it was and let go (FLIP). Web animations, not
+ * transitions: the box is a size container, and transitions inside one are
+ * cancelled while the header orb ticks.
+ */
+function useSideControls(stage: React.RefObject<HTMLDivElement | null>, allowed: boolean) {
+  const [layout, setLayout] = useState({ side: false, column: 0 });
+  const allowedRef = useRef(allowed);
+  allowedRef.current = allowed;
+  const measureNow = useRef(() => {});
+  /* The layout on screen, and where things stood before a switch away from it. */
+  const onScreen = useRef(false);
+  const before = useRef<{ side: boolean; rects: Map<HTMLElement, DOMRect> } | null>(null);
+  useLayoutEffect(() => {
+    const row = stage.current;
+    if (!row) return;
+    const boxes = [...row.querySelectorAll<HTMLElement>('.stage-box')];
+    const groups = boxes.flatMap((box) => [...box.querySelectorAll<HTMLElement>('.stage-toolbar-lead, .stage-toolbar-actions')]);
+    if (!boxes.length) return;
+    const shown = (item: Element): item is HTMLElement => item instanceof HTMLElement && item.offsetWidth > 0;
+    /* Each control on its own; at its narrowest a pair is its halves, one
+       over the other. */
+    const controls = (group: HTMLElement) => [...group.children].filter(shown).flatMap((item) => item.classList.contains('stage-pair') ? [...item.children].filter(shown) : [item]);
+    const movers = () => [...boxes.flatMap((box) => [...box.querySelectorAll<HTMLElement>('.stage-picture')]), ...groups.flatMap(controls)];
+    let frame = 0;
+    let room = false;
+    const measure = () => {
+      frame = 0;
+      const style = getComputedStyle(boxes[0]);
+      const px = (name: string) => Number.parseFloat(style.getPropertyValue(name)) || 0;
+      const gap = px('--tri-gap');
+      /* --stage-row, worked out as STAGE_VARS does. */
+      const rowHeight = (px('--stage-control-rows') || 1) * (Math.max(px('--tri-control-h'), px('--tri-field-h')) + gap);
+      const width = Math.min(...boxes.map((box) => box.clientWidth));
+      const height = Math.min(...boxes.map((box) => box.clientHeight));
+      /* Computed sizes, not offsetWidth: those are whole pixels, and a
+         95.2px pill in a 95px column pokes into the gutter. Nor the client
+         rect, which an entrance animation's transform would shrink. */
+      const outer = (item: HTMLElement) => {
+        const s = getComputedStyle(item);
+        const n = (value: string, fallback: number) => Number.parseFloat(value) || fallback;
+        return {
+          width: n(s.width, item.offsetWidth) + n(s.marginLeft, 0) + n(s.marginRight, 0),
+          height: n(s.height, item.offsetHeight) + n(s.marginTop, 0) + n(s.marginBottom, 0),
+        };
+      };
+      let column = 0;
+      let stack = 0;
+      for (const group of groups) {
+        const items = controls(group).map(outer);
+        column = Math.max(column, ...items.map((item) => item.width));
+        stack = Math.max(stack, items.reduce((sum, item) => sum + item.height, 0) + gap * Math.max(0, items.length - 1));
+      }
+      column = Math.ceil(column);
+      const under = Math.min(width, (height - rowHeight) * 16 / 9);
+      const beside = Math.min(width - 2 * (column + gap), height * 16 / 9);
+      /* A little give either way, so a size sitting on the line does not
+         flick the controls back and forth. */
+      room = beside > under + (room ? -2 : 2) && stack <= beside * 9 / 16;
+      const side = allowedRef.current && room;
+      if (side === onScreen.current) before.current = null;
+      else if (before.current?.side !== side) before.current = { side, rects: new Map(movers().map((el) => [el, el.getBoundingClientRect()])) };
+      setLayout((prev) => (side === prev.side && column === prev.column ? prev : { side, column }));
+    };
+    measureNow.current = measure;
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    /* The groups too: a control appearing (the pager, a clip's transport)
+       changes how wide and tall a column has to be. */
+    const observer = new ResizeObserver(schedule);
+    for (const element of [...boxes, ...groups]) observer.observe(element);
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [stage]);
+  /* A drag arriving, or a press taking the operator's height away. */
+  useLayoutEffect(() => measureNow.current(), [allowed]);
+  useLayoutEffect(() => {
+    onScreen.current = layout.side;
+    const from = before.current;
+    before.current = null;
+    if (!from || from.side !== layout.side || prefersReducedMotion()) return;
+    const moves = [...from.rects].filter(([el]) => el.isConnected);
+    /* From where each one is drawn now — mid-glide or not — to where it lands. */
+    for (const [el] of moves) for (const glide of el.getAnimations()) if (glide.id === STAGE_GLIDE) glide.cancel();
+    const lands = moves.map(([el]) => el.getBoundingClientRect());
+    moves.forEach(([el, was], i) => {
+      const now = lands[i];
+      if (!now.width) return;
+      const x = was.left - now.left;
+      const y = was.top - now.top;
+      /* Only the pictures change size, and both shapes are 16:9. */
+      const scale = was.width / now.width;
+      if (Math.abs(x) < 0.5 && Math.abs(y) < 0.5 && Math.abs(scale - 1) < 0.002) return;
+      el.animate(
+        [{ transformOrigin: '0 0', transform: `translate(${x}px, ${y}px) scale(${scale})` }, { transformOrigin: '0 0', transform: 'none' }],
+        /* The stage's own height animation, so a press reads as one move. */
+        { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', id: STAGE_GLIDE },
+      );
+    });
+  }, [layout.side]);
+  return layout;
+}
+const STAGE_GLIDE = 'stage-glide';
 
 const THEME_SAMPLE: VerseSlide = {
   lines: [{ version: 'KJV', text: 'The LORD is my shepherd; I shall not want.' }],
@@ -4168,6 +4025,26 @@ function Stage({
   const projector = useProjector();
   const engine = useEngine();
   const { preview, live, slide, screen } = projector;
+
+  /*
+   * A still of what each picture has behind its words, for the box around
+   * it (StageBackdrop): a photo or slide that fills the picture itself,
+   * else the theme's background — a clip's poster frame for a video one.
+   * A clip shown as content plays on black, so its box stays dark; so does
+   * the live box while the wall is black or showing the logo.
+   */
+  const mediaLibrary = useMediaLibrary();
+  const themeStill = (backgroundId: string) => {
+    const media = backgroundFor(backgroundId, mediaLibrary);
+    return media ? mediaSrc(media) : null;
+  };
+  const backdropFor = (item: typeof preview, backgroundId: string) => {
+    if (item?.source === 'media' && item.mediaKind === 'video') return null;
+    if (item?.path && (item.source === 'presentation' || item.source === 'media')) return presentationImageSrc(item.path);
+    return themeStill(backgroundId);
+  };
+  const previewBackdrop = backdropFor(preview, previewTheme.backgroundId);
+  const liveBackdrop = screen === 'live' ? backdropFor(live, liveTheme.backgroundId) : screen === 'clear' ? themeStill(liveTheme.backgroundId) : null;
 
   /*
    * The two boxes take a carried background — and only a background.
@@ -4291,39 +4168,9 @@ function Stage({
       return;
     }
     if (!stagedRef || !preview) return;
-    /* A reading on the wall in pages is stepped page by page first: 1-3 goes
-       1, 2, 3 and only then 4 (readingStep). */
-    if (previewOnAir) {
-      const page = readingStep(slide, live?.slides?.length ?? 0, dir);
-      if (page !== null) { projector.setSlide(page); return; }
-    }
-    const bookIndex = BOOKS.indexOf(stagedRef.book);
-    const target = dir === 1 ? stagedRef.end + 1 : stagedRef.start - 1;
-    if (bookIndex < 0 || target < 1 || !window.api?.getChapter) return;
-    const version = preview.version || 'KJV';
-    navigating.current = true;
-    setStepping(true);
-    try {
-      const res = await window.api.getChapter(bookIndex, stagedRef.chapter, version);
-      const row = res?.data?.find((v) => v.id === target);
-      if (!row) return;
-      const verses = [{ verse: target, text: row.text }];
-      const reference = `${stagedRef.book} ${stagedRef.chapter}:${target}`;
-      const next: LiveItem = {
-        source: 'scripture',
-        id: reference,
-        label: reference,
-        reference,
-        version,
-        text: row.text,
-        verses,
-        slides: buildVerseSlides({ book: stagedRef.book, chapter: stagedRef.chapter, version }, verses, fitRules(verses)),
-        origin: 'operator',
-      };
-      await projector.send(next);
-      projector.stage(next);
-    } catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not show verse. Try again.' }); }
-    finally { navigating.current = false; setStepping(false); }
+    try { await projector.stepScripture(dir); }
+    catch (error) { say?.({ text: error instanceof Error ? error.message : 'Could not show verse. Try again.' }); }
+
   };
 
   /*
@@ -4386,6 +4233,12 @@ function Stage({
   const [resizing, setResizing] = useState(false);
   const suppressResizeClick = useRef(false);
   const libraryRaised = stageScale < (STAGE_SCALE_MIN + STAGE_SCALE_FULL) / 2;
+  /* A height the operator set themselves — a drag or the arrow keys — which
+     is when the controls may move beside the pictures. Opening and the
+     handle's press leave them under (owner, 2026-10-17). */
+  const [adjusted, setAdjusted] = useState(false);
+  const stageRow = useRef<HTMLDivElement>(null);
+  const { side, column } = useSideControls(stageRow, adjusted);
   const canStep = !editingTheme && (!!stagedRef || deckCount > 1 || preview?.source === 'song');
   useEffect(() => {
     if (!overPreview || !canStep) return;
@@ -4444,11 +4297,13 @@ function Stage({
     >
     {confirmQr && <QrProjectionConfirm onDiscard={discardProjection} onConfirm={confirmProjection} />}
     <div
+      ref={stageRow}
       className="flex min-h-0 gap-[var(--tri-gap)]"
       style={{
         height: STAGE_HEIGHT,
         transition: resizing || prefersReducedMotion() ? undefined : 'height 280ms cubic-bezier(0.22, 1, 0.36, 1)',
-      }}
+        '--stage-side': `${column}px`,
+      } as React.CSSProperties}
     >
       {/*
         The halves are equal by construction (basis-1/2 on both) rather
@@ -4459,6 +4314,8 @@ function Stage({
       */}
       <StageBox
         label="preview"
+        side={side}
+        backdrop={previewBackdrop}
         screenPicker={<><PreviewScreenPicker /><MicPicker compact /></>}
         onKeyDown={canStep && !editingTheme ? onStepKey : undefined}
         onHover={setOverPreview}
@@ -4486,14 +4343,16 @@ function Stage({
               <>
                 <button
                   type="button"
+                  data-guide="preview-step-previous"
                   aria-label={deckCount ? "previous slide" : "previous verse"}
                   title="previous — show on both screens ←"
-                  disabled={stepping || (deckCount ? deckIndex <= 0 : !!stagedRef && stagedRef.start <= 1)}
+                  disabled={stepping || (deckCount ? deckIndex <= 0 : !!stagedRef && stagedRef.start <= 1 && (!previewOnAir || slide === 0))}
                   onClick={() => step(-1)}
                   className="verse-step verse-step--previous absolute inset-y-0 left-0 w-1/2 disabled:cursor-default"
                 >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--previous"><span><ChevronLeftIcon size={20} /></span>previous</span>}</button>
                 <button
                   type="button"
+                  data-guide="preview-step-next"
                   aria-label={deckCount ? "next slide" : "next verse"}
                   disabled={stepping || (deckCount > 0 && deckIndex >= deckCount - 1)}
                   title="next — show on both screens →"
@@ -4502,6 +4361,7 @@ function Stage({
                 >{hintPass > 0 && <span key={hintPass} className="verse-nav-hint verse-nav-hint--next"><span><ChevronRightIcon size={20} /></span>next</span>}</button>
               </>
             )}
+            <div className="scripture-book-question"><BookClarification /></div>
             <ScriptureFindOverlay />
           </>
         }
@@ -4510,6 +4370,7 @@ function Stage({
             {deckCount > 0 && !finding && <SlidePager at={deckIndex} total={deckCount} onStep={dir => void step(dir)} disabled={stepping || editingTheme} />}
             {range && !finding && (
               <Button
+                guideId="preview-together"
                 label={together ? 'separate' : 'together'}
                 tone="ash"
                 title={
@@ -4522,16 +4383,17 @@ function Stage({
                 onClick={reslice}
               />
             )}
-            {/* The staged reading's length, without a cursor to move — it
-                says "this is three screens" before the operator commits to
-                reading it out. */}
-            {(preview?.slides?.length ?? 0) > 1 && !finding && (
-              <span className="shrink-0 text-[length:var(--tri-size-xs)] tabular-nums text-[rgb(229_243_242_/_0.4)]">
-                {preview!.slides!.length} slides
-              </span>
-            )}
-            {/* Keep the four footer controls in place even when preview is empty. */}
+            {preview?.source === 'scripture' && !finding && <div className="stage-scripture-nav">
+              <Button label="" icon={<ChevronLeftIcon size={14} />} tone="ash" title="Previous page or verse" aria-label="Previous page or verse" onClick={() => void step(-1)} />
+              {(preview.slides?.length ?? 0) > 1 && <span title="Page in this reading">{(previewOnAir ? slide : 0) + 1} / {preview.slides!.length}</span>}
+              <Button label="" icon={<ChevronRightIcon size={14} />} tone="ash" title="Next page or verse" aria-label="Next page or verse" onClick={() => void step(1)} />
+            </div>}
+            {/* These two controls stay together at the preview's right edge
+                (beside the picture, × goes over go live when the column is
+                too narrow for both on one line). */}
+            <div className="stage-pair flex shrink-0 items-center gap-[var(--tri-gap)]">
               <Button
+                guideId="preview-unstage"
                 label=""
                 tone="ash"
                 className="[--tri-control-h:var(--tri-field-h)] w-[var(--tri-field-h)] shrink-0"
@@ -4550,6 +4412,7 @@ function Stage({
                 }}
               />
             <Button
+              guideId="go-live"
               label="go live"
               tone="go"
               icon={<PlayIcon size={16} />}
@@ -4558,12 +4421,16 @@ function Stage({
               title={finding ? 'choose a passage above, or close the results (esc)' : preview ? `put ${preview.label} on the projector` : 'stage something first'}
               onClick={goLive}
             />
+            </div>
           </>
         }
       />
 
       <StageBox
         label="live"
+        side={side}
+        backdrop={liveBackdrop}
+        broadcasting={!!live && screen === 'live'}
         tone={live && !blacked ? 'live' : 'default'}
         drop={liveDrop}
         files={filesFor('stage-live')}
@@ -4583,19 +4450,18 @@ function Stage({
         }
         controls={
           <>
-            <SlidePager
-              at={Math.min(slide, (live?.slides?.length ?? 1) - 1)}
-              total={live?.slides?.length ?? 0}
-              onStep={(d) => projector.stepSlide(d)}
-            />
+            <Button guideId="live-clear" label="clear" tone="ash" icon={<CloseIcon size={13} />} disabled={!live || screen === 'clear'} title="Hide the words; keep the background" onClick={() => setWall('clear')} />
+            <Button guideId="live-restore" label="restore" tone="ash" icon={<ResetIcon size={13} />} disabled={!live || screen === 'live'} title="Bring the live content back" onClick={() => setWall('live')} />
             {/* A clip on the wall gets a transport. Only then: a pause button
                 beside a verse is a button that does nothing. The projector
                 window owns the <video>, so these are messages to it — the
                 paused flag here is this window's own best guess, flipped on
                 press and reset whenever a different thing goes live. */}
             {live?.mediaKind === 'video' ? (
-              <>
+              /* One piece, so beside the picture the pair stays a pair. */
+              <div className="stage-pair flex shrink-0 items-center gap-[var(--tri-gap)]">
                 <Button
+                  guideId="live-video-pause"
                   label=""
                   tone="ash"
                   icon={videoPaused ? <PlayIcon size={12} /> : <PauseIcon size={12} />}
@@ -4606,6 +4472,7 @@ function Stage({
                   }}
                 />
                 <Button
+                  guideId="live-video-restart"
                   label=""
                   tone="ash"
                   icon={<ResetIcon size={13} />}
@@ -4615,21 +4482,8 @@ function Stage({
                     setVideoPaused(false);
                   }}
                 />
-              </>
+              </div>
             ) : null}
-            {/* Clear drops the words and keeps the picture — the app's own
-                meaning of the word, not a blank screen. While the wall is
-                cleared it says "restore", the way the phone remote does: the
-                preview's ✕ can clear it too, and the gold LIVE panel stays
-                lit over a wall showing only its background. */}
-            <Button
-              label={screen === 'clear' ? 'restore' : 'clear'}
-              className="stage-output-control"
-              tone="ash"
-              disabled={!engine.caps.outputs && !live}
-              title={screen === 'clear' ? 'bring the words back' : 'drop the words, keep the background'}
-              onClick={() => setWall(screen === 'clear' ? 'live' : 'clear')}
-            />
             {/*
               The companion code, on the wall.
 
@@ -4643,7 +4497,9 @@ function Stage({
               press takes it down.
             */}
             <Button
-              label=""
+              guideId="live-qr"
+              label={qrUp || qrLive ? 'hide QR' : 'show QR'}
+              className="stage-output-control"
               tone={qrUp || qrLive ? 'gold' : 'ash'}
               icon={<QrIcon size={13} />}
               disabled={wallBusy}
@@ -4657,7 +4513,8 @@ function Stage({
               onClick={toggleQr}
             />
             <Button
-              label=""
+              guideId="live-projector"
+              label="display"
               tone="ash"
               icon={<MediaIcon size={13} />}
               disabled={!engine.caps.bridge}
@@ -4670,18 +4527,19 @@ function Stage({
     </div>
     <div className="stage-resizer-track">
     <button type="button"
+      data-guide="stage-resizer"
       aria-label={libraryRaised ? 'lower the library' : 'raise the library'}
       title={libraryRaised ? 'lower the library — drag to set any size' : 'raise the library — drag to set any size'}
       aria-pressed={libraryRaised}
       className={cx('stage-resizer', libraryRaised && 'is-raised', resizing && 'is-resizing')}
-      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setResizing(true); setStageScale((v) => clampStageScale(v + (e.key === 'ArrowUp' ? -.05 : .05))); } }}
+      onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setResizing(true); setAdjusted(true); setStageScale((v) => clampStageScale(v + (e.key === 'ArrowUp' ? -.05 : .05))); } }}
       onPointerDown={(e) => { if (e.button !== 0) return; suppressResizeClick.current = false; resizeStart.current = { y: e.clientY, scale: stageScale, moved: false }; e.currentTarget.setPointerCapture(e.pointerId); }}
       onPointerMove={(e) => {
         const start = resizeStart.current;
         if (!start) return;
         if ((e.buttons & 1) === 0) { resizeStart.current = null; setResizing(false); return; }
         if (!start.moved && Math.abs(e.clientY - start.y) < 4) return;
-        if (!start.moved) { start.moved = true; setResizing(true); }
+        if (!start.moved) { start.moved = true; setResizing(true); setAdjusted(true); }
         setStageScale(clampStageScale(start.scale + (e.clientY - start.y) / 400));
       }}
       onPointerUp={() => {
@@ -4697,6 +4555,7 @@ function Stage({
         suppressResizeClick.current = false;
         if (dragged && e.detail !== 0) return;
         setResizing(e.detail === 0);
+        setAdjusted(false);
         setStageScale(libraryRaised ? STAGE_SCALE_FULL : STAGE_SCALE_MIN);
       }}>
         <span className="stage-resizer-button">
@@ -4708,18 +4567,20 @@ function Stage({
   );
 }
 
-/* How far the pictures above the library shrink and grow, as a share of
-   their natural size. The handle's press moves between MIN and FULL. */
+/* How far the pictures above the library shrink, as a share of their
+   natural size. The handle's press moves between MIN and FULL, and a drag
+   stops at FULL too: there the pictures are already as wide as their boxes,
+   so any more height could only open a gap between a picture and its row of
+   controls (owner, 2026-10-17 — a drag used to reach 1.15). */
 const STAGE_SCALE_MIN = 0.55;
 const STAGE_SCALE_FULL = 1;
-const STAGE_SCALE_MAX = 1.15;
-const clampStageScale = (v: number) => Math.max(STAGE_SCALE_MIN, Math.min(STAGE_SCALE_MAX, v));
+const clampStageScale = (v: number) => Math.max(STAGE_SCALE_MIN, Math.min(STAGE_SCALE_FULL, v));
 
-/* A real divider row keeps the handle clear of both cards and library controls. */
-const STAGE_HANDLE_H = '24px';
+/* The divider occupies the same gutter as the other workspace panels. */
+const STAGE_HANDLE_H = 'var(--tri-gap)';
 const STAGE_VARS = {
   '--stage-handle-h': STAGE_HANDLE_H,
-  '--tri-control-h': '26px',
+  '--tri-control-h': 'var(--tri-field-h)',
   /* What the row under the picture needs: its controls, and the
      gutter between them and the picture. */
   '--stage-row': 'calc(var(--stage-control-rows, 1) * (max(var(--tri-control-h), var(--tri-field-h)) + var(--tri-gap)))',
@@ -5158,7 +5019,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
   const [orbSuggestion, setOrbSuggestion] = useState<OrbSuggestion | null>(null);
   const scriptureSearch = useRef<ScriptureReferenceInputHandle>(null);
   const skipOperatorEntryFocus = useRef(false);
-  useOperatorTyping({ enabled: view === 'operator', root: operatorRoot, search: scriptureSearch, revealSearch: () => setTab(SCRIPTURES_TAB), skipNextEntryFocus: skipOperatorEntryFocus });
+  useOperatorTyping({ enabled: view === 'operator', root: operatorRoot, search: scriptureSearch, activeLibrary: TABS[tab]?.id, revealSearch: () => setTab(SCRIPTURES_TAB), skipNextEntryFocus: skipOperatorEntryFocus });
   const [settingsPage, setSettingsPage] = useState('S-10a');
   useEffect(() => {
     const live=projector.live;
@@ -5243,7 +5104,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
     setView('operator');
     if (destination === 'audio' || destination === 'phone') return '[data-guide="audio-input"]';
     if (destination === 'run') return '[data-guide="run"]';
-    const id = destination === 'scripture' ? 'verses' : destination;
+    const id = destination === 'scripture' ? 'scriptures' : destination === 'online' ? 'media' : destination;
     const index = TABS.findIndex(item => item.id === id);
     if (index >= 0) setTab(index);
     return `[data-guide="library-${id}"]`;
@@ -5488,17 +5349,20 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
       */}
       <div
         ref={operatorRoot}
+        data-guide-area="operator"
         className={cx(
-          'grid h-full w-full min-w-0 gap-[var(--tri-gap)] p-2.5',
+          'grid h-full w-full min-w-0 gap-[var(--tri-gap)]',
           'tri-workspace-aurora',
           (viewport.h < 650 || viewport.w < 1100) && 'operator-compact',
           viewport.h <= 560 && 'operator-short',
           viewport.h <= 460 && 'operator-tight',
         )}
         style={{
+          '--tri-gap': '5px',
+          padding: 'var(--tri-gap)',
           // Keep the run readable when the window is narrower than a booth monitor.
           '--tri-rail-w': 'clamp(160px, 20%, 300px)',
-          '--tri-topbar-h': '64px',
+          '--tri-topbar-h': 'calc(var(--tri-field-h) + 4px)',
           '--operator-footer-h': `${Math.max(38, Math.min(58, viewport.h * 0.07))}px`,
           '--stage-control-rows': viewport.w < 1200 ? 2 : 1,
           gridTemplateColumns: 'var(--tri-rail-w) minmax(0, 1fr)',
@@ -5523,7 +5387,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               renderTrigger={notification => <StatusOrb label={stateLabel} notification={notification} suggestion={orbSuggestion} />} />
           </div>
           <div className="min-w-0 flex-1" />
-          {/* The orb follows Settings; the service controls stay at the right. */}
+          {/* Suggested actions align with the preview; service controls stay right. */}
           <MobileMenu />
           <DigitalClockBento />
           <ProductGuide onNavigate={navigateGuide} />
@@ -5534,7 +5398,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               Profile borrows this same frame: it is read rather than
               worked, like the dashboard, so it wants the header and the
               full width, not the operator's rail-and-stage grid. */
-          <div data-guide="workspace-view" className="col-span-2 row-span-3 flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
+          <div data-guide="workspace-view" data-guide-area={view} className="col-span-2 row-span-3 flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]">
             {view === 'settings' ? (
               /* The same surface the sandbox draws, given the posture's
                  full width. It brings its own nine-page rail, so it wants
@@ -5581,21 +5445,15 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
           <OperatorRail
             run={
             /* The run scrolls within its equal starting share of the rail. */
-            <div data-guide="run" data-drop-segment="" className="operator-run-panel relative min-h-0">
+            <div data-guide="run" data-guide-area="run" data-drop-segment="" className="operator-run-panel relative min-h-0 flex-1">
             <Panel
-              title={`run of service (${run.segments.length})`}
+              title={`run of show (${run.segments.length})`}
               className="operator-empty absolute inset-0 !bg-transparent"
               style={{ borderRadius: 0, boxShadow: 'none' }}
-              /* Always mounted, drawn only once the run has something in
-                 it. While it is empty the empty state carries the same
-                 actions at a size you cannot miss, and a second, smaller
-                 set in the header was the same offer made twice in one
-                 card — but the dialogs those actions open live here, and
-                 must outlast the rail filling up. */
-              right={<RunHeaderActions say={say} hidden={run.segments.length === 0} />}
+              bodyStyle={{ padding: 0 }}
             >
               <RunOfService
-                renderAdd={(seg) => <SegmentAdd seg={seg} />}
+                say={say}
                 fallbackSongs={isEmptyPreview ? [] : SONGS}
               />
             </Panel>
@@ -5606,7 +5464,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               className="min-h-0 !bg-transparent"
               style={{ borderRadius: 0, boxShadow: 'none' }}
               bodyClass="flex flex-col"
-              bodyStyle={{ padding: 'var(--tri-gap)' }}
+              bodyStyle={{ padding: 'var(--tri-card-gap)' }}
             >
               <div className="operator-empty min-h-0 flex-1 overflow-y-auto">
                 {/* Away from the verses card, a catch comes here instead,
@@ -5616,9 +5474,12 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                   ? <CatchPeek onOpen={() => setTab(SCRIPTURES_TAB)} />
                   : <CatchesTranscript onOpenTranscript={() => setView('dashboard')} />}
               </div>
+              <div className="shrink-0" style={{ paddingTop: 'var(--tri-card-gap)' }}>
+                <CatchActions />
+              </div>
             </Panel>
             }
-            footer={<ListeningSign />}
+            listen={<ListeningSign />}
           />
 
           <div data-library-workspace className="row-span-3 grid min-h-0 min-w-0 grid-rows-subgrid">
@@ -5629,7 +5490,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                 ticker's row it also spans — which is what keeps the two
                 columns on one line on a window too short for the stage. */}
             <StageSizer />
-            <div className="flex min-h-0 min-w-0 flex-col gap-[var(--tri-gap)]" style={{ gridArea: '1 / 1 / -1 / 2' }}>
+            <div className="flex min-h-0 min-w-0 flex-col" style={{ gridArea: '1 / 1 / -1 / 2' }}>
             <div className="flex min-h-0 min-w-0 flex-col">
             <Stage
               transition={textTransition}
@@ -5680,18 +5541,6 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
                   onBackgroundGone={backgroundGone}
                 />
               ) : null}
-              {TABS[tab]?.id === 'online' ? (
-                /* Online picks preview as standalone media; the themes shelf
-                   explicitly chooses backgrounds behind words. */
-                <StockSearch
-                  onOpenSettings={openOnlineSettings}
-                  onPick={(media) => {
-                    addMedia({ ...media, collection: 'media' });
-                    const item = mediaPreview(media);
-                    if (item) projector.stage(item);
-                  }}
-                />
-              ) : null}
             </Panel>
             </div>
 
@@ -5739,7 +5588,10 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
       )}
       </div>
 
-
+      {/* A catch's signal, for an operator who is not looking at it — the
+          app's edges, or the whole screen from another app (CatchSignals). */}
+      <AutoAdvance />
+      <CatchSignals view={view} tab={TABS[tab]?.id ?? ''} />
 
     </>
   );

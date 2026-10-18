@@ -1,3 +1,5 @@
+import { capitalizeScriptureNames } from './scriptureNames'
+
 /**
  * How a scripture reading is cut into slides (BUILD-MAP 2.18).
  *
@@ -234,7 +236,10 @@ export function pageVerses(verses: VerseText[], max: number): VerseText[][] {
 
 function compose(verses: VerseText[], showVerseNumbers: boolean): string {
   return verses
-    .map((v) => (showVerseNumbers ? `${v.verse}${VERSE_NUMBER_SPACE}${v.text}` : v.text))
+    .map((v) => {
+      const text = capitalizeScriptureNames(v.text)
+      return showVerseNumbers ? `${v.verse}${VERSE_NUMBER_SPACE}${text}` : text
+    })
     .join(' ')
 }
 

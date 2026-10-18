@@ -27,8 +27,11 @@ export function Panel({
   bare = false,
   unavailable = false,
   empty = false,
+  guideArea,
 }: {
   title?: string;
+  /** Stable area id for the in-app guide (data-guide-area on the card's root). */
+  guideArea?: string;
   /** Center the heading until this panel has content. */
   empty?: boolean;
   /**
@@ -91,6 +94,7 @@ export function Panel({
 }) {
   return (
     <section
+      data-guide-area={guideArea}
       className={cx(
         'tri-rounded-surface flex min-h-0 min-w-0 flex-col overflow-hidden',
         !bare && 'bg-[rgb(255_255_255_/_0.022)]',

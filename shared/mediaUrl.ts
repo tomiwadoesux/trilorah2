@@ -61,3 +61,19 @@ export function isVideoUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   return /^data:video\//i.test(url) || /\.(?:mp4|m4v|mov|webm)(?:[?#]|$)/i.test(url);
 }
+
+/** A library picker can use bundled/downloaded files without fetching remote assets. */
+export function isLocalAssetUrl(value: string | null | undefined, appOrigin?: string): boolean {
+  const url = value?.trim();
+  if (!url || url.startsWith('//') || url.startsWith('\\\\')) return false;
+  if (/^[a-z]:[\\/]/i.test(url)) return true;
+  if (/^data:(?:image|video)\//i.test(url)) return true;
+  if (/^local-media:\/\//i.test(url)) return true;
+  if (/^file:\/\//i.test(url)) {
+    try { return ['', 'localhost'].includes(new URL(url).hostname); } catch { return false; }
+  }
+  if (/^(?:https?:|blob:)/i.test(url)) {
+    try { return !!appOrigin && appOrigin !== 'null' && new URL(url).origin === appOrigin; } catch { return false; }
+  }
+  return !/^[a-z][a-z0-9+.-]*:/i.test(url);
+}

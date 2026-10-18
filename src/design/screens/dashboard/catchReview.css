@@ -1,0 +1,181 @@
+/* Check catches — CatchReview.tsx. Lives inside .profile-page, so --pf-* are set.
+
+   Only the pair of words moves between catches (slides 14px, 240ms, strong
+   ease-out, the old one leaving as the new one arrives). The buttons stay
+   put. Hover is fast in, slow out — 80ms / 200ms — on a real pointer only. */
+
+.cr { display:flex; flex-direction:column; gap:var(--tri-gap); }
+
+/* -------- a service still open -------- */
+.cr-banner { display:flex; align-items:center; gap:12px; min-height:56px; padding:10px 12px 10px 14px; border-radius:var(--tri-radius-surface,10px); background:rgb(228 216 122 / .06); box-shadow:inset 0 0 0 1px rgb(228 216 122 / .22); animation:cr-rise 220ms var(--tri-ease-out) both; }
+.cr-banner-ico { display:grid; place-items:center; width:30px; height:30px; flex-shrink:0; border-radius:var(--tri-radius-control); background:rgb(228 216 122 / .12); color:var(--pf-gold); }
+.cr-banner-text { flex:1; min-width:0; }
+.cr-banner-text b { display:block; font-size:calc(var(--tri-size) + 1px); line-height:18px; font-weight:600; color:var(--tri-ink); }
+.cr-banner-text span { display:block; margin-top:1px; font-size:var(--tri-size); line-height:18px; color:rgb(229 243 242 / .58); }
+.cr-banner-text .cr-banner-error { color:var(--pf-rose); }
+
+/* -------- the queue card --------
+   The card itself is a Panel (title, icon, blurb), the same header as every
+   other tab. This is its body: the question row is content, not a header. */
+.cr-card { display:flex; flex-direction:column; gap:16px; padding:4px 16px 0; }
+.cr-card--empty { padding-bottom:4px; }
+.cr-head { display:grid; grid-template-columns:32px minmax(0,1fr); column-gap:12px; align-items:center; }
+.cr-head h3 { font-size:20px; line-height:26px; font-weight:600; letter-spacing:-.02em; color:var(--tri-ink); outline:none; }
+.cr-pos { font-size:var(--tri-size); line-height:18px; color:var(--pf-faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cr-pos b { color:var(--pf-ink-2); font-weight:600; }
+
+.cr-ico { display:grid; place-items:center; width:32px; height:32px; flex-shrink:0; border-radius:var(--tri-radius-control); color:var(--pf-ink-2); background:rgb(255 255 255 / .05); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .08); }
+.cr-ico--mint { color:var(--pf-mint); background:rgb(143 211 192 / .1); box-shadow:inset 0 0 0 1px rgb(143 211 192 / .22); }
+.cr-ico--gold { color:var(--pf-gold); background:rgb(228 216 122 / .08); box-shadow:inset 0 0 0 1px rgb(228 216 122 / .22); }
+.cr-ico--rose { color:var(--pf-rose); background:rgb(234 199 198 / .08); box-shadow:inset 0 0 0 1px rgb(234 199 198 / .22); }
+.cr-ico--pop { animation:cr-pop 360ms cubic-bezier(.34,1.56,.64,1) both; }
+
+/* -------- progress: one segment per catch, coloured by the answer -------- */
+.cr-progress { display:flex; gap:3px; height:4px; margin-top:-4px; }
+.cr-seg { flex:1; min-width:0; border-radius:2px; background:rgb(255 255 255 / .08); transition:background-color 200ms ease; }
+.cr-seg--now { background:rgb(229 243 242 / .55); }
+.cr-seg--confirmed { background:var(--pf-mint); }
+.cr-seg--amended { background:var(--pf-gold); }
+.cr-seg--rejected { background:var(--pf-rose); }
+.cr-seg--skipped { background:rgb(255 255 255 / .2); }
+.cr-bar { flex:1; border-radius:2px; background:rgb(255 255 255 / .08); overflow:hidden; }
+.cr-bar > span { display:block; height:100%; background:var(--pf-mint); transform-origin:left; transition:transform 240ms var(--tri-ease-out); }
+
+/* -------- the stage: only this moves between catches -------- */
+.cr-stage { display:grid; }
+.cr-slide { grid-area:1 / 1; min-width:0; }
+.cr-slide--in { animation:cr-in 240ms var(--tri-ease-out) 40ms both; }
+.cr-slide--in[data-dir="back"] { animation-name:cr-in-back; }
+.cr-slide--out { animation:cr-out 160ms var(--tri-ease-out) forwards; pointer-events:none; }
+.cr-slide--out[data-dir="back"] { animation-name:cr-out-back; }
+
+.cr-pair { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); min-height:132px; border:1px solid var(--pf-rule); border-radius:6px; }
+.cr-said-cell { min-width:0; padding:16px 18px 18px; border-radius:5px 0 0 5px; background:rgb(0 0 0 / .22); }
+.cr-shown-cell { position:relative; min-width:0; padding:16px 18px 18px 28px; border-left:1px solid var(--pf-rule); }
+.cr-seam { position:absolute; left:-12px; top:50%; translate:0 -50%; display:grid; place-items:center; width:23px; height:23px; border-radius:50%; background:#111; box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1); color:var(--pf-faint); z-index:1; }
+.cr-label { margin-bottom:8px; font-size:10px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--pf-faint); }
+.cr-said { font-family:var(--font-mono); font-size:14px; line-height:22px; color:var(--pf-ink-2); overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+.cr-said--open { display:block; -webkit-line-clamp:unset; }
+.cr-said--none { font-family:inherit; font-size:var(--tri-size); line-height:18px; color:var(--pf-faint); }
+.cr-more { margin-top:6px; font-size:var(--tri-size); color:var(--pf-mint); border-radius:4px; }
+.cr-more:hover { text-decoration:underline; }
+.cr-shown { font-size:28px; line-height:32px; font-weight:600; letter-spacing:-.025em; color:var(--tri-ink); overflow-wrap:anywhere; }
+.cr-shown--none { font-size:18px; line-height:24px; font-weight:500; letter-spacing:-.01em; color:var(--pf-faint); }
+.cr-shown--fix { color:var(--pf-mint); animation:cr-fade 120ms ease-out; }
+.cr-shown--wait { font-size:16px; }
+.cr-struck { margin-bottom:4px; font-size:var(--tri-size); line-height:18px; color:var(--pf-faint); text-decoration:line-through; text-decoration-color:rgb(234 199 198 / .6); }
+.cr-struck--plain { text-decoration:none; }
+.cr-morph { animation:cr-morph 180ms var(--tri-ease-out) 40ms both; }
+
+/* -------- answers: stationary -------- */
+.cr-actions, .cr-fix { display:flex; flex-wrap:wrap; align-items:center; gap:8px; animation:cr-morph 160ms var(--tri-ease-out) both; }
+.cr-quiet { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:var(--tri-control-h); margin-left:auto; padding:0 8px 0 12px; border-radius:var(--tri-radius-control); font-size:var(--tri-size); color:var(--pf-mute);
+  transition:color 200ms ease, background-color 200ms ease, transform 140ms var(--tri-ease-out); }
+.cr-fix .cr-quiet { padding:0 12px; }
+.cr-quiet:active { transform:scale(.97); }
+@media (hover:hover) and (pointer:fine) { .cr-quiet:hover { color:var(--tri-ink); background:rgb(255 255 255 / .05); transition-duration:80ms; } }
+.cr-quiet:focus-visible, .cr-more:focus-visible, .cr-undo:focus-visible { outline:2px solid rgb(143 211 192 / .7); outline-offset:2px; }
+
+/* The app's own reference field, given an edge so it reads as a field here. */
+.cr-ref { display:block; flex:1 1 280px; min-width:0; max-width:440px; }
+.cr-refinput > div:first-child { box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1); transition:box-shadow 160ms ease; }
+.cr-refinput > div:first-child:focus-within { box-shadow:inset 0 0 0 1px rgb(143 211 192 / .55); transition-duration:120ms; }
+
+/* Key hints. Button lowercases everything inside it, so these say uppercase. */
+.cr-kbd { display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; border-radius:4px; font:600 10px/1 var(--font-mono); letter-spacing:0; text-transform:uppercase; color:rgb(229 243 242 / .62); background:rgb(255 255 255 / .06); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1); }
+.tri-tone-bright .cr-kbd { color:rgb(0 0 0 / .6); background:rgb(0 0 0 / .1); box-shadow:inset 0 0 0 1px rgb(0 0 0 / .12); }
+@media not ((hover:hover) and (pointer:fine)) { .cr-kbd { display:none; } }
+
+/* -------- footer: one designated line for what just happened -------- */
+.cr-foot { position:relative; display:flex; align-items:center; min-height:44px; margin:0 -16px; padding:0 16px; border-top:1px solid var(--pf-rule); font-size:var(--tri-size); }
+.cr-foot > p { display:flex; align-items:center; gap:8px; min-width:0; width:100%; animation:cr-fade 160ms ease-out; }
+.cr-foot svg { flex-shrink:0; }
+.cr-foot-idle { color:var(--pf-faint); }
+.cr-foot-held { color:var(--pf-mute); }
+.cr-foot-held > svg { color:var(--pf-mint); }
+.cr-foot-held .cr-kbd { margin-left:2px; }
+.cr-foot-error { color:var(--pf-rose); line-height:18px; padding:10px 0; }
+.cr-undo { display:inline-flex; align-items:center; gap:5px; height:26px; margin-left:auto; padding:0 8px; border-radius:var(--tri-radius-control); color:var(--pf-mint); font-weight:500; flex-shrink:0; transition:background-color 200ms ease; }
+@media (hover:hover) and (pointer:fine) { .cr-undo:hover { background:rgb(143 211 192 / .08); transition-duration:80ms; } }
+/* The hold, drawn as the footer's top rule running out. */
+.cr-hold { position:absolute; left:0; right:0; top:-1px; height:1px; background:rgb(143 211 192 / .55); transform-origin:left; animation:cr-hold 5000ms linear forwards; }
+
+/* -------- empty: how catches arrive -------- */
+.cr-how { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--pf-rule); border-radius:6px; }
+.cr-how > li { position:relative; display:flex; flex-direction:column; gap:4px; min-width:0; padding:16px 18px 18px; animation:cr-rise 220ms var(--tri-ease-out) both; }
+.cr-how > li:nth-child(2) { animation-delay:50ms; }
+.cr-how > li:nth-child(3) { animation-delay:100ms; }
+.cr-how > li + li { border-left:1px solid var(--pf-rule); }
+.cr-how .cr-ico { width:28px; height:28px; margin-bottom:8px; }
+.cr-how .cr-seam { top:30px; translate:none; }
+.cr-how h4 { font-size:calc(var(--tri-size) + 1px); line-height:18px; font-weight:600; color:var(--tri-ink); }
+.cr-how p { font-size:var(--tri-size); line-height:18px; color:rgb(229 243 242 / .58); text-wrap:pretty; }
+.cr-footnote { display:flex; align-items:flex-start; gap:8px; padding:0 0 16px; font-size:var(--tri-size); line-height:18px; color:var(--pf-faint); }
+.cr-footnote svg { margin-top:3px; flex-shrink:0; }
+
+/* -------- done: what you answered -------- */
+.cr-tally { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--pf-rule); border-radius:6px; }
+.cr-tally > li { display:flex; flex-direction:column; gap:2px; min-width:0; padding:14px 16px; animation:cr-rise 220ms var(--tri-ease-out) both; }
+.cr-tally > li + li { border-left:1px solid var(--pf-rule); }
+.cr-tally b { font-size:22px; line-height:28px; font-weight:600; font-variant-numeric:tabular-nums; }
+.cr-tally span { font-size:var(--tri-size); color:var(--pf-mute); }
+.cr-tally--mint b { color:var(--pf-mint); }
+.cr-tally--gold b { color:var(--pf-gold); }
+.cr-tally--rose b { color:var(--pf-rose); }
+.cr-tally--faint b { color:var(--pf-ink-2); }
+.cr-tally--zero b, .cr-tally--zero span { color:var(--pf-faint); }
+
+/* -------- missed a verse? -------- */
+.cr-miss-row { display:flex; align-items:center; gap:8px; max-width:680px; }
+.cr-field { flex:1; min-width:0; height:var(--tri-control-h); padding:0 12px; border:0; border-radius:var(--tri-radius-control); background:rgb(255 255 255 / .03); box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1);
+  font-size:calc(var(--tri-size) + 1px); color:var(--tri-ink); outline:none; color-scheme:dark; transition:box-shadow 200ms ease, background-color 200ms ease; }
+.cr-field::placeholder { color:rgb(229 243 242 / .32); }
+.cr-field:focus { background:rgb(0 0 0 / .22); box-shadow:inset 0 0 0 1px rgb(143 211 192 / .55); transition-duration:120ms; }
+@media (hover:hover) and (pointer:fine) { .cr-field:hover:not(:focus) { box-shadow:inset 0 0 0 1px rgb(255 255 255 / .16); transition-duration:80ms; } }
+.cr-miss-note { display:flex; align-items:center; gap:6px; min-height:18px; margin-top:8px; font-size:var(--tri-size); line-height:18px; color:var(--pf-faint); }
+.cr-miss-note > span { animation:cr-fade 160ms ease-out; }
+.cr-miss-note svg { flex-shrink:0; }
+.cr-miss-note--ok { color:var(--pf-mint); }
+.cr-miss-note--error { color:var(--pf-rose); }
+
+/* -------- narrow -------- */
+@container (max-width:720px) {
+  .cr-how { grid-template-columns:minmax(0,1fr); }
+  .cr-how > li + li { border-left:0; border-top:1px solid var(--pf-rule); }
+  .cr-how .cr-seam { left:24px; top:-12px; rotate:90deg; }
+  .cr-tally { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .cr-tally > li:nth-child(3) { border-left:0; }
+  .cr-tally > li:nth-child(n+3) { border-top:1px solid var(--pf-rule); }
+}
+@container (max-width:640px) {
+  .cr-pair { grid-template-columns:minmax(0,1fr); }
+  .cr-said-cell { border-radius:5px 5px 0 0; }
+  .cr-shown-cell { border-left:0; border-top:1px solid var(--pf-rule); padding:22px 18px 18px; }
+  .cr-pair .cr-seam { left:50%; top:-12px; translate:-50% 0; rotate:90deg; }
+  .cr-kbd { display:none; }
+}
+@container (max-width:520px) {
+  .cr-actions > * { flex:1 1 calc(50% - 4px); }
+  .cr-quiet { margin-left:0; }
+}
+
+@keyframes cr-fade { from { opacity:0; } }
+@keyframes cr-rise { from { opacity:0; transform:translateY(4px); } }
+@keyframes cr-morph { from { opacity:0; transform:translateY(4px); } }
+@keyframes cr-in { from { opacity:0; transform:translateX(14px); } }
+@keyframes cr-in-back { from { opacity:0; transform:translateX(-14px); } }
+@keyframes cr-out { to { opacity:0; transform:translateX(-14px); } }
+@keyframes cr-out-back { to { opacity:0; transform:translateX(14px); } }
+@keyframes cr-pop { from { opacity:0; transform:scale(.8); } }
+@keyframes cr-hold { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+
+@media (prefers-reduced-motion:reduce) {
+  .cr-banner, .cr-slide--in, .cr-morph, .cr-actions, .cr-fix, .cr-how > li, .cr-tally > li { animation:cr-fade 120ms ease both; }
+  .cr-slide--out { display:none; }
+  /* As specific as the back-direction rule, so an undo fades instead of sliding. */
+  .cr-slide--in[data-dir] { animation-name:cr-fade; }
+  .cr-ico--pop { animation:cr-fade 120ms ease both; }
+  .cr-hold { display:none; }
+  .cr-quiet:active { transform:none; }
+  .cr-bar > span { transition:none; }
+}

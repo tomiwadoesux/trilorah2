@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { CUTOUT_ICONS, CUTOUT_NAMES, cutoutBody, cutoutSvg, type CutoutIconName } from '../shared/cutout/index.ts';
+import { CUTOUT_ICONS, CUTOUT_NAMES, cutoutBody, cutoutSvg } from '../shared/cutout/index.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const directory = `${root}public/cutout-icons/`;
@@ -50,13 +50,4 @@ end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeU
 end.writeUInt32LE(directoryBytes.length, 12); end.writeUInt32LE(offset, 16);
 await writeFile(`${directory}trilorah-cutout-icons.zip`, Buffer.concat([...local, directoryBytes, end]));
 
-// The LAN remote is one self-contained HTML response, so embed the same groups.
-const remotePath = `${root}public/mobile-remote.html`;
-const remote = await readFile(remotePath, 'utf8');
-const marker = /<!-- BEGIN TRILORAH CUTOUT ICONS -->[\s\S]*?<!-- END TRILORAH CUTOUT ICONS -->/g;
-if ([...remote.matchAll(marker)].length !== 1) throw new Error('Expected one Cutout generation block in mobile-remote.html');
-const remoteNames: CutoutIconName[] = ['more', 'search', 'chevron-left', 'chevron-right', 'arrow-up', 'close', 'pencil', 'play', 'pause', 'reset', 'microphone'];
-const templates = remoteNames.map(name => `<template id="tri-cutout-${name}">${cutoutSvg(name, { size: 24, decorative: true })}</template>`).join('\n');
-const motion = await readFile(`${root}shared/cutout/motion.css`, 'utf8');
-await writeFile(remotePath, remote.replace(marker, `<!-- BEGIN TRILORAH CUTOUT ICONS -->\n<style>${motion}</style>\n${templates}\n<!-- END TRILORAH CUTOUT ICONS -->`));
-console.log(`Exported ${CUTOUT_NAMES.length} Cutout icons, parts manifest, sprite, guide, motion CSS, ZIP, and phone templates.`);
+console.log(`Exported ${CUTOUT_NAMES.length} archived Cutout icons, manifest, sprite, guide, motion CSS, and ZIP.`);

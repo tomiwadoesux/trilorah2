@@ -15,7 +15,7 @@ import type { LiveContent } from '../shared/liveContent';
 import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
 import { resolveTextPosition } from '../shared/textPosition';
 import { clampTextWidth, textWidthFrame, TEXT_WIDTH } from '../shared/textWidth';
-import { resolveTextCase, type TextCase } from '../shared/textCase';
+import { formatDisplayText, resolveTextCase, type TextCase } from '../shared/textCase';
 import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
 import './output.css';
 import { DISPLAY_FONTS } from '../shared/displayFont';
@@ -484,8 +484,8 @@ function OutputSurface() {
   const textSpacing = TEXT_SPACING[theme.textSpacing];
 
   /* Words that fit the screen (lib/useFitText): a reading too tall for the
-     stage shrinks to fit, to half the set size at least, and past that ends
-     in "…" — before this a long range ran off the top and bottom edges. The
+     stage shrinks to fit. Scripture always retains its full wording; long
+     ranges are paginated before fitting. The
      key is everything that changes how the words wrap. */
   const verseStage = useRef<HTMLDivElement>(null);
   const verseWords = useRef<HTMLDivElement>(null);
@@ -493,7 +493,7 @@ function OutputSurface() {
   const songWords = useRef<HTMLDivElement>(null);
   const wrapKey = JSON.stringify([theme.fontFamily, theme.scale, theme.weight, theme.safeMargin, theme.textWidth,
     theme.textCase, theme.textSpacing, theme.refScale, theme.refGap, theme.verseLayout, role, theme.streamLayout, screen]);
-  useFitText(verseStage, verseWords, JSON.stringify([wrapKey, delivery, slideIndex, slide?.lines, slide?.reference, slide ? null : shown?.detection]));
+  useFitText(verseStage, verseWords, JSON.stringify([wrapKey, delivery, slideIndex, slide?.lines, slide?.reference, slide ? null : shown?.detection]), undefined, true);
   useFitText(songStage, songWords, JSON.stringify([wrapKey, delivery, song?.title, song?.label, song?.lines]));
 
   const themedStage = {
@@ -503,7 +503,6 @@ function OutputSurface() {
     '--verse-color': theme.color,
     '--safe-margin': `${theme.safeMargin}%`,
     '--text-width': `${textFrame.width}%`,
-    '--text-case': theme.textCase,
     '--text-letter-spacing': textSpacing.letterSpacing,
     '--text-line-spacing': String(textSpacing.lineHeightDelta),
     '--text-left': `${textFrame.left}%`,
@@ -668,7 +667,7 @@ function OutputSurface() {
 
         {/* Message alerts (nursery / stage alert) */}
         <div className={`output-alert ${showAlert ? 'visible' : ''}`} aria-live="polite">
-          {alert && <span className="output-alert-text">{alert.text}</span>}
+          {alert && <span className="output-alert-text">{formatDisplayText(alert.text)}</span>}
         </div>
 
         {!window.api && <div className="output-disconnected">output · engine not connected</div>}
@@ -724,19 +723,19 @@ function OutputSurface() {
           />
         </div>
       )}
-      {song && screen === 'live' && (
-        <div ref={songStage} className="output-stage visible output-song">
+      {song && (
+        <div ref={songStage} className={`output-stage ${screen === 'live' ? 'visible' : ''} output-song`}>
           {/* Keyed by what is showing, so each new section re-mounts and the
               entrance plays again, including when the same section is sent again. */}
           <div ref={songWords} className="output-enter" key={`${delivery}|${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
-          {song.lines?.map((line: string, i: number) => (
+          {formatDisplayText(song.lines?.join('\n') ?? '', theme.textCase).split('\n').map((line: string, i: number) => (
             <div key={i} className="output-verse">
               {line}
             </div>
           ))}
           <div className="output-ref">
-            {song.title}
-            {song.label && <span className="output-version">{song.label}</span>}
+            {formatDisplayText(song.title, theme.textCase)}
+            {song.label && <span className="output-version">{formatDisplayText(song.label, theme.textCase)}</span>}
           </div>
           </div>
         </div>
@@ -747,17 +746,17 @@ function OutputSurface() {
             {shown.isPreview && <div className="output-preview-mark">preview</div>}
             {slide ? (
               <>
-                {!atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}
+                {!atBottom && slide.reference && <div className="output-ref">{formatDisplayText(slide.reference, theme.textCase)}</div>}
                 {slide.lines.map((line, i) => (
                   <div
                     key={line.version + i}
                     className={i === 0 ? 'output-verse' : 'output-verse output-verse-secondary'}
                     data-fit-body={i === 0 ? '' : undefined}
                   >
-                    <VerseWords text={line.text} />
+                    <VerseWords text={formatDisplayText(line.text, theme.textCase)} />
                   </div>
                 ))}
-                {atBottom && slide.reference && <div className="output-ref">{slide.reference}</div>}
+                {atBottom && slide.reference && <div className="output-ref">{formatDisplayText(slide.reference, theme.textCase)}</div>}
                 {/* An online Bible's copyright line (YouVersion's terms): the
                     last line of the block, small — in the flow, so no layout
                     can put it under the words. The operator's preview draws
@@ -825,7 +824,7 @@ function OutputSurface() {
 
       {/* Message alert: theme font, high-contrast band, bottom edge. */}
       <div className={`output-alert ${showAlert ? 'visible' : ''}`} aria-live="polite">
-        {alert && <span className="output-alert-text">{alert.text}</span>}
+        {alert && <span className="output-alert-text">{formatDisplayText(alert.text)}</span>}
       </div>
 
       {!window.api && <div className="output-disconnected">output · engine not connected</div>}

@@ -72,7 +72,7 @@ contextBridge.exposeInMainWorld('api', {
   mobileEnable: (enabled: boolean) => invokeObserved('mobile-enable', enabled),
   mobileApprove: (id: string, allow: boolean) => invokeObserved('mobile-approve', id, allow),
   mobileQr: (url: string) => invokeObserved('mobile-qr', url),
-  mobileVerse: (reference: string, version: string, live: boolean) => invokeObserved('mobile-verse', reference, version, live),
+  mobileVerse: (reference: string, version: string, live: boolean, followFrom?: import('../shared/readAlongGuard').ReadAlongGuard) => invokeObserved('mobile-verse', reference, version, live, followFrom),
   onMobileRequest: (callback: (request: any) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, request: any) => callback(request)
     ipcRenderer.on('mobile-request', handler)
@@ -216,6 +216,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('on-verse-auto-dismiss', subscription)
     return () => ipcRenderer.removeListener('on-verse-auto-dismiss', subscription)
   },
+  // A catch's signal over the whole screen (electron/output/catchSignalOverlay.ts).
+  catchSignal: (signal: string, place: string) => ipcRenderer.invoke('catch-signal', signal, place),
 
   // Sermon Plan & Preacher Profiles
   setSermonPlan: (jsonOrPath: string) => invokeObserved('set-sermon-plan', jsonOrPath),
@@ -241,6 +243,12 @@ contextBridge.exposeInMainWorld('api', {
   },
   // Which page of the live reading is showing — the operator's pager drives
   // every output window (a long range is pages of whole verses).
+  setReadAlong: (enabled: boolean) => ipcRenderer.send('set-read-along', enabled),
+  onReadAlongNav: (callback: (direction: 'next' | 'previous') => void) => {
+    const subscription = (_event: IpcRendererEvent, direction: 'next' | 'previous') => callback(direction)
+    ipcRenderer.on('on-read-along-nav', subscription)
+    return () => ipcRenderer.removeListener('on-read-along-nav', subscription)
+  },
   setLiveSlide: (index: number) => ipcRenderer.send('set-live-slide', index),
   onLiveSlide: (callback: (index: number) => void) => {
     const subscription = (_event: IpcRendererEvent, index: number) => callback(index)
@@ -306,9 +314,11 @@ contextBridge.exposeInMainWorld('api', {
   savePreacherLearning: (preacherId: string, patch: unknown) => invokeObserved('preacher-learning-save', { preacherId, patch }),
   addMissedReference: (preacherId: string, heard: string) => invokeObserved('preacher-review-missed', { preacherId, heard }),
   useOfflineSpeech: () => invokeObserved('preacher-use-offline'),
-  startPreacherSoundCheck: (preacherId: string, promptIndex: number, deviceLabel?: string) => invokeObserved('preacher-sound-check-start', { preacherId, promptIndex, deviceLabel }),
-  getPreacherSoundCheck: () => invokeObserved('preacher-sound-check-state'),
-  stopPreacherSoundCheck: (sessionId: string) => invokeObserved('preacher-sound-check-stop', sessionId),
+  // Voice training: the preacher reads a round of references; misheard book names become saved fixes
+  getTrainingOptions: () => invokeObserved('preacher-training-options'),
+  startPreacherTraining: (preacherId: string, engine: string, books?: string[], deviceLabel?: string) => invokeObserved('preacher-training-start', { preacherId, engine, books, deviceLabel }),
+  getPreacherTraining: () => invokeObserved('preacher-training-state'),
+  preacherTrainingAction: (sessionId: string, action: 'skip' | 'again' | 'undo' | 'stop', index?: number) => invokeObserved('preacher-training-action', { sessionId, action, index }),
   reportMicCaptureError: (message: string) => ipcRenderer.send('mic-capture-error', message),
   getPreacherStats: (preacherId?: string) =>
     invokeObserved('get-preacher-stats', preacherId),
@@ -385,6 +395,21 @@ contextBridge.exposeInMainWorld('api', {
     const subscription = () => callback()
     ipcRenderer.on('on-mic-stop', subscription)
     return () => ipcRenderer.removeListener('on-mic-stop', subscription)
+  },
+
+  // Sound over the network (electron/ndi/networkSound.ts): sender mode sends,
+  // the listening Trilorah lists what it can hear in the audio picker.
+  listNetworkSounds: () => invokeObserved('list-network-sounds'),
+  enterSenderMode: () => invokeObserved('enter-sender-mode'),
+  exitSenderMode: () => invokeObserved('exit-sender-mode'),
+  startNetworkSound: () => invokeObserved('network-sound-start'),
+  stopNetworkSound: () => invokeObserved('network-sound-stop'),
+  sendNetworkSoundFrame: (frame: { sampleRate: number; channels: number; samples: number; data: ArrayBuffer }) =>
+    ipcRenderer.send('network-sound-frame', frame),
+  onNetworkSoundStatus: (callback: (status: { name: string; connections: number; error?: string }) => void) => {
+    const subscription = (_event: IpcRendererEvent, status: any) => callback(status)
+    ipcRenderer.on('on-network-sound-status', subscription)
+    return () => ipcRenderer.removeListener('on-network-sound-status', subscription)
   },
 
   // The phone microphone (shared/phoneMic.ts): the laptop makes a code and

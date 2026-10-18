@@ -1,55 +1,61 @@
 ---
-title: "Save a Trilorah service and move it to another computer"
+title: "Save your service. Open it on the church computer."
 slug: "save-and-transfer-a-service"
 audience: "Volunteers preparing at home or handing a service to another operator"
 question: "What should I save, and what is the difference between opening and importing a .tri file?"
 proposed_publication_date: "2026-05-26"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; two-computer package walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [files.save-open-transfer, run.build-edit, media.import-preview-local]
 ---
 
-# Save a Trilorah service and move it to another computer
+# Save your service. Open it on the church computer.
 
-A service handoff should include the prepared work and a way to verify it. “I sent the file” is the start of a handoff; “the next operator opened it and checked the content” is the useful finish.
+You prepared the service at home. Someone else will run it at church. The handoff is finished when they can open the work and use it.
 
-Trilorah's **.tri** controls let you save, open, import, and export selected service resources. Choose the action according to whether you want to continue a complete service or bring selected material into existing work.
+A **.tri** file can carry your Trilorah service and its selected resources. Save it, move it to the presentation computer, then check what arrived. The filename alone cannot tell you whether the video works.
 
-## Save the first version deliberately
+## Make the first save
 
-Open the **.tri** controls beside the run of service. Choose **save**, give the service a descriptive name, and review the selected contents before completing the native file dialog.
+1. Open the **.tri** controls beside the run of service.
+2. Choose **save** and give the service a recognisable name.
+3. Review the contents, then choose **save .tri**.
+4. Finish the file dialog and check the save result.
 
-Check the result. A canceled dialog is not a saved file, and a warning may identify material that needs attention.
+A service file must include its run of service. The selection controls let you include additional material; media used by selected content is included automatically where it can be packaged. Read any warnings about missing or unavailable resources.
 
-After an initial save, the app can autosave changes for the current file's included content. Autosave does not replace that first save, and it is not a reason to ignore the saved-content selection or a failed-save message.
+After the first save, changes can autosave to the active file. Use **change included content…** when you need to add resources beyond the current selection. If saving fails, resolve that before handing over the file.
 
-Use **save as…** when you want a separately named version. For example, save a new week's service under its own name before making substantial changes to the previous week's plan.
+For a new week's service, **save as…** gives you a separate file. For a few songs or slides without a complete service, choose **export selected…**.
 
-## Choose what the handoff needs
+## Choose Open or Import
 
-Review the package contents with the receiving operator in mind. The run may be the correct structure while an essential song or visual is missing from what you selected.
+On the receiving computer, open **.tri** and choose the action that matches your intention:
 
-For a smaller handoff, **export selected…** lets you choose resources rather than transferring everything. This is useful when another volunteer only needs a particular group of prepared items.
+| You want to… | Choose… |
+|---|---|
+| Continue the service in the file | **open .tri** |
+| Add selected resources to the work already open | **import from .tri** |
 
-Local files can be carried in a package. A remote link is not a promise that the resource has become an offline copy. Read the package warnings and inspect important media before leaving the preparation computer.
+Opening an included service can replace the current run. Save anything you want to keep and read the replacement confirmation before continuing.
 
-## Open and import do different jobs
+Importing keeps existing library items and copies the selected resources. If you include a run of service, its segments are appended to the current run. Review the selection to avoid adding material you do not need.
 
-Use **open .tri** when you intend to open the service from the file. Opening a service can replace the current service, and the interface asks for the relevant replacement consent.
+Imported layouts wait in preview for your next **go live**. Importing a file does not itself present its contents.
 
-Use **import from .tri** when you want to bring selected material into existing work. Import copies selected resources and can append selected service material. Review the selection instead of assuming the entire package is required.
+## Check the receiving computer
 
-Imported layouts are staged in preview. A package import is not an instruction to send all imported content live.
+Work through these before the handoff is complete:
 
-Before replacing an existing service, save anything you need to keep. Make the decision based on the current work, not just the name of the incoming file.
+- Open the service and check its order and notes.
+- Open the songs and imported slides you will use.
+- Play each essential video and inspect the images.
+- Check the microphone and output displays on this computer.
+- Resolve package warnings and anything still relying on an online source.
 
-## Verify on the presentation computer
+A web address is not an offline copy. Display assignments and audio devices also need checking in the actual room, even when the content transferred correctly.
 
-After transferring the file, open or import it on the computer that will run the service. Check the run, a saved song, each critical image or video, and the imported slides.
+Leave one short message for the next operator: the file to open, what you checked and anything unfinished. “Welcome video still missing” is useful information before the service.
 
-Then check the room's outputs and audio setup. A content package does not prove the receiving computer has the same display connections, microphone, or available online services as the preparation computer.
-
-Leave a short handoff note: which file to open, which items were checked, and anything that still needs attention. Describe an unresolved missing clip explicitly instead of letting the next operator discover it during the service.
-
-Use [the first-service checklist](02-first-service-checklist.md) for the final rehearsal, or [build a clearer run of service](06-build-an-order-of-service.md) before saving the next handoff.
+Use [the first-service checklist](02-first-service-checklist.md) for the final rehearsal, or [the order-of-service guide](06-build-an-order-of-service.md) to tidy the plan before saving.

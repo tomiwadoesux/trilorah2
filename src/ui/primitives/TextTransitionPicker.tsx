@@ -3,7 +3,7 @@ import { TEXT_TRANSITIONS, type TextTransition } from '../../../shared/textTrans
 import { DISPLAY_FONTS } from '../../../shared/displayFont';
 import './textTransitionPicker.css';
 
-/** Four entrances; clicking the selected card replays it too. */
+/** Two entrances; clicking the selected card replays it too. */
 export function TextTransitionPicker({ value, duration, play, onChange }: {
   value: TextTransition;
   duration: number;
@@ -13,13 +13,14 @@ export function TextTransitionPicker({ value, duration, play, onChange }: {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <span className="tri-label tri-control-heading text-[var(--tri-ink-muted)]">transition</span>
-      <div role="group" aria-label="text transition" className="grid min-w-0 grid-cols-4 gap-3">
-        {TEXT_TRANSITIONS.filter(option => option.id !== 'cut').map(option => {
+      <div role="group" aria-label="text transition" className="grid min-w-0 grid-cols-2 gap-3">
+        {TEXT_TRANSITIONS.filter(option => option.id === 'blur' || option.id === 'zoom').map(option => {
           const selected = value === option.id;
           return (
             <div key={option.id} className="flex min-w-0 flex-col items-center gap-2" style={{ containerType: 'inline-size' }}>
               <button
                 type="button"
+                data-guide={`themes-transition-${option.id}`}
                 aria-label={option.label}
                 aria-pressed={selected}
                 title={option.blurb}

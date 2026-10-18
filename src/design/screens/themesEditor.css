@@ -1,8 +1,8 @@
-.tri-themes-editor {
+.tri-theme-control-columns {
   position: relative;
 }
 
-.tri-themes-editor::before {
+.tri-theme-control-columns::before {
   content: '';
   position: absolute;
   left: 50%;
@@ -14,6 +14,16 @@
   transform: translateX(-50%);
   pointer-events: none;
 }
+
+.tri-theme-control-columns[data-single] { grid-template-columns: minmax(0, 1fr); }
+.tri-theme-control-columns[data-single]::before { display: none; }
+.tri-themes-search { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 8px 16px 12px; }
+.tri-themes-search > :first-child { flex: 0 0 30%; min-width: 0; }
+.tri-themes-search > button { flex-shrink: 0; }
+.tri-theme-control-group { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.tri-themes-no-results { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; flex: 1; min-height: 0; padding: 24px; text-align: center; }
+.tri-themes-no-results p { margin: 0; color: var(--tri-ink); font-size: 13px; }
+.tri-themes-no-results span { color: var(--tri-ink-muted); font-size: 11px; }
 
 .tri-theme-controls {
   container-type: inline-size;

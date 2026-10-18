@@ -12,6 +12,8 @@ import {
 import { createPortal } from 'react-dom';
 import { NoteIcon, MediaIcon, CloseIcon, PauseIcon, PlayIcon } from '../../ui';
 import type { QueueSource } from './run';
+import { runSectionTarget, sectionDropPosition, type RunCarry } from '../../../shared/runCards';
+import { segmentIcon } from './run/segmentTypes';
 
 /*
  * Dragging things into the run of service.
@@ -65,7 +67,8 @@ const RING_C = 2 * Math.PI * RING_R;
 /* What is being carried                                               */
 /* ------------------------------------------------------------------ */
 
-export interface DragItem {
+export interface DragItem extends RunCarry {
+  componentType?: string;
   mediaId?: string;
   source: QueueSource;
   /** The caption under the chip, and the row's label once dropped. */
@@ -96,7 +99,7 @@ export interface DragItem {
  * remember which it is; the item already knows what it is.
  */
 function needsHold(item: DragItem): boolean {
-  return item.source === 'scripture';
+  return item.source === 'scripture' && !item.dragItem;
 }
 
 interface Parked extends DragItem {
@@ -143,6 +146,39 @@ export interface SourceBinding {
 
 const DragContext = createContext<DragValue | null>(null);
 
+/** One hit test drives both the preview and the committed drop. */
+function dropAt(x: number, y: number, item: DragItem) {
+  const under = document.elementFromPoint(x, y);
+  const target = under?.closest<HTMLElement>('[data-drop-segment]');
+  const structural = !!(item.dragSegmentKey || item.dragType);
+  let card = under?.closest<HTMLElement>('[data-run-section]');
+  const grid = under?.closest<HTMLElement>('[data-run-sections]');
+  // The gaps are real insertion targets too, including the gap between rows.
+  if (structural && !card && grid) {
+    let distance = Infinity;
+    for (const candidate of grid.querySelectorAll<HTMLElement>('[data-run-section]')) {
+      const r = candidate.getBoundingClientRect();
+      const d = Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      if (d < distance) { distance = d; card = candidate; }
+    }
+  }
+  if (structural && card) {
+    const key = card.dataset.runSection!;
+    if (key === item.dragSegmentKey || item.dragSegmentKeys?.includes(key)) return { destination: null, hint: 'Choose another position', solo: false };
+    const r = card.getBoundingClientRect();
+    const fraction = grid?.dataset.runLayout === 'timeline' ? (y - r.top) / r.height
+      : y < r.top ? 0 : y > r.bottom ? 1 : (x - r.left) / r.width;
+    const position = sectionDropPosition(fraction, !!item.dragSegmentKey && !item.dragSegmentKeys?.length);
+    return { destination: runSectionTarget(key, position), hint: `${position === 'swap' ? 'Swap with' : position === 'before' ? 'Insert before' : 'Insert after'} ${card.dataset.runLabel}`, solo: false };
+  }
+  const destination = target?.dataset.dropSegment ?? null;
+  const name = target?.dataset.dropLabel ?? card?.dataset.runLabel;
+  const hint = destination === null ? 'Release to cancel' : destination === ''
+    ? structural ? 'Place at end' : 'Add to run of show'
+    : name ? `${target?.hasAttribute('data-drop-item') ? 'Insert before' : 'Add to'} ${name}` : 'Drop here';
+  return { destination, hint, solo: !!target?.hasAttribute('data-drop-solo') };
+}
+
 export function useDrag(): DragValue {
   const ctx = useContext(DragContext);
   if (!ctx) throw new Error('useDrag must be used inside a DragProvider');
@@ -164,6 +200,7 @@ export function DragProvider({
   const [active, setActive] = useState<DragItem | null>(null);
   const [parked, setParked] = useState<Parked[]>([]);
   const [over, setOver] = useState<string | null>(null);
+  const [dropHint, setDropHint] = useState('');
   /*
    * What is showing at the pointer.
    *
@@ -191,10 +228,6 @@ export function DragProvider({
   /* Set while the gesture is being abandoned, so the pointerup that follows
      does not read as a drop. */
   const dead = useRef(false);
-  /* Whether the target under the pointer is a solo one. A ref beside `over`
-     rather than more state: it is only read at the release. */
-  const overSolo = useRef(false);
-
   const pos = useRef({ x: 0, y: 0 });
 
   const place = useCallback((x: number, y: number) => {
@@ -202,6 +235,29 @@ export function DragProvider({
     const el = layer.current;
     if (el) el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   }, []);
+
+  // Keep long runs and section contents reachable while the pointer holds a card.
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    const follow = () => {
+      const { x, y } = pos.current;
+      const under = document.elementFromPoint(x, y);
+      const scroller = under?.closest<HTMLElement>('[data-run-scroll]');
+      if (scroller) {
+        const bounds = scroller.getBoundingClientRect();
+        const edge = 40;
+        if (y < bounds.top + edge) scroller.scrollTop -= Math.ceil((bounds.top + edge - y) / 5);
+        else if (y > bounds.bottom - edge) scroller.scrollTop += Math.ceil((y - bounds.bottom + edge) / 5);
+      }
+      const hit = dropAt(x, y, active);
+      setOver(hit.destination);
+      setDropHint(hit.hint);
+      frame = requestAnimationFrame(follow);
+    };
+    frame = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(frame);
+  }, [active]);
 
   const clearTimer = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
@@ -232,7 +288,7 @@ export function DragProvider({
     source.current = null;
     setActive(null);
     setOver(null);
-    overSolo.current = false;
+    setDropHint('');
     setPointerState('idle');
     /* Text selection is turned off for the length of a carry — once the ring
        closes the pointer is moving with the button down, which is a
@@ -320,10 +376,9 @@ export function DragProvider({
           /* Hit-test rather than rely on events: the chip is under the
              pointer and would swallow every enter/leave otherwise. It is
              pointer-events:none, so elementFromPoint sees straight past it. */
-          const el = document.elementFromPoint(e.clientX, e.clientY);
-          const target = el?.closest('[data-drop-segment]');
-          overSolo.current = !!target?.hasAttribute('data-drop-solo');
-          setOver(target?.getAttribute('data-drop-segment') ?? null);
+          const hit = dropAt(e.clientX, e.clientY, active);
+          setOver(hit.destination);
+          setDropHint(hit.hint);
           return;
         }
         if (!held.current) return;
@@ -364,7 +419,10 @@ export function DragProvider({
         /* `over` is '' on the rail's own backdrop and a key on a segment;
            both are drops. Only null — the pointer was over neither — is a
            miss, so the empty string must not be tested for truthiness. */
-        if (over !== null && overSolo.current) {
+        const { destination, solo } = dropAt(e.clientX, e.clientY, active);
+        if (destination !== null && (active.dragSegmentKey || active.dragType)) {
+          onDrop(destination === '' ? null : destination, [active]);
+        } else if (destination !== null && solo) {
           /*
            * A solo target — a background drop on the themes toggle or a
            * stage box — takes the one card in hand. The parked chips are
@@ -372,9 +430,9 @@ export function DragProvider({
            * background would lose them, so they stay on the shelf and
            * their countdown resumes.
            */
-          onDrop(over, [active]);
-        } else if (over !== null) {
-          onDrop(over === '' ? null : over, [...parked.map(stripParked), active]);
+          onDrop(destination, [active]);
+        } else if (destination !== null) {
+          onDrop(destination === '' ? null : destination, [...parked.map(stripParked), active]);
           setParked([]);
         }
         /*
@@ -398,7 +456,7 @@ export function DragProvider({
 
   /* --- shift double-tap parks the carry ---------------------------- */
   useEffect(() => {
-    if (!active) return;
+    if (!active || active.dragSegmentKey || active.dragType) return;
     let last = 0;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Shift' || e.repeat) return;
@@ -520,6 +578,7 @@ export function DragProvider({
         layerRef={layer}
         state={pointerState}
         active={active}
+        dropHint={dropHint}
         parked={parked}
         onPauseAll={pauseAll}
         onCancelAll={cancelAll}
@@ -547,6 +606,7 @@ function DragLayer({
   layerRef,
   state,
   active,
+  dropHint,
   parked,
   onPauseAll,
   onCancelAll,
@@ -554,6 +614,7 @@ function DragLayer({
   layerRef: React.RefObject<HTMLDivElement | null>;
   state: 'idle' | 'refused' | 'holding';
   active: DragItem | null;
+  dropHint: string;
   parked: Parked[];
   /** The shelf's own controls — it is one card, so they take all of it. */
   onPauseAll: () => void;
@@ -691,6 +752,7 @@ function DragLayer({
             style={{ left: 16, top: 16, animation: 'tri-chip-in 180ms var(--tri-ease-out) both' }}
           >
             <Chip item={active} count={carrying > 1 ? carrying : undefined} />
+            <span className="run-drop-caption" role="status">{dropHint}</span>
           </div>
         )}
       </div>
@@ -730,11 +792,9 @@ function Chip({
        the card and are positioned against this, not against the card. */
     <div className="relative flex w-[78px] flex-col items-center gap-[5px]" style={{ width: CHIP }}>
       <div
-        className="tri-rounded-control relative flex w-full items-center justify-center overflow-hidden bg-[#101010]"
+        className="run-drag-card relative flex w-full items-center justify-center overflow-hidden"
         style={{
           height: CHIP,
-          boxShadow:
-            '0 12px 28px rgb(0 0 0 / 0.6), inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.16)',
         }}
       >
         <ChipFace item={item} />
@@ -822,6 +882,7 @@ function Chip({
  * picture, and everything else gets its glyph.
  */
 function ChipFace({ item }: { item: DragItem }) {
+  if (item.dragSegmentKey || item.dragType) return <span className="run-component-icon">{segmentIcon(item.componentType ?? item.dragType ?? 'custom', 24)}</span>;
   if (item.source === 'scripture') {
     return (
       <div className="flex h-full w-full flex-col px-[7px] py-[6px]">

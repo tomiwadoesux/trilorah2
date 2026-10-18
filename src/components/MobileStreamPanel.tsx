@@ -44,7 +44,7 @@ export function MobileStreamPanel({ onClose, preview = false }: { onClose: () =>
     <section role="dialog" aria-modal="true" aria-label="Stream" className="mobile-remote-panel mobile-stream-panel tri-rounded-surface" onClick={event => event.stopPropagation()}>
       <header className="mobile-remote-heading">
         <h2>Stream</h2>
-        <button type="button" className="mobile-remote-close" onClick={onClose} aria-label="Close stream"><CloseIcon size={14} /></button>
+        <button type="button" data-guide="stream-close" className="mobile-remote-close" onClick={onClose} aria-label="Close stream"><CloseIcon size={14} /></button>
       </header>
       <div className="mobile-remote-intro" aria-busy={busy}>
         <p className="mobile-remote-intro__line">Scan to follow the service on your phone.</p>
@@ -57,7 +57,7 @@ export function MobileStreamPanel({ onClose, preview = false }: { onClose: () =>
         </> : <>
           <PhoneConnectionArt variant="stream" />
           {missing && <p className="mobile-remote-hint mobile-stream-message" role="status">Set up your church’s companion page to create its access code.</p>}
-          <Button label={busy ? 'Loading code…' : missing ? 'Set up access' : error ? 'Try again' : 'Show access code'} tone="go" disabled={busy || !api?.getQrSvg}
+          <Button guideId="stream-code" label={busy ? 'Loading code…' : missing ? 'Set up access' : error ? 'Try again' : 'Show access code'} tone="go" disabled={busy || !api?.getQrSvg}
             onClick={() => {
               if (missing) { onClose(); openNoticeTarget('cloud'); }
               else void showCode();

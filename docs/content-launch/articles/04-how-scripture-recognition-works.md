@@ -1,57 +1,75 @@
 ---
-title: "How Trilorah recognizes scripture during a sermon"
+title: "How Trilorah finds scripture while the preacher speaks"
 slug: "how-scripture-recognition-works"
 audience: "Operators and church leaders evaluating sermon recognition"
 question: "How do spoken references and quotations become scripture suggestions, and who controls projection?"
 proposed_publication_date: "2026-03-13"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; recorded recognition walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-18"
 task_ids: [scripture.catch-and-project, scripture.recent-speech-search, scripture.phrase-topic-search, preacher.review-recognition]
 ---
 
-# How Trilorah recognizes scripture during a sermon
+# How Trilorah finds scripture while the preacher speaks
 
-Trilorah listens to speech, looks for evidence of a Bible passage, and prepares a suggestion the operator can inspect. A spoken reference and a quotation give it different kinds of evidence.
+The preacher names a passage. The operator needs the right words on screen while the congregation is still turning to it.
 
-The boundary is simple: in the current implementation, a recognized passage reaches the live screen only through an explicit operator or remote action. Speech alone does not project it.
+Trilorah can help with the lookup. It listens to transcribed speech, looks for evidence of a Bible passage, and prepares a candidate. A named reference and a quoted passage give it different evidence, so they need different kinds of matching.
 
-## When the preacher says the reference
+Finding a passage is separate from showing it. A recognized reference or quotation becomes a suggestion; the operator or paired remote must explicitly send that suggestion live.
 
-“John chapter three, verse sixteen” contains a book, chapter, and verse. Trilorah uses the transcribed words to resolve that reference and check the passage.
+## A reference gives Trilorah an address
 
-This still depends on what the speech engine heard. A book name can be misheard, a number can be unclear, or the preacher can pause before finishing the reference. Mentioning a person named John is not the same as asking the congregation to read John's Gospel.
+“John chapter three, verse sixteen” supplies a book, chapter, and verse. Trilorah works from the transcribed words to resolve that reference and check the passage.
 
-Trilorah checks context and filters some weak or ambiguous detections. Those checks help it decide what to suggest; they do not guarantee that every reference will be caught.
+The transcript matters. A misheard book name, unclear number, or unfinished sentence can leave the app with the wrong clue. Context checks help filter weak detections. They cannot guarantee that every reference will be caught, or that every mention of “John” means the Gospel.
 
-## When the preacher quotes the passage
+A book can arrive before its numbers. Trilorah keeps an unfinished reference for up to 90 seconds so “Genesis chapter” can be followed by “32 verse 24 to 28.” An explicit new book replaces that context. For books with one chapter, “Jude 20” means Jude 1:20.
 
-A preacher may quote a verse without naming its address. Trilorah can compare recognizable wording with indexed scripture and look for supporting matches.
+If it hears “Kings” without a clear first or second, it asks the operator to choose a book. Choose a reference to send it live, or dismiss the question. Check the transcript if the intended book is missing.
 
-For example, a quotation beginning “For God so loved the world” gives a different clue from the words “John three sixteen.” A distinctive quotation may support a candidate. A brief phrase shared by many passages may be too weak to identify one confidently.
+## A quotation gives it wording to match
 
-The current quotation matching includes KJV and BSB wording. That does not imply equal recognition accuracy for every translation, paraphrase, language, or delivery style. The Bible selected for display and the wording available to quotation matching are related but different concerns.
+When a preacher quotes scripture without naming the reference, Trilorah can compare recognizable wording with indexed Bible text.
 
-## What the operator does
+A distinctive phrase supplies stronger evidence than a few common words. An incomplete quotation or a loose paraphrase may fit several passages, or fail to produce a useful candidate.
 
-Read the caught reference and the prepared text. Check the translation and the part of the passage the preacher is using. Then use the explicit live control when the congregation should see it.
+The current quotation matcher includes KJV and BSB wording. Selecting another Bible for display does not mean the matcher recognizes that translation equally well. What it matches and what you choose to display are separate parts of the process.
 
-If the suggestion is wrong, do not send it. You can look up a known reference yourself or use the scripture search for a remembered phrase, person, event, or topic.
+## The operator checks the result
 
-The **find scripture** action can also search recent speech. It is a recent listening window, not a search through an unlimited recording of the whole sermon. If the relevant words are no longer available, type what you remember.
+Caught passages have individual reference tabs. The latest catch becomes active; previously shown passages remain available there too. **+N** opens the extra tabs. Select a tab to preview it, or use its × to remove it from the list.
 
-## A realistic moment in a service
+Read the caught reference and prepared text. Check the translation and how much of the passage is needed. Send it when the congregation should see it. Repeating a reference, or reading words wholly within the currently live passage, does not create another catch.
 
-The preacher says, “Let's turn to John chapter three, verse sixteen,” then begins reading. A volunteer sees a John 3:16 candidate, checks the displayed translation, and sends it live.
+The save icon keeps a local bookmark and adds the passage to the current service if it is not already queued. **Saved** opens the bookmarks. Removing a tab leaves its bookmark intact. Unsaving removes the bookmark; remove a queued service item separately in the run of show. Save the service as a .tri file to carry that queued passage with it.
 
-A few minutes later, the preacher alludes to another passage without quoting enough distinctive wording. No useful catch appears. The volunteer types the remembered phrase into scripture search, reviews the possible matches, and chooses whether one belongs on screen.
+If the candidate is wrong, leave it unshown. Look up a known reference, or search using a remembered phrase, person, event, or topic. **find reference** can also search recent speech, within its recent listening window.
 
-Both moments are normal. A useful recognition workflow includes a clear way to review and a familiar manual fallback.
+Phrase-search results need care: selecting a result card sends that passage live. Read the result before choosing it. You can close the results without selecting anything.
 
-## Is there a setting for automatic projection?
+## What this looks like during a sermon
 
-Automatic scripture projection is blocked in the current runtime. A confidence score, a readiness label, a completed sound check, or a setting that mentions automatic behavior does not remove the operator-press requirement.
+Suppose the preacher says, “Let's turn to John chapter three, verse sixteen,” then begins reading. A candidate appears. The volunteer checks John 3:16 and the displayed translation, then sends it live.
 
-Audio quality, speech transcription, incomplete references, paraphrases, and unavailable Bible text can all limit a result. Rehearse with the real speaker and audio chain, then use recognition as help for the operator's next decision.
+Later, the preacher loosely recalls another passage. There is too little distinctive wording for a useful catch. The volunteer types what they remember into scripture search, reads the possible matches, and chooses a suitable result only after checking it.
 
-Continue with [searching for a passage when you remember the words](09-find-scripture-from-a-phrase.md) or [reviewing recognition after a service](15-preacher-sound-check-and-review.md).
+Try both kinds of example with your own speaker and audio setup. Clear speech, a usable input and the wording of the quotation all affect the result.
+
+## Follow a reading that is already live
+
+**Auto advance** follows an already-live scripture. It moves after a near-complete reading reaches the verse’s ending, or when the speaker clearly starts reading the next verse. Quoting a few ending words alone is not enough. If a range occupies several pages, it moves through those pages before going beyond the range. It stops at the chapter’s end.
+
+Use the arrows beside Auto advance or the preview to move manually. With preacher voice commands enabled, “next verse” and “previous verse” update both preview and live. A “next verse” immediately after an automatic step is treated as the same step.
+
+Prayer mode uses configured phrases such as “let us pray” and “bow your heads.” “Amen” ends it. While prayer mode is active, following pauses and the controls show that status. It does not infer every prayer from its meaning. Rehearse with your speaker; switch Auto advance off when you want to hold a verse for explanation.
+
+## Recognized passages wait for your choice
+
+There is no confidence score, sound-check result, or readiness label that sends a caught passage live for you. New scripture suggestions do not publish automatically. Auto advance is a separate, opt-in way to follow a reading you have already put live.
+
+Configured voice commands are separate controls and can affect the screen. Review their settings with your team before the service; a recognition score does not switch them on.
+
+Recognition depends on usable audio, transcription, recognizable wording, and available Bible text. Its value is in helping the operator find a passage and decide what to show next.
+
+For the manual fallback, read [how to find scripture from a phrase](09-find-scripture-from-a-phrase.md). For reviewing saved recognition examples, see [the preacher sound-check and review guide](15-preacher-sound-check-and-review.md).

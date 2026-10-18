@@ -17,7 +17,7 @@ export function MobileRemoteIntro({ onEnable, disabled = false, busy = false }: 
       <p className="mobile-remote-intro__line">Control the service from your phone.</p>
       <PhoneConnectionArt variant="remote" />
       <div className="mobile-remote-intro__action">
-        <Button label={busy ? 'Enabling…' : 'Enable mobile access'} tone="go" disabled={disabled || busy} onClick={onEnable} />
+        <Button guideId="remote-enable" label={busy ? 'Enabling…' : 'Enable mobile access'} tone="go" disabled={disabled || busy} onClick={onEnable} />
         <p className="mobile-remote-hint">Keep your phone and this computer on the same Wi-Fi.</p>
       </div>
     </div>
@@ -106,10 +106,10 @@ export function MobileRemotePanel({ open, onClose, preview = false }: { open: bo
 
   if (!open) return null;
   return <div className="mobile-remote-scrim" onClick={onClose}>
-      <section role="dialog" aria-modal="true" aria-label="Mobile remote" className="mobile-remote-panel tri-rounded-surface" onClick={event => event.stopPropagation()}>
+      <section role="dialog" aria-modal="true" aria-label="Mobile remote" data-guide="remote-panel" data-guide-area="remote" className="mobile-remote-panel tri-rounded-surface" onClick={event => event.stopPropagation()}>
         <header className="mobile-remote-heading">
           <h2>Mobile remote</h2>
-          <button type="button" className="mobile-remote-close" onClick={onClose} aria-label="Close mobile remote"><CloseIcon size={14} /></button>
+          <button type="button" data-guide="remote-close" className="mobile-remote-close" onClick={onClose} aria-label="Close mobile remote"><CloseIcon size={14} /></button>
         </header>
 
         {!status?.running ? (
@@ -121,15 +121,15 @@ export function MobileRemotePanel({ open, onClose, preview = false }: { open: bo
             {status.pending.map(phone => <div className="mobile-remote-request" key={phone.id}>
               <span className="mobile-remote-request__label">Waiting for your approval</span><p>{phone.name}</p><small>Allow this phone to control the service?</small>
               <div className="mobile-remote-actions">
-                <Button label="Approve" tone="go" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, true))} />
-                <Button label="Decline" tone="ash" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, false))} />
+                <Button guideId="remote-approve" label="Approve" tone="go" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, true))} />
+                <Button guideId="remote-decline" label="Decline" tone="ash" disabled={unavailable || busy} onClick={() => void act('approve', () => api!.mobileApprove(phone.id, false))} />
               </div>
             </div>)}
             {status.urls.length > 0 ? <>
               {status.urls.length > 1 && <label className="mobile-remote-address">Network address
-                <select value={url} onChange={event => setUrl(event.target.value)}>{status.urls.map(address => <option key={address}>{address}</option>)}</select>
+                <select data-guide="remote-address" value={url} onChange={event => setUrl(event.target.value)}>{status.urls.map(address => <option key={address}>{address}</option>)}</select>
               </label>}
-              <div className="mobile-connection-qr">
+              <div className="mobile-connection-qr" data-guide="remote-qr">
                 {qr ? <img width="196" height="196" alt="Scan to open private mobile controls" src={qr} /> : <p role="status">Preparing the QR code…</p>}
                 {code?.code && <strong>{code.code}</strong>}
                 <p>Scan, enter the pairing code, then approve your phone here.</p>
@@ -138,11 +138,11 @@ export function MobileRemotePanel({ open, onClose, preview = false }: { open: bo
             </> : <p className="mobile-remote-hint">No Wi-Fi or Ethernet address found. Connect this computer to the church network.</p>}
             <div className="mobile-remote-code">
               <span className="mobile-remote-hint">Pairing codes last two minutes.</span>
-              <Button label={pending === 'code' ? 'Creating…' : code ? 'New code' : 'Create pairing code'} tone="ash" disabled={unavailable || busy} onClick={() => void act('code', () => api!.mobileCode(true))} />
+              <Button guideId="remote-code" label={pending === 'code' ? 'Creating…' : code ? 'New code' : 'Create pairing code'} tone="ash" disabled={unavailable || busy} onClick={() => void act('code', () => api!.mobileCode(true))} />
             </div>
             <details className="mobile-remote-help"><summary>Having trouble connecting?</summary><p className="mobile-remote-hint">Use the same Wi-Fi on both devices. On Windows, allow Trilorah through the firewall on Private networks. Guest Wi-Fi may block connections between devices.</p></details>
             <div className="mobile-connection-footer">
-              <Button label={pending === 'disable' ? 'Turning off…' : 'Turn off mobile access'} tone="ash" disabled={unavailable || busy} onClick={() => void act('disable', () => api!.mobileEnable(false))} />
+              <Button guideId="remote-disable" label={pending === 'disable' ? 'Turning off…' : 'Turn off mobile access'} tone="ash" disabled={unavailable || busy} onClick={() => void act('disable', () => api!.mobileEnable(false))} />
             </div>
           </div>
         )}
@@ -152,7 +152,7 @@ export function MobileRemotePanel({ open, onClose, preview = false }: { open: bo
           {status?.devices.length === 0 && <p className="mobile-remote-hint">No phones paired yet.</p>}
           {status?.devices.map(device => <div key={device.deviceId} className="mobile-remote-device">
             <span>{device.deviceName}</span>
-            <Button label="Revoke" tone="danger" disabled={unavailable || busy} onClick={() => void act('revoke', () => api!.mobileRevoke(device.deviceId))} />
+            <Button guideId="remote-revoke" label="Revoke" tone="danger" disabled={unavailable || busy} onClick={() => void act('revoke', () => api!.mobileRevoke(device.deviceId))} />
           </div>)}
         </section>}
         {(error || status?.error) && <p role="alert" className="mobile-remote-error">{error || status?.error}</p>}

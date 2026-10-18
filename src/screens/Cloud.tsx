@@ -114,7 +114,7 @@ export function Cloud() {
         : 'signed out';
 
   return (
-    <div className="space-y-6">
+    <div data-guide-area="cloud" className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-xl font-semibold tracking-tight">Cloud</h2>
         <p className="text-sm text-neutral-500">
@@ -148,6 +148,7 @@ export function Cloud() {
           >
             <Field label="email">
               <input
+                data-guide="cloud-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -169,6 +170,7 @@ export function Cloud() {
             {mode === 'sign-up' && (
               <Field label="church / account name">
                 <input
+                  data-guide="cloud-account-name"
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
                   placeholder="church / account name"
@@ -178,6 +180,7 @@ export function Cloud() {
             )}
             <div className="flex items-center gap-x-4 pt-1">
               <Button
+                guideId="cloud-sign-in"
                 label={mode === 'sign-in' ? 'Sign in' : 'Sign up'}
                 variant="solid"
                 disabled={busy || !email.trim() || !password}
@@ -192,6 +195,7 @@ export function Cloud() {
                 }
               />
               <TextButton
+                guideId="cloud-switch-mode"
                 label={mode === 'sign-in' ? 'NEED AN ACCOUNT?' : 'HAVE AN ACCOUNT?'}
                 onClick={() => setMode((m) => (m === 'sign-in' ? 'sign-up' : 'sign-in'))}
               />
@@ -206,6 +210,7 @@ export function Cloud() {
           <div className="space-y-4">
             <Field label="church name">
               <input
+                data-guide="cloud-church-name"
                 value={churchName}
                 onChange={(e) => setChurchName(e.target.value)}
                 placeholder="church name"
@@ -214,6 +219,7 @@ export function Cloud() {
             </Field>
             <Field label="slug">
               <input
+                data-guide="cloud-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder="slug (yourchurch)"
@@ -221,6 +227,7 @@ export function Cloud() {
               />
             </Field>
             <Button
+              guideId="cloud-setup"
               label="Complete setup"
               disabled={busy || !churchName.trim() || !slug.trim()}
               onClick={() =>
@@ -242,12 +249,14 @@ export function Cloud() {
               <div className="flex flex-wrap items-center gap-x-4">
                 {status.activeServiceId ? (
                   <Button
+                    guideId="cloud-end"
                     label="End cloud service"
                     onClick={() => void run(() => window.api?.cloudEndService() ?? Promise.resolve(undefined), 'cloud service ended')}
                     disabled={busy}
                   />
                 ) : (
                   <Button
+                    guideId="cloud-start"
                     label="Start cloud service"
                     variant="solid"
                     onClick={() => void run(() => window.api?.cloudStartService({}) ?? Promise.resolve(undefined), 'cloud service started')}
@@ -264,7 +273,7 @@ export function Cloud() {
             <Panel className="self-start">
               <PanelHeader>link another device</PanelHeader>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                <Button label="Generate link code" onClick={() => void generateLink()} disabled={busy} />
+                <Button guideId="cloud-link-code" label="Generate link code" onClick={() => void generateLink()} disabled={busy} />
                 {linkCode && <span className="font-scripture text-2xl tracking-widest">{linkCode}</span>}
               </div>
               <form
@@ -277,12 +286,14 @@ export function Cloud() {
                 }}
               >
                 <input
+                  data-guide="cloud-redeem-code"
                   value={redeemCode}
                   onChange={(e) => setRedeemCode(e.target.value)}
                   placeholder="enter a code from another device"
                   className="w-full min-w-0 text-sm"
                 />
                 <TextButton
+                  guideId="cloud-redeem"
                   label="REDEEM"
                   onClick={() => void run(() => window.api?.cloudRedeemLinkCode(redeemCode.trim()) ?? Promise.resolve(undefined), 'device linked')}
                   disabled={busy || !redeemCode.trim()}

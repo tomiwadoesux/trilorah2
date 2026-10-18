@@ -1,3 +1,4 @@
+import { scriptureMatchParts, scriptureMatchExcerpt } from '../../lib/scriptureMatchHighlight';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button, MicIcon, PencilIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, ExternalLinkIcon, SearchField } from '../../ui';
 import { useEngine } from './engine';
@@ -43,7 +44,7 @@ export function ScriptureCatches() {
   /* A fragment: the button is one tile in the catches card's action row and
      the note runs under the whole row — see .catch-actions in Live. */
   return <>
-    <Button className="catch-tile" label={busy ? 'searching' : 'find scripture'} disabled={busy} icon={<MicIcon size={18} />} tone="ash" onClick={() => { void find(); }} />
+    <Button guideId="catches-find" className="catch-tile" label={busy ? 'searching' : 'find reference'} disabled={busy} icon={<MicIcon size={14} />} tone="ash" title="Find a Bible reference from recent speech" onClick={() => { void find(); }} />
     {note && <p className="catch-extra px-2 text-center text-xs text-white/50">{note}</p>}
   </>;
 }
@@ -108,17 +109,18 @@ export function ScriptureSearch() {
   return (
     <div className="story-search" aria-busy={busy}
       onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}
-      title="Search by a remembered phrase, person, event, or topic. Press Enter for passages. The microphone ‘find scripture’ button searches recent speech.">
+      title={`Search by a remembered phrase, person, event, or topic, for example “${SCRIPTURE_EXAMPLES[example]}”. Press Enter for passages. The microphone ‘find reference’ button searches recent speech.`}>
       <SearchField
+        guideId="scripture-search"
         value={text}
         ariaLabel="search scripture by phrase, person, event, or topic"
         onChange={(next) => { request.current++; setText(next); setBusy(false); setNote(''); setCorrection(null); }}
         onSubmit={(value) => { void search(value); }}
-        placeholder={`search scripture — “${SCRIPTURE_EXAMPLES[example]}”`}
+        placeholder="Start typing to search"
       />
       {(busy || note || correction) && <div className="story-search__note" role="status">
         {busy ? 'searching…' : <>
-          {correction && <span>searched with {correction.detail} <button type="button" onClick={() => void search(correction.original, false)}>use original</button></span>}
+          {correction && <span>searched with {correction.detail} <button type="button" data-guide="scripture-search-original" onClick={() => void search(correction.original, false)}>use original</button></span>}
           {note && <span>{note}</span>}
         </>}
       </div>}
@@ -216,39 +218,50 @@ export function ScriptureFindOverlay() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [found, at, pages, close, setPage]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const outside = (event: MouseEvent) => {
+      if (event.target instanceof Node && !veilRef.current?.contains(event.target)) {
+        event.preventDefault(); event.stopImmediatePropagation(); close();
+      }
+    };
+    document.addEventListener('click', outside, true);
+    return () => document.removeEventListener('click', outside, true);
+  }, [isOpen, close]);
+
   if (!found) return null;
   const shown = found.matches.slice(at * perPage, at * perPage + perPage);
 
-  return <div ref={veilRef} className="find-veil" data-tier={tier} role="dialog" aria-label={found.how === 'typed' ? 'passages found for what was typed' : 'passages found for what was just said'}>
+  return <div ref={veilRef} data-guide-area="find" className="find-veil" data-tier={tier} role="dialog" aria-label={found.how === 'typed' ? 'passages found for what was typed' : 'passages found for what was just said'}>
     <div className="find-head">
       <p className="find-heard" title={found.original ? `Original: ${found.original}\nSearched: ${found.heard}` : found.heard}>{found.original ? 'searched as' : found.how === 'typed' ? 'searched' : 'heard'} <em>“{found.heard}”</em></p>
-      <button type="button" className="find-round" aria-label="edit searched words" title="edit the words and search again" aria-expanded={editing} onClick={() => setEditing(value => !value)}><PencilIcon size={12} /></button>
+      <button type="button" data-guide="find-edit" className="find-round" aria-label="edit searched words" title="edit the words and search again" aria-expanded={editing} onClick={() => setEditing(value => !value)}><PencilIcon size={12} /></button>
       {/* In the head, not a row of its own: a foot row cost the cards a line
           of text on exactly the bands that page. */}
       {pages > 1 && <div className="find-pager">
-        <button type="button" className="find-round" aria-label="previous passages" title="previous passages ←" disabled={at === 0} onClick={() => setPage(at - 1)}><ChevronLeftIcon size={12} /></button>
+        <button type="button" data-guide="find-previous" className="find-round" aria-label="previous passages" title="previous passages ←" disabled={at === 0} onClick={() => setPage(at - 1)}><ChevronLeftIcon size={12} /></button>
         <span className="find-count">{at + 1} / {pages}</span>
-        <button type="button" className="find-round" aria-label="next passages" title="next passages →" disabled={at >= pages - 1} onClick={() => setPage(at + 1)}><ChevronRightIcon size={12} /></button>
+        <button type="button" data-guide="find-next" className="find-round" aria-label="next passages" title="next passages →" disabled={at >= pages - 1} onClick={() => setPage(at + 1)}><ChevronRightIcon size={12} /></button>
       </div>}
-      <button type="button" className="find-round" aria-label="close" title="close without choosing (Esc)" onClick={close}><CloseIcon size={12} /></button>
+      <button type="button" data-guide="find-close" className="find-round" aria-label="close" title="close without choosing (Esc)" onClick={close}><CloseIcon size={12} /></button>
     </div>
     {editing && <form className="find-edit" onSubmit={event => { event.preventDefault(); void retrySearch(); }}>
-      <textarea aria-label="words to search" value={query} rows={2} autoFocus onChange={event => { retry.current++; setSearching(false); setQuery(event.target.value); }} />
-      <button type="submit" disabled={searching || !query.trim()}>{searching ? 'searching…' : 'search again'}</button>
+      <textarea data-guide="find-words" aria-label="words to search" value={query} rows={2} autoFocus onChange={event => { retry.current++; setSearching(false); setQuery(event.target.value); }} />
+      <button type="submit" data-guide="find-search" disabled={searching || !query.trim()}>{searching ? 'searching…' : 'search again'}</button>
       {searchNote && <span role="status">{searchNote}</span>}
     </form>}
     {/* Keyed by page so the cards of a new page rise in like the first did.
         The count lets one or two answers take the whole band. */}
     <div className="find-grid" key={at} data-count={shown.length}>
-      {!shown.length && <div className="find-empty"><p>no clear passage for these words</p><button type="button" onClick={() => setEditing(true)}>check the words and try again</button></div>}
-      {shown.map((match, i) => <button key={match.reference} type="button" className="find-card" style={{ '--find-i': i } as React.CSSProperties}
+      {!shown.length && <div className="find-empty"><p>no clear passage for these words</p><button type="button" data-guide="find-retry" onClick={() => setEditing(true)}>check the words and try again</button></div>}
+      {shown.map((match, i) => <button key={match.reference} type="button" data-guide="find-card" className="find-card" style={{ '--find-i': i } as React.CSSProperties}
         /* The whole passage on hover, since a small band clamps it to a line. */
         title={`${match.reference}${match.title ? ` — ${match.title}` : ''}\n${match.text}\n\nput it on the projector${match.evidence.length ? ` — matched on: ${match.evidence.join(', ')}` : ''}`}
         onClick={() => { if (engine.pushReference(match.reference, match.version)) close(); }}>
         <span className="find-ref">{match.reference}</span>
         <span className="find-title">{match.title}</span>
         <span className="find-basis">{match.kind === 'named' ? 'named passage' : match.kind === 'story' ? 'matching details' : 'possible meaning match'}</span>
-        <span className="find-text">{match.text}</span>
+        <span className="find-text">{scriptureMatchParts(scriptureMatchExcerpt(match.text, found.heard, match.evidence), found.heard, match.evidence).map((part, i) => part.match ? <mark key={i}>{part.text}</mark> : part.text)}</span>
         <span className="find-go">go live <ExternalLinkIcon size={12} /></span>
       </button>)}
     </div>

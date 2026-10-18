@@ -101,6 +101,8 @@
 .catch-pill.is-sure { color: rgb(228 216 122); background: rgb(228 216 122 / 0.1); box-shadow: inset 0 0 0 1px rgb(228 216 122 / 0.45); }
 .catch-pill.is-maybe { color: rgb(229 243 242 / 0.72); border: 1px dashed rgb(229 243 242 / 0.32); line-height: 15px; }
 .catch-pill.is-song { color: rgb(143 211 192); background: rgb(143 211 192 / 0.08); box-shadow: inset 0 0 0 1px rgb(143 211 192 / 0.45); }
+/* A song heard by itself: the pink of the slant signal that announced it. */
+.catch-pill.is-heard { color: rgb(255 138 196); background: rgb(255 95 168 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 95 168 / 0.45); }
 .catch-meta {
   font-size: var(--tri-size-eyebrow);
   letter-spacing: 0.1em;
@@ -232,6 +234,7 @@
 
 .catch-songs { display: flex; flex-direction: column; gap: 8px; }
 .catch-songs__dot { width: 6px; height: 6px; border-radius: 999px; background: rgb(143 211 192); }
+.catch-songs__dot.is-heard { background: rgb(255 95 168); }
 .catch-songs__waiting { margin: 0; font-size: var(--tri-size-xs); color: rgb(229 243 242 / 0.5); }
 
 /* The catch in the left card, while the verses card is away. */

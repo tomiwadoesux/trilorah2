@@ -1,0 +1,62 @@
+[
+  {
+    "id": "fleur-de-lis",
+    "title": "Fleur-de-lis border",
+    "author": "GDJ / OpenClipart",
+    "source": "https://freesvg.org/1535063105",
+    "original_source": "https://openclipart.org/detail/305581/fleur-de-lis-cross",
+    "url": "https://freesvg.org/storage/zip/blog/1535063105.svg",
+    "svg_url": "https://freesvg.org/download/130057",
+    "file": "fleur-de-lis.svg",
+    "license": "Public domain / CC0",
+    "description": "Hollow Latin cross bordered by lily motifs; no figure.",
+    "original_preview_file": "fleur-de-lis.png",
+    "verified_vector": true,
+    "visually_verified_against_preview": true
+  },
+  {
+    "id": "jerusalem",
+    "title": "Jerusalem fivefold",
+    "author": "paxed / OpenClipart",
+    "source": "https://freesvg.org/cross-jerusalem",
+    "url": "https://freesvg.org/storage/zip/blog/cross-Jerusalem.svg",
+    "svg_url": "https://freesvg.org/download/185336",
+    "file": "jerusalem.svg",
+    "license": "Public domain / CC0",
+    "description": "Central cross potent surrounded by four small crosses; no figure.",
+    "original_preview_file": "jerusalem.png",
+    "verified_vector": true,
+    "original_source": "https://openclipart.org/detail/63697/jerusalem-cross-by-paxed",
+    "visually_verified_against_preview": true
+  },
+  {
+    "id": "maltese",
+    "title": "Eight-point Maltese",
+    "author": "laobc / OpenClipart",
+    "source": "https://freesvg.org/maltese-cross",
+    "url": "https://freesvg.org/storage/zip/blog/maltese-cross.svg",
+    "svg_url": "https://freesvg.org/download/185172",
+    "file": "maltese.svg",
+    "license": "Public domain / CC0",
+    "description": "Eight sharply flared points; no figure.",
+    "original_preview_file": "maltese.png",
+    "verified_vector": true,
+    "original_source": "https://openclipart.org/detail/62713/maltese-cross-by-laobc",
+    "visually_verified_against_preview": true
+  },
+  {
+    "id": "moline",
+    "title": "Moline curved tips",
+    "author": "paxed / OpenClipart",
+    "source": "https://freesvg.org/cross-moline",
+    "original_source": "https://openclipart.org/detail/63577/cross-moline-by-paxed",
+    "url": "https://freesvg.org/storage/zip/blog/cross-moline.svg",
+    "svg_url": "https://freesvg.org/download/185304",
+    "file": "moline.svg",
+    "license": "Public domain / CC0",
+    "description": "Each arm has two curled tips; no figure.",
+    "original_preview_file": "moline.png",
+    "verified_vector": true,
+    "visually_verified_against_preview": true
+  }
+]

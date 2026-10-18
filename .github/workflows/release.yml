@@ -129,7 +129,9 @@ jobs:
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/whisper.dll",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/vcruntime140.dll",
             "$r/app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/msvcp140.dll",
-            "$r/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+            "$r/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+            "$r/app.asar.unpacked/node_modules/@grandi/win32-x64/grandi.node",
+            "$r/app.asar.unpacked/node_modules/@grandi/win32-x64/Processing.NDI.Lib.x64.dll"
           )
           $missing = $need | Where-Object { -not (Test-Path $_) }
           if ($missing) { $missing | ForEach-Object { Write-Host "MISSING: $_" }; throw "packaged app is incomplete" }
@@ -146,10 +148,51 @@ jobs:
             models/ms-marco-MiniLM-L-6-v2/tokenizer.json \
             app.asar.unpacked/node_modules/onnxruntime-node/bin/napi-v6/darwin/arm64/onnxruntime_binding.node \
             app.asar.unpacked/node_modules/whisper-node/lib/whisper.cpp/main \
-            app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node; do
+            app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node \
+            app.asar.unpacked/node_modules/@grandi/darwin-arm64/grandi.node \
+            app.asar.unpacked/node_modules/@grandi/darwin-arm64/libndi.dylib; do
             [ -e "$r/$f" ] || { echo "MISSING: $r/$f"; exit 1; }
             ls -lh "$r/$f" | awk '{print $5, $9}'
           done
+
+      # Trilorah Sender: the small separate download for the computer the sound
+      # desk is plugged into. It is staged in dist-sender/ with only its own
+      # window and the NDI packages, so it never sees the main app's Bible,
+      # models or whisper, and it lands in release/sender/.
+      - name: Package Trilorah Sender
+        run: node scripts/build-sender.mjs ${{ matrix.flag }} --publish never
+
+      # The sender is useless without this platform's NDI library beside its
+      # addon; fail here rather than on the soundboard computer.
+      - name: Verify Trilorah Sender (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $r = "release/sender/win-unpacked/resources"
+          $need = @(
+            "$r/app.asar",
+            "$r/app.asar.unpacked/node_modules/grandi/dist/index.mjs",
+            "$r/app.asar.unpacked/node_modules/@grandi/win32-x64/grandi.node",
+            "$r/app.asar.unpacked/node_modules/@grandi/win32-x64/Processing.NDI.Lib.x64.dll"
+          )
+          $missing = $need | Where-Object { -not (Test-Path $_) }
+          if ($missing) { $missing | ForEach-Object { Write-Host "MISSING: $_" }; throw "Trilorah Sender is incomplete" }
+          if (Test-Path "$r/bible.db") { throw "Trilorah Sender picked up the main app's Bible" }
+          $need | ForEach-Object { "{0,8:N1} MB  {1}" -f ((Get-Item $_).Length / 1MB), $_ }
+
+      - name: Verify Trilorah Sender (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          r="release/sender/mac-arm64/Trilorah Sender.app/Contents/Resources"
+          for f in app.asar \
+            app.asar.unpacked/node_modules/grandi/dist/index.mjs \
+            app.asar.unpacked/node_modules/@grandi/darwin-arm64/grandi.node \
+            app.asar.unpacked/node_modules/@grandi/darwin-arm64/libndi.dylib; do
+            [ -e "$r/$f" ] || { echo "MISSING: $r/$f"; exit 1; }
+            ls -lh "$r/$f" | awk '{print $5, $9}'
+          done
+          [ ! -e "$r/bible.db" ] || { echo "Trilorah Sender picked up the main app's Bible"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$r/../Info.plist"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -159,6 +202,9 @@ jobs:
             release/*.exe
             release/*.dmg
             release/*.zip
+            release/sender/*.exe
+            release/sender/*.dmg
+            release/sender/*.zip
 
   publish:
     needs: build
@@ -171,9 +217,13 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          files: installers/*
+          files: |
+            installers/*
+            installers/sender/*
           generate_release_notes: true
           body: |
             **Windows:** download the `.exe`. Windows will say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
 
             **Mac (Apple Silicon):** download the `.dmg`. The first time, **right-click the app → Open**.
+
+            **Trilorah Sender** (`Trilorah-Sender-…`): the small app for the computer your sound desk is plugged into. It sends that computer's sound to Trilorah over your network; in Trilorah, open **audio** and choose **sound from** that computer. Windows asks once for permission to install it, so it can let the sound through the firewall.

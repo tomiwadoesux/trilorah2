@@ -1,57 +1,59 @@
 ---
-title: "Make scripture and lyrics readable from the back of the room"
+title: "Make your slides readable from the back row"
 slug: "make-projected-words-readable"
 audience: "Volunteers choosing text styles and backgrounds"
 question: "Which Trilorah controls help projected words remain clear in the actual room?"
 proposed_publication_date: "2026-06-09"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; in-room readability check and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-18"
 task_ids: [themes.adjust-text-layout, themes.change-background, songs.create-edit-slides, output.publish-preview]
 ---
 
-# Make scripture and lyrics readable from the back of the room
+# Make your slides readable from the back row
 
-The most useful design test for church projection is straightforward: stand where someone will read the screen and try to read it.
+Open your slide. Walk to the back of the room. Read it. (Walking is part of this tutorial.)
 
-A laptop preview helps you prepare, but room size, viewing distance, projector brightness, and the background all affect the result. Trilorah's Themes controls give you ways to adjust the words before you present them.
+That check tells you something a laptop preview cannot: whether people in the room can follow the words. The screen, lighting, distance and background all affect the result.
 
-## Start with real content
+Trilorah's **Themes** controls let you adjust scripture and lyrics in preview before sending them live.
 
-Prepare the passage or lyric section you intend to show. Use a longer example as well as a short one. A layout that suits a two-line chorus may be crowded when a verse contains several sentences.
+## Design around the longest section
 
-Open **Themes** with that content available in preview. Adjust the theme while you can see the words it needs to carry.
+Start with content you will actually show. Preview a short chorus and a longer lyric section, or a short verse and a longer passage.
 
-Avoid designing around an empty preview and assuming every later item will fit equally well.
+Open **Themes** and adjust while the words are visible. A layout that fits two lines may crowd a full paragraph.
 
-## Give the words enough room
+Use **text size** for the main words and **reference size** for the scripture reference. Keep both readable. If you keep reducing the font to fit a song, return to the song editor and split the section at a sensible phrase boundary.
 
-Use the text size and reference size controls to make the main words and the scripture reference legible. Keep the reference distinguishable without letting it compete with the passage.
+The congregation needs time to read and sing. Fitting every word on one slide is not the whole job.
 
-Text position, width, and safe margin controls help place the content within the screen. If words approach the physical edges, increase the room around them and check again on the output display.
+## Give the text space
 
-When a lyric section becomes too dense, return to the song editor and split it at a sensible phrase boundary. Reducing the font indefinitely is rarely a useful response to too many words.
+**Position on the screen**, **width** and **safe margin** help you place the words. Leave space at the edges, then check the physical output for cropping.
 
-There is no single size setting that proves every room is readable. Test the content and seating distance your congregation actually uses.
+Try one adjustment at a time. If a long line is awkward, change the width or split the source text before changing several other settings. That makes it easier to see what helped.
 
-## Make the background support the reading
+There is no font-size number that guarantees a readable slide in every church. Use the actual room as the test.
 
-Try the words against the visual you plan to use. A bright patch or detailed texture directly behind a line can make that line harder to follow.
+## Check the background while it moves
 
-Trilorah provides dimness, blur, and shadow controls as well as background selection. Adjust them to create separation between the text and the image. If several adjustments still leave a distracting result, choose a quieter background.
+Preview your intended background behind the words. Increase **dimness**, adjust **blur** or use **shadow strength** to separate text from the image. If the detail still competes with the words, choose a simpler background.
 
-For motion media, watch a full section of playback. A frame that looks calm in a screenshot can be followed by movement or a bright change that interrupts reading.
+For video, watch enough playback to catch bright frames and movement. A still screenshot can miss the moment that makes a line difficult to read.
 
-Use the Media **themes** shelf or the preview background path to stage the change. A double-click on a theme card or a drop onto LIVE can change the live background, so make the preparation choice deliberately.
+Use the **Media → themes** shelf or drop your background onto **preview** when preparing. Double-clicking a theme card or dropping onto **LIVE** can change the live background, so choose the destination deliberately.
 
-## Check a real screen, then check a real transition
+## Test a sequence, not one good slide
 
-During rehearsal, send the prepared content and walk to the back of the room. Read the longest line without relying on what you already know it says.
+During rehearsal, use **go live** and check from a rear seat. Ask someone who has not been editing the slide to read it too. Then move through the next few verses or lyric sections.
 
-Move to the next lyric section or verse. Check whether the size and position remain comfortable across the content, not just on the opening slide.
+Theme edits wait in preview. Sending a caught scripture, choosing a search result, or stepping a reading keeps the current live theme. Press **go live** beneath the preview when you want to publish the draft theme with its content. A deliberate drop onto LIVE or a live-background action can still change the live background directly.
 
-Try clearing the words while retaining the background, then restoring the held content. That helps the operator recognize the intended appearance during a pause in singing or speaking.
+Choose **focus** or **settle** for text transitions. Clearing and restoring the screen also ease the words out and back in. The soft color fields around preview and live come from the background image; their shapes move independently, while reduced-motion settings stop that drift.
 
-Most of the text and layout adjustments described here are staged in preview. Inspect the current preview and use the appropriate live control when you want the prepared result on screen; do not assume every theme control has identical behavior.
+Short scripture ranges stay together. Longer ranges use pages of complete verses, with their arrows and page count beneath the preview. Finish the pages before advancing beyond the range. The text fits each page without discarding scripture words.
 
-For better source material, read [preparing song lyrics](07-prepare-song-lyrics.md). If the words are going to the wrong physical display, begin with [output assignment](05-connect-the-right-screens.md).
+Use **clear** above LIVE to hide the words while keeping the background. **Restore** brings the same content and scripture page back.
+
+For crowded lyrics, use [the song preparation guide](07-prepare-song-lyrics.md). For the wrong screen or a missing output, start with [display assignment](05-connect-the-right-screens.md).

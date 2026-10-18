@@ -1,3 +1,4 @@
+import { IconSelection } from '../NuboIcon';
 import type { ReactNode } from 'react';
 import { cx } from '../lib/cx';
 import { surface, toneClass, type SurfaceTone } from '../lib/surface';
@@ -70,7 +71,7 @@ export function Button({
         className,
       )}
     >
-      {icon}
+      <IconSelection selected={pressed}>{icon}</IconSelection>
       {label}
     </button>
   );

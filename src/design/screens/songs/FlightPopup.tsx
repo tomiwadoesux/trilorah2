@@ -43,6 +43,8 @@ export interface FlightPopupProps {
    * the tile's box instead of sliding under it.
    */
   layer?: number;
+  /** Stable area id for the in-app guide (data-guide-area on the dialog). */
+  guideArea?: string;
 }
 
 type Phase = 'closed' | 'opening' | 'open' | 'closing';
@@ -68,6 +70,7 @@ export function FlightPopup({
   attention = 0,
   children,
   layer = 40,
+  guideArea,
 }: FlightPopupProps) {
   const card = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -191,6 +194,7 @@ export function FlightPopup({
                 role="dialog"
                 aria-modal="true"
                 aria-label={label}
+                data-guide-area={guideArea}
                 /* Read by an open dashboard tile: while this is up, Esc is
                    this popup's to answer, not the tile's under it. Off as
                    soon as it starts home — it no longer answers Esc then,
@@ -225,6 +229,7 @@ export function FlightPopup({
                     <div className="min-w-0 flex-1">{header}</div>
                     <button
                       type="button"
+                      data-guide="popup-close"
                       onClick={onRequestClose}
                       title="close (esc)"
                       aria-label="close"

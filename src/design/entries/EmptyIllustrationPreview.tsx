@@ -1,3 +1,4 @@
+import { DitheredPatches } from '../screens/DitheredPatches';
 import { useState, type ComponentType } from 'react';
 import { NotificationBellArt } from '../screens/NotificationBellArt';
 import { DisplayConnectionArt } from '../screens/DisplayConnectionArt';
@@ -41,6 +42,7 @@ export function EmptyIllustrationPreview() {
           const active = playing.includes(name);
           return (
             <section key={name} data-illustration={name} className="tri-empty-surface overflow-hidden rounded-xl bg-[#111111] p-4" data-empty-active={active}>
+              <DitheredPatches />
               <h2 className="text-sm font-medium text-white/75">{name}</h2>
               <div className="flex justify-center">
                 <div className="h-[230px] w-[245px] max-w-full"><Art /></div>

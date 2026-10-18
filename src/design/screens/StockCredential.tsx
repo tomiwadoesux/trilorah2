@@ -32,8 +32,8 @@ export function StockCredential({ settingKey }: { settingKey: 'pixabayApiKey' | 
   return <div className="flex w-[280px] flex-col gap-2" data-guide-state={configured ? 'configured' : configured === false ? 'missing' : 'checking'}>
     {editing || configured === false ? <form onSubmit={event => { event.preventDefault(); void save(); }} className="flex gap-2">
       <input type="password" aria-label={`${provider} API key`} autoComplete="off" spellCheck={false} value={value} onChange={event => setValue(event.target.value)} placeholder="paste your key" disabled={saving} className="min-w-0 flex-1 rounded bg-black/20 px-3 py-2 text-[12px] outline-none focus:ring-1 focus:ring-white/30" />
-      <Button type="submit" label={saving ? 'saving…' : 'save'} disabled={!value.trim() || saving || !window.api?.setSetting} />
-    </form> : <div className="flex items-center justify-between gap-3"><span className="text-xs text-[var(--tri-ink-muted)]">{configured ? 'key saved on this computer' : 'checking…'}</span><Button label="replace" onClick={() => setEditing(true)} disabled={configured === null} /></div>}
+      <Button guideId="stock-key-save" type="submit" label={saving ? 'saving…' : 'save'} disabled={!value.trim() || saving || !window.api?.setSetting} />
+    </form> : <div className="flex items-center justify-between gap-3"><span className="text-xs text-[var(--tri-ink-muted)]">{configured ? 'key saved on this computer' : 'checking…'}</span><Button guideId="stock-key-replace" label="replace" onClick={() => setEditing(true)} disabled={configured === null} /></div>}
     {configured && <p className="text-[10px] text-[var(--tri-ink-muted)]">Search will check whether the provider accepts it.</p>}
     {error && <p role="alert" className="text-xs">{error}</p>}
   </div>;

@@ -125,6 +125,7 @@ export function LogHistory({
               {e.action && onAction ? (
                 <button
                   type="button"
+                  data-guide="log-action"
                   onClick={onAction}
                   className="ml-auto text-[#e4d87a] underline decoration-[1px] underline-offset-[3px] hover:decoration-[1.5px]"
                 >

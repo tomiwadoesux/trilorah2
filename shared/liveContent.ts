@@ -1,3 +1,5 @@
+import { capitalizeScriptureNames } from './scriptureNames'
+
 /**
  * What is on the projector that is not a Bible verse.
  *
@@ -15,7 +17,7 @@
  *
  * Shared by main (which remembers it, so a projector window opened
  * mid-service shows what is live), the app (which sends it) and the output
- * window (which draws it). No imports, so all three agree.
+ * window (which draws it), using the same display casing on each surface.
  */
 
 export interface LiveSong {
@@ -42,3 +44,15 @@ export interface LiveSlide {
 }
 
 export type LiveContent = LiveSong | LiveSlide
+
+/** Also covers restored slides and announcements sent by the paired remote. */
+export function formatLiveContent<T extends LiveContent>(content: T): T {
+  return {
+    ...content,
+    title: capitalizeScriptureNames(content.title),
+    ...(content.label ? { label: capitalizeScriptureNames(content.label) } : {}),
+    ...(content.lines?.length ? { lines: capitalizeScriptureNames(content.lines.join('\n')).split('\n') } : {}),
+    ...(content.kind === 'slide' && content.body ? { body: capitalizeScriptureNames(content.body) } : {}),
+    ...(content.kind === 'slide' && content.subtitle ? { subtitle: capitalizeScriptureNames(content.subtitle) } : {}),
+  }
+}

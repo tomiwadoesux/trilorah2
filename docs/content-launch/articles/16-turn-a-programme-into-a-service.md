@@ -1,67 +1,64 @@
 ---
-title: "Turn a service programme into a run you can rehearse"
+title: "Turn the programme in your group chat into a service plan"
 slug: "turn-a-programme-into-a-service"
 audience: "Volunteers receiving the service plan as a message, flyer, or image"
 question: "How do I scan or paste a programme, review it, and finish the service preparation?"
 proposed_publication_date: "2026-07-28"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; OCR/parser example walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [run.import-programme, run.build-edit, run.queue-content-note, files.save-open-transfer]
 ---
 
-# Turn a service programme into a run you can rehearse
+# Turn the programme in your group chat into a service plan
 
-The order of service often already exists before the operator opens Trilorah. It may be a message from the church office or a picture of a printed programme.
+The service plan has arrived in the group chat. You can put it into Trilorah without retyping every line.
 
-Trilorah can start from that material. Use **paste programme** for text or **scan image** for an image, then review the proposed segments before adding them to the run.
+Use **Paste** for text or **Scan** for an image. Trilorah proposes a list of service segments for you to review, then adds the ones you approve.
 
-## Start with the clearest source
+## Start with text when you have it
 
-If you have selectable text, copy the programme and use **paste programme** from the run's add controls. If the source is a photo or image, choose **scan image** in the desktop app.
+At the bottom of the run of service, choose **Paste**. Put one programme item on each line, then choose **read it**.
 
-For a scan, use a clear, straight image where the programme is readable. If the scan cannot extract useful rows, the app can return you to the text path with an explanation. Repeating an unreadable image is less useful than pasting the words or taking a clearer picture.
+Try a short rehearsal example:
 
-The scan operation prepares a review. It does not silently turn every word in the image into a finished service.
+```text
+10:00 Welcome — 5 minutes
+10:05 Worship — 20 minutes
+10:25 Sermon — 30 minutes
+10:55 Closing — 5 minutes
+```
 
-## Inspect the proposed order
+If you received a photo or image instead, choose **Scan** in the desktop app. Use a straight, readable image. If Trilorah cannot read it, follow the message to paste the text or try a clearer photo.
 
-Read the review from top to bottom. Check the segment names, types, ordering, and any times or durations that were extracted.
+Both routes lead to a review. Nothing joins the run until you choose **add to run**.
 
-A simple programme might contain:
+## Read the proposed rows
 
-“10:00 Welcome — 5 minutes”
+Check the names and order against the original programme. Then inspect the times, lengths, segment types and speaker names that were picked out.
 
-“10:05 Worship — 20 minutes”
+Pay attention to rows marked **check** or **pick a type**. A decorative heading can look like a service item; an unfamiliar name can be mistaken for something else. Correct the row, choose its type or remove it before continuing.
 
-“10:25 Sermon — 30 minutes”
+Columns, unusual time formats and explanatory paragraphs can need more correction than a simple list. A tidy-looking review still deserves a read.
 
-“10:55 Closing — 5 minutes”
+## Check what adding will change
 
-Use that only as a sample for rehearsal. The parser's result still needs your review, particularly when the programme contains columns, decorative headings, unusual time formats, or explanatory paragraphs.
+When you choose **add to run**, the reviewed segments are added to the end of the visible run. The imported programme also becomes the app's new schedule, replacing the previous schedule.
 
-Correct the proposed rows before adding them. Check that a heading did not become a service segment and that a genuine segment was not left out.
+If you already have a service open, inspect both the resulting order and timing. Importing the same programme again can leave duplicate segments; it does not simply refresh the earlier ones. Remove or rearrange the duplicates deliberately.
 
-## Understand what adding the programme changes
+## Give each segment its content
 
-After review, add the intended rows. In the current workflow, the visible run segments are appended, while the imported programme updates the app's schedule as the new schedule.
+A row named “Worship” supplies a place in the plan. It does not supply the lyrics.
 
-If a run already contains material, check both the resulting order and its timing. Do not assume that importing the same programme twice simply refreshes the existing rows; it can leave duplicate visible segments.
+Prepare the songs, slides, scripture and media, then add the relevant material to each segment. Add an operator note wherever a cue needs explaining: “Show the welcome after the opening prayer” is more useful than “Welcome.”
 
-Remove or rearrange unwanted segments deliberately after reviewing the result.
+Check each listed scripture and translation. Test listening separately if you want Trilorah to suggest references spoken during the sermon.
 
-## Add the material the programme cannot supply
+## Rehearse the finished run
 
-A line that says “Worship” does not contain the song lyrics. A line that says “Announcements” does not provide the announcement slide.
+Move through the service once. Preview the content, practise the intended live actions and check that essential media opens and plays.
 
-Open the libraries and prepare the content for each segment. Drag supported material into the run and use the segment's plus to add operator notes. Include cues that help the next volunteer know when to change the screen.
+Save the prepared service with **.tri**, then check the save result. You now have more than a copied programme: the order, material and operator cues are ready to rehearse together.
 
-If a scripture reference is listed, check the passage and translation in the actual app. If the sermon is expected to include unplanned references, check microphone listening separately.
-
-## Rehearse, then save
-
-Walk through the completed run once. Preview each important item, confirm the intended live action, and check any media that depends on a file or online source.
-
-Save the prepared service using the **.tri** controls and inspect the save result. The programme supplied the structure; the rehearsal confirms that the structure now has usable content behind it.
-
-For manual changes, use [the order-of-service guide](06-build-an-order-of-service.md). If another volunteer will present it, finish with [the service-file handoff](11-save-and-transfer-a-service.md).
+Use [the order-of-service guide](06-build-an-order-of-service.md) for manual changes. If another volunteer will present it, finish with [the service-file handoff](11-save-and-transfer-a-service.md).

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "product": "Trilorah",
-  "reviewedOn": "2026-10-10",
-  "packageVersion": "0.4.7",
+  "reviewedOn": "2026-10-18",
+  "packageVersion": "0.4.8",
   "baseCommit": "f91b813dc2fa6547d4455d96990baa9863fa3822",
   "includesWorkingTreeChanges": true,
   "scope": "Source-reviewed user task families across the current desktop, phone, and web surfaces. This is the first product map, not an exhaustive control registry or a runtime-certified walkthrough library.",
@@ -184,7 +184,70 @@
         "audio-options",
         "listen"
       ],
-      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified."
+      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified.",
+      "since": "0.4.2",
+      "near": [
+        "audio",
+        "operator"
+      ],
+      "asks": [
+        "how to connect mic",
+        "connect microphone",
+        "conect micrphone",
+        "it can’t hear the pastor",
+        "choose audio input",
+        "use the soundboard",
+        "which microphone",
+        "mic setup"
+      ],
+      "lesson": [
+        {
+          "id": "audio-open",
+          "say": [
+            "Audio sits at the preview’s bottom left.",
+            "Look at the preview’s bottom left. That’s Audio.",
+            "Audio: the small button at the preview’s bottom left.",
+            "Find Audio at the preview’s bottom left."
+          ],
+          "anchor": "audio-input",
+          "do": "click",
+          "done": "audio-options"
+        },
+        {
+          "id": "audio-pick",
+          "say": [
+            "Pick the one that’s actually plugged in.",
+            "Choose your real microphone, not the laptop’s.",
+            "Soundboard if you have one. Otherwise the mic.",
+            "Which input has the preacher’s voice? Pick that."
+          ],
+          "anchor": "audio-options",
+          "do": "input"
+        },
+        {
+          "id": "audio-listen",
+          "say": [
+            "Press Start listening.",
+            "Start listening. It uses your speech service.",
+            "Now switch listening on.",
+            "Start listening, and I’ll watch for sound."
+          ],
+          "anchor": "listen",
+          "do": "listen"
+        },
+        {
+          "id": "audio-check",
+          "say": [
+            "Say a sentence. Watch for words.",
+            "Talk. Words should appear within a breath.",
+            "Sound first, then words. Both need to show.",
+            "Bar moves, no words? Different problem. (I know which one.)"
+          ],
+          "anchor": "listen",
+          "do": "check"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "audio.phone-microphone",
@@ -260,7 +323,80 @@
       "runtimeTested": false,
       "guideReady": false,
       "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text.",
+      "since": "0.4.5",
+      "near": [
+        "audio",
+        "phone",
+        "mobile"
+      ],
+      "asks": [
+        "use my phone as the microphone",
+        "phone mic",
+        "phone microphone",
+        "iphone as mic",
+        "wireless mic",
+        "phone over wifi"
+      ],
+      "lesson": [
+        {
+          "id": "phone-open",
+          "say": [
+            "Audio, at the preview’s bottom left.",
+            "Open Audio.",
+            "Phone mic starts in Audio.",
+            "Bottom left of the preview: Audio."
+          ],
+          "anchor": "audio-input",
+          "do": "click",
+          "done": "audio-options"
+        },
+        {
+          "id": "phone-option",
+          "say": [
+            "Pick phone (over wi-fi).",
+            "Choose the phone option.",
+            "phone (over wi-fi). Your click.",
+            "The phone option opens setup."
+          ],
+          "anchor": "audio-option-phone",
+          "do": "choose"
+        },
+        {
+          "id": "phone-scan",
+          "say": [
+            "Scan the code with the phone.",
+            "Same Wi-Fi. Scan the QR.",
+            "Phone and laptop on one Wi-Fi. Scan.",
+            "Point the phone camera at this code."
+          ],
+          "anchor": "phone-panel",
+          "do": "point"
+        },
+        {
+          "id": "phone-allow",
+          "say": [
+            "Allow microphone when the phone asks.",
+            "Let the phone in. Your press.",
+            "Allow microphone. Then use phone audio.",
+            "Approve the phone here."
+          ],
+          "anchor": "phone-allow",
+          "do": "choose"
+        },
+        {
+          "id": "phone-use",
+          "say": [
+            "Use phone audio starts listening.",
+            "Press Use phone audio.",
+            "Use phone audio. Then say a sentence.",
+            "Phone audio on. Check for words."
+          ],
+          "anchor": "phone-use",
+          "do": "choose"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "audio.practice-sermon",
@@ -370,7 +506,20 @@
         "audio-options",
         "listen"
       ],
-      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified."
+      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified.",
+      "since": "0.4.2",
+      "near": [
+        "audio",
+        "operator"
+      ],
+      "asks": [
+        "start listening",
+        "stop listening",
+        "how do i start",
+        "begin the service",
+        "turn it on"
+      ],
+      "consequential": false
     },
     {
       "id": "audio.troubleshoot",
@@ -435,7 +584,22 @@
         "audio-options",
         "listen"
       ],
-      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified."
+      "execution": "Companion may open Audio. The user chooses input and starts listening; fresh audio and new transcript are required. Automatic isolated demo verified; real capture not certified.",
+      "since": "0.4.2",
+      "near": [
+        "audio",
+        "operator"
+      ],
+      "asks": [
+        "mic not working",
+        "microphone stopped working",
+        "no sound",
+        "cannot hear",
+        "it stopped listening",
+        "no words coming",
+        "nothing transcribing"
+      ],
+      "consequential": false
     },
     {
       "id": "cloud.account",
@@ -528,37 +692,45 @@
     },
     {
       "id": "companion.configure",
-      "title": "Configure companion access, stream link, and audience options",
+      "title": "Configure the congregation stream, QR caption and feedback",
       "area": "companion",
       "entry": "Dashboard > Companion > expanded settings",
       "controls": [
-        "Who can open the link",
         "Watch the stream",
         "QR caption",
-        "Congregation polls",
         "Audience training"
       ],
       "preconditions": [
         "Church companion configured for meaningful public effect"
       ],
       "completion": [
-        "Settings persist and resulting companion service receives them"
+        "Fields hydrate from desktop settings and survive reopening",
+        "Stream and audience settings queue an update for the active public service",
+        "New services include the saved stream URL"
       ],
       "limitations": [
-        "CURRENT UI GAP: CompanionTile renders RowList without persist",
-        "Changes to listed fields only affect local RowList state",
-        "Do not claim wifi-only restriction or live stream configuration can currently be set from this UI",
-        "QR display/background has separate wired handlers and is a distinct task"
+        "Public congregation links are not restricted by the relay’s Wi-Fi setting; that misleading control was removed from this tile",
+        "Congregation polls and a pretend logo status were removed from this setup surface",
+        "Desktop-to-cloud propagation still needs an authenticated release check; queue errors appear in publishing status",
+        "The paired operator remote is configured separately under Mobile tools"
       ],
-      "status": "partial",
+      "status": "wired",
       "sources": [
         {
           "path": "src/design/screens/dashboard/CompanionTile.tsx",
-          "symbol": "ROWS; RowList rows={ROWS}"
+          "symbol": "ROWS; useCompanionSettings; SettingRow"
         },
         {
-          "path": "src/design/screens/settingsRows.tsx",
-          "symbol": "RowList"
+          "path": "src/design/screens/dashboard/useCompanionSettings.ts",
+          "symbol": "useCompanionSettings"
+        },
+        {
+          "path": "electron/main.ts",
+          "symbol": "set-setting; ensureCloudService"
+        },
+        {
+          "path": "electron/cloud/cloudSync.ts",
+          "symbol": "startService; syncServiceCompanion"
         }
       ],
       "runtimeTested": false,
@@ -633,28 +805,37 @@
         "User provides verified church giving destinations"
       ],
       "completion": [
-        "Persisted giving methods match church-provided destinations",
-        "Companion Give tab renders intended links/details"
+        "Card and expanded fields display saved settings, with no seeded destinations",
+        "Edits save on the computer and queue for the signed-in church account",
+        "Companion Give tab uses the published destinations"
       ],
       "limitations": [
-        "CURRENT UI GAP: GivingTile renders RowList without persist",
-        "Tile itself derives visible methods from seed rows instead of saved settings",
-        "Seed donation addresses are sample data and must never be treated as user's verified destinations",
-        "No external financial action attempted"
+        "Actual financial destinations were not changed during verification",
+        "Local save feedback does not certify cloud delivery; check publishing queue status",
+        "Signed-out edits remain pending until a church account is connected",
+        "No external financial transaction was attempted"
       ],
-      "status": "partial",
+      "status": "wired",
       "sources": [
         {
           "path": "src/design/screens/dashboard/GivingTile.tsx",
-          "symbol": "ROWS; GivingTile; RowList rows={rows}"
+          "symbol": "ROWS; useCompanionSettings"
         },
         {
-          "path": "src/design/screens/settingsRows.tsx",
-          "symbol": "RowList"
+          "path": "shared/companionSettings.ts",
+          "symbol": "givingFromSettings"
         },
         {
-          "path": "web/src/app/live/[slug]/CompanionClient.tsx",
-          "symbol": "tab === 'give'"
+          "path": "electron/main.ts",
+          "symbol": "syncPendingGiving; set-setting"
+        },
+        {
+          "path": "electron/cloud/cloudSync.ts",
+          "symbol": "syncGivingMethods"
+        },
+        {
+          "path": "web/src/app/live/[slug]/components/GiveTab.tsx",
+          "symbol": "GiveTab; safeGivingUrl"
         }
       ],
       "runtimeTested": false,
@@ -761,7 +942,7 @@
       "id": "media.find-online",
       "title": "Find stock images or videos",
       "area": "media",
-      "entry": "Online library tab → search → choose result",
+      "entry": "Media library tab → Search online → search → choose result",
       "controls": [
         "StockSearch",
         "result card"
@@ -775,7 +956,7 @@
         "Standalone media staged in preview"
       ],
       "limitations": [
-        "Online tab stages standalone media. Applying behind text uses a separate background workflow."
+        "Online search stages standalone media. Applying behind text uses a separate background workflow."
       ],
       "status": "wired",
       "sources": [
@@ -799,14 +980,82 @@
       "runtimeTested": false,
       "guideReady": false,
       "guideAnchors": [
-        "library-online",
+        "library-media",
+        "media-online",
         "stock-search",
         "stock-setup",
         "stock-result",
         "setting-pixabayApiKey",
         "setting-pexelsApiKey"
       ],
-      "execution": "Guided tab click and search typing with a missing-key setup detour; user chooses/downloads the image."
+      "execution": "Guided tab click and search typing with a missing-key setup detour; user chooses/downloads the image.",
+      "since": "0.4.6",
+      "near": [
+        "media",
+        "library"
+      ],
+      "asks": [
+        "find an online image",
+        "search pictures",
+        "stock photo",
+        "background picture",
+        "mountains",
+        "pexels",
+        "pixabay",
+        "image search"
+      ],
+      "lesson": [
+        {
+          "id": "tab-media",
+          "say": [
+            "Open the Media tab.",
+            "Pictures and videos live in Media.",
+            "Choose Media in the library.",
+            "Left rail, Media."
+          ],
+          "anchor": "library-media",
+          "do": "click",
+          "done": "[data-guide=\"library-media\"][aria-selected=\"true\"]"
+        },
+        {
+          "id": "media-online",
+          "say": [
+            "Search online opens stock images and videos.",
+            "Choose the globe to search online.",
+            "Online search lives inside Media."
+          ],
+          "anchor": "media-online",
+          "do": "click",
+          "done": "[data-guide=\"media-online\"][aria-pressed=\"true\"]"
+        },
+        {
+          "id": "stock-query",
+          "say": [
+            "What’s the picture? A scene, a mood.",
+            "Describe it. Mountains, ocean, open Bible.",
+            "Search words go here.",
+            "Type what you’d like to see."
+          ],
+          "anchor": "[data-guide=\"stock-search\"] input[aria-label=\"search online media\"]",
+          "do": "write",
+          "field": "search",
+          "prerequisite": "stock"
+        },
+        {
+          "id": "stock-pick",
+          "say": [
+            "Pick one. It downloads to preview.",
+            "Choose an image. It won’t go live.",
+            "Click the one that fits. Preview only.",
+            "Your pick. It lands in preview."
+          ],
+          "anchor": "stock-result",
+          "do": "choose",
+          "observed": "stock-picked",
+          "prerequisite": "stock"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "media.import-preview-local",
@@ -858,7 +1107,59 @@
         "library-media",
         "media-import"
       ],
-      "execution": "Opens Media and local filter; points at Add from laptop and prompts for user file choice."
+      "execution": "Opens Media and local filter; points at Add from laptop and prompts for user file choice.",
+      "since": "0.4.6",
+      "near": [
+        "media",
+        "library"
+      ],
+      "asks": [
+        "add pictures",
+        "add a video",
+        "upload photo",
+        "my own picture",
+        "import media",
+        "file from laptop",
+        "add from laptop"
+      ],
+      "lesson": [
+        {
+          "id": "tab-media",
+          "say": [
+            "Media is a tab on the left.",
+            "Open Media.",
+            "Your own pictures live under Media.",
+            "Left rail, Media."
+          ],
+          "anchor": "library-media",
+          "do": "click",
+          "done": "[data-guide=\"library-media\"][aria-selected=\"true\"]"
+        },
+        {
+          "id": "media-local",
+          "say": [
+            "This filter shows what’s on this laptop.",
+            "Laptop files only. Press this.",
+            "Narrow it to this computer.",
+            "Show what’s already here."
+          ],
+          "anchor": ".media-browser button[aria-label=\"show what is on this laptop\"]",
+          "do": "click",
+          "done": ".media-browser button[aria-label=\"show what is on this laptop\"][aria-pressed=\"true\"]"
+        },
+        {
+          "id": "media-import",
+          "say": [
+            "Add from laptop opens your files.",
+            "Press Add from laptop. The file picker is yours.",
+            "Choose your picture or video. Then click its card.",
+            "Add from laptop. Then click the card to preview."
+          ],
+          "anchor": "media-import",
+          "do": "choose"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "navigation.open-library",
@@ -1040,20 +1341,21 @@
       "id": "output.clear-restore",
       "title": "Clear and restore projected words",
       "area": "output",
-      "entry": "Operator LIVE panel > clear/restore",
+      "entry": "Select the currently live item in the library → × at the preview’s bottom right clears its words → select it again and Go live to show it again",
       "controls": [
-        "Clear words while retaining background",
-        "Restore held content"
+        "LIVE clear",
+        "LIVE restore",
+        "Preview ×"
       ],
       "preconditions": [
         "Known current screen state and output connection"
       ],
       "completion": [
-        "Screen state changes to clear/live; actual output requires display confirmation"
+        "Clear hides live words and retains the background. Restore returns the same item and page."
       ],
       "limitations": [
-        "Changes congregation output immediately",
-        "Black and logo states are distinct from clear; preview operations must preserve the held screen state",
+        "× clears projected words only when the staged item matches the currently live item; otherwise it only unstages the preview",
+        "Clearing matching live words changes congregation output immediately; the background remains",
         "Video transport state is partly a local estimate and needs actual playback verification"
       ],
       "status": "wired",
@@ -1067,10 +1369,44 @@
           "symbol": "ScreenState"
         }
       ],
-      "runtimeTested": false,
+      "runtimeTested": true,
       "guideReady": false,
-      "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "guideAnchors": [
+        "live-clear",
+        "live-restore"
+      ],
+      "execution": "The guide points to × and Go live at the preview’s bottom right; selecting the matching item, clearing it, and showing it again remain operator actions.",
+      "since": "0.4.3",
+      "near": [
+        "operator"
+      ],
+      "consequential": true,
+      "asks": [
+        "clear the screen",
+        "take the words off",
+        "blank the projector",
+        "restore the words",
+        "nothing on the wall",
+        "clear"
+      ],
+      "lesson": [
+        {
+          "id": "clear-live",
+          "say": [
+            "Clear hides the words and keeps the background."
+          ],
+          "anchor": "live-clear",
+          "do": "choose"
+        },
+        {
+          "id": "restore-live",
+          "say": [
+            "Restore brings back the same content and scripture page."
+          ],
+          "anchor": "live-restore",
+          "do": "choose"
+        }
+      ]
     },
     {
       "id": "output.publish-preview",
@@ -1157,7 +1493,71 @@
         "dashboard-outputs",
         "outputs-settings"
       ],
-      "execution": "Opens the real output panel; points at display choice and prompts for a physical screen check. User assigns display."
+      "execution": "Opens the real output panel; points at display choice and prompts for a physical screen check. User assigns display.",
+      "since": "0.4.3",
+      "near": [
+        "outputs",
+        "dashboard"
+      ],
+      "asks": [
+        "set up a screen",
+        "connect projector",
+        "nothing on the projector",
+        "second screen",
+        "hdmi",
+        "which display",
+        "preview on the wrong screen",
+        "tv not showing"
+      ],
+      "lesson": [
+        {
+          "id": "outputs-open",
+          "say": [
+            "Outputs is a card on the dashboard.",
+            "Open the Outputs card.",
+            "Dashboard, then Outputs.",
+            "Screens live in Outputs."
+          ],
+          "anchor": "dashboard-outputs",
+          "do": "click",
+          "done": "outputs-settings"
+        },
+        {
+          "id": "outputs-picker",
+          "say": [
+            "Open the display picker.",
+            "This lists every screen the laptop can see.",
+            "Which displays are connected? Let’s look.",
+            "The picker shows your screens."
+          ],
+          "anchor": "[data-guide=\"outputs-settings\"] [data-guide$=\".display\"] button",
+          "do": "click",
+          "done": "[data-guide=\"outputs-settings\"] [data-guide$=\".display\"] button[aria-expanded=\"true\"]"
+        },
+        {
+          "id": "outputs-display",
+          "say": [
+            "Choose the projector. Your pick.",
+            "Pick the display the room sees.",
+            "The projector, usually the second one.",
+            "Choose a display. An output window opens."
+          ],
+          "anchor": "[data-guide=\"outputs-settings\"] [data-guide$=\".display\"] button",
+          "do": "choose"
+        },
+        {
+          "id": "outputs-check",
+          "say": [
+            "Now look at the actual wall.",
+            "Check the room’s screen, not this one.",
+            "Walk to the back. Can you read it?",
+            "Trust the wall, not the preview."
+          ],
+          "anchor": "outputs-settings",
+          "do": "choose"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "outputs.preferences",
@@ -1250,18 +1650,19 @@
     },
     {
       "id": "preacher.review-recognition",
-      "title": "Review catches, correct mistakes, and report missed references",
+      "title": "Check catches, correct mistakes, and report missed references",
       "area": "preachers",
-      "entry": "Profile -> sound check & review -> Recognition review",
+      "entry": "Profile -> choose preacher -> check catches",
       "controls": [
-        "Correct",
-        "Wrong reference",
-        "Not a reference",
-        "Can’t tell / new passage",
-        "Correct Bible reference",
-        "Save correction",
-        "Add missed example",
-        "Finish service & review"
+        "yes, that’s right",
+        "no, it was…",
+        "not a verse",
+        "can’t tell",
+        "The right Bible reference",
+        "save",
+        "Missed one? input",
+        "add",
+        "finish service"
       ],
       "preconditions": [
         "Loaded preacher learning data",
@@ -1280,12 +1681,12 @@
       "status": "wired",
       "sources": [
         {
-          "path": "src/design/screens/dashboard/LearningActions.tsx",
-          "symbol": "ReviewCard / LearningActions"
+          "path": "src/design/screens/dashboard/CatchReview.tsx",
+          "symbol": "CatchReview / Question"
         },
         {
           "path": "electron/main.ts",
-          "symbol": "auto-mode-set"
+          "symbol": "resolve-review-item"
         }
       ],
       "runtimeTested": false,
@@ -1295,39 +1696,49 @@
     },
     {
       "id": "preacher.sound-check",
-      "title": "Run a preacher sound check",
+      "title": "Run voice training for a preacher",
       "area": "preachers",
-      "entry": "Profile view -> choose preacher -> sound check & review",
+      "entry": "Profile -> choose preacher -> voice training (or the next-step card, or a book on the shelf)",
       "controls": [
-        "Reference exercise buttons",
-        "Start sound check",
-        "Stop sound check",
-        "Use free offline speech for services"
+        "start training",
+        "listen with (offline · free / online · deepgram)",
+        "say it again",
+        "skip / next",
+        "undo",
+        "stop",
+        "practise these again",
+        "next round",
+        "done"
       ],
       "preconditions": [
         "Selected preacher profile",
         "Service microphone input",
-        "Local speech engine/model; first check can download"
+        "Offline engine (first round can download) or the online key"
       ],
       "completion": [
-        "SoundCheckState heard/detected/matches/status returned",
-        "Exercise reports matched or does-not-match"
+        "TrainingState results saved to the preacher training log",
+        "Misheard book names saved as learned sounds-like fixes, proven by a retry",
+        "Shelf standings refresh on the summary"
       ],
       "limitations": [
-        "Results arrive in chunks with processing delay",
-        "Uses local sound-check engine even if service speech provider differs",
-        "No saved audio recordings asserted by this UI; only transcribed examples",
-        "Matching one exercise does not prove all future references accurate"
+        "Practice never changes live-service trust or readiness checks",
+        "Only book-name mishearings are fixed automatically; wrong numbers are reported, not fixed",
+        "A fix learned on one speech engine may not help on the other",
+        "No audio is stored; only the words heard"
       ],
       "status": "wired",
       "sources": [
         {
-          "path": "src/design/screens/dashboard/ProfileView.tsx",
-          "symbol": "section learning"
+          "path": "src/design/screens/dashboard/VoiceTraining.tsx",
+          "symbol": "VoiceTraining"
         },
         {
-          "path": "src/design/screens/dashboard/LearningActions.tsx",
-          "symbol": "LearningActions / startPreacherSoundCheck"
+          "path": "electron/preachers/voiceTraining.ts",
+          "symbol": "VoiceTraining / inferBookAlias"
+        },
+        {
+          "path": "src/design/screens/dashboard/BibleShelf.tsx",
+          "symbol": "BibleShelf"
         }
       ],
       "runtimeTested": false,
@@ -1471,7 +1882,70 @@
       "runtimeTested": false,
       "guideReady": false,
       "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text.",
+      "since": "0.4.5",
+      "near": [
+        "mobile",
+        "remote"
+      ],
+      "asks": [
+        "connect phone remote",
+        "mobile remote",
+        "control from my phone",
+        "pair phone",
+        "pairing code",
+        "approve phone",
+        "remote control"
+      ],
+      "lesson": [
+        {
+          "id": "mobile-open",
+          "say": [
+            "Mobile is at the top right.",
+            "Open the mobile menu.",
+            "Top right: mobile.",
+            "The mobile button, top of the screen."
+          ],
+          "anchor": "mobile-tools",
+          "do": "click",
+          "done": "mobile-remote"
+        },
+        {
+          "id": "mobile-remote",
+          "say": [
+            "Mobile remote.",
+            "Choose Mobile remote.",
+            "Remote control of the service: Mobile remote.",
+            "Pick Mobile remote."
+          ],
+          "anchor": "mobile-remote",
+          "do": "click",
+          "done": "remote-panel"
+        },
+        {
+          "id": "remote-enable",
+          "say": [
+            "Enable mobile access. Your press.",
+            "Turn it on here.",
+            "Enable, then scan.",
+            "Enable mobile access opens the door."
+          ],
+          "anchor": "remote-enable",
+          "do": "choose"
+        },
+        {
+          "id": "remote-code",
+          "say": [
+            "Create a pairing code. It lasts two minutes.",
+            "Scan, type the code, approve the phone.",
+            "Code on the laptop, typed on the phone.",
+            "Create a code. Then approve the phone here."
+          ],
+          "anchor": "remote-code",
+          "do": "choose"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "remote.present",
@@ -1582,7 +2056,73 @@
         "run-programme",
         "run-apply"
       ],
-      "execution": "Opens programme paste, types operator-approved draft, and parses to review. User applies reviewed rows."
+      "execution": "Opens programme paste, types operator-approved draft, and parses to review. User applies reviewed rows.",
+      "since": "0.4.5",
+      "near": [
+        "run",
+        "operator"
+      ],
+      "asks": [
+        "prepare a service",
+        "order of service",
+        "sunday programme",
+        "paste the program",
+        "plan the service",
+        "build the run",
+        "add segments",
+        "schedule"
+      ],
+      "lesson": [
+        {
+          "id": "run-paste",
+          "say": [
+            "Got a programme? Open the box.",
+            "Press paste. A text box opens.",
+            "Your order of service goes in here.",
+            "Open the programme box."
+          ],
+          "anchor": "run-paste",
+          "do": "click",
+          "done": "run-text"
+        },
+        {
+          "id": "run-write",
+          "say": [
+            "Type or paste the order of service.",
+            "Edit the example, or paste your own.",
+            "Times and items, one per line.",
+            "Your programme, as you’d write it on paper."
+          ],
+          "anchor": "run-text",
+          "do": "write",
+          "field": "programme"
+        },
+        {
+          "id": "run-read",
+          "say": [
+            "Read it. I’ll turn it into a list.",
+            "Press read it.",
+            "Now let me read that.",
+            "Read it, then check what I made."
+          ],
+          "anchor": "run-read",
+          "do": "click",
+          "done": "[data-guide=\"run-programme\"][data-guide-state=\"review\"]"
+        },
+        {
+          "id": "run-review",
+          "say": [
+            "Check the order. Then Add to run.",
+            "Right times? Right types? Add to run.",
+            "Add to run changes your schedule. Your press.",
+            "Look it over. Add to run when it’s right."
+          ],
+          "anchor": "run-apply",
+          "do": "choose",
+          "observed": "programme-added"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "run.header-attach-gap",
@@ -1766,7 +2306,7 @@
         "Browser preview uses unavailable-text fallback.",
         "Enter on reference input explicitly sends live; it is not merely a passive search",
         "Unavailable/failed online Bible should not produce invented verse text in desktop",
-        "Range may shrink to fit"
+        "Short ranges stay together; longer ranges page through whole verses. Scripture fits without truncating its ending."
       ],
       "status": "wired",
       "sources": [
@@ -1798,9 +2338,71 @@
       "runtimeTested": false,
       "guideReady": false,
       "guideAnchors": [
-        "library-verses"
+        "library-scriptures"
       ],
-      "execution": "Types an operator-specified reference and points at verse rows. Never submits Enter; user controls preview/live."
+      "execution": "Types an operator-specified reference and points at verse rows. Never submits Enter; user controls preview/live.",
+      "since": "0.4.2",
+      "near": [
+        "scripture",
+        "library",
+        "operator"
+      ],
+      "consequential": true,
+      "asks": [
+        "find a bible passage",
+        "find a verse",
+        "look up scripture",
+        "type a reference",
+        "john 3 16",
+        "show a verse",
+        "put a verse up"
+      ],
+      "lesson": [
+        {
+          "id": "tab-verses",
+          "say": [
+            "Verses is the first tab.",
+            "Open Verses.",
+            "Left rail, Verses.",
+            "Scripture lives under Verses."
+          ],
+          "anchor": "library-scriptures",
+          "do": "click",
+          "done": "[data-guide=\"library-scriptures\"][aria-selected=\"true\"]"
+        },
+        {
+          "id": "bible-reference",
+          "say": [
+            "Type the reference. I won’t press Enter.",
+            "Book, chapter, verse. Enter sends it live, so I stop short.",
+            "A reference goes here. Enter publishes. That’s yours.",
+            "Type it. Leave Enter to you."
+          ],
+          "anchor": "[data-scripture-browser] input",
+          "do": "write",
+          "field": "reference",
+          "prerequisite": "bible"
+        },
+        {
+          "id": "bible-preview",
+          "say": [
+            "Click a verse once to preview it.",
+            "One click previews. Double-click goes live.",
+            "Single click. Read it in preview first.",
+            "Preview with one click. The wall waits."
+          ],
+          "anchor": "[data-scripture-browser] [data-row]",
+          "do": "choose"
+        },
+        {
+          "id": "reading-pages",
+          "say": [
+            "Use preview’s arrows to finish the passage before the next verse."
+          ],
+          "anchor": "[aria-label=\"Next page or verse\"]",
+          "do": "point"
+        }
+      ]
     },
     {
       "id": "scripture.catch-and-project",
@@ -1809,9 +2411,13 @@
       "entry": "Operator view -> listening, catches and preview/live controls",
       "controls": [
         "Start listening",
-        "Caught verse selection",
-        "Preview",
-        "Send live / projector send"
+        "Reference tabs and +N",
+        "Save scripture",
+        "Dismiss tab",
+        "Catch live",
+        "Auto advance",
+        "Previous / next scripture page",
+        "Numbered-book choices"
       ],
       "preconditions": [
         "Working transcription",
@@ -1823,10 +2429,13 @@
         "Explicit operator action accepted and live snapshot/output changes"
       ],
       "limitations": [
-        "Speech detection alone never automatically projects in current runtime",
+        "New scripture suggestions require an explicit send; opt-in Auto advance follows an already-live reading.",
         "auto-mode-set enabled is rejected; readiness/auto labels do not unlock projection",
         "Incomplete/misheard/generic speech can be missed or withdrawn",
-        "KJV/BSB wording index does not imply identical quotation accuracy for all translations"
+        "KJV/BSB wording index does not imply identical quotation accuracy for all translations",
+        "Prayer following pauses on configured prayer phrases and resumes after amen; this is not general prayer understanding.",
+        "Duplicate references wholly within the currently live passage are suppressed.",
+        "Unfinished spoken references retain context for up to 90 seconds; one-chapter shorthand such as Jude 20 means Jude 1:20."
       ],
       "status": "wired",
       "sources": [
@@ -1841,12 +2450,54 @@
         {
           "path": "electron/engine/verseDelivery.ts",
           "symbol": "VerseDelivery.promote"
+        },
+        {
+          "path": "src/design/screens/CatchesPane.tsx",
+          "symbol": "CatchesPane"
+        },
+        {
+          "path": "src/design/screens/AutoAdvance.tsx",
+          "symbol": "AutoAdvance"
+        },
+        {
+          "path": "src/design/screens/ScriptureTools.tsx",
+          "symbol": "BookClarification / SaveScriptureButton"
         }
       ],
       "runtimeTested": false,
       "guideReady": false,
       "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text.",
+      "since": "0.4.8",
+      "asks": [
+        "where are the scripture catches",
+        "how does auto advance work",
+        "save a caught scripture"
+      ],
+      "near": [
+        "catches",
+        "scripture"
+      ],
+      "lesson": [
+        {
+          "id": "reference-tabs",
+          "say": [
+            "Choose a reference tab to preview it; choose it again to close. Double-click puts it live.",
+            "+N shows the rest. Clear all can be undone until you press show fewer."
+          ],
+          "anchor": "[data-guide-area=\"catches\"]",
+          "do": "point"
+        },
+        {
+          "id": "follow-live",
+          "say": [
+            "Auto advance follows an already-live reading. Prayer mode pauses it.",
+            "The arrows move through passage pages before the next verse."
+          ],
+          "anchor": "scripture-auto-advance",
+          "do": "point"
+        }
+      ]
     },
     {
       "id": "scripture.phrase-topic-search",
@@ -1894,12 +2545,12 @@
       "id": "scripture.recent-speech-search",
       "title": "Find the passage the preacher just mentioned",
       "area": "scripture",
-      "entry": "Operator catches actions -> find scripture",
+      "entry": "Operator transcript → find reference",
       "controls": [
-        "find scripture",
-        "Result cards",
-        "edit searched words",
-        "close"
+        "find reference",
+        "Result cards with matched wording",
+        "Edit searched words",
+        "Close or click outside"
       ],
       "preconditions": [
         "Recent transcript captured",
@@ -1911,7 +2562,9 @@
       "limitations": [
         "Search covers recent speech, not arbitrary entire sermon history",
         "If not listening and no recent text, starts listening and asks user to press again after speech",
-        "Weak or unrelated matches rejected; not guaranteed to find any allusion"
+        "Weak or unrelated matches rejected; not guaranteed to find any allusion",
+        "Joins nearby transcript fragments up to 80 words; gaps over six seconds stop the join.",
+        "Highlighted words indicate shared wording, not certainty about a semantic result."
       ],
       "status": "wired",
       "sources": [
@@ -1978,7 +2631,48 @@
       "runtimeTested": false,
       "guideReady": false,
       "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text.",
+      "since": "0.4.4",
+      "near": [
+        "run",
+        "operator"
+      ],
+      "asks": [
+        "save the service",
+        "save my work",
+        "open a service",
+        "move to another laptop",
+        "export tri",
+        "tri file",
+        "transfer the service",
+        "where is it saved"
+      ],
+      "lesson": [
+        {
+          "id": "tri-open",
+          "say": [
+            ".tri is your service file.",
+            "Press .tri. That’s save, open and export.",
+            "Service files live behind .tri.",
+            "The .tri button. Everything about files is in there."
+          ],
+          "anchor": "tri-package",
+          "do": "click",
+          "done": "tri-save"
+        },
+        {
+          "id": "tri-save",
+          "say": [
+            "Save keeps the whole service in one file.",
+            "Press save. One file, the whole Sunday.",
+            "Save. Take the file to any laptop.",
+            "Save as… if you want a new name."
+          ],
+          "anchor": "tri-save",
+          "do": "choose"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "privacy.data",
@@ -2361,7 +3055,72 @@
         "song-title",
         "song-lyrics"
       ],
-      "execution": "Opens editor; focuses or types supplied title and lyrics. Preserves existing nonempty draft text; user saves."
+      "execution": "Opens editor; focuses or types supplied title and lyrics. Preserves existing nonempty draft text; user saves.",
+      "since": "0.4.6",
+      "near": [
+        "songs",
+        "library"
+      ],
+      "asks": [
+        "add a song",
+        "add song lyrics",
+        "new song",
+        "edit lyrics",
+        "how to add worship song",
+        "song slides",
+        "lyrics"
+      ],
+      "lesson": [
+        {
+          "id": "tab-songs",
+          "say": [
+            "Songs is a tab on the left.",
+            "Open the Songs tab.",
+            "Left rail, Songs.",
+            "Songs first. It’s in the rail."
+          ],
+          "anchor": "library-songs",
+          "do": "click",
+          "done": "[data-guide=\"library-songs\"][aria-selected=\"true\"]"
+        },
+        {
+          "id": "song-add",
+          "say": [
+            "Add song opens the editor.",
+            "Press Add song.",
+            "New song: the add button at the top.",
+            "Add song. The editor opens."
+          ],
+          "anchor": "toolbar-songs-add",
+          "do": "click",
+          "done": "song-entry"
+        },
+        {
+          "id": "song-title",
+          "say": [
+            "Give it a name.",
+            "Title goes here.",
+            "Start with the song’s name.",
+            "What’s it called? Type that here."
+          ],
+          "anchor": "song-title",
+          "do": "write",
+          "field": "songTitle"
+        },
+        {
+          "id": "song-lyrics",
+          "say": [
+            "Paste the words. A blank line makes a new slide.",
+            "Lyrics here. Blank line, new slide.",
+            "Words go here. Leave a gap between slides.",
+            "Paste lyrics. Empty lines split the slides."
+          ],
+          "anchor": "song-lyrics",
+          "do": "write",
+          "field": "lyrics"
+        }
+      ],
+      "consequential": false
     },
     {
       "id": "songs.discover-online",
@@ -2596,7 +3355,9 @@
         "TextPositionPicker",
         "safe margin",
         "width",
-        "reset theme"
+        "reset theme",
+        "Focus",
+        "Settle"
       ],
       "preconditions": [
         "Preview content available to assess result"
@@ -2606,7 +3367,8 @@
         "Rendered preview reflects requested settings"
       ],
       "limitations": [
-        "Most listed fields stage in preview. Transition controls have separate handlers, so do not assume identical persistence/publication behavior for every control."
+        "Draft theme changes publish through preview Go live. Ordinary scripture sends and navigation retain the current live theme.",
+        "Focus and Settle are the exposed text-transition choices."
       ],
       "status": "wired",
       "sources": [
@@ -2638,7 +3400,8 @@
         "Preview shows selected background"
       ],
       "limitations": [
-        "Double-clicking a theme card or dropping onto LIVE changes the live background. A preparation guide should normally target preview."
+        "Double-clicking a theme card or dropping onto LIVE changes the live background. A preparation guide should normally target preview.",
+        "Catches and scripture navigation retain the live background while another background is being explored in preview."
       ],
       "status": "wired",
       "sources": [
@@ -2706,15 +3469,16 @@
     },
     {
       "id": "web.follow-service",
-      "title": "Follow a service's transcript, verses, notes, and giving information",
+      "title": "Read a service, keep personal notes and revisit published history",
       "area": "web companion",
       "entry": "Public church QR/link > /live/[slug]",
       "controls": [
-        "Transcript",
-        "Verses",
-        "Notes",
-        "Give",
-        "Listen to the live stream when configured"
+        "Follow along: live words, Hold reading / Back to live, Sync",
+        "Scriptures: This service / Saved / Find a passage / Read the full chapter",
+        "Notes: Church notes / My notes",
+        "Share / Download",
+        "History: full transcript search and past services",
+        "Give, when configured"
       ],
       "preconditions": [
         "Valid published church link",
@@ -2723,35 +3487,58 @@
         "Notes/stream/giving content available for those sections"
       ],
       "completion": [
-        "Selected tab visible",
-        "Live/reconnecting status and actual transcript/verse content shown",
-        "Notes section shows generated notes when available"
+        "Shared reference opens real WEB passage text and chapter context; the original verses remain highlighted in the full chapter",
+        "Personal notes and saved scriptures survive a browser reload",
+        "Full published transcript loads beyond the live feed window and can be searched or downloaded",
+        "Past service links stay on the selected public service"
       ],
       "limitations": [
-        "No public service was accessed; UI-level wiring only",
-        "Empty notes can mean still building or unavailable",
-        "Stream player only renders for supported configured URL",
-        "Do not infer delivery success from QR existence"
+        "Personal notes and saved verses are browser-local, without account sync; clearing browser storage removes them",
+        "Downloads are plain text; the full app is not an offline PWA",
+        "Scripture reader uses the public-domain World English Bible and can differ from the projected translation",
+        "Live highlighting deliberately runs about five seconds behind speech; received upcoming words are dimmed. Recognition or network delays may leave it waiting for more words",
+        "Ended services are reading documents, without text playback controls; supported configured streams have a separate video player",
+        "No physical phone or live-audio synchronization release check was performed"
       ],
       "status": "wired",
       "sources": [
         {
           "path": "web/src/app/live/[slug]/CompanionClient.tsx",
-          "symbol": "CompanionClient; Service sections; TabButton"
+          "symbol": "CompanionView; service sections"
+        },
+        {
+          "path": "web/src/app/live/[slug]/components/VersesTab.tsx",
+          "symbol": "VersesTab; passage reading and saved collection"
         },
         {
           "path": "web/src/app/live/[slug]/components/NotesTab.tsx",
-          "symbol": "NotesTab"
+          "symbol": "NotesTab; personal notebook"
         },
         {
-          "path": "web/src/app/live/[slug]/components/StreamPlayer.tsx",
-          "symbol": "StreamPlayer"
+          "path": "web/src/app/live/[slug]/useNotebook.ts",
+          "symbol": "useNotebook"
+        },
+        {
+          "path": "web/src/app/live/[slug]/components/TranscriptArchive.tsx",
+          "symbol": "TranscriptArchive"
+        },
+        {
+          "path": "web/src/lib/transcriptArchive.ts",
+          "symbol": "loadTranscriptPages"
+        },
+        {
+          "path": "web/src/app/live/[slug]/page.tsx",
+          "symbol": "service query parameter"
+        },
+        {
+          "path": "web/src/app/live/preview/CompanionPreview.tsx",
+          "symbol": "isolated sample service"
         }
       ],
-      "runtimeTested": false,
+      "runtimeTested": true,
       "guideReady": false,
       "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "execution": "Open the church link. In Scriptures, choose a reference from This service or Saved, or use the search icon to find a passage. Read the full chapter keeps the original verses highlighted. Save, Share and Download use the passage or full chapter currently shown. Use Notes → My notes to write privately on this device, and History to search or download the full published transcript. The design preview uses isolated sample content."
     },
     {
       "id": "web.reading",
@@ -2762,7 +3549,8 @@
         "Text size",
         "App colour",
         "Choose image",
-        "Remove image"
+        "Remove image",
+        "Use default"
       ],
       "preconditions": [
         "Companion open in browser",
@@ -2775,6 +3563,8 @@
       ],
       "limitations": [
         "Changes are local to that browser and church",
+        "The default uses the dark landscape from /hero; Use default restores it without changing text size or colour",
+        "Existing uploaded images are preserved; old empty preferences adopt the default, while newly removed backgrounds stay removed",
         "Local background is processed as JPEG for storage",
         "Does not change church projection or other attendees' phones",
         "Not runtime-tested"
@@ -2880,5 +3670,317 @@
       "expectedTask": "audio.choose-input",
       "note": "Use the direct task identifier; do not ask the user to repeat a known goal."
     }
-  ]
+  ],
+  "areas": [
+    {
+      "id": "operator",
+      "title": "Operator workspace"
+    },
+    {
+      "id": "library",
+      "title": "Library tabs"
+    },
+    {
+      "id": "scripture",
+      "title": "Verses"
+    },
+    {
+      "id": "songs",
+      "title": "Songs"
+    },
+    {
+      "id": "media",
+      "title": "Media"
+    },
+    {
+      "id": "online",
+      "title": "Online pictures"
+    },
+    {
+      "id": "run",
+      "title": "Run of show"
+    },
+    {
+      "id": "audio",
+      "title": "Audio input"
+    },
+    {
+      "id": "phone",
+      "title": "Phone microphone"
+    },
+    {
+      "id": "mobile",
+      "title": "Mobile tools"
+    },
+    {
+      "id": "remote",
+      "title": "Mobile remote"
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard"
+    },
+    {
+      "id": "outputs",
+      "title": "Outputs"
+    },
+    {
+      "id": "settings",
+      "title": "Settings"
+    },
+    {
+      "id": "profile",
+      "title": "Preacher profile"
+    }
+  ],
+  "troubles": {
+    "audio-signal": {
+      "say": [
+        "No sound is reaching me. Check the mic.",
+        "Silence on the input. Is the mic on?",
+        "Nothing coming in. Cable, mute switch, input."
+      ],
+      "task": "audio.troubleshoot"
+    },
+    "audio-fallback": {
+      "say": [
+        "Your input vanished. I fell back to the laptop mic.",
+        "The mic unplugged itself. Laptop mic for now.",
+        "Lost the input. Pick it again when it’s back."
+      ],
+      "task": "audio.choose-input"
+    },
+    "audio-clipping": {
+      "say": [
+        "Too loud. Turn the gain down a touch.",
+        "The signal is clipping. Ease the gain.",
+        "Hot input. Lower it a notch on the desk."
+      ],
+      "task": "audio.troubleshoot"
+    },
+    "transcript-stalled": {
+      "say": [
+        "Sound, but no words. The speech service stalled.",
+        "I hear you. I’m not getting words back.",
+        "Audio fine, transcript stuck. Restart listening."
+      ],
+      "task": "audio.troubleshoot"
+    },
+    "speech-connecting": {
+      "say": [
+        "Reconnecting to the speech service. Keep going.",
+        "Speech link dropped. I’m reconnecting.",
+        "One moment. The speech service is coming back."
+      ],
+      "task": "audio.start-stop-listening"
+    },
+    "phone-pairing": {
+      "say": [
+        "A phone wants in. Approve it in Audio.",
+        "Phone mic asking. Allow it under Audio.",
+        "Your phone is knocking. Let it in."
+      ],
+      "task": "audio.phone-microphone"
+    },
+    "phone-audio": {
+      "say": [
+        "Phone audio dropped. Same Wi-Fi?",
+        "The phone mic went quiet. Check the Wi-Fi.",
+        "Lost the phone. Both on the church Wi-Fi?"
+      ],
+      "task": "audio.phone-microphone"
+    },
+    "mobile-pairing": {
+      "say": [
+        "A phone is asking to be the remote.",
+        "Remote request. Approve it under mobile.",
+        "Someone’s phone wants the remote. Approve or decline."
+      ],
+      "task": "remote.pair"
+    },
+    "mobile-remote": {
+      "say": [
+        "The remote lost the laptop. Same Wi-Fi?",
+        "Remote disconnected. Check the network.",
+        "The phone can’t see the laptop. Wi-Fi first."
+      ],
+      "task": "remote.pair"
+    },
+    "bible-database": {
+      "say": [
+        "I can’t find the Bible. Settings, Language & Bible.",
+        "The Bible database is missing.",
+        "No Bible on this laptop yet. Settings fixes it."
+      ],
+      "task": "bible.change-session-version"
+    },
+    "bible-version": {
+      "say": [
+        "That version isn’t installed.",
+        "Pick a Bible version that’s on this laptop.",
+        "Missing version. Choose another, or install it."
+      ],
+      "task": "bible.change-session-version"
+    },
+    "publishing": {
+      "say": [
+        "The phones aren’t getting updates.",
+        "Cloud publishing stalled. Check your account.",
+        "Congregation phones are behind. Cloud is the reason."
+      ],
+      "task": "cloud.account"
+    },
+    "publishing-rejected": {
+      "say": [
+        "The cloud refused the service. Sign in again.",
+        "Publishing rejected. Account & cloud.",
+        "The cloud said no. Check the sign-in."
+      ],
+      "task": "cloud.account"
+    },
+    "song-library": {
+      "say": [
+        "The song library couldn’t load.",
+        "Songs didn’t load. Try the tab again.",
+        "Song library trouble. Reopen Songs."
+      ],
+      "task": "songs.create-edit-slides"
+    },
+    "connection:obs": {
+      "say": [
+        "OBS dropped off.",
+        "Lost OBS. Check it’s running.",
+        "OBS isn’t answering."
+      ],
+      "task": "integrations.configure"
+    },
+    "connection:vmix": {
+      "say": [
+        "vMix dropped off.",
+        "Lost vMix. Check it’s running.",
+        "vMix isn’t answering."
+      ],
+      "task": "integrations.configure"
+    },
+    "target:audio": {
+      "say": [
+        "Something’s up with audio.",
+        "Audio needs a look.",
+        "Check the audio input."
+      ],
+      "task": "audio.troubleshoot"
+    },
+    "target:speech": {
+      "say": [
+        "The speech service needs a look.",
+        "Words stopped. Check listening.",
+        "Speech trouble. Restart listening."
+      ],
+      "task": "audio.troubleshoot"
+    },
+    "target:phone": {
+      "say": [
+        "The phone mic needs a look.",
+        "Phone microphone trouble.",
+        "Check the phone connection."
+      ],
+      "task": "audio.phone-microphone"
+    },
+    "target:displays": {
+      "say": [
+        "A screen changed. Check Outputs.",
+        "Display trouble. Outputs card.",
+        "The projector moved. Outputs."
+      ],
+      "task": "outputs.assign"
+    },
+    "target:cloud": {
+      "say": [
+        "Cloud needs a look.",
+        "Account & cloud, in settings.",
+        "The cloud link needs you."
+      ],
+      "task": "cloud.account"
+    },
+    "target:language": {
+      "say": [
+        "Language or Bible needs a look.",
+        "Check Language & Bible.",
+        "Bible settings need you."
+      ],
+      "task": "bible.change-session-version"
+    },
+    "target:recognition": {
+      "say": [
+        "Recognition settings changed.",
+        "Check recognition.",
+        "Scripture matching needs a look."
+      ],
+      "task": "recognition.advanced-settings"
+    },
+    "target:media": {
+      "say": [
+        "Media needs a look.",
+        "A picture or video had trouble.",
+        "Check Media."
+      ],
+      "task": "media.import-preview-local"
+    },
+    "target:songs": {
+      "say": [
+        "Songs need a look.",
+        "Check the song library.",
+        "Song trouble."
+      ],
+      "task": "songs.create-edit-slides"
+    },
+    "target:run": {
+      "say": [
+        "The run needs a look.",
+        "Check the order of service.",
+        "Run of show trouble."
+      ],
+      "task": "run.build-edit"
+    },
+    "target:notes": {
+      "say": [
+        "Notes need a look.",
+        "Sermon notes had trouble.",
+        "Check notes."
+      ],
+      "task": "notes.generate-export"
+    },
+    "target:connections": {
+      "say": [
+        "A connection dropped.",
+        "OBS or vMix needs a look.",
+        "Check connected software."
+      ],
+      "task": "integrations.configure"
+    },
+    "target:remote": {
+      "say": [
+        "The mobile remote needs a look.",
+        "Check the phone remote.",
+        "Remote trouble."
+      ],
+      "task": "remote.pair"
+    },
+    "target:storage": {
+      "say": [
+        "Storage needs a look.",
+        "Saving had trouble.",
+        "Check disk space and the .tri file."
+      ],
+      "task": "files.save-open-transfer"
+    },
+    "target:timers": {
+      "say": [
+        "A timer needs a look.",
+        "Check timers.",
+        "Timer trouble."
+      ],
+      "task": "timers.manage"
+    }
+  }
 }

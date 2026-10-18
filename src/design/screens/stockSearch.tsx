@@ -29,8 +29,8 @@ type Kind = 'photo' | 'video';
 
 export function MediaKindPicker({ value, onChange }: { value: Kind; onChange: (kind: Kind) => void }) {
   return <div className="stock-kind-picker tri-rounded-control" role="group" aria-label="media type">
-    <button type="button" aria-pressed={value === 'photo'} onClick={() => onChange('photo')}>pictures</button>
-    <button type="button" aria-pressed={value === 'video'} onClick={() => onChange('video')}>videos</button>
+    <button type="button" data-guide="media-kind-photo" aria-pressed={value === 'photo'} onClick={() => onChange('photo')}>pictures</button>
+    <button type="button" data-guide="media-kind-video" aria-pressed={value === 'video'} onClick={() => onChange('video')}>videos</button>
   </div>;
 }
 
@@ -146,12 +146,13 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
   const noKey = providers !== null && providers.length === 0;
 
   return (
-    <div data-guide="stock-search" data-guide-state={!window.api?.searchStock ? 'offline' : providerError ? 'error' : providers === null ? 'checking' : !providers.length ? 'missing-key' : phase.at === 'ready' && !phase.items.length ? 'empty' : phase.at} className={cx("stock-search relative flex flex-col gap-3", !flow && "h-full min-h-0")}>
+    <div data-guide="stock-search" data-guide-area="online" data-guide-state={!window.api?.searchStock ? 'offline' : providerError ? 'error' : providers === null ? 'checking' : !providers.length ? 'missing-key' : phase.at === 'ready' && !phase.items.length ? 'empty' : phase.at} className={cx("stock-search relative flex flex-col gap-3", !flow && "h-full min-h-0")}>
       {mediaKind === undefined && <MediaKindPicker value={kind} onChange={setKind} />}
       {/* Embedded libraries provide their own search and media type controls. */}
       {!embedded && <div className="stock-search__toolbar flex shrink-0 flex-wrap items-center gap-3 px-1">
-        <SegmentedControl options={GROUPS} value={group} onChange={setGroup} size="sm" />
+        <SegmentedControl guideId="stock-group" options={GROUPS} value={group} onChange={setGroup} size="sm" />
         <SearchField
+          guideId="stock-query"
           value={typed}
           onChange={(v) => {
             setTyped(v);
@@ -165,7 +166,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
         {(noEngine || noKey) && onOpenSettings && <Button guideId="stock-setup" label="set up search" onClick={onOpenSettings} />}
       </div>}
 
-      {providerError && <div role="alert" className="flex items-center gap-3 px-1 text-xs text-[var(--tri-ink-muted)]">Couldn’t check online search. <Button label="try again" onClick={() => setProviderAttempt(value => value + 1)} /></div>}
+      {providerError && <div role="alert" className="flex items-center gap-3 px-1 text-xs text-[var(--tri-ink-muted)]">Couldn’t check online search. <Button guideId="stock-retry" label="try again" onClick={() => setProviderAttempt(value => value + 1)} /></div>}
       {/* The presets of the chosen group. Chips, not a grid of pictures: the
           words are the point, and thirty pictures before the search has run
           would look like results. */}
@@ -176,6 +177,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
             <button
               key={x.id}
               type="button"
+              data-guide={`stock-preset-${x.id}`}
               onClick={() => {
                 setPreset(on ? null : x);
                 setTyped('');
@@ -198,7 +200,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
       <div className={cx("px-1", !flow && "min-h-0 flex-1 overflow-y-auto")}>
         {!hasSearch && kind === 'photo' ? (
           <div className="stock-results-grid grid auto-rows-min gap-2">
-            {STARTER_MEDIA.map(media => <button key={media.id} type="button" className="stock-picture-card tri-rounded-control overflow-hidden bg-black/30" aria-label={`${media.label} — ${media.detail}`} onClick={() => onPick(media)}>
+            {STARTER_MEDIA.map(media => <button key={media.id} type="button" data-guide={`stock-starter-${media.id}`} className="stock-picture-card tri-rounded-control overflow-hidden bg-black/30" aria-label={`${media.label} — ${media.detail}`} onClick={() => onPick(media)}>
               <img src={media.url} alt="" className="aspect-[4/3] w-full object-cover"/>
             </button>)}
           </div>
@@ -241,6 +243,7 @@ export function StockSearch({ onPick, searchQuery, searchMode = 'media', mediaKi
               {phase.more ? (
                 <button
                   type="button"
+                  data-guide="stock-more"
                   onClick={loadMore}
                   className="tri-rounded-control h-7 bg-[rgb(255_255_255_/_0.06)] px-3 text-[length:var(--tri-size-xs)] lowercase text-[rgb(229_243_242_/_0.7)] hover:bg-[rgb(255_255_255_/_0.1)] hover:text-[var(--tri-ink)]"
                 >

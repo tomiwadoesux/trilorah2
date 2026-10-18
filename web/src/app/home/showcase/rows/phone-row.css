@@ -1,0 +1,75 @@
+/* Row 5 · #companion. Front: the phone remote in a phone frame. Back: the desktop's mobile menu over the live pane. */
+
+/*
+ * The phone is the focal point, so the stage is taller than the default and sized to it:
+ * the phone is 2.108× as tall as it is wide (2.4cqw bezel each side around the 1170×2532
+ * capture), and the stage ratio leaves it a little air below. The back is "zoomed": drawn
+ * at about 1× its CSS size (1125px) rather than at the phone's scale, so the menu reads.
+ * The phone covers only the empty left of the live pane; the picture, the menu and the
+ * mobile button stay clear of it. The back is as tall as its image (bottom:auto).
+ */
+.sc-row-companion .sc-stage{
+  --sc-stage-ratio:1200 / 716;
+  --sc-front-left:0%;--sc-front-top:0%;--sc-front-width:27%;
+  --sc-back-left:14%;--sc-back-top:11%;--sc-back-bottom:auto;--sc-back-width:96%;
+  --sc-fade-x:81%;--sc-fade-x-end:100%;--sc-fade-y:62%;--sc-fade-y-end:100%;
+  --sc-back-dim:.6;
+
+  /* Phone (620px and below; 621–760px restates these further down): the menu across the top,
+     cropped and zoomed so it reads, and the phone below it on the left, over the verse the menu
+     doesn't cover. */
+  --sc-m-stage-ratio:350 / 628;
+  --sc-m-back-left:0%;--sc-m-back-top:0%;--sc-m-back-bottom:auto;--sc-m-back-width:122.2%;
+  --sc-m-fade-x:57%;--sc-m-fade-x-end:88%;--sc-m-fade-y:56%;--sc-m-fade-y-end:100%;
+  --sc-m-front-left:0%;--sc-m-front-top:31.8%;--sc-m-front-width:56%;
+}
+
+/* The phone body replaces the panel's card look: no card border, radius or clip, so its own
+   rounded shadow and the side buttons show. */
+.sc-row-companion .sc-front{overflow:visible;border:0;border-radius:0;background:none;box-shadow:none}
+.sc-row-companion .sc-front::after{content:none}
+
+/* Inside .sc-front (a container), 1cqw is 1% of the phone's width. */
+.sc-row-companion .sc-pr-phone{
+  position:relative;padding:2.4cqw;border-radius:14cqw;background:#020404;
+  box-shadow:
+    inset 0 0 0 .75cqw #151817,
+    0 0 0 1px rgba(255,255,255,.11),
+    0 44px 90px -18px rgba(0,0,0,.75),
+    0 16px 36px rgba(0,0,0,.45);
+}
+/* Side buttons: volume on the left, power on the right, barely out of the body. */
+.sc-row-companion .sc-pr-phone::before,
+.sc-row-companion .sc-pr-phone::after{position:absolute;width:.7cqw;content:"";background:#1a1d1c;box-shadow:0 0 0 .5px rgba(255,255,255,.07)}
+.sc-row-companion .sc-pr-phone::before{left:-.6cqw;top:30cqw;height:13cqw;border-radius:.5cqw 0 0 .5cqw;box-shadow:0 0 0 .5px rgba(255,255,255,.07),0 17cqw 0 #1a1d1c}
+.sc-row-companion .sc-pr-phone::after{right:-.6cqw;top:40cqw;height:20cqw;border-radius:0 .5cqw .5cqw 0}
+
+.sc-row-companion .sc-pr-screen{overflow:hidden;border-radius:11.6cqw;background:#010607;isolation:isolate}
+
+@media(max-width:1050px){
+  /* Tablet: a bigger share of a narrower stage, so the remote's text holds up. */
+  .sc-row-companion .sc-stage{--sc-stage-ratio:1200 / 794;--sc-front-width:30%;--sc-back-left:15%}
+}
+
+@media(max-width:760px){
+  .sc-row-companion .sc-pr-phone{box-shadow:inset 0 0 0 .75cqw #151817,0 0 0 1px rgba(255,255,255,.11),0 26px 54px -10px rgba(0,0,0,.8),0 8px 20px rgba(0,0,0,.45)}
+}
+
+@media(min-width:621px) and (max-width:760px){
+  /* Small tablets: the stacked phone layout would scale to twice a phone's size here, so keep the
+     desktop composition, with the phone a bigger share and the whole capture a little smaller,
+     so the phone covers the picture's left edge and the menu still ends clear of the edge. */
+  .sc-row-companion .sc-stage{
+    --sc-m-stage-ratio:1200 / 954;
+    --sc-m-front-left:0%;--sc-m-front-top:0%;--sc-m-front-width:36%;
+    --sc-m-back-left:4%;--sc-m-back-top:11%;--sc-m-back-bottom:auto;--sc-m-back-width:110%;
+    --sc-m-fade-x:81%;--sc-m-fade-x-end:100%;--sc-m-fade-y:62%;--sc-m-fade-y-end:100%;
+  }
+}
+
+@media(max-width:620px){
+  /* Phones: crop the capture at the menu's left edge (x 616 of 1125; the first verse line runs right
+     up to it) at .84× of a 350px stage: the menu, the mobile button and the clock. The phone,
+     below it, covers the lines under the menu. */
+  .sc-row-companion .sc-back .sc-shot{width:221%;margin-left:-121%}
+}

@@ -50,6 +50,8 @@ export interface LibraryPaneProps {
   align?: 'left' | 'center';
   /** Fixed width in px; omit to take the remaining space. */
   width?: number;
+  /** Relative share of a split library; defaults to an equal column. */
+  grow?: number;
   /** Pinned to the foot of the pane — "add song" and friends. */
   footer?: ReactNode;
   /** Draw the rule on the right edge. Off for the last pane. */
@@ -74,6 +76,7 @@ export function LibraryPane({
   title,
   align = 'left',
   width,
+  grow,
   footer,
   rule = false,
   header = true,
@@ -83,7 +86,7 @@ export function LibraryPane({
   return (
     <div
       className={cx('flex min-h-0 flex-col', width ? 'shrink-0' : 'min-w-0 flex-1')}
-      style={{ width, boxShadow: rule ? COLUMN_RULE : undefined }}
+      style={{ width, flexGrow: width ? undefined : grow, boxShadow: rule ? COLUMN_RULE : undefined }}
     >
       {header ? (
         <div
@@ -123,11 +126,13 @@ export interface LibraryBrowserProps {
   gap?: number | string;
   /** One or more LibraryPane. */
   children: ReactNode;
+  /** Stable area id for the in-app guide (data-guide-area on the browser's root). */
+  guideArea?: string;
 }
 
-export function LibraryBrowser({ search, searchInset, framed = false, dock, gap, children }: LibraryBrowserProps) {
+export function LibraryBrowser({ search, searchInset, framed = false, dock, gap, children, guideArea }: LibraryBrowserProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]" style={{ gap }}>
+    <div data-guide-area={guideArea} className="flex h-full min-h-0 flex-col gap-[var(--tri-gap)]" style={{ gap }}>
       {/*
         -mx-3 cancels the Panel body's padding so the row can reach both edges,
         and px-4 then puts it back on the same inset the column headers use —

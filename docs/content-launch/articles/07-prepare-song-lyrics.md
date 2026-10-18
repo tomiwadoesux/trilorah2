@@ -1,57 +1,59 @@
 ---
-title: "Prepare song lyrics that are easy to follow on Sunday"
+title: "Get the lyrics right before the first song"
 slug: "prepare-song-lyrics"
 audience: "Worship volunteers creating or editing lyric slides"
 question: "How do I add a song, organize its sections, and preview the words?"
 proposed_publication_date: "2026-04-07"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; save-and-present walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [songs.create-edit-slides, songs.find-local, songs.preview-display-section, songs.discover-online]
 ---
 
-# Prepare song lyrics that are easy to follow on Sunday
+# Get the lyrics right before the first song
 
-Preparing a song means checking more than its title. The operator needs the right words, readable sections, and a sequence that follows the version the worship team will sing.
+The song title is correct. Now check the song.
 
-Trilorah's Songs library lets you create or edit lyric slides, find saved songs, and preview individual sections before sending them live.
+A different verse, a repeated chorus, or an extra line can change what the operator needs. Prepare the version the worship team will sing, with slide breaks that let the congregation follow it.
 
-## Check the library before creating another copy
+## 1. Find the saved version
 
-Open **Songs** and search by the song's name or a distinctive line. Open a matching song and review its words. Two arrangements can share a title while using different verses or repeats.
+Open **Songs** and search by title or a distinctive line. Open a likely match and read its sections. Check the words against the planned arrangement before adding a duplicate song.
 
-Use the text search when you are preparing quietly. The microphone search is a separate path that can start listening.
+Text search is useful during quiet preparation. The microphone search is a separate route and can start listening.
 
-If the song is already correct, work from that saved version. If it needs changes, open its editor. Otherwise, choose **add song**.
+Edit a saved song if it needs changes. Choose **add song** if you need a new one.
 
-## Enter the song's details and lyrics
+## 2. Enter the words and inspect the slides
 
-Add the title and, when known, the artist or author. Enter the lyrics your team intends to use and review the section cards created in the editor.
+Add the title and known artist or author, then enter the lyrics. Trilorah splits the words into slide sections as you prepare them. Review those sections; the automatic split is a starting point.
 
-For a practice session, use your own short sample text. You can test the entire layout workflow without copying a complete commercial song into a training document.
+For a practice session, use a short piece of your own text. You can learn the editor without assembling the entire worship set first.
 
-An editor draft is not yet a saved library item. **Save to library** adds a new song; **save changes** updates an existing one. If you close the editor with a draft, do not rely on that temporary draft as your service preparation. The current interface describes a limited draft lifetime.
+Check every line, especially repeated material. If you use an online source, compare the returned words with the version your team has chosen. Automatic captions can change a lyric quite confidently.
 
-## Split the words at useful boundaries
+## 3. Make the sections easy to follow
 
-Use the section controls to split, merge, duplicate, or move lyric sections. Choose breaks that help a singer follow the next phrase.
+Use the editor's section controls to split, merge, duplicate, and move slides. Put a break where it helps people follow a phrase.
 
-A long block of text may technically fit while still being awkward to read. Preview the longest section, not only the first one. If it requires a much smaller size than the rest, consider splitting it into clearer sections.
+Preview the longest section. If the words need to become much smaller to fit, split that section at a sensible point. Review the slides on the screen you intend to use; the laptop is closer to your eyes than the projector will be.
 
-Check repeated material against the planned arrangement. The editor's move and duplicate controls can help organize the sequence, but the worship team's rehearsal remains the source for what will actually be sung.
+Arrange repeated sections to suit the planned version, then check the sequence with someone from the worship team.
 
-## Review anything found online
+## 4. Save the result
 
-**Search online** provides routes for finding lyrics, including a YouTube-based route where available. A search result title does not guarantee that usable lyrics or captions will be returned.
+Choose **save to library** for a new song or **save changes** for an existing one. Reopen the saved song to confirm the edits.
 
-When words open in the editor, review them for missing lines, incorrect repetitions, and transcription mistakes. Then save them. An online result is a starting point for preparation, not an already-approved song in your library.
+Closing an editor with a temporary draft is not the same as saving the song. The current draft prompt describes a limited lifetime, so finish the save before relying on it for the service.
 
-## Preview one section, then send it deliberately
+## Finding words online
 
-Open the saved song to see its lyric cards. Preview a section and check how it looks. When you intend the congregation to see it, use the section's send control or the preview's **Go live** control.
+**Search online** offers lyric discovery and a **youtube transcripts** route. A video needs readable captions for that route to return words. A listed song may also fail to return usable lyrics.
 
-During rehearsal, practice the gap between sections and a moment when you clear the words while retaining the background. Check the timing with someone who knows the arrangement.
+When words arrive, they open in the editor for review. Check missing lines, repetitions, and transcription mistakes, then save. The online result has not become an approved library song merely by appearing in search.
 
-Finish by reopening the saved song and confirming the edits are present. That gives the next operator a usable library item rather than a promise that the words were “somewhere in the editor.”
+## Rehearse the send
 
-Next: [choose readable backgrounds and text](12-make-projected-words-readable.md) and [place prepared material in the service run](06-build-an-order-of-service.md).
+Open the saved song and preview a section. At the intended cue, use its **Go live** control or the preview's **Go live**. Practice clearing the words during an instrumental and restoring them afterward.
+
+Next, [place the prepared content in the run of show](06-build-an-order-of-service.md). If a section is hard to read in the room, use [the projected-text guide](12-make-projected-words-readable.md).

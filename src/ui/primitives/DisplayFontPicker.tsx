@@ -178,6 +178,7 @@ function FontCardItem({
       <button
         ref={ref}
         type="button"
+        data-guide={`themes-font-${option.id}`}
         aria-label={isSpacingControl ? `text spacing: ${displayLabel}` : displayLabel}
         title={isCaseControl ? `Switch text to ${displayLabel}` : isSpacingControl ? `Text spacing: ${displayLabel}. Click for ${nextTextSpacing(spacing ?? 'normal')}.` : undefined}
         aria-pressed={isSettingControl ? undefined : isSelected}

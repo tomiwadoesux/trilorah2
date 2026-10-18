@@ -9,7 +9,7 @@ import {
   triApi, triRendererState, TRI_CATEGORIES, TRI_DECKS_EVENT,
 } from '../../../lib/triClient';
 import { operatorRunStore } from '../../../stores/operatorRunStore';
-import { Button } from '../../../ui';
+import { Button, ImportIcon, PresentationIcon } from '../../../ui';
 import { useMediaLibrary } from '../mediaLibrary';
 import { useRun } from '../run';
 import { FlightPopup } from '../songs/FlightPopup';
@@ -18,10 +18,11 @@ type View = 'home' | 'save' | 'export' | 'import';
 type ActiveFile = { path?: string; title: string; selection?: TriSelection };
 
 /** File work stays in the operator surface; importing never restarts the app. */
-export function TriPackageActions() {
+export function TriPackageActions({ onOpenChange, showTrigger = true }: { onOpenChange?: (open: boolean) => void; showTrigger?: boolean } = {}) {
   const run = useRun();
   const media = useMediaLibrary();
   const [open, setOpen] = useState(false);
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   const notificationRequest = useNoticeNavigation(s => s.request);
   useEffect(() => {
     const navigation = useNoticeNavigation.getState();
@@ -83,7 +84,7 @@ export function TriPackageActions() {
       if (status?.pendingOpen) void inspectRef.current(true);
     })().catch(() => setNotice('Could not restore package details. Your local run is still available.'));
     const unsubscribe = operatorRunStore.subscribe(markChanged);
-    /* The empty rail's own .tri button — see askRun in RunHeaderActions. */
+    /* Service files in the schedule — see askRun in RunHeaderActions. */
     const openFiles = () => { setOpen(true); setView('home'); void refreshStatus(); };
     window.addEventListener('trilorah-open-tri', openFiles);
     window.addEventListener('trilorah-theme-changed', markChanged);
@@ -291,57 +292,66 @@ export function TriPackageActions() {
   const close = () => { if (!busyRef.current) { if (token) void triApi()?.triDiscardPreview?.(token); setToken(undefined); setOpen(false); trigger.current?.querySelector('button')?.focus(); } };
 
   return <>
-    <span ref={trigger} className="inline-flex">
-      <Button label=".tri" title={`${active.title}${active.path ? ` · ${saveState || 'saved service'}` : ' · service files'}`} onClick={() => { setOpen(true); setView('home'); void refreshStatus(); }} />
-    </span>
+    {showTrigger && <span ref={trigger} className="inline-flex">
+      <Button guideId="tri-package" label=".tri" title={`${active.title}${active.path ? ` · ${saveState || 'saved service'}` : ' · service files'}`} onClick={() => { setOpen(true); setView('home'); void refreshStatus(); }} />
+    </span>}
     <FlightPopup open={open} size={{ w: 680, h: 640 }} label="Trilorah service files" onRequestClose={close}
       header={<><h2 className="text-lg font-semibold">{view === 'home' ? 'Service files' : view === 'import' ? foreignImport ? 'Review import' : `Import from ${title}` : view === 'export' ? 'Export a .tri package' : 'Save service'}</h2><p className="mt-1 text-xs text-[var(--tri-ink-muted)]">{active.title} {active.path ? `· ${saveState || 'Saved'}` : '· not saved to a .tri file yet'}</p></>}
       footer={reviewing && desktop ? <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 px-6 py-4">
         <span className="text-xs text-[var(--tri-ink-muted)]">{count} {count === 1 ? 'item' : 'items'} selected</span>
-        <div className="flex gap-2"><Button label="back" tone="ash" disabled={busy} onClick={() => setView('home')} /><Button label={busy ? 'working…' : view === 'import' ? openService && selection.service?.length ? 'open service' : 'import selected' : view === 'export' ? 'export .tri' : 'save .tri'} disabled={busy || !count || (view === 'import' && unanswered(questions).length > 0) || (replacing && !replaceConsent) || (view !== 'import' && !title.trim()) || (view === 'save' && !selection.service?.length)} onClick={() => view === 'import' ? void importPackage() : void guard(() => savePackage(selection, { exportOnly: view === 'export', saveAs }))} /></div>
+        <div className="flex gap-2"><Button guideId="tri-back" label="back" tone="ash" disabled={busy} onClick={() => setView('home')} /><Button guideId="tri-confirm" label={busy ? 'working…' : view === 'import' ? openService && selection.service?.length ? 'open service' : 'import selected' : view === 'export' ? 'export .tri' : 'save .tri'} disabled={busy || !count || (view === 'import' && unanswered(questions).length > 0) || (replacing && !replaceConsent) || (view !== 'import' && !title.trim()) || (view === 'save' && !selection.service?.length)} onClick={() => view === 'import' ? void importPackage() : void guard(() => savePackage(selection, { exportOnly: view === 'export', saveAs }))} /></div>
       </footer> : undefined}>
       <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-6 py-4 text-sm text-[var(--tri-ink)]">
-        {!desktop ? <p>Portable .tri files need the Trilorah desktop app. Open this service in the desktop app to save, open, or import a package.</p> : <>
+        {!desktop && <p className="run-files-desktop">Open the Trilorah desktop app to choose files, save a service, or import from another app.</p>}
+        <>
           {view === 'home' ? <>
-            <p className="mb-4 text-xs leading-relaxed text-[var(--tri-ink-muted)]">Save your service and its resources in one portable file. Import all of a package or choose individual songs, slides, layouts, and pastor learning.</p>
-            <div className="flex flex-wrap gap-2">
-              <Button label="new service" disabled={busy} onClick={() => run.segments.length ? setConfirmNew(true) : void newService()} />
-              <Button label="open .tri" disabled={busy} onClick={() => void inspect(true)} />
-              <Button label="save" disabled={busy} onClick={() => active.path && active.selection ? void guard(() => { setTitle(active.title); return savePackage(active.selection!, { automatic: true }); }) : void prepareSave(false)} />
-              <Button label="save as…" disabled={busy} onClick={() => void prepareSave(false, true)} />
-              <Button label="import from .tri" disabled={busy} onClick={() => void inspect(false)} />
-              <Button label="import from another app…" disabled={busy || !triApi()?.triInspectForeign} onClick={() => { setWarnings([]); setNotice(''); void inspectForeign(); }} />
-              <Button label="export selected…" disabled={busy} onClick={() => void prepareSave(true)} />
-              <Button label="export pastor & learning" disabled={busy} onClick={() => void prepareSave(true, true, true)} />
-              {active.path && <Button label="change included content…" tone="ash" disabled={busy} onClick={() => void prepareSave(false)} />}
+            <p className="mb-4 text-xs leading-relaxed text-[var(--tri-ink-muted)]">Bring a service from Trilorah or content from another app. Choose what to keep before anything is added.</p>
+            <div className="run-file-choices">
+              <section className="run-file-choice"><span className="run-file-symbol"><ImportIcon size={21} /></span><h3>A Trilorah file</h3><p>Open a saved service, or choose content to add to this one.</p><span className="run-file-formats">.tri</span><div className="run-file-buttons">
+                <Button guideId="tri-open" label="open service" disabled={busy || !desktop} onClick={() => void inspect(true)} />
+                <Button guideId="tri-import" label="import content" tone="ash" disabled={busy || !desktop} onClick={() => void inspect(false)} />
+              </div></section>
+              <section className="run-file-choice"><span className="run-file-symbol"><PresentationIcon size={21} /></span><h3>From another app</h3><p>EasyWorship, ProPresenter, and other song or media exports.</p><span className="run-file-formats">.ewsx · .pro · .pro6 · more</span><div className="run-file-buttons">
+                <Button guideId="tri-choose-files" label="choose files" disabled={busy || !triApi()?.triInspectForeign} onClick={() => { setWarnings([]); setNotice(''); void inspectForeign(); }} />
+              </div></section>
             </div>
-            {confirmNew && <div role="alertdialog" aria-label="Start a new service?" className="mt-4 rounded-xl border border-amber-300/30 p-4"><p>Start a new service? This clears the current {run.segments.length} segments. Save your current service first if you want a separate file.</p><div className="mt-3 flex gap-2"><Button label="keep current service" tone="ash" onClick={() => setConfirmNew(false)} /><Button label="start new service" tone="caution" disabled={busy} onClick={() => void newService()} /></div></div>}
+            <p className="run-file-note">EasyWorship imports songs and packaged media. Arrange its service order here after importing.</p>
+            <h3 className="run-files-heading">Keep this service</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button guideId="tri-save" label="save" disabled={busy || !desktop} onClick={() => active.path && active.selection ? void guard(() => { setTitle(active.title); return savePackage(active.selection!, { automatic: true }); }) : void prepareSave(false)} />
+              <Button guideId="tri-save-as" label="save as…" tone="ash" disabled={busy || !desktop} onClick={() => void prepareSave(false, true)} />
+              <Button guideId="tri-export" label="export selected…" tone="ash" disabled={busy || !desktop} onClick={() => void prepareSave(true)} />
+              <Button guideId="tri-export-learning" label="export pastor & learning" tone="ash" disabled={busy || !desktop} onClick={() => void prepareSave(true, true, true)} />
+              {active.path && <Button guideId="tri-change-content" label="change included content…" tone="ash" disabled={busy} onClick={() => void prepareSave(false)} />}
+              <Button guideId="tri-new" label="new service" tone="ash" disabled={busy || !desktop} onClick={() => run.segments.length ? setConfirmNew(true) : void newService()} />
+            </div>
+            {confirmNew && <div role="alertdialog" aria-label="Start a new service?" className="mt-4 rounded-xl border border-amber-300/30 p-4"><p>Start a new service? This clears the current {run.segments.length} segments. Save your current service first if you want a separate file.</p><div className="mt-3 flex gap-2"><Button guideId="tri-new-keep" label="keep current service" tone="ash" onClick={() => setConfirmNew(false)} /><Button guideId="tri-new-confirm" label="start new service" tone="caution" disabled={busy} onClick={() => void newService()} /></div></div>}
             <p className="mt-4 text-xs leading-relaxed text-[var(--tri-ink-muted)]">After saving, run and layout edits are saved automatically to the active file. Its selected resources and any resources used by the service are included. Use “change included content” to add more.</p>
             {active.path && <p className="mt-2 break-all text-xs text-[var(--tri-ink-muted)]">{active.path}</p>}
-            {recent.length > 0 && <div className="mt-6"><h3 className="mb-2 font-semibold">Recent services</h3><ul className="space-y-2">{recent.map(file => <li key={file.path}><button type="button" disabled={busy} className="w-full rounded-lg border border-white/10 px-3 py-2 text-left hover:bg-white/5 disabled:opacity-50" onClick={() => void inspect(true, file.path)}><span className="block">{file.title}</span><span className="block truncate text-xs text-[var(--tri-ink-muted)]">{file.path}</span></button></li>)}</ul></div>}
+            {recent.length > 0 && <div className="mt-6"><h3 className="mb-2 font-semibold">Recent services</h3><ul className="space-y-2">{recent.map(file => <li key={file.path}><button type="button" data-guide="tri-recent" disabled={busy} className="w-full rounded-lg border border-white/10 px-3 py-2 text-left hover:bg-white/5 disabled:opacity-50" onClick={() => void inspect(true, file.path)}><span className="block">{file.title}</span><span className="block truncate text-xs text-[var(--tri-ink-muted)]">{file.path}</span></button></li>)}</ul></div>}
           </> : <>
-            {view !== 'import' && <label className="mb-4 block"><span className="mb-1 block text-xs">Package name</span><input className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2" value={title} onChange={event => setTitle(event.target.value)} maxLength={160} /></label>}
+            {view !== 'import' && <label className="mb-4 block"><span className="mb-1 block text-xs">Package name</span><input data-guide="tri-name" className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2" value={title} onChange={event => setTitle(event.target.value)} maxLength={160} /></label>}
             {view === 'import' ? <p className="mb-3 text-xs leading-relaxed text-[var(--tri-ink-muted)]">{foreignImport ? 'Pick any files from your old app: exports, databases, songs, pictures. Selected resources are copied into this laptop’s library. Existing items are kept. Required songs and media are selected automatically. Themes are staged in preview.' : <>Resources are copied into this laptop’s library. Existing items are kept; imported copies use new identities. {openService ? 'This opens the included run of service. Opening part of a package creates a new service you can Save As.' : 'Any selected run of service is appended to your current run.'} Imported layouts are staged in preview for your next go live.</>}</p> : <p className="mb-3 text-xs leading-relaxed text-[var(--tri-ink-muted)]">Choose what travels in the file. Pastor learning contains saved corrections and recognition evidence, with no voice recordings. Media used by selected content is included automatically.</p>}
             {view === 'import' && foreignImport && <ForeignQuestions questions={questions} busy={busy} onAnswer={answers => void answerForeign(answers)} />}
             {view === 'import' && packageNotes}
-            {view === 'import' && foreignImport && !!catalog.categories.service?.length && <label className="mb-3 flex gap-2 text-xs"><input type="checkbox" disabled={busy} checked={openService} onChange={event => { setOpenService(event.target.checked); setReplaceConsent(false); }} /><span>Open as a new service instead of adding to my current run</span></label>}
-            <div className="mb-3 flex flex-wrap gap-2"><Button label="select all" tone="ash" disabled={busy} onClick={chooseAll} /><Button label="clear selection" tone="ash" disabled={busy} onClick={() => setSelection({})} />{view !== 'import' && <Button label="pastor learning only" tone="ash" disabled={busy} onClick={() => setSelection(selectTriItems(catalog, ['preachers']))} />}</div>
+            {view === 'import' && foreignImport && !!catalog.categories.service?.length && <label className="mb-3 flex gap-2 text-xs"><input type="checkbox" data-guide="tri-open-after-import" disabled={busy} checked={openService} onChange={event => { setOpenService(event.target.checked); setReplaceConsent(false); }} /><span>Open as a new service instead of adding to my current run</span></label>}
+            <div className="mb-3 flex flex-wrap gap-2"><Button guideId="tri-select-all" label="select all" tone="ash" disabled={busy} onClick={chooseAll} /><Button guideId="tri-clear-selection" label="clear selection" tone="ash" disabled={busy} onClick={() => setSelection({})} />{view !== 'import' && <Button guideId="tri-learning-only" label="pastor learning only" tone="ash" disabled={busy} onClick={() => setSelection(selectTriItems(catalog, ['preachers']))} />}</div>
             {TRI_CATEGORIES.map(category => {
               const items = catalog.categories[category.id] ?? [];
               if (!items.length) return null;
               const chosen = effectiveSelection[category.id] ?? [];
               const singleTheme = view === 'import' && foreignImport && category.id === 'themes';
               return <details key={category.id} className="mb-2 rounded-lg border border-white/10 p-3" open={category.id === 'preachers' || category.id === 'service'}>
-                <summary className="cursor-pointer"><label className="ml-1 inline-flex items-center gap-2" onClick={event => event.stopPropagation()}><input type="checkbox" checked={singleTheme ? chosen.length > 0 : chosen.length === items.length} disabled={busy} aria-label={singleTheme ? 'Include a theme' : `Include all ${category.label}`} onChange={event => setSelection(previous => ({ ...previous, [category.id]: event.target.checked ? (singleTheme ? [items[0].id] : items.map(item => item.id)) : [] }))} /><span className="font-medium">{category.label}</span><span className="text-xs text-[var(--tri-ink-muted)]">{chosen.length}/{items.length}</span></label></summary>
+                <summary data-guide={`tri-category-${category.id}`} className="cursor-pointer"><label className="ml-1 inline-flex items-center gap-2" onClick={event => event.stopPropagation()}><input type="checkbox" data-guide={`tri-include-${category.id}`} checked={singleTheme ? chosen.length > 0 : chosen.length === items.length} disabled={busy} aria-label={singleTheme ? 'Include a theme' : `Include all ${category.label}`} onChange={event => setSelection(previous => ({ ...previous, [category.id]: event.target.checked ? (singleTheme ? [items[0].id] : items.map(item => item.id)) : [] }))} /><span className="font-medium">{category.label}</span><span className="text-xs text-[var(--tri-ink-muted)]">{chosen.length}/{items.length}</span></label></summary>
                 <p className="my-2 text-xs text-[var(--tri-ink-muted)]">{category.detail}</p>
                 <div className="space-y-2">{items.map(item => <div key={item.id}><label className="flex items-start gap-2 text-xs"><input type="checkbox" className="mt-0.5" disabled={busy || dependencies[category.id]?.includes(item.id)} checked={chosen.includes(item.id)} onChange={event => setSelection(previous => ({ ...previous, [category.id]: event.target.checked ? (singleTheme ? [item.id] : [...(previous[category.id] ?? []), item.id]) : (previous[category.id] ?? []).filter(id => id !== item.id) }))} /><span className="break-words">{item.label}{dependencies[category.id]?.includes(item.id) && <span className="ml-2 text-[var(--tri-ink-muted)]">required by selection</span>}</span></label>{view === 'import' && foreignImport && category.id === 'songs' && <details className="ml-6 mt-1 text-xs text-[var(--tri-ink-muted)]"><summary className="cursor-pointer">Preview lyrics</summary><pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-sans">{item.data.sections?.map((section: { label: string; lines: string[] }) => `${section.label}\n${section.lines.join('\n')}`).join('\n\n')}</pre></details>}</div>)}</div>
               </details>;
             })}
             {!Object.values(catalog.categories).some(items => items?.length) && <p className="py-4 text-[var(--tri-ink-muted)]">{unanswered(questions).length ? 'Answer the questions above to see what these files contain.' : 'There is no content in this package.'}</p>}
             {view === 'save' && !selection.service?.length && <p className="mt-3 text-xs text-amber-200">A service file must include its run of service. Use Export for a resource-only package.</p>}
-            {replacing && <label className="mt-4 flex gap-2 rounded-lg border border-amber-300/30 p-3 text-xs"><input type="checkbox" checked={replaceConsent} onChange={event => setReplaceConsent(event.target.checked)} /><span>Replace my current {run.segments.length} segments with the service in this file. I have saved anything I want to keep.</span></label>}
+            {replacing && <label className="mt-4 flex gap-2 rounded-lg border border-amber-300/30 p-3 text-xs"><input type="checkbox" data-guide="tri-replace-consent" checked={replaceConsent} onChange={event => setReplaceConsent(event.target.checked)} /><span>Replace my current {run.segments.length} segments with the service in this file. I have saved anything I want to keep.</span></label>}
           </>}
-        </>}
+        </>
         <p role="status" aria-live="polite" className="mt-4 text-xs leading-relaxed">{busy ? 'Working…' : notice}</p>
         {view !== 'import' && packageNotes}
       </div>

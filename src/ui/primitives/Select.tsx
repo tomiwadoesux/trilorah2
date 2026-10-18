@@ -27,6 +27,8 @@ export interface SelectProps {
   /** The list may be wider than its trigger, so a 68px picker can still
       name what each choice is. */
   menuMinWidth?: number;
+  /** Stable anchor for the in-app guide (data-guide on the trigger). */
+  guideId?: string;
 }
 
 export const TEXT_EFFECT_OPTIONS: SelectOption[] = [
@@ -50,6 +52,7 @@ export function Select({
   className = '',
   preserveCase = false,
   menuMinWidth,
+  guideId,
 }: SelectProps) {
   const [internalValue, setInternalValue] = useState<string>(controlledValue ?? options[0]?.value ?? '');
   const [isOpen, setIsOpen] = useState(false);
@@ -122,6 +125,7 @@ export function Select({
       <button
         type="button"
         ref={triggerRef}
+        data-guide={guideId}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-disabled={disabled || undefined}

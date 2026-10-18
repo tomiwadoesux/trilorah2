@@ -25,6 +25,28 @@ const RANGE: VerseText[] = [
 
 const SINGLE: VerseText[] = [{ verse: 16, text: 'For God so loved the world.' }]
 
+describe('divine casing in all Bible slides', () => {
+  it.each(['KJV', 'WEB', 'BSB', 'ASV', 'BBE', 'NIV', 'NKJV', 'ESV', 'NLT', 'NASB', 'AMP', 'MSG', 'CSB', 'XYZ'])(
+    'cases names in %s without mutating verses or dropping translation credit', (version) => {
+      const verses = [{ verse: 16, text: 'praise god, jesus, the holy spirit, elohim and lord.' }]
+      const slides = buildVerseSlides({ ...REF, version }, verses, opts({ showTranslation: true }))
+      expect(slides[0].lines[0].text).toBe('praise God, Jesus, the Holy Spirit, Elohim and Lord.')
+      expect(slides[0].reference).toBe(`John 3:16 · ${version}`)
+      expect(verses[0].text).toBe('praise god, jesus, the holy spirit, elohim and lord.')
+    },
+  )
+
+  it('cases both displayed languages before a long reading is split', () => {
+    const slides = buildVerseSlides({ ...REF, version: 'RVR' }, [{ verse: 16, text: 'jesús y el espíritu santo. dios es amor.' }], opts({
+      breakOnVerse: true, maxCharsPerSlide: 28,
+      secondary: { version: 'APEE', verses: [{ verse: 16, text: 'jésus et le saint-esprit.' }] },
+    }))
+    expect(slides.length).toBeGreaterThan(1)
+    expect(slides.map((slide) => slide.lines[0].text.trim()).join(' ')).toBe('Jesús y el Espíritu Santo. Dios es amor.')
+    expect(slides.every((slide) => slide.lines[1].text === 'Jésus et le Saint-Esprit.')).toBe(true)
+  })
+})
+
 function opts(over: Partial<VerseDisplayOptions> = {}): VerseDisplayOptions {
   return {
     breakOnVerse: false,

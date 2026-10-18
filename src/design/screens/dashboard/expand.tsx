@@ -110,6 +110,8 @@ export interface ExpandableProps {
   /** The hairline that brightens round the tile on hover. Off for a tile
       with card art (./CardArt) — the drawing lighting up is its hover. */
   ring?: boolean;
+  /** Stable area id for the in-app guide: set on the tile and on its open box. */
+  guideArea?: string;
 }
 
 /*
@@ -123,7 +125,7 @@ interface Flight {
   to: Box;
 }
 
-export function Expandable({ tile, className, title, blurb, children, bodyClassName, size = { w: 720, h: 640 }, glyph = true, ring = true, notificationTarget }: ExpandableProps) {
+export function Expandable({ tile, className, title, blurb, children, bodyClassName, size = { w: 720, h: 640 }, glyph = true, ring = true, notificationTarget, guideArea }: ExpandableProps) {
   const anchor = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   /* On screen at all — true from lift-off until the way home has FINISHED,
@@ -243,6 +245,7 @@ export function Expandable({ tile, className, title, blurb, children, bodyClassN
         ref={anchor}
         onClick={event => { if (event.target === event.currentTarget) lift(); }}
         data-guide={`dashboard-${notificationTarget ?? title.toLowerCase().replace(/\s+/g, '-')}`}
+        data-guide-area={guideArea}
         className={cx(
           'group/tile relative flex min-h-0 min-w-0 flex-col transition-[opacity,transform]',
           /* The one hover every opening tile shares: it says "this opens"
@@ -289,6 +292,7 @@ export function Expandable({ tile, className, title, blurb, children, bodyClassN
                 role="dialog"
                 aria-modal="true"
                 aria-label={title}
+                data-guide-area={guideArea}
                 /* z-50 while open; a box on its way home drops under the
                    next one lifting off so two flights never fight for the
                    top. Both beat the ground. */
@@ -328,6 +332,7 @@ export function Expandable({ tile, className, title, blurb, children, bodyClassN
                     </div>
                     <button
                       type="button"
+                      data-guide="tile-close"
                       onClick={close}
                       title="close (esc)"
                       className="grid size-[26px] shrink-0 place-items-center rounded-[5px] text-[rgb(229_243_242_/_0.5)] transition-colors hover:bg-[rgb(255_255_255_/_0.06)] hover:text-[var(--tri-ink)]"

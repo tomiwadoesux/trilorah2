@@ -1,0 +1,201 @@
+/* Row 4 · #screens. Front: the outputs card. Back: the three open outputs at one moment.
+   Both are DOM (ScreensRow.tsx); ../showcase.css documents every placement variable. */
+
+/* The app's UI face, for the card and the labels (the site ships Geist for /brand). */
+
+/*
+ * Desktop: the card on the left; behind it the wall wide on top and the stage display and the
+ * stream under it, all inside the part of the back the card does not cover and clear of the
+ * viewport's edge fade. The back's own fade only takes its empty right side and its foot.
+ */
+.sc-row-screens .sc-stage{
+  --sc-stage-ratio:1200 / 680;
+  --sc-front-top:7%;--sc-front-width:37%;
+  --sc-back-left:25%;--sc-back-top:0%;--sc-back-width:100%;
+  --sc-fade-x:64%;--sc-fade-x-end:100%;--sc-fade-y:86%;--sc-fade-y-end:100%;
+  --sc-back-dim:.66;
+}
+.sc-row-screens .sc-front{background:#131414}
+
+/* ------------------------------------------------------------------ */
+/* Back: the outputs                                                   */
+/* ------------------------------------------------------------------ */
+
+/* In here 1cqw is 1% of the back panel; inside each .scr-frame it is 1% of that screen. */
+.sc-row-screens .scr-wall{
+  position:absolute;inset:0;display:grid;grid-template-columns:repeat(2,24.25cqw);gap:2.6cqw 1.5cqw;align-content:start;
+  padding:3.4cqw 0 0 14cqw;font-family:"Showcase Geist",Inter,system-ui,sans-serif;
+}
+.sc-row-screens .scr-out-projector{grid-column:1 / -1}
+.sc-row-screens .scr-out-label{margin:0 0 .85cqw;overflow:hidden;font-size:1cqw;line-height:1.3;color:rgb(229 243 242 / .42);white-space:nowrap;text-overflow:ellipsis}
+.sc-row-screens .scr-out-role{margin-right:.45cqw;font-size:.86cqw;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+/* The app's display map inks (settingsRows.tsx): projector mint, stream gold, stage ink. */
+.sc-row-screens .scr-out-projector .scr-out-role{color:#8fd3c0}
+.sc-row-screens .scr-out-stage .scr-out-role{color:rgb(229 243 242 / .72)}
+.sc-row-screens .scr-out-stream .scr-out-role{color:#e4d87a}
+
+.sc-row-screens .scr-frame{
+  position:relative;aspect-ratio:16 / 9;overflow:hidden;container-type:inline-size;
+  border-radius:.5cqw;background:#000;box-shadow:0 0 0 1px rgb(255 255 255 / .1);
+}
+
+/* The theme picture, under a 0.3 overlay (overlayOpacity in output.tsx). */
+.sc-row-screens .scr-picture{position:absolute;inset:0;background:#0b0d10 url("/hero-landscape/dark.webp") center / cover no-repeat}
+.sc-row-screens .scr-picture::after{position:absolute;inset:0;content:"";background:rgb(0 0 0 / .3)}
+
+/* .output-stage: a 10% safe margin, the words centred in an 80% column. */
+.sc-row-screens .scr-verse-box{position:absolute;top:10%;bottom:10%;left:10%;width:80%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.sc-row-screens .scr-verse{
+  margin:0;max-width:62ch;font-family:Roboto,"Showcase Geist",Arial,sans-serif;font-size:4.5cqw;font-weight:600;line-height:1.35;color:#fff;text-wrap:balance;
+  text-shadow:0 .1cqw .75cqw rgb(0 0 0 / .6),0 0 .16cqw rgb(0 0 0 / .5);
+}
+.sc-row-screens .scr-ref{margin:.9em 0 0;font-family:Roboto,"Showcase Geist",Arial,sans-serif;font-size:1.8cqw;font-weight:600;letter-spacing:.08em;color:#fff;text-shadow:0 .05cqw .4cqw rgb(0 0 0 / .6)}
+
+/* Stage: the verse a touch smaller, over the strip (clock left, what's next right). */
+.sc-row-screens .scr-out-stage .scr-verse-box{bottom:24%}
+.sc-row-screens .scr-out-stage .scr-verse{font-size:4.6cqw}
+.sc-row-screens .scr-out-stage .scr-ref{font-size:2.6cqw}
+.sc-row-screens .scr-strip{
+  position:absolute;left:0;right:0;bottom:0;display:flex;align-items:baseline;justify-content:space-between;gap:4cqw;padding:3cqw 4cqw 3.4cqw;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:rgb(255 255 255 / .85);
+  background:linear-gradient(180deg,rgb(0 0 0 / 0),rgb(0 0 0 / .6));text-shadow:0 .2cqw 1.2cqw rgb(0 0 0 / .6);
+}
+.sc-row-screens .scr-clock{font-size:5.4cqw;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.sc-row-screens .scr-next{font-family:Roboto,"Showcase Geist",Arial,sans-serif;font-size:4cqw;line-height:1.15;text-align:right}
+.sc-row-screens .scr-next-label{display:block;margin-bottom:.4em;font-family:system-ui,-apple-system,sans-serif;font-size:.62em;letter-spacing:.24em;text-transform:uppercase;color:rgb(255 255 255 / .55)}
+
+/* Stream: no theme picture (the window is transparent for OBS or vMix to key), drawn as a
+   checkerboard; the verse is a band across the foot, left aligned. */
+.sc-row-screens .scr-out-stream .scr-frame{
+  background-color:#0d0f0e;
+  background-image:conic-gradient(#151817 25%,transparent 0 50%,#151817 0 75%,transparent 0);
+  background-size:1.1cqw 1.1cqw;
+}
+.sc-row-screens .scr-band{
+  position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;padding:2.4cqw 4cqw 2.6cqw;
+  background:linear-gradient(180deg,rgb(0 0 0 / 0) 0%,rgb(0 0 0 / .55) 35%,rgb(0 0 0 / .78) 100%);
+}
+.sc-row-screens .scr-out-stream .scr-verse{max-width:80cqw;font-size:3.5cqw;line-height:1.3}
+.sc-row-screens .scr-out-stream .scr-ref{margin-top:.8cqw;font-size:2.2cqw}
+
+/* ------------------------------------------------------------------ */
+/* Front: the outputs card                                             */
+/* ------------------------------------------------------------------ */
+
+/* In here 1cqw is 1% of the card. */
+.sc-row-screens .scr-card{padding:4.4cqw 4.4cqw 4.6cqw;font-family:"Showcase Geist",Inter,system-ui,sans-serif;color:#e5f3f2;line-height:1.3}
+.sc-row-screens .scr-card-head{display:flex;align-items:center;justify-content:space-between;gap:3cqw}
+.sc-row-screens .scr-card-title{display:flex;align-items:center;gap:2.4cqw;font-size:2.9cqw;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgb(229 243 242 / .85)}
+.sc-row-screens .scr-card-icon{
+  display:grid;place-items:center;width:6.6cqw;height:6.6cqw;border-radius:1.3cqw;font-size:3.7cqw;letter-spacing:0;color:rgb(229 243 242 / .62);
+  background:rgb(255 255 255 / .05);box-shadow:inset 0 0 0 1px rgb(255 255 255 / .08);
+}
+.sc-row-screens .scr-card-count{font-size:2.8cqw;color:rgb(229 243 242 / .45)}
+.sc-row-screens .scr-card-blurb{margin:1.6cqw 0 0 9cqw;font-size:2.9cqw;line-height:1.45;color:rgb(229 243 242 / .45)}
+
+/* One bordered group, a rule between screens (the app's lists, not pill by pill). */
+.sc-row-screens .scr-list{margin:4.6cqw 0 0;padding:0;list-style:none;border-radius:1.6cqw;box-shadow:inset 0 0 0 1px rgb(255 255 255 / .075);overflow:hidden}
+.sc-row-screens .scr-item + .scr-item{border-top:1px solid rgb(255 255 255 / .06)}
+.sc-row-screens .scr-item.is-open{background:rgb(255 255 255 / .03)}
+.sc-row-screens .scr-item-row{display:flex;align-items:center;gap:3.2cqw;padding:3.2cqw 3.6cqw}
+.sc-row-screens .scr-item-text{display:flex;flex:1;flex-direction:column;gap:.7cqw;min-width:0}
+.sc-row-screens .scr-item-name,.sc-row-screens .scr-item-where{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sc-row-screens .scr-item-name{font-size:3.3cqw;font-weight:500;color:#e5f3f2}
+.sc-row-screens .scr-item-aud{font-weight:400;color:rgb(229 243 242 / .5)}
+.sc-row-screens .scr-item-where{font-size:2.8cqw;color:rgb(229 243 242 / .42)}
+.sc-row-screens .scr-item-state{display:flex;flex:none;align-items:center;gap:1.4cqw;font-size:2.8cqw;color:#8fd3c0}
+.sc-row-screens .scr-item-state::before{width:1.5cqw;height:1.5cqw;border-radius:50%;content:"";background:currentColor}
+.sc-row-screens .scr-item.is-off .scr-item-name{color:rgb(229 243 242 / .62)}
+.sc-row-screens .scr-item.is-off .scr-item-state{color:rgb(229 243 242 / .35)}
+.sc-row-screens .scr-item.is-off .scr-item-state::before{background:none;box-shadow:inset 0 0 0 1px currentColor}
+
+/* The floor plan's marks: full strength on a live screen, faint on one that is off. */
+.sc-row-screens .scr-mark{flex:none;width:12.6cqw;height:auto;overflow:visible}
+.sc-row-screens .scr-mark-screen{fill:#0b0e0d;stroke:rgb(229 243 242 / .24);stroke-width:1.2}
+.sc-row-screens .scr-mark-ink{stroke:rgb(229 243 242 / .14)}
+.sc-row-screens .scr-mark-fill{fill:rgb(229 243 242 / .14)}
+.sc-row-screens .scr-mark[data-live] .scr-mark-ink{stroke:rgb(229 243 242 / .58)}
+.sc-row-screens .scr-mark[data-live] .scr-mark-fill{fill:rgb(229 243 242 / .58)}
+
+/* The open screen's two choices, under its name: job and display (rowsFor in OutputsTile.tsx). */
+.sc-row-screens .scr-item-edit{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:2.2cqw 3.2cqw;padding:0 3.6cqw 3.8cqw 19.4cqw}
+.sc-row-screens .scr-edit-label{font-size:2.8cqw;color:rgb(229 243 242 / .45)}
+.sc-row-screens .scr-segment{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));height:7.2cqw;padding:.45cqw;border-radius:1.4cqw;
+  background:rgb(0 0 0 / .22);box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1);
+}
+.sc-row-screens .scr-segment span{display:grid;place-items:center;border-radius:1cqw;font-size:2.65cqw;color:rgb(229 243 242 / .62)}
+/* The app's teal surface (.tri-surface) on the chosen job. */
+.sc-row-screens .scr-segment .is-on{
+  color:#e5f3f2;box-shadow:inset 0 0 0 1px rgb(143 211 192 / .14);
+  background-image:
+    radial-gradient(ellipse at 12% 115%,rgb(24 70 55 / .7),transparent 62%),
+    radial-gradient(ellipse at 88% -25%,rgb(44 55 71 / .7),transparent 64%),
+    radial-gradient(ellipse at 48% 48%,rgb(18 34 37 / .7),rgb(7 21 26 / .7) 82%);
+}
+.sc-row-screens .scr-select{
+  display:flex;align-items:center;justify-content:space-between;height:7.2cqw;padding:0 2.4cqw 0 2.8cqw;border-radius:1.4cqw;
+  font-size:2.8cqw;color:#e5f3f2;background:#101111;box-shadow:inset 0 0 0 1px rgb(255 255 255 / .12);
+}
+.sc-row-screens .scr-select svg{font-size:2.6cqw;color:rgb(229 243 242 / .45)}
+
+/* ------------------------------------------------------------------ */
+/* Reveal: the three screens come up one after another, inside the back's own rise. */
+/* ------------------------------------------------------------------ */
+.sc-row-screens .sc-stage[data-reveal=armed] .scr-out{opacity:0;transform:translate3d(0,14px,0)}
+.sc-row-screens .sc-stage[data-reveal=shown] .scr-out{transition:opacity 800ms var(--sc-ease),transform 800ms var(--sc-ease)}
+.sc-row-screens .sc-stage[data-reveal=shown] .scr-out-projector{transition-delay:140ms}
+.sc-row-screens .sc-stage[data-reveal=shown] .scr-out-stage{transition-delay:240ms}
+.sc-row-screens .sc-stage[data-reveal=shown] .scr-out-stream{transition-delay:320ms}
+@media print{.sc-row-screens .sc-stage[data-reveal] .scr-out{opacity:1;transform:none}}
+
+/* ------------------------------------------------------------------ */
+/* Tablet: a wider card so its words stay readable; the back moves with it. */
+/* ------------------------------------------------------------------ */
+@media(max-width:1050px){
+  .sc-row-screens .sc-stage{--sc-front-width:40%;--sc-back-left:27%}
+  .sc-row-screens .scr-wall{padding-left:15.5cqw}
+}
+
+/* ------------------------------------------------------------------ */
+/* Phone: the three screens across the top, the card below them, over the back's faded foot. */
+/* ------------------------------------------------------------------ */
+.sc-row-screens .sc-stage{
+  --sc-m-stage-ratio:350 / 660;
+  --sc-m-back-left:0%;--sc-m-back-top:0%;--sc-m-back-bottom:41%;--sc-m-back-width:170%;
+  --sc-m-fade-x:56%;--sc-m-fade-x-end:74%;--sc-m-fade-y:86%;--sc-m-fade-y-end:100%;
+  --sc-m-front-left:4%;--sc-m-front-top:50.6%;--sc-m-front-width:96%;
+}
+@media(max-width:760px){
+  .sc-row-screens .scr-wall{padding:3cqw 0 0 2.4cqw;gap:2.6cqw 1.5cqw}
+  .sc-row-screens .scr-out-label{margin-bottom:1.3cqw;font-size:1.85cqw}
+  .sc-row-screens .scr-out-role{margin-right:.7cqw;font-size:1.6cqw}
+  .sc-row-screens .scr-out-stage .scr-verse-box{bottom:28%}
+  .sc-row-screens .scr-out-stage .scr-verse{font-size:4.3cqw}
+  .sc-row-screens .scr-clock{font-size:7cqw}
+  .sc-row-screens .scr-next{font-size:5cqw}
+  .sc-row-screens .scr-out-stream .scr-verse{font-size:4.4cqw}
+  .sc-row-screens .scr-out-stream .scr-ref{font-size:2.8cqw}
+
+  .sc-row-screens .scr-card{padding:4.6cqw 4.6cqw 4.8cqw}
+  .sc-row-screens .scr-card-title{gap:2.8cqw;font-size:3.4cqw}
+  .sc-row-screens .scr-card-icon{width:7.2cqw;height:7.2cqw;border-radius:1.6cqw;font-size:4.2cqw}
+  .sc-row-screens .scr-card-count{font-size:3.4cqw}
+  .sc-row-screens .scr-card-blurb{display:none}
+  .sc-row-screens .scr-list{margin-top:4.4cqw;border-radius:2cqw}
+  .sc-row-screens .scr-item-row{gap:3.6cqw;padding:2.7cqw 4cqw}
+  .sc-row-screens .scr-mark{width:11.6cqw}
+  /* Two lines: the job, then who it is for. The displays and the display choice stay on the wider layouts. */
+  .sc-row-screens .scr-item-name{font-size:3.9cqw}
+  .sc-row-screens .scr-item-aud{display:block;margin-top:.6cqw;font-size:3.4cqw}
+  .sc-row-screens .scr-dash,.sc-row-screens .scr-item-where{display:none}
+  .sc-row-screens .scr-item-state{gap:1.6cqw;font-size:3.4cqw}
+  .sc-row-screens .scr-item-state::before{width:1.8cqw;height:1.8cqw}
+  .sc-row-screens .scr-item-edit{gap:2.4cqw 3cqw;padding:0 4cqw 3.4cqw 19.2cqw}
+  .sc-row-screens .scr-edit-display,.sc-row-screens .scr-select{display:none}
+  .sc-row-screens .scr-edit-label{font-size:3.4cqw}
+  .sc-row-screens .scr-segment{height:8.8cqw;padding:.6cqw;border-radius:1.8cqw}
+  .sc-row-screens .scr-segment span{border-radius:1.3cqw;font-size:3.05cqw}
+  .sc-row-screens .scr-select{height:8.8cqw;padding:0 3cqw 0 3.4cqw;border-radius:1.8cqw;font-size:3.4cqw}
+  .sc-row-screens .scr-select svg{font-size:3.2cqw}
+}

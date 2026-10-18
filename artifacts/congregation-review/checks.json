@@ -1,0 +1,1156 @@
+{
+  "sampleData": true,
+  "network": "Blocked; fixture replaces Supabase and fetch",
+  "viewports": [
+    {
+      "width": 320,
+      "height": 740,
+      "captures": [
+        "320x740-transcript.png",
+        "320x740-scriptures.png",
+        "320x740-notes.png",
+        "320x740-give.png",
+        "320x740-reading-options.png",
+        "320x740-scriptures-corrections.png",
+        "320x740-transcript-sync.png"
+      ]
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "captures": [
+        "390x844-transcript.png",
+        "390x844-scriptures.png",
+        "390x844-notes.png",
+        "390x844-give.png",
+        "390x844-reading-options.png"
+      ]
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "captures": [
+        "430x932-transcript.png",
+        "430x932-scriptures.png",
+        "430x932-notes.png",
+        "430x932-give.png",
+        "430x932-reading-options.png"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "320x740 transcript: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 transcript: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 transcript: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 transcript: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: published scripture fixtures are visible",
+      "passed": true
+    },
+    {
+      "name": "320x740 scriptures: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 scriptures: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 scriptures: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 scriptures: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740 notes: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 notes: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 notes: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 notes: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: sample giving link rendered",
+      "passed": true
+    },
+    {
+      "name": "320x740 give: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 give: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 give: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 give: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: reading dialog is modal with focus inside",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 320,
+        "top": 241.609375,
+        "bottom": 740,
+        "scrollWidth": 318,
+        "clientWidth": 318
+      }
+    },
+    {
+      "name": "320x740: reading dialog fits viewport",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 320,
+        "top": 241.609375,
+        "bottom": 740,
+        "scrollWidth": 318,
+        "clientWidth": 318
+      }
+    },
+    {
+      "name": "320x740 reading dialog: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 reading dialog: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 reading dialog: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 reading dialog: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: Escape closes reading dialog and restores focus",
+      "passed": true,
+      "details": {
+        "closed": true,
+        "triggerFocused": true
+      }
+    },
+    {
+      "name": "320x740 no giving configured: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 no giving configured: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 no giving configured: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 no giving configured: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: unconfigured giving is hidden",
+      "passed": true,
+      "details": [
+        "Transcript",
+        "Verses",
+        "Notes"
+      ]
+    },
+    {
+      "name": "320x740: correction choices appear below reference",
+      "passed": true,
+      "details": {
+        "present": true,
+        "referenceBottom": 223.5,
+        "buttons": [
+          {
+            "label": "Wrong verse",
+            "top": 242.5,
+            "height": 44,
+            "left": 20,
+            "right": 156
+          },
+          {
+            "label": "No verse mentioned",
+            "top": 239.5,
+            "height": 50,
+            "left": 164,
+            "right": 300
+          }
+        ]
+      }
+    },
+    {
+      "name": "320x740: correction targets are at least 44px and fit",
+      "passed": true,
+      "details": [
+        {
+          "label": "Wrong verse",
+          "top": 242.5,
+          "height": 44,
+          "left": 20,
+          "right": 156
+        },
+        {
+          "label": "No verse mentioned",
+          "top": 239.5,
+          "height": 50,
+          "left": 164,
+          "right": 300
+        }
+      ]
+    },
+    {
+      "name": "320x740 scripture corrections: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 scripture corrections: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 scripture corrections: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 scripture corrections: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: sync trigger is at least 44px",
+      "passed": true,
+      "details": {
+        "width": 44,
+        "height": 44
+      }
+    },
+    {
+      "name": "320x740: sync dialog is modal with focus inside",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 320,
+        "top": 422.828125,
+        "bottom": 740,
+        "scrollWidth": 318,
+        "clientWidth": 318
+      }
+    },
+    {
+      "name": "320x740: sync dialog fits viewport",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 320,
+        "top": 422.828125,
+        "bottom": 740,
+        "scrollWidth": 318,
+        "clientWidth": 318
+      }
+    },
+    {
+      "name": "320x740 transcript sync: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 320,
+        "height": 740,
+        "scrollWidth": 320,
+        "bodyScrollWidth": 320,
+        "nav": {
+          "top": 663,
+          "bottom": 740,
+          "left": 0,
+          "right": 320
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "320x740 transcript sync: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 663,
+        "bottom": 740,
+        "left": 0,
+        "right": 320
+      }
+    },
+    {
+      "name": "320x740 transcript sync: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "320x740 transcript sync: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "320x740: Escape closes sync dialog and restores focus",
+      "passed": true,
+      "details": {
+        "closed": true,
+        "triggerFocused": true
+      }
+    },
+    {
+      "name": "390x844 transcript: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "nav": {
+          "top": 767,
+          "bottom": 844,
+          "left": 0,
+          "right": 390
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "390x844 transcript: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 767,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      }
+    },
+    {
+      "name": "390x844 transcript: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "390x844 transcript: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "390x844: published scripture fixtures are visible",
+      "passed": true
+    },
+    {
+      "name": "390x844 scriptures: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "nav": {
+          "top": 767,
+          "bottom": 844,
+          "left": 0,
+          "right": 390
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "390x844 scriptures: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 767,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      }
+    },
+    {
+      "name": "390x844 scriptures: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "390x844 scriptures: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "390x844 notes: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "nav": {
+          "top": 767,
+          "bottom": 844,
+          "left": 0,
+          "right": 390
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "390x844 notes: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 767,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      }
+    },
+    {
+      "name": "390x844 notes: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "390x844 notes: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "390x844: sample giving link rendered",
+      "passed": true
+    },
+    {
+      "name": "390x844 give: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "nav": {
+          "top": 767,
+          "bottom": 844,
+          "left": 0,
+          "right": 390
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "390x844 give: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 767,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      }
+    },
+    {
+      "name": "390x844 give: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "390x844 give: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "390x844: reading dialog is modal with focus inside",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 390,
+        "top": 366.40625,
+        "bottom": 844,
+        "scrollWidth": 388,
+        "clientWidth": 388
+      }
+    },
+    {
+      "name": "390x844: reading dialog fits viewport",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 390,
+        "top": 366.40625,
+        "bottom": 844,
+        "scrollWidth": 388,
+        "clientWidth": 388
+      }
+    },
+    {
+      "name": "390x844 reading dialog: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "nav": {
+          "top": 767,
+          "bottom": 844,
+          "left": 0,
+          "right": 390
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "390x844 reading dialog: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 767,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      }
+    },
+    {
+      "name": "390x844 reading dialog: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "390x844 reading dialog: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "390x844: Escape closes reading dialog and restores focus",
+      "passed": true,
+      "details": {
+        "closed": true,
+        "triggerFocused": true
+      }
+    },
+    {
+      "name": "390x844 no giving configured: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 390,
+        "height": 844,
+        "scrollWidth": 390,
+        "bodyScrollWidth": 390,
+        "nav": {
+          "top": 767,
+          "bottom": 844,
+          "left": 0,
+          "right": 390
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "390x844 no giving configured: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 767,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      }
+    },
+    {
+      "name": "390x844 no giving configured: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "390x844 no giving configured: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "390x844: unconfigured giving is hidden",
+      "passed": true,
+      "details": [
+        "Transcript",
+        "Verses",
+        "Notes"
+      ]
+    },
+    {
+      "name": "430x932 transcript: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "nav": {
+          "top": 855,
+          "bottom": 932,
+          "left": 0,
+          "right": 430
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "430x932 transcript: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 855,
+        "bottom": 932,
+        "left": 0,
+        "right": 430
+      }
+    },
+    {
+      "name": "430x932 transcript: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "430x932 transcript: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "430x932: published scripture fixtures are visible",
+      "passed": true
+    },
+    {
+      "name": "430x932 scriptures: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "nav": {
+          "top": 855,
+          "bottom": 932,
+          "left": 0,
+          "right": 430
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "430x932 scriptures: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 855,
+        "bottom": 932,
+        "left": 0,
+        "right": 430
+      }
+    },
+    {
+      "name": "430x932 scriptures: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "430x932 scriptures: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "430x932 notes: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "nav": {
+          "top": 855,
+          "bottom": 932,
+          "left": 0,
+          "right": 430
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "430x932 notes: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 855,
+        "bottom": 932,
+        "left": 0,
+        "right": 430
+      }
+    },
+    {
+      "name": "430x932 notes: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "430x932 notes: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "430x932: sample giving link rendered",
+      "passed": true
+    },
+    {
+      "name": "430x932 give: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "nav": {
+          "top": 855,
+          "bottom": 932,
+          "left": 0,
+          "right": 430
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "430x932 give: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 855,
+        "bottom": 932,
+        "left": 0,
+        "right": 430
+      }
+    },
+    {
+      "name": "430x932 give: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "430x932 give: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "430x932: reading dialog is modal with focus inside",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 430,
+        "top": 506.40625,
+        "bottom": 932,
+        "scrollWidth": 428,
+        "clientWidth": 428
+      }
+    },
+    {
+      "name": "430x932: reading dialog fits viewport",
+      "passed": true,
+      "details": {
+        "open": true,
+        "modal": true,
+        "focusInside": true,
+        "left": 0,
+        "right": 430,
+        "top": 506.40625,
+        "bottom": 932,
+        "scrollWidth": 428,
+        "clientWidth": 428
+      }
+    },
+    {
+      "name": "430x932 reading dialog: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "nav": {
+          "top": 855,
+          "bottom": 932,
+          "left": 0,
+          "right": 430
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes",
+          "Give"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "430x932 reading dialog: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 855,
+        "bottom": 932,
+        "left": 0,
+        "right": 430
+      }
+    },
+    {
+      "name": "430x932 reading dialog: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "430x932 reading dialog: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "430x932: Escape closes reading dialog and restores focus",
+      "passed": true,
+      "details": {
+        "closed": true,
+        "triggerFocused": true
+      }
+    },
+    {
+      "name": "430x932 no giving configured: no horizontal overflow",
+      "passed": true,
+      "details": {
+        "width": 430,
+        "height": 932,
+        "scrollWidth": 430,
+        "bodyScrollWidth": 430,
+        "nav": {
+          "top": 855,
+          "bottom": 932,
+          "left": 0,
+          "right": 430
+        },
+        "tabs": [
+          "Transcript",
+          "Verses",
+          "Notes"
+        ],
+        "buttonGradients": [],
+        "hasChurchCard": false
+      }
+    },
+    {
+      "name": "430x932 no giving configured: navigation inside viewport",
+      "passed": true,
+      "details": {
+        "top": 855,
+        "bottom": 932,
+        "left": 0,
+        "right": 430
+      }
+    },
+    {
+      "name": "430x932 no giving configured: flat buttons",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "430x932 no giving configured: no church card panel",
+      "passed": true
+    },
+    {
+      "name": "430x932: unconfigured giving is hidden",
+      "passed": true,
+      "details": [
+        "Transcript",
+        "Verses",
+        "Notes"
+      ]
+    }
+  ],
+  "passed": true
+}

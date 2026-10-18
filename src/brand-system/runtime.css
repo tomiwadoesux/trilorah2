@@ -1,0 +1,24 @@
+html, body { min-height: 100%; background: #0e0f0f; color: #e5f3f2; }
+.specimen-root { padding: 28px; min-height: 380px; }
+.specimen-root > article > header { display: none; }
+/* The old gallery's prose/spec tables describe earlier font and icon choices.
+   Keep its live specimens; the brand workspace owns current documentation. */
+.specimen-root > article > div > .border-l-2,
+.specimen-root > article > div > dl { display: none; }
+.specimen-root button:focus-visible, .specimen-root input:focus-visible, .specimen-root select:focus-visible { outline: 2px solid #8fd3c0; outline-offset: 4px; }
+.specimen-extra { max-width: 850px; margin: auto; }
+.specimen-extra > h2 { font-size: 15px; font-weight: 500; margin-bottom: 12px; }
+.specimen-extra > p { font-size: 12px; color: #a0aaa5; margin-bottom: 24px; }
+.specimen-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px; }
+.specimen-group { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 18px 0; }
+.specimen-feedback { display: block; color: #8fd3c0; font-size: 12px; margin-top: 24px; }
+.specimen-screen { width: 1280px; height: 800px; }
+.specimen-screen-label { display: flex; align-items: center; gap: 18px; font-size: 12px; }
+.specimen-screen-label select { color: #e5f3f2; background: #161918; border: 1px solid #333b38; padding: 8px 12px; max-width: 400px; }
+.specimen-screen-note { color: #96a59d; max-width: 900px; font-size: 11px; line-height: 1.6; margin: 10px 0 20px; }
+.specimen-icon-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(105px,1fr)); gap: 1px; background: #ffffff15; border: 1px solid #ffffff15; }
+.specimen-icon-grid > div { background: #101413; padding: 18px 10px; display: flex; align-items: center; flex-direction: column; gap: 12px; }
+.specimen-icon-grid small { font-size: 9px; text-align: center; overflow-wrap: anywhere; }
+.specimen-error { padding: 30px; font-size: 14px; line-height: 1.6; }
+.specimen-error button { padding: 10px 15px; border: 1px solid #7e998a; margin-top: 15px; }
+@media(max-width:600px) { .specimen-root { padding: 20px; } .specimen-grid { grid-template-columns: 1fr; } .specimen-root [style*="grid-template-columns: repeat(3"], .specimen-root [style*="grid-template-columns: repeat(4"], .specimen-root [style*="grid-template-columns: repeat(5"] { grid-template-columns: 1fr !important; } }

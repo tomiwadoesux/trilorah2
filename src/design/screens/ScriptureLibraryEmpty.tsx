@@ -31,10 +31,10 @@ export function ScriptureLibraryEmpty({ status, error, version, onRetry, onReset
           {status === 'error' && !onDefaultBible && <p className="text-[length:var(--tri-size-sm)] text-white/40">
             Try again. If this continues, restart Trilorah.
           </p>}
-          <Button label={unavailable ? 'reload app' : 'try again'} icon={<ResetIcon size={14} />}
+          <Button guideId="scripture-retry" label={unavailable ? 'reload app' : 'try again'} icon={<ResetIcon size={14} />}
             onClick={unavailable ? () => window.location.reload() : onRetry} />
-          {status === 'empty' && onReset && <Button label="open Genesis 1 · default bible" onClick={onReset} />}
-          {status === 'error' && onDefaultBible && <Button label={`read it in the ${defaultBible ?? 'default bible'}`} onClick={onDefaultBible} />}
+          {status === 'empty' && onReset && <Button guideId="scripture-reset" label="open Genesis 1 · default bible" onClick={onReset} />}
+          {status === 'error' && onDefaultBible && <Button guideId="scripture-default-bible" label={`read it in the ${defaultBible ?? 'default bible'}`} onClick={onDefaultBible} />}
         </div>}
       />
     </div>

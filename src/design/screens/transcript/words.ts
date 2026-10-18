@@ -1,5 +1,6 @@
 import { transcriptReferences } from '../../../lib/transcriptReferences';
 import type { Spoken } from './types';
+import { capitalizeScriptureNames } from '../../../../shared/scriptureNames';
 
 /*
  * The transcript as WORDS with stable identities, for designs that animate
@@ -33,6 +34,7 @@ export function nextLineId(spoken: Spoken): number {
 export function wordsOf(spoken: Spoken, limit = 120): Word[] {
   const out: Word[] = [];
   const push = (lineId: number, text: string, partial: boolean) => {
+    text = capitalizeScriptureNames(text);
     const refs = referenceRanges(text);
     let at = 0;
     const parts = text.split(/\s+/).filter(Boolean);

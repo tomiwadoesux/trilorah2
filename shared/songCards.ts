@@ -1,14 +1,16 @@
 import type { SongSection } from './types';
+import { capitalizeScriptureNames } from './scriptureNames';
 
 /** Desktop and phone use the same four-line pages and live identifiers. */
 export function songCards(song: {id: string; sections: SongSection[]}) {
   return song.sections.flatMap((section, sectionIndex) => {
+    const lines = capitalizeScriptureNames(section.lines.join('\n')).split('\n');
     const count = Math.max(1, Math.ceil(section.lines.length / 4));
     return Array.from({length: count}, (_, page) => ({
       id: `${song.id}/${song.id}:${sectionIndex}/page-${page}`,
       sectionIndex, offset: page * 4,
       label: count > 1 ? `${section.label} · ${page + 1}` : section.label,
-      lines: section.lines.slice(page * 4, page * 4 + 4),
+      lines: section.lines.length ? lines.slice(page * 4, page * 4 + 4) : [],
     }));
   });
 }

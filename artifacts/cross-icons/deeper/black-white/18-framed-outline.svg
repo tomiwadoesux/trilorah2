@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!--Generator: Xara Designer (www.xara.com), SVG filter version: 6.1.0.16-->
+<svg stroke-width="0.501" stroke-linejoin="bevel" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" overflow="visible" width="720pt" height="720pt" viewBox="0 0 720 720">
+<!-- Black-and-white adaptation. Original: PhilipBarrington · OpenClipart; https://openclipart.org/detail/266269/cross; CC0 / Public Domain. Shapes preserved. -->
+ <defs>
+	</defs>
+ <g id="Document" fill="none" stroke="#000000" font-family="Times New Roman" font-size="16" transform="scale(1 -1)">
+  <g id="Spread" transform="translate(0 -720)">
+   <g id="Layer 1">
+    <path d="M 0,0 L 0,720 L 720,720 L 720,0 L 385.757,0 L 385.757,463.579 L 534.842,463.579 L 534.842,508.8 L 385.757,508.8 L 385.757,659.37 L 333.127,659.37 L 333.127,508.8 L 185.148,508.8 L 185.148,463.579 L 333.127,463.579 L 333.127,0 L 0,0 Z M 319.009,14.118 L 319.009,449.461 L 171.03,449.461 L 171.03,522.918 L 319.009,522.918 L 319.009,673.487 L 399.875,673.487 L 399.875,522.918 L 548.96,522.918 L 548.96,449.461 L 399.875,449.461 L 399.875,14.118 L 705.882,14.118 L 705.882,705.882 L 14.118,705.882 L 14.118,14.118 L 319.009,14.118 Z" stroke-width="0.49" stroke="none" fill="#000000" fill-rule="evenodd" marker-start="none" marker-end="none" stroke-miterlimit="79.8403193612775"/>
+   </g>
+  </g>
+ </g>
+</svg>

@@ -15,17 +15,24 @@ directories:
 files:
   - dist/**
   - dist-electron/**
+  - LICENSE
+  - NOTICE
+  - THIRD-PARTY-NOTICES.md
   - "!dist-electron/node_modules"
   - "!**/.DS_Store"
   # The sentence-model runtime carries a binary per platform; ship only ours.
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/!(${platform})/**"
   - "!**/node_modules/onnxruntime-node/bin/napi-v6/${platform}/!(${arch})/**"
+  # NDI® (sound between computers): one ~30 MB library per platform package.
+  - "!**/node_modules/@grandi/!(${platform}-${arch})/**"
 
 # Native modules — must live outside app.asar to be require()-able.
 asarUnpack:
   - "**/node_modules/better-sqlite3/**"
   - "**/node_modules/whisper-node/**"
   - "**/node_modules/onnxruntime-node/**"
+  - "**/node_modules/grandi/**"
+  - "**/node_modules/@grandi/**"
 
 # Runtime data shipped next to the app (resolved via process.resourcesPath).
 extraResources:
@@ -53,6 +60,12 @@ mac:
   # Unsigned for now (church pilot: right-click → Open). electron-builder
   # falls back to ad-hoc signing, which arm64 macOS requires to launch.
   identity: null
+  # NDI finds other computers with Bonjour, which macOS gates behind the
+  # Local Network permission; without these the prompt never names a reason.
+  extendInfo:
+    NSLocalNetworkUsageDescription: Trilorah finds the computer sending sound to it on your church network, and sends this computer's sound when it is in sender mode.
+    NSBonjourServices:
+      - _ndi._tcp
   target:
     - target: dmg
       arch: [arm64]

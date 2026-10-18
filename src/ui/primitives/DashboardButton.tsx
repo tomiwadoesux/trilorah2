@@ -1,3 +1,4 @@
+import { IconSelection } from '../NuboIcon';
 import type { ReactNode } from 'react';
 import { cx } from '../lib/cx';
 import { surface, strokeStyle } from '../lib/surface';
@@ -24,6 +25,8 @@ interface DashboardButtonProps {
   /** Refused rather than inert — see Button. */
   disabled?: boolean;
   className?: string;
+  /** Stable anchor for the in-app guide. */
+  guideId?: string;
 }
 
 export function DashboardButton({
@@ -33,6 +36,7 @@ export function DashboardButton({
   active = false,
   disabled = false,
   className = '',
+  guideId,
 }: DashboardButtonProps) {
   const { ref, nudge } = useNudge<HTMLButtonElement>();
 
@@ -40,6 +44,7 @@ export function DashboardButton({
     <button
       ref={ref}
       type="button"
+      data-guide={guideId}
       aria-disabled={disabled || undefined}
       onClick={disabled ? nudge : onClick}
       data-active={active}
@@ -52,7 +57,7 @@ export function DashboardButton({
       style={{ ...strokeStyle('edge'), color: 'var(--tri-ink)' }}
     >
       <span>{label}</span>
-      {icon}
+      <IconSelection selected={active}>{icon}</IconSelection>
     </button>
   );
 }

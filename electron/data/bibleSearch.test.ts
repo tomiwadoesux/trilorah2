@@ -25,6 +25,22 @@ describe('toFtsQuery', () => {
   })
 })
 
+describe('display casing in search results', () => {
+  it.each([false, true])('keeps title context through search highlights (FTS: %s)', (fts) => {
+    const db = makeDb()
+    try {
+      const original = 'god sends the holy spirit and jesus is lord.'
+      db.prepare('INSERT INTO bible VALUES (?, ?, ?, ?, ?)').run(42, 14, 26, original, 'KJV')
+      if (fts) ensureFts(db as any)
+      const [hit] = searchBible(db as any, 'holy')
+      expect(hit.text).toBe('God sends the Holy Spirit and Jesus is Lord.')
+      expect(hit.snippet.replace(/<\/?b>/g, '')).toBe(hit.text)
+      if (fts) expect(hit.snippet).toContain('<b>Holy</b> Spirit')
+      expect(db.prepare('SELECT verse FROM bible WHERE Chapter = 14').get()).toEqual({ verse: original })
+    } finally { db.close() }
+  })
+})
+
 describe('searchBible without FTS (LIKE fallback)', () => {
   const db = makeDb()
   it('matches every word, scoped to version', () => {

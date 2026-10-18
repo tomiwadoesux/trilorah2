@@ -1,0 +1,49 @@
+.hero-page {
+  --home-bg: #000;
+  --hero-nav-height: 88px;
+  min-height: 100svh;
+  background: #000;
+}
+
+.hero-page .home-nav { height: var(--hero-nav-height); background: rgb(0 0 0 / 90%); }
+.hero-page .home-nav-inner { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 24px; }
+.hero-page .home-brand { justify-self: start; }
+.hero-page .home-nav-links { margin-left: 0; justify-content: center; gap: 28px; }
+.hero-page .home-nav-links > :is(a, button) { font-size: 14px !important; white-space: nowrap; }
+.hero-page .home-nav-actions { justify-self: end; }
+.hero-page .home-menu-backdrop { top: var(--hero-nav-height); }
+.hero-page .ns-dropdown { max-height: calc(100dvh - var(--hero-nav-height) - 24px); }
+
+.hero-main {
+  padding-top: max(0px, calc(50svh - var(--hero-nav-height)));
+  padding-bottom: clamp(32px, 6vw, 96px);
+}
+
+.hero-app-frame {
+  position: relative;
+  width: min(1440px, calc(100% - 96px));
+  margin: 0 auto;
+  overflow: hidden;
+  background: #0b0b0c;
+}
+
+.hero-app-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 1050px) {
+  .hero-page .home-nav-inner { gap: 16px; }
+  .hero-page .home-nav-links { gap: 16px; }
+  .hero-page .home-nav-actions { gap: 12px; }
+  .hero-page .home-nav-login { display: none; }
+  .hero-app-frame { width: calc(100% - 64px); }
+}
+
+@media (max-width: 760px) {
+  .hero-page { --hero-nav-height: 76px; }
+  .hero-page .home-nav-inner { display: flex; }
+  .hero-page .home-mobile-disclosure { top: calc(var(--hero-nav-height) - 1px); }
+  .hero-app-frame { width: calc(100% - 24px); }
+}

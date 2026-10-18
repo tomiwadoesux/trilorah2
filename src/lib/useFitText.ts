@@ -34,6 +34,7 @@ export function useFitText(
   content: RefObject<HTMLElement | null>,
   key: string,
   floor = FIT_FLOOR,
+  preserveWords = false,
 ): void {
   useLayoutEffect(() => {
     const frame = box.current;
@@ -51,8 +52,11 @@ export function useFitText(
       words.style.setProperty('--fit', '1');
       if (fits()) return;
 
-      words.style.setProperty('--fit', String(floor));
-      if (!fits()) {
+      // Scripture must never lose its ending to an ellipsis. Pagination
+      // handles long ranges; an unusually large theme can shrink further.
+      const minimum = preserveWords ? Math.min(floor, 0.1) : floor;
+      words.style.setProperty('--fit', String(minimum));
+      if (!fits() && !preserveWords) {
         /* Too long even at the floor: keep the floor, and cut the body at
            the last whole line the room holds after everything else. */
         if (!body) return;
@@ -67,7 +71,7 @@ export function useFitText(
         return;
       }
 
-      let lo = floor;
+      let lo = minimum;
       let hi = 1;
       for (let i = 0; i < 7; i++) {
         const mid = (lo + hi) / 2;
@@ -90,5 +94,5 @@ export function useFitText(
       watch.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, floor]);
+  }, [key, floor, preserveWords]);
 }

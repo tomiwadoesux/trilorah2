@@ -1,0 +1,81 @@
+/* A quiet page inside the service: the controls stay in the forest shell. */
+.resource-scroll.scripture-reader {
+  --paper: #eceee4;
+  --paper-ink: #243b30;
+  --paper-muted: #59695d;
+  padding: 0 12px 24px;
+}
+.scripture-library-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 8px 4px; }
+.scripture-library-heading h1 { font-size: 28px; font-weight: 650; letter-spacing: -.7px; line-height: 1.2; }
+.scripture-search-trigger { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border: 1px solid #3c4b40; border-radius: 50%; color: var(--companion-mint); }
+.scripture-reader .scripture-search { margin: 3px 0 12px; }
+.scripture-search input:focus-visible { outline-offset: -3px; }
+.scripture-collections { display: flex; gap: 24px; padding: 0 8px; border-bottom: 1px solid var(--hair); }
+.scripture-collections button { position: relative; display: flex; align-items: center; gap: 7px; min-height: 44px; padding: 0; color: var(--companion-muted); font-size: 13px; white-space: nowrap; }
+.scripture-collections button[aria-pressed=true] { color: var(--companion-mint); }
+.scripture-collections button[aria-pressed=true]::after { content: ''; position: absolute; bottom: -1px; height: 2px; left: 0; right: 0; background: var(--companion-mint); }
+.scripture-collections button > span { font-size: 11px; color: var(--companion-muted); }
+.scripture-passage-rail { display: flex; gap: 4px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: #51665a transparent; padding: 10px 0 12px; }
+.scripture-passage-rail button { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-height: 58px; min-width: 100px; max-width: 220px; padding: 8px 12px; border: 1px solid transparent; border-radius: 9px; text-align: left; color: var(--companion-muted); scroll-snap-align: start; }
+.scripture-passage-rail button[aria-pressed=true] { color: var(--companion-ink); background: #283e32; border-color: #486454; }
+.scripture-passage-rail strong { display: block; font-size: 14px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.scripture-passage-rail small { display: block; margin-top: 4px; font-size: 12px; }
+.scripture-reader .scripture-page { background: var(--paper); color: var(--paper-ink); border-radius: 10px; padding: 8px 28px 0; overflow: hidden; }
+.scripture-page-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.scripture-page-tools > span { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--paper-muted); }
+.scripture-page-tools button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; margin-right: -8px; padding: 0 8px; font-size: 12px; border-radius: 7px; }
+.scripture-page-tools button[aria-pressed=true] { color: #205c43; }
+.scripture-reader .scripture-page > header { padding: 9px 0 16px; border-bottom: 1px solid #cbd3c6; }
+.scripture-page-kicker { font-size: 10px; font-weight: 600; letter-spacing: .1em; color: var(--paper-muted); }
+.scripture-reader .scripture-page > header h2 { font-size: 32px; line-height: 1.12; letter-spacing: -.8px; font-weight: 600; margin: 7px 0 0; overflow-wrap: anywhere; }
+.scripture-page > header h2 span { color: #617564; font-weight: 400; }
+.scripture-page h2:focus { outline: none; }
+.scripture-return { display: flex; align-items: center; gap: 4px; min-height: 44px; font-size: 12px; margin: 6px 0 -10px -4px; color: #205c43; }
+.scripture-reader .scripture-text { margin: 20px 0 22px; }
+.scripture-reader .scripture-text p { position: relative; display: block; margin: 0 0 20px; font-size: max(19px, calc(var(--reading-size, 27px) - 7px)); font-weight: 400; line-height: 1.65; letter-spacing: -.18px; overflow-wrap: anywhere; }
+.scripture-reader .scripture-text p:last-child { margin-bottom: 0; }
+.scripture-reader .scripture-text sup { position: absolute; left: -20px; top: 6px; width: 16px; text-align: right; padding: 0; font-size: 10px; line-height: 1.65; font-weight: 600; color: #53715e; font-variant-numeric: tabular-nums; }
+.scripture-reader .scripture-text p[data-highlight=true] { background: #d9e6d5; box-shadow: 6px 0 #d9e6d5, -6px 0 #d9e6d5; border-radius: 3px; }
+.scripture-page-footer { border-top: 1px solid #cbd3c6; }
+.scripture-chapter-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; font-size: 13px; font-weight: 500; }
+.scripture-chapter-toggle > span { display: flex; align-items: center; gap: 8px; }
+.scripture-page-footer > span { display: block; padding: 0 0 16px; color: var(--paper-muted); font-size: 10px; }
+.scripture-page-footer > span:only-child { padding-top: 16px; }
+.scripture-reading-footer { padding: 14px 4px 0; }
+.scripture-reading-footer > p { font-size: 11px; }
+.scripture-reading-footer .companion-share { margin-top: 10px; }
+.scripture-reading-footer .companion-actions { gap: 8px; }
+.scripture-reading-footer .companion-actions button { flex: 1; background: transparent; border-color: #38483c; }
+.scripture-reading-footer .chapter-navigation { margin-top: 18px; font-size: 11px; }
+.scripture-reader .scripture-loading { color: var(--paper-muted); font-size: 14px; padding: 24px 0 40px; }
+.scripture-library-empty { padding: 30px 6px; color: var(--companion-mint); }
+.scripture-library-empty p { color: var(--companion-ink); font-size: 18px; line-height: 1.4; margin: 14px 0 6px; font-weight: 500; }
+.scripture-library-empty > span { display: block; color: var(--companion-muted); font-size: 14px; line-height: 1.6; max-width: 270px; }
+.scripture-library-empty button { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 12px; font-size: 13px; }
+.companion-shell .scripture-page :is(button,a):focus-visible { outline-color: #205c43; }
+@media (hover: hover) and (pointer: fine) {
+  .scripture-search-trigger:hover { background: #283e32; }
+  .scripture-collections button:hover { color: var(--companion-ink); }
+  .scripture-passage-rail button:not([aria-pressed=true]):hover { background: #252e27; }
+  .scripture-page-tools button:hover, .scripture-chapter-toggle:hover { background: #dee4d8; }
+}
+@media (min-width: 760px) {
+  .companion-workspace .companion-detail-panel { min-width: 320px; }
+  .companion-detail-panel[data-resource=verses] .companion-detail-top { padding-top: 12px; }
+  .companion-detail-panel[data-resource=verses] .companion-detail-top > p,
+  .companion-detail-panel[data-resource=verses] .companion-detail-footer { display: none; }
+  .companion-detail-panel[data-resource=verses] .companion-detail-tabs { margin-top: 0; }
+  .scripture-library-heading { position: relative; padding: 0; height: 0; }
+  .scripture-library-heading h1 { display: none; }
+  .scripture-search-trigger { position: absolute; top: 0; right: 0; border: 0; }
+  .scripture-collections { padding-right: 48px; gap: 18px; }
+  .scripture-reader .scripture-search { margin-top: 48px; }
+  .scripture-reader .scripture-page { padding-left: 28px; padding-right: 28px; }
+}
+@media (max-width: 359px) {
+  .scripture-reader { padding-left: 12px; padding-right: 12px; }
+  .scripture-reader .scripture-page { padding-left: 26px; padding-right: 20px; }
+  .scripture-page-tools > span { font-size: 10px; }
+  .scripture-page-tools button span { display: none; }
+  .scripture-reader .scripture-text p { font-size: max(18px, calc(var(--reading-size, 27px) - 7px)); gap: 6px; }
+}

@@ -1,3 +1,5 @@
+import { formatNoteText } from '../../shared/noteDisplay'
+
 export interface IncrementalNotes {
   title?: string
   theme?: string
@@ -151,16 +153,17 @@ export class IncrementalNotesBuilder {
    * Get the current state of notes.
    */
   getCurrentNotes(): IncrementalNotes {
-    return { ...this.notes }
+    return formatNoteText(this.notes)
   }
 
   /**
    * Finalize notes — return a complete snapshot for export/saving.
    */
   finalize(): IncrementalNotes {
+    const notes = this.getCurrentNotes()
     return {
-      ...this.notes,
-      summary: this.notes.summary || ''
+      ...notes,
+      summary: notes.summary || ''
     }
   }
 

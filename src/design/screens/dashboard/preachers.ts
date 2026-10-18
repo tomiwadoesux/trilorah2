@@ -1,6 +1,6 @@
 import { isEmptyPreview } from '../../emptyPreviewMode';
 import { useEffect, useSyncExternalStore } from 'react';
-import type { PreacherLearningDetail, PreacherTeaching } from '../../../../shared/preacherLearning';
+import { BIBLE_SHELF, bookStandings, type BookStanding, type PreacherLearningDetail, type PreacherTeaching, type TrainingSummary } from '../../../../shared/preacherLearning';
 
 /*
  * The preachers the dashboard knows — from the engine, with a sample
@@ -433,6 +433,28 @@ function learningFields(d: PreacherLearningDetail): Partial<Preacher> {
   return { ...stats, ...d.habits, recent: d.recent,
     learning: d, gates: d.gates, engineMature: d.stats.mature, engineEligible: d.stats.autoModeEligible,
     soundsLike: d.soundsLike, vocabulary: d.vocabulary, ignoreTails: d.ignoreTails, voiceCommands: d.voiceCommands, history: d.history };
+}
+
+/**
+ * Where each of the 66 books stands for this preacher — the shelf.
+ *
+ * The engine works it out from training rounds, saved fixes and the verses
+ * used in services. With no engine (the design sandbox) it is rebuilt from
+ * the sample's own fixes and top books, so the shelf still has something on
+ * it to design against.
+ */
+export function standingsOf(p: Preacher): Record<string, BookStanding> {
+  if (p.learning?.books) return p.learning.books;
+  const quoted: Record<string, number> = {};
+  p.topBooks.forEach((name, i) => {
+    const hit = BIBLE_SHELF.find((b) => b.book.toLowerCase() === name.toLowerCase());
+    if (hit) quoted[hit.book] = 6 - i * 2;
+  });
+  return bookStandings([], p.soundsLike, quoted);
+}
+
+export function trainingOf(p: Preacher): TrainingSummary {
+  return p.learning?.training ?? { sessions: 0, lastDate: null, rounds: [] };
 }
 
 export async function refreshPreacher(id: string): Promise<void> {

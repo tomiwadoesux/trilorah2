@@ -262,6 +262,21 @@ export class ScriptureSession {
     return false
   }
 
+  /**
+   * A spoken "next" or "back", debounced as onCommand is, without moving.
+   * While auto advance follows the wall (main.ts following()), the screen's
+   * read-along takes the step: it knows whether the wall has just moved by
+   * itself, and so whether this "next verse" is that same step.
+   */
+  navCommand(text: string): 'next' | 'previous' | null {
+    const now = Date.now()
+    if (now - this.lastCommandTime < this.COMMAND_DEBOUNCE_MS) return null
+    const t = text.toLowerCase()
+    const direction = this.isNextCommand(t) ? 'next' : this.isPreviousCommand(t) ? 'previous' : null
+    if (direction) this.lastCommandTime = now
+    return direction
+  }
+
   /* Navigation phrases are configurable post-recovery: main.ts merges
      defaults + language pack + the user's voice-commands.json and injects
      them here. The literals below remain the fallback. */
@@ -417,7 +432,7 @@ export class ScriptureSession {
     this.startVerse = this.currentVerse
     this.endVerse = this.currentVerse
     console.log(`⏭️ Advancing to verse ${this.currentVerse}`)
-    this.emitSingleVerse(this.currentVerse)
+    this.emitSingleVerse(this.currentVerse, true)
   }
 
   goBack() {
@@ -426,7 +441,7 @@ export class ScriptureSession {
     this.currentVerse -= 1
     this.startVerse = this.currentVerse
     this.endVerse = this.currentVerse
-    this.emitSingleVerse(this.currentVerse)
+    this.emitSingleVerse(this.currentVerse, true)
   }
 
   jumpToVerse(verse: number) {
@@ -440,7 +455,8 @@ export class ScriptureSession {
 
   /* ---------------- DISPLAY ---------------- */
 
-  emitSingleVerse(verse: number) {
+  /** `stepped`: moved here by itself (advance, back), not named by the preacher. */
+  emitSingleVerse(verse: number, stepped = false) {
     if (!this.book || !this.chapter) return
     this.readingMode = true
     this.lastVerseDisplayTime = Date.now()
@@ -453,7 +469,8 @@ export class ScriptureSession {
       rangeEnd: this.endVerse ?? undefined,
       chunkSize: this.CHUNK_SIZE,
       version: this.version,
-      isPreview: true
+      isPreview: true,
+      ...(stepped ? { stepped: true } : {})
     })
   }
 

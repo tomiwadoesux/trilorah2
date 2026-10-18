@@ -53,7 +53,9 @@ export function validateTeaching(patch: Partial<PreacherTeaching>): Partial<Prea
       const heard = words(a.heard).join(' ')
       if (!heard || seen.has(heard)) throw new Error('Each misheard phrase needs one correction.')
       seen.add(heard)
-      return { heard, means, source: 'taught' as const, hits: 0 }
+      /* Voice training saves its fixes as `learned` so the page can say
+         which ones the app worked out and which a person typed. */
+      return { heard, means, source: a.source === 'learned' ? 'learned' as const : 'taught' as const, hits: 0 }
     })
   }
   return out
@@ -83,6 +85,21 @@ export class TeachingStore {
     this.cache.set(id, data)
     return structuredClone(data)
   }
+  /** Save one fix from voice training. A phrase already fixed to another book is refused. */
+  addAlias(id: string, alias: { heard: string; means: string }): PreacherTeaching {
+    const current = this.get(id).soundsLike
+    const heard = words(alias.heard).join(' ')
+    const clash = current.find((a) => a.heard === heard)
+    if (clash && clash.means !== alias.means) throw new Error(`“${heard}” already means ${clash.means}.`)
+    if (clash) return this.get(id)
+    return this.patch(id, { soundsLike: [{ heard, means: alias.means, source: 'learned', hits: 0 }, ...current] })
+  }
+
+  removeAlias(id: string, heard: string): PreacherTeaching {
+    const key = words(heard).join(' ')
+    return this.patch(id, { soundsLike: this.get(id).soundsLike.filter((a) => a.heard !== key) })
+  }
+
   remove(id: string) {
     fs.rmSync(this.file(id), { force: true })
     this.cache.delete(id)

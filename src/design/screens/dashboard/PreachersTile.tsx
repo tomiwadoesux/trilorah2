@@ -207,7 +207,7 @@ function Face({
     >
       {preachers.length === 0 ? <EmptyMark w={170} h={170} plain art={<PreacherLecternArt />}
         line="who’s bringing the message?"
-        below={<div className="mt-3"><Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} /></div>} /> : <div
+        below={<div className="mt-3"><Button guideId="preachers-add-empty" label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} /></div>} /> : <div
         role="button"
         tabIndex={0}
         onClick={onOpen}
@@ -260,7 +260,7 @@ function Face({
             {/* Its own press: the card opens either way, but this one opens
                 it with the name field already waiting. */}
             <span className="shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-              <Button label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} />
+              <Button guideId="preachers-add" label="add preacher" icon={<PlusIcon size={11} />} onClick={onAdd} />
             </span>
           </div>
         </div>
@@ -317,6 +317,7 @@ export function PreachersTile({ className }: { className?: string }) {
 
   return (
     <Expandable
+      guideArea="preachers"
       className={className}
       title="Preachers"
       glyph={false}
@@ -419,6 +420,7 @@ export function PreacherList({
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <SearchField
+          guideId="preachers-search"
           value={query}
           onChange={setQuery}
           placeholder="search by name or role"
@@ -430,7 +432,7 @@ export function PreacherList({
             else if (shown.length === 0 && q) setAdding(true);
           }}
         />
-        <Button label={adding ? 'cancel' : 'add preacher'} icon={adding ? undefined : <PlusIcon size={11} />} onClick={() => setAdding(!adding)} />
+        <Button guideId="preachers-add-toggle" label={adding ? 'cancel' : 'add preacher'} icon={adding ? undefined : <PlusIcon size={11} />} onClick={() => setAdding(!adding)} />
       </div>
 
       {adding && (
@@ -461,6 +463,7 @@ export function PreacherList({
             line={q ? `nobody called “${query.trim()}” yet` : 'who’s bringing the message?'}
             below={!adding && <div className="mt-3">
             <Button
+              guideId="preachers-add-first"
               label={q ? `add ${cleanName(query)}` : 'add the first one'}
               icon={<PlusIcon size={11} />}
               onClick={() => setAdding(true)}
@@ -513,6 +516,7 @@ export function AddRow({ initialName, onAdded, onCancel }: { initialName: string
       <div className="flex flex-wrap items-center gap-2">
         <input
           autoFocus
+          data-guide="preachers-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -528,6 +532,7 @@ export function AddRow({ initialName, onAdded, onCancel }: { initialName: string
           className={cx(FIELD, 'min-w-[220px] flex-1')}
         />
         <SegmentedControl
+          guideId="preachers-role"
           size="sm"
           value={role}
           onChange={(r) => setRole(r)}
@@ -537,7 +542,7 @@ export function AddRow({ initialName, onAdded, onCancel }: { initialName: string
             { id: 'guest', label: 'guest' },
           ]}
         />
-        <Button label={saving ? 'saving…' : 'add'} onClick={submit} disabled={saving || !clean || !!dupe} />
+        <Button guideId="preachers-save" label={saving ? 'saving…' : 'add'} onClick={submit} disabled={saving || !clean || !!dupe} />
       </div>
       {error && <p role="alert" className="text-[12px] text-red-300">{error}</p>}
       <p className="text-[length:var(--tri-size-eyebrow)] lowercase" style={{ color: dupe ? GOLD : MUTED }}>
@@ -605,6 +610,7 @@ function PreacherRow({
           {!active && (
             <button
               type="button"
+              data-guide="preachers-set-today"
               onClick={() => setActivePreacher(p.id)}
               className="rounded-md px-2.5 py-1 text-[length:var(--tri-size-xs)] lowercase opacity-0 transition-opacity hover:bg-white/[0.08] focus-visible:opacity-100 group-hover/p:opacity-100"
               style={{ color: INK_SOFT, boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.14)' }}
@@ -640,7 +646,7 @@ export function ProfileHeader({ p, active }: { p: Preacher; active: boolean }) {
           {p.role} · {p.services ? `preached ${p.services} ${p.services === 1 ? 'time' : 'times'} · last ${p.lastPreached}` : 'not preached yet'}
         </p>
       </div>
-      {!active && <Button label="set for today" onClick={() => setActivePreacher(p.id)} className="shrink-0" />}
+      {!active && <Button guideId="profile-set-today" label="set for today" onClick={() => setActivePreacher(p.id)} className="shrink-0" />}
     </div>
   );
 }
@@ -721,7 +727,7 @@ function Gates({ p }: { p: Preacher }) {
  * it fills whatever width the block has; the strokes keep their weight
  * (non-scaling-stroke) and the one dot is HTML so it stays round.
  */
-function TrustChart({ history, gate = GATES.trust }: { history: ServicePoint[]; gate?: number }) {
+export function TrustChart({ history, gate = GATES.trust }: { history: ServicePoint[]; gate?: number }) {
   if (history.length < 2) {
     return (
       <p className="py-6 text-[length:var(--tri-size-xs)] lowercase leading-relaxed" style={{ color: MUTED }}>
@@ -935,16 +941,17 @@ export function ProfileBody({
           {confirm ? (
             <span className="flex shrink-0 items-center gap-3 text-[length:var(--tri-size-xs)] lowercase">
               <span style={{ color: MUTED }}>remove {p.name}?</span>
-              <button type="button" onClick={onRemove} className="font-semibold hover:underline" style={{ color: ROSE }}>
+              <button type="button" data-guide="profile-remove-confirm" onClick={onRemove} className="font-semibold hover:underline" style={{ color: ROSE }}>
                 remove
               </button>
-              <button type="button" onClick={() => setConfirm(false)} className="hover:underline" style={{ color: INK_SOFT }}>
+              <button type="button" data-guide="profile-remove-keep" onClick={() => setConfirm(false)} className="hover:underline" style={{ color: INK_SOFT }}>
                 keep
               </button>
             </span>
           ) : (
             <button
               type="button"
+              data-guide="profile-remove"
               onClick={() => setConfirm(true)}
               className="shrink-0 text-[length:var(--tri-size-xs)] lowercase hover:underline"
               style={{ color: MUTED }}

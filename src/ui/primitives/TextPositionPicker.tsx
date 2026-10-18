@@ -85,6 +85,7 @@ export function TextPositionPicker({
       </div>
       <button
         type="button"
+        data-guide="themes-position-more"
         aria-expanded={expanded}
         aria-controls={moreId}
         onClick={() => setExpanded((open) => !open)}
@@ -111,6 +112,7 @@ function PositionCardItem({ option, isSelected, disabled, onClick }: PositionCar
     <button
       ref={ref}
       type="button"
+      data-guide={`themes-position-${option.id}`}
       aria-label={option.label}
       aria-pressed={isSelected}
       aria-disabled={disabled || undefined}

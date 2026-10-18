@@ -1,0 +1,217 @@
+.hero-intro {
+  --hero-reveal-green: var(--site-green);
+  --hero-reveal-yellow: var(--site-yellow);
+  --hero-title-stagger: 120ms;
+  --hero-copy-delay: 120ms;
+  --hero-copy-stagger: 160ms;
+  --hero-copy-duration: 450ms;
+  --hero-copy-last-line: 2;
+  --hero-copy-end: calc(var(--hero-copy-delay) + var(--hero-copy-last-line) * var(--hero-copy-stagger) + var(--hero-copy-duration));
+}
+
+/* Release the headline and measured lines together, with only a short lead. */
+.hero-intro:not([data-intro-ready='true']) .hero-reveal-word,
+.hero-intro:not([data-intro-ready='true']) .hero-reveal-word::before,
+.hero-intro:not([data-intro-ready='true']) .hero-reveal-word::after,
+.hero-intro:not([data-intro-ready='true']) .hero-copy-word-content,
+.hero-landing-page .hero-intro:not([data-intro-ready='true']) .hero-action.hero-animated-action,
+.hero-intro:not([data-intro-ready='true']) .hero-animated-action::before,
+.hero-intro:not([data-intro-ready='true']) .hero-animated-action::after,
+.hero-intro:not([data-intro-ready='true']) .hero-action-content,
+.hero-intro:not([data-intro-ready='true']) .hero-action-intro-label {
+  animation-play-state: paused;
+}
+
+/* Individual masks keep the reveal aligned when the text wraps at any width. */
+.hero-word-clip {
+  display: inline-block;
+  clip-path: inset(0 -50%);
+  vertical-align: top;
+  padding-block: .12em;
+  margin-block: -.12em;
+}
+
+.hero-reveal-word {
+  position: relative;
+  display: inline-block;
+  animation: hero-word-enter 700ms var(--ns-ease, cubic-bezier(.23, 1, .32, 1)) both;
+  animation-delay: calc(var(--word-index) * var(--hero-title-stagger));
+}
+
+.hero-reveal-title .hero-reveal-word::before,
+.hero-reveal-title .hero-reveal-word::after {
+  content: attr(data-word);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation-duration: 900ms;
+  animation-timing-function: ease;
+  /* Match the entrance order: Bringing settles first, Church. last. */
+  animation-delay: calc(var(--word-index) * var(--hero-title-stagger));
+  animation-fill-mode: both;
+}
+
+.hero-reveal-title .hero-reveal-word::before {
+  color: var(--hero-reveal-green);
+  animation-name: hero-green-pass;
+}
+
+.hero-reveal-title .hero-reveal-word::after {
+  color: var(--hero-reveal-yellow);
+  animation-name: hero-yellow-pass;
+}
+
+/* Words on the same responsive line share one rise-and-focus animation. */
+.hero-copy-word {
+  display: inline-block;
+  vertical-align: top;
+  clip-path: inset(0 -50%);
+  padding-block: .12em;
+  margin-block: -.12em;
+}
+
+.hero-copy-word-content {
+  display: inline-block;
+  opacity: 0;
+}
+
+.hero-subtext[data-lines-ready='true'] .hero-copy-word-content {
+  animation: hero-copy-focus var(--hero-copy-duration) var(--ns-ease, cubic-bezier(.23, 1, .32, 1)) both;
+  animation-delay: calc(var(--hero-copy-delay) + var(--line-index) * var(--hero-copy-stagger));
+}
+
+.hero-landing-page .hero-intro .hero-action.hero-animated-action {
+  --action-delay: calc(450ms + var(--action-stagger));
+  --action-form-duration: 450ms;
+  --action-fill-delay: calc(var(--action-delay) + var(--action-form-duration));
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  animation: hero-action-enter var(--action-form-duration) var(--ns-ease, cubic-bezier(.23, 1, .32, 1)) var(--action-delay) both;
+}
+
+.hero-animated-action::before,
+.hero-animated-action::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.hero-animated-action::before {
+  background: var(--hero-action-fill);
+  animation: hero-fill-in 300ms ease var(--action-fill-delay) both;
+  transition: background-color 150ms ease;
+}
+
+.hero-animated-action::after {
+  border: 1px solid var(--home-ink);
+  animation: hero-outline-out 300ms ease var(--action-fill-delay) both;
+}
+
+.hero-intro .hero-action-primary { --hero-action-fill: var(--home-ink); }
+.hero-intro .hero-action-secondary { --hero-action-fill: var(--hero-secondary); }
+
+.hero-action-content,
+.hero-action-intro-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.hero-action-content {
+  animation: hero-fill-in 300ms ease var(--action-fill-delay) both;
+}
+
+.hero-action-intro-label {
+  position: absolute;
+  inset: 0;
+  color: var(--home-ink);
+  pointer-events: none;
+  animation: hero-outline-out 300ms ease var(--action-fill-delay) both;
+}
+
+@keyframes hero-word-enter {
+  /* Keep every word on its final baseline so the entrance does not bob. */
+  from { opacity: 0; transform: translateX(30%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes hero-copy-focus {
+  from { opacity: 0; filter: blur(3px); transform: translateY(50%); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes hero-green-pass {
+  0%, 20% { opacity: 1; }
+  55%, 100% { opacity: 0; }
+}
+
+@keyframes hero-yellow-pass {
+  0%, 15% { opacity: 0; }
+  35%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes hero-action-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes hero-fill-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hero-outline-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-intro .hero-action-primary:hover { --hero-action-fill: var(--hero-primary-hover); }
+  .hero-intro .hero-action-secondary:hover { --hero-action-fill: var(--hero-secondary-hover); }
+}
+
+/* Keyboard users can act immediately, even during the delayed entrance. */
+.hero-landing-page .hero-intro .hero-action.hero-animated-action:focus-visible,
+.hero-animated-action:focus-visible::before,
+.hero-animated-action:focus-visible .hero-action-content {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+.hero-animated-action:focus-visible::after,
+.hero-animated-action:focus-visible .hero-action-intro-label {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-reveal-word,
+  .hero-subtext[data-lines-ready='true'] .hero-copy-word-content,
+  .hero-landing-page .hero-intro .hero-action.hero-animated-action {
+    animation: hero-fill-in 160ms ease both;
+    transform: none;
+    filter: none;
+  }
+
+  .hero-reveal-title .hero-reveal-word::before,
+  .hero-reveal-title .hero-reveal-word::after,
+  .hero-animated-action::after,
+  .hero-action-intro-label {
+    animation: none;
+    opacity: 0;
+  }
+
+  .hero-animated-action::before,
+  .hero-action-content {
+    animation: none;
+    opacity: 1;
+  }
+}

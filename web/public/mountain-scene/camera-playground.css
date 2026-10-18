@@ -1,0 +1,30 @@
+#camera-playground-toggle { font-size: 12px; background: var(--surface); }
+#camera-playground-toggle[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+#camera-playground { position: fixed; z-index: 2; top: var(--preview-top, 104px); right: max(24px, env(safe-area-inset-right)); width: 320px; max-height: calc(100svh - var(--preview-top, 104px) - 24px); overflow-y: auto; overscroll-behavior: contain; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 36px #00000012; scrollbar-width: thin; }
+.playground-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.playground-heading h2 { font-size: 14px; font-weight: 500; margin: 0; }
+.playground-heading > span { color: var(--accent); font-size: 9px; border: 1px solid var(--border); border-radius: 4px; padding: 5px 6px; white-space: nowrap; }
+#camera-playground h3 { font-weight: 500; font-size: 12px; margin: 0 0 14px; }
+#camera-playground .playground-intro { margin: 10px 0 0; }
+.playground-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+#camera-playground button { font-size: 11px; padding: 8px 10px; min-height: 44px; user-select: none; -webkit-user-select: none; }
+#camera-playground button:active { background: var(--subtle); }
+#camera-playground input[type="range"] { margin: 4px 0 14px; }
+#camera-playground output { font-variant-numeric: tabular-nums; }
+#camera-playground .lighting-help { margin: -4px 0 16px; }
+.playground-reset { width: 100%; }
+.playground-actions { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--border); }
+#camera-framing-copy { width: 100%; border-color: var(--accent); color: var(--accent); }
+#camera-playground-feedback { display: block; font-size: 10px; line-height: 1.5; margin-top: 8px; }
+.camera-export { margin-top: 6px; }
+.camera-export > summary { font-size: 11px; padding: 12px 0; min-height: 44px; color: var(--muted); }
+#camera-framing-json { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--subtle); color: var(--ink); font-family: ui-monospace, monospace; font-size: 10px; line-height: 1.5; resize: vertical; }
+@media (min-width: 901px) {
+  body[data-device-preview][data-camera-panel="open"]:not([data-device-preview="window"]) #preview-stage { right: 368px; }
+}
+@media (max-width: 900px) {
+  #camera-playground { top: auto; bottom: max(18px, env(safe-area-inset-bottom)); right: max(18px, env(safe-area-inset-right)); width: min(360px, calc(100vw - 36px)); max-height: min(52svh, calc(100svh - var(--preview-top, 104px) - 36px)); }
+}
+@media (pointer: coarse) {
+  #camera-framing-json { font-size: 16px; }
+}

@@ -101,3 +101,24 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## NDI®
+
+Sender mode and network sound use the NDI® SDK runtime library, shipped inside
+the app with the `grandi` package (`libndi.dylib` on macOS,
+`Processing.NDI.Lib.x64.dll` on Windows).
+
+NDI® is a registered trademark of Vizrt NDI AB. Copyright (C) 2023-2026 Vizrt
+NDI AB. All rights reserved. The NDI SDK licence is at
+http://ndi.link/ndisdk_license, and more about NDI at https://ndi.video. The
+NDI library's own third-party notices ship beside it as `libndi_licenses.txt`.
+
+## grandi
+
+Node.js bindings for NDI, used to send and receive sound.
+
+- Source: https://github.com/tux-tn/grandi
+- License: Apache License 2.0
+
+Copyright (c) 2026 Grandi contributors. Portions Copyright (c) 2018 Streampunk
+Media Ltd.

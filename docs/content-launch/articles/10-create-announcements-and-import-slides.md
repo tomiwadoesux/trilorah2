@@ -1,61 +1,59 @@
 ---
-title: "Create an announcement slide or bring in a prepared presentation"
+title: "Make an announcement slide or import a presentation"
 slug: "create-announcements-and-import-slides"
 audience: "Volunteers preparing welcome screens, announcements, and sermon slides"
 question: "When should I use Quick slide, and how do I import an existing deck?"
 proposed_publication_date: "2026-05-12"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; import-conversion walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [slides.create-quick-slide, slides.import-deck, output.publish-preview, run.queue-content-note]
 ---
 
-# Create an announcement slide or bring in a prepared presentation
+# Make an announcement slide or import a presentation
 
-A short welcome message and a finished sermon deck need different preparation tools. Trilorah's **Quick slide** is for a simple page of text. **Import slides** brings a presentation prepared elsewhere into the Slides library.
+“Lunch in the hall after the service” can be one slide. The speaker's presentation may need twenty. Trilorah has a route for each.
 
-Choose the path that matches the material you have, then inspect the result before it reaches the room.
+Use **Quick slide** for a welcome, announcement or short message. Use **Import slides** for a presentation someone has already made.
 
-## Make a simple announcement with Quick slide
+## Put the announcement on one slide
 
-Open **Slides** and choose **Quick slide**. Enter a title, an optional subtitle, and the body text the audience needs.
+Open **Slides**, then choose **Quick slide**. Add a title, an optional subtitle and any points the audience needs.
 
-For example:
+Here is a complete example:
 
-- Title: Community lunch
-- Subtitle: Sunday, after the service
-- Body: Join us in the hall. Everyone is welcome.
+| Field | Example |
+|---|---|
+| Title | Community lunch |
+| Subtitle | Sunday, after the service |
+| Points | Join us in the hall. Everyone is welcome. |
 
-That is enough information for a useful slide. Details that people cannot read in the available time belong in another communication channel or a shorter follow-up slide.
+Choose **create slide** to add it to the library. Select it to inspect the result in preview.
 
-Review the text and choose **create slide**. The result joins the library as a one-page slide. When editing a supported single-page slide, use the editor's save action to keep the changes.
+Check the date, place and action. If people need to register, tell them where. If the slide is becoming a paragraph, shorten it or split the information. Nobody should have to finish reading while the next announcement starts.
 
-Check spelling, date, location, and the one action you want people to take. Those details matter more than adding another line of decoration.
+You can edit a supported single-page quick slide and keep the changes with **save slide**.
 
-## Import a presentation that already exists
+## Bring in the speaker's deck
 
-If the speaker has prepared a deck, use **Import slides** and select the presentation file. The current import path supports PPTX, PPT, and ODP presentations.
+In the desktop app, choose **Import slides** and select a PPTX, PPT or ODP file. Wait for the import to finish, then select the deck to preview it.
 
-Wait for conversion to finish. If an import error appears, read it and resolve the file problem before treating the deck as ready.
+Trilorah converts the presentation into slide images. Check the result even when the file looked perfect on the speaker's laptop. Fonts, diagrams and objects near the edges deserve particular attention.
 
-The imported presentation is rendered into slide images. Do not assume the original presentation's animations, interactive objects, or transitions will behave as they did in the authoring application.
+Animations, interactive objects and the original deck's transitions do not carry over as live presentation effects. If a point needs to appear one line at a time, prepare those reveals as separate static slides in the original file before importing.
 
-If a reveal animation carries the meaning of a sermon slide, check the rendered result carefully. It may be better to prepare separate static slides in the original deck and import that version.
+If conversion fails, follow the error message. Presentation import needs LibreOffice and Poppler on the computer; the app reports when it cannot start either. Have the person who manages the church computer install or repair the named dependency, then retry.
 
-## Review every page
+## Check every slide
 
-Open the presentation and move through the actual rendered pages. A correct first thumbnail does not confirm that every page imported as intended.
+Move through all the rendered pages. The first thumbnail is not a review of the other nineteen.
 
-Check long titles, symbols, diagrams, and text close to the edges. Check any slide whose layout depends on a particular font. Then preview the pages using the theme and output conditions you will present with.
+For imported or multipage presentations, Trilorah's edit control changes the library name. To change slide content, update the original presentation and import the revised file.
 
-Imported and multipage decks use name-only editing in the current Trilorah interface. To change their slide content, edit the original presentation and import it again. Quick slide is not a replacement editor for every presentation format.
+During rehearsal, preview the important pages and send them to the actual display. Check text, images and the order in which the pages appear.
 
-## Put the slide in the service
+## Leave a clear cue for the operator
 
-Queue supported slide content in the appropriate run segment so the operator can find it at the right moment. Use a note for a timing cue such as “Show this after the host announces lunch.”
+Put the prepared slide material in the right service segment and add a note such as “Show after the host announces lunch.” The note belongs to the operator; the announcement belongs on screen.
 
-Remember that the note and the announcement slide have different audiences. The note instructs the operator; the slide is what the congregation will read.
-
-Stage the intended slide in preview. Use the explicit live action when it is time to show it, and check the real display during rehearsal.
-
-If you are preparing on one computer and presenting on another, finish with [the service-file handoff check](11-save-and-transfer-a-service.md). For planning the sequence, follow [the order-of-service guide](06-build-an-order-of-service.md).
+When it is time, check preview and choose **go live**. If another computer will present the service, use [the service-file handoff guide](11-save-and-transfer-a-service.md) to check the slides there too.

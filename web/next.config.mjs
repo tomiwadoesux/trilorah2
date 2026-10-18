@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Let simultaneous local previews keep independent Next.js build caches.
+  distDir: process.env.TRILORAH_NEXT_DIST_DIR || '.next',
+  devIndicators: process.env.TRILORAH_NEXT_DIST_DIR ? false : undefined,
   experimental: {
     externalDir: true, // allow `import "@trilorah/shared"` from sibling folder
   },

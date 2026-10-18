@@ -66,11 +66,11 @@ export function DashboardBento({
         <BentoCell><PreachersTile className="dashboard-bento__tile dashboard-bento__preachers" /></BentoCell>
         <BentoCell><Panel empty title="appearance" className="dashboard-bento__tile dashboard-bento__appearance">
           <EmptyMark w={175} h={160} plain art={<AppearancePaletteArt />} line="make it feel like your church"
-            below={<Button label="change appearance" onClick={() => onOpenSettings?.('appearance')} />} />
+            below={<Button guideId="dashboard-appearance-open" label="change appearance" onClick={() => onOpenSettings?.('appearance')} />} />
         </Panel></BentoCell>
         <BentoCell><Panel empty title="language" className="dashboard-bento__tile dashboard-bento__language">
           <EmptyMark w={175} h={160} plain art={<LanguageLettersArt />} line="the language of your service"
-            below={<Button label="choose language" onClick={() => onOpenSettings?.('language')} />} />
+            below={<Button guideId="dashboard-language-open" label="choose language" onClick={() => onOpenSettings?.('language')} />} />
         </Panel></BentoCell>
         <BentoCell><TrustTrendTile onOpen={onViewProfile} className="dashboard-bento__tile dashboard-bento__trust" /></BentoCell>
       </BentoGrid>

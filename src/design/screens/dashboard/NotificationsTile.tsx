@@ -24,6 +24,7 @@ export function NotificationsTile({
   const [showLog, setShowLog] = useState(false);
   return (
     <Expandable
+      guideArea="notifications"
       className={className}
       title="Notifications"
       glyph={false}
@@ -48,8 +49,8 @@ export function NotificationsTile({
       )}
     >
       <div className="tri-notification-tabs">
-        <button type="button" aria-pressed={!showLog} onClick={() => setShowLog(false)}>notifications</button>
-        <button type="button" aria-pressed={showLog} onClick={() => setShowLog(true)}>service log</button>
+        <button type="button" data-guide="notifications-tab-active" aria-pressed={!showLog} onClick={() => setShowLog(false)}>notifications</button>
+        <button type="button" data-guide="notifications-tab-log" aria-pressed={showLog} onClick={() => setShowLog(true)}>service log</button>
       </div>
       {showLog ? <LogHistory entries={entries} onAction={onAction} className="h-full" /> : <div className="overflow-y-auto"><NotificationCards entries={[...notifications].sort((a, b) => b.updatedAt - a.updatedAt)} />{!notifications.length && <p className="tri-notification-empty">Important service events will stay here.</p>}</div>}
     </Expandable>

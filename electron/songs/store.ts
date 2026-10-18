@@ -1,3 +1,5 @@
+import { capitalizeScriptureNames } from '../../shared/scriptureNames'
+
 /**
  * The songs library.
  *
@@ -426,7 +428,14 @@ function cleanSections(sections: readonly SongSection[]): SongSection[] {
 }
 
 function cloneSong(s: Song): Song {
-  const copy: Song = { ...s, sections: s.sections.map((x) => ({ label: x.label, lines: [...x.lines] })) }
+  const copy: Song = {
+    ...s,
+    title: capitalizeScriptureNames(s.title),
+    sections: s.sections.map((x) => ({
+      label: capitalizeScriptureNames(x.label),
+      lines: x.lines.length ? capitalizeScriptureNames(x.lines.join('\n')).split('\n') : [],
+    })),
+  }
   if (s.originalSections) copy.originalSections = cleanSections(s.originalSections)
   if (s.authors) copy.authors = [...s.authors]
   return copy

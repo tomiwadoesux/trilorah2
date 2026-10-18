@@ -1,0 +1,11 @@
+.library-toolbar-search {
+  flex: 0 0 30%;
+  width: 30%;
+  min-width: 0;
+}
+.library-toolbar > [data-guide='media-import'] { flex: 1; }
+.library-toolbar .song-search-modes { height: var(--tri-field-h); }
+@media (max-width: 760px) {
+  .library-toolbar { flex-wrap: wrap; }
+  .library-toolbar-search { flex-basis: 100%; width: 100%; }
+}

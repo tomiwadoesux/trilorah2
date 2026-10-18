@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 // @ts-ignore -- pdfkit ships no type declarations (@types/pdfkit not installed)
 import PDFDocument from 'pdfkit'
 import { getSetting } from '../data/settings'
+import { formatNoteText } from '../../shared/noteDisplay'
 
 export interface GeneratedSermonNotes {
   title: string
@@ -94,7 +95,7 @@ JSON Notes:`
     if (!notes.applications) notes.applications = []
     if (!notes.quotes) notes.quotes = []
     if (!notes.summary) notes.summary = ''
-    return notes
+    return formatNoteText(notes)
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(
@@ -106,6 +107,7 @@ JSON Notes:`
 }
 
 export async function exportSermonNotesPdf(notes: GeneratedSermonNotes, outputPath: string): Promise<void> {
+  notes = formatNoteText(notes)
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -188,6 +190,7 @@ export async function exportSermonNotesPdf(notes: GeneratedSermonNotes, outputPa
 }
 
 export function exportSermonNotesMarkdown(notes: GeneratedSermonNotes, outputPath: string) {
+  notes = formatNoteText(notes)
   const lines: string[] = []
   lines.push(`# ${notes.title || 'Sermon Notes'}`)
   if (notes.theme) {

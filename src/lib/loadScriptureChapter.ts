@@ -3,7 +3,7 @@ export type ScriptureChapterLoad =
   | { status: 'error' | 'no-api'; data: []; error: string };
 
 /** A stalled bridge must offer a way out just like an explicit database error. */
-export async function loadScriptureChapter(
+async function fetchScriptureChapter(
   api: Pick<WindowApi, 'getChapter'> | undefined,
   book: number,
   chapter: number,
@@ -30,4 +30,21 @@ export async function loadScriptureChapter(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+const chapterCaches = new WeakMap<object, Map<string, Promise<ScriptureChapterLoad>>>();
+export function loadScriptureChapter(api: Pick<WindowApi, 'getChapter'> | undefined, book: number, chapter: number, version: string): Promise<ScriptureChapterLoad> {
+  if (!api) return fetchScriptureChapter(api, book, chapter, version);
+  let cache = chapterCaches.get(api);
+  if (!cache) { cache = new Map(); chapterCaches.set(api, cache); }
+  const key = `${version}:${book}:${chapter}`;
+  const existing = cache.get(key);
+  if (existing) return existing;
+  const request = fetchScriptureChapter(api, book, chapter, version).then(result => {
+    if (result.status !== 'idle') cache!.delete(key);
+    return result;
+  });
+  cache.set(key, request);
+  if (cache.size > 64) cache.delete(cache.keys().next().value!);
+  return request;
 }

@@ -31,9 +31,16 @@ export class HeardWindow {
     const partial = this.partial && now - this.partial.at <= 45_000 ? this.partial : null
     const latest = partial ?? finals.at(-1)
     if (!latest) return ''
-    const previous = partial ? finals.at(-1) : finals.at(-2)
-    const carry = latest.text.split(/\s+/).length < 8 && previous && latest.at - previous.at <= 6_000
-    return (carry ? `${previous.text} ${latest.text}` : latest.text).split(/\s+/).slice(-60).join(' ')
+    // Keep the surrounding sentence when ASR finalizes it in small fragments.
+    const context = partial ? [...finals, partial] : finals
+    const joined = [latest.text]
+    let words = latest.text.split(/\s+/).length
+    for (let i = context.length - 2; i >= 0 && words < 60; i--) {
+      if (context[i + 1].at - context[i].at > 6_000 || latest.at - context[i].at > 30_000) break
+      joined.unshift(context[i].text)
+      words += context[i].text.split(/\s+/).length
+    }
+    return joined.join(' ').split(/\s+/).slice(-80).join(' ')
   }
 
   reset(): void { this.finals = []; this.partial = null }

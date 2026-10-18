@@ -4,7 +4,7 @@
   align-items: center;
   min-width: 0;
   gap: 10px;
-  margin-left: 12px;
+  margin-left: var(--tri-gap);
   margin-right: 8px;
 }
 .tri-live-header .tri-header-ambient .tri-header-orb { width: 76px; height: 64px; align-items: center; justify-content: center; }
@@ -14,16 +14,10 @@
 }
 .tri-header-ambient .tri-header-orb[data-speaking] .tri-header-orb-face,
 .tri-header-ambient .tri-header-orb[data-expanded] .tri-header-orb-face { transform: scale(1.12); }
-.tri-orb-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: 280px; min-width: 280px; flex: 0 0 280px; }
-.tri-orb-actions-empty {
-  display: none;
-  padding: 0 6px;
-  color: var(--tri-ink);
-  opacity: .28;
-  font-size: var(--tri-size-sm);
-  white-space: nowrap;
-}
-.tri-orb-actions:not(:has(.tri-orb-action)) .tri-orb-actions-empty { display: inline; }
+.tri-orb-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: 6px; width: 280px; min-width: 280px; flex: 0 0 280px; }
+.tri-orb-action-slot { min-width: 0; height: var(--tri-field-h); }
+.tri-orb-action-slot > .tri-orb-action { width: 100%; }
+.tri-orb-action-placeholder:disabled { opacity: .28; cursor: default; }
 .tri-orb-action {
   display: inline-flex;
   align-items: center;
@@ -49,19 +43,22 @@
 .tri-orb-action[data-attention] { border-color: rgb(210 180 120 / .22); color: #dac59c; }
 .tri-orb-action-info { flex: none; opacity: .6; }
 .tri-orb-action[data-leaving] { transform: scale(.9); opacity: 0; pointer-events: none; }
-@media (hover: hover) and (pointer: fine) { .tri-orb-action:hover { background: rgb(229 243 242 / .1); } }
+@media (hover: hover) and (pointer: fine) { .tri-orb-action:hover:not(:disabled) { background: rgb(229 243 242 / .1); } }
 @media (prefers-reduced-motion: reduce) { .tri-orb-action[data-leaving] { transform: none; } }
 .tri-orb-action:focus-visible { outline: 2px solid var(--tri-accent-yellow); outline-offset: 2px; }
-.tri-orb-action:active { background: rgb(229 243 242 / .14); }
+.tri-orb-action:active:not(:disabled) { background: rgb(229 243 242 / .14); }
 .tri-orb-status-hint {
   display: flex;
   align-items: center;
   position: fixed;
   z-index: 150;
   width: max-content;
-  max-width: min(340px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  height: var(--orb-hint-height, 38px);
   min-height: var(--orb-hint-height, 38px);
-  padding: 6px 12px;
+  max-height: var(--orb-hint-height, 38px);
+  padding: 0 12px;
   border: 1px solid rgb(229 243 242 / .15);
   border-radius: 6px;
   background: #141c1d;
@@ -70,8 +67,9 @@
   font-family: var(--tri-font, sans-serif);
   font-size: 12px;
   line-height: 1.35;
-  pointer-events: none;
+  pointer-events: auto;
 }
+.tri-orb-status-hint > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tri-orb-unread {
   position: absolute; right: 2px; top: 3px; width: 6px; height: 6px;
   border-radius: 50%; background: var(--tri-accent-yellow, #e4d87a); pointer-events: none;
@@ -112,8 +110,6 @@
 .tri-orb-history-message p { margin: 0; font-size: 12px; line-height: 1.5; }
 .tri-orb-history-message time { display: block; margin-top: 6px; font-size: 10px; color: rgb(229 243 242 / .4); }
 @media (max-width: 1100px) {
-  .tri-orb-actions { width: 144px; min-width: 144px; flex-basis: 144px; }
-  .tri-header-ambient { margin-left: 6px; }
+  .tri-orb-actions { width: 224px; min-width: 224px; flex-basis: 224px; }
   .tri-orb-action { padding: 0 8px; gap: 6px; }
-  .tri-orb-action:nth-child(n+2) { display: none; }
 }

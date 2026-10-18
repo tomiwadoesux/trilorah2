@@ -1,0 +1,5332 @@
+{
+  "groups": [
+    "Foundations",
+    "Controls",
+    "Content & feedback",
+    "Service & scripture",
+    "Dashboard",
+    "Songs & media",
+    "Connections",
+    "Settings",
+    "Companion & web",
+    "Screens",
+    "Illustrations",
+    "Legacy UI"
+  ],
+  "studies": [
+    {
+      "id": "sheet:F-02",
+      "title": "Type scale",
+      "group": "Foundations",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:F-02"
+    },
+    {
+      "id": "sheet:F-05",
+      "title": "Surface tones",
+      "group": "Foundations",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:F-05"
+    },
+    {
+      "id": "sheet:C-01",
+      "title": "Button",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-01"
+    },
+    {
+      "id": "sheet:C-04",
+      "title": "Segmented control",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-04"
+    },
+    {
+      "id": "sheet:C-05",
+      "title": "Display font",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-05"
+    },
+    {
+      "id": "sheet:C-06",
+      "title": "Text position",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-06"
+    },
+    {
+      "id": "sheet:C-07",
+      "title": "Text effect select",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-07"
+    },
+    {
+      "id": "sheet:C-08",
+      "title": "Scripture reference input",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-08"
+    },
+    {
+      "id": "sheet:C-20",
+      "title": "Slider",
+      "group": "Controls",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-20"
+    },
+    {
+      "id": "sheet:C-65",
+      "title": "Thinking orb",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-65"
+    },
+    {
+      "id": "sheet:C-65b",
+      "title": "Thinking orb 2",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:C-65b"
+    },
+    {
+      "id": "sheet:D-111",
+      "title": "Dashboard row",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:D-111"
+    },
+    {
+      "id": "sheet:D-27",
+      "title": "Live transcript",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:D-27"
+    },
+    {
+      "id": "sheet:D-30",
+      "title": "Empty states",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:D-30"
+    },
+    {
+      "id": "sheet:M-01",
+      "title": "Motion library",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:M-01"
+    },
+    {
+      "id": "sheet:S-02d+",
+      "title": "Multiple detections",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:S-02d+"
+    },
+    {
+      "id": "sheet:F-01",
+      "title": "Colour tokens",
+      "group": "Foundations",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:F-01"
+    },
+    {
+      "id": "sheet:F-03",
+      "title": "Type scale · baseline",
+      "group": "Foundations",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:F-03"
+    },
+    {
+      "id": "sheet:F-04",
+      "title": "Spacing & radius",
+      "group": "Foundations",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:F-04"
+    },
+    {
+      "id": "sheet:F-08",
+      "title": "Motion",
+      "group": "Foundations",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:F-08"
+    },
+    {
+      "id": "sheet:~C-01",
+      "title": "Button · legacy",
+      "group": "Legacy UI",
+      "description": "The original UI implementation, retained for comparison.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:~C-01"
+    },
+    {
+      "id": "sheet:~C-19",
+      "title": "Toggle, Field, Empty · legacy",
+      "group": "Legacy UI",
+      "description": "The original UI implementation, retained for comparison.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:~C-19"
+    },
+    {
+      "id": "sheet:~C-27",
+      "title": "Panel · legacy",
+      "group": "Legacy UI",
+      "description": "The original UI implementation, retained for comparison.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:~C-27"
+    },
+    {
+      "id": "sheet:~C-43",
+      "title": "Pill / Badge · legacy",
+      "group": "Legacy UI",
+      "description": "The original UI implementation, retained for comparison.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:~C-43"
+    },
+    {
+      "id": "sheet:~D-03",
+      "title": "Meters · legacy",
+      "group": "Legacy UI",
+      "description": "The original UI implementation, retained for comparison.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:~D-03"
+    },
+    {
+      "id": "sheet:O-01",
+      "title": "Scripture slide",
+      "group": "Content & feedback",
+      "description": "The app’s existing component study, rendered from its source with example data.",
+      "file": "src/design/registry.tsx",
+      "kind": "Component study",
+      "preview": "sheet:O-01"
+    },
+    {
+      "id": "extra:search",
+      "preview": "extra:search",
+      "title": "Search field",
+      "group": "Controls",
+      "description": "Type, clear, submit, and compare disabled states.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/primitives/SearchField.tsx"
+    },
+    {
+      "id": "extra:action-menu",
+      "preview": "extra:action-menu",
+      "title": "Action menu",
+      "group": "Controls",
+      "description": "Grouped actions and nested menus. All actions stay in the example.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/primitives/ActionMenu.tsx"
+    },
+    {
+      "id": "extra:arrange",
+      "preview": "extra:arrange",
+      "title": "Arrangement list",
+      "group": "Service & scripture",
+      "description": "Choose service segments and rearrange their order.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/primitives/ArrangeList.tsx"
+    },
+    {
+      "id": "extra:slide-thumb",
+      "preview": "extra:slide-thumb",
+      "title": "Slide thumbnails",
+      "group": "Songs & media",
+      "description": "Resting, selected, and live cards with real hover actions.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/primitives/SlideThumb.tsx"
+    },
+    {
+      "id": "extra:add-card",
+      "preview": "extra:add-card",
+      "title": "Add card",
+      "group": "Controls",
+      "description": "The empty slot that starts the next piece of a service.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/primitives/AddCard.tsx"
+    },
+    {
+      "id": "extra:transition",
+      "preview": "extra:transition",
+      "title": "Text transitions",
+      "group": "Content & feedback",
+      "description": "The actual picker, with repeatable animation previews.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/primitives/TextTransitionPicker.tsx"
+    },
+    {
+      "id": "extra:panels",
+      "preview": "extra:panels",
+      "title": "Panels & empty states",
+      "group": "Content & feedback",
+      "description": "Panel headers, scripture, live, empty, and unavailable states.",
+      "kind": "Interactive specimen",
+      "file": "src/components/ui.tsx"
+    },
+    {
+      "id": "extra:status",
+      "preview": "extra:status",
+      "title": "Status & audio",
+      "group": "Content & feedback",
+      "description": "Status dots, pills, meters, and audio-level feedback.",
+      "kind": "Interactive specimen",
+      "file": "src/design/screens/parts.tsx"
+    },
+    {
+      "id": "extra:icons",
+      "preview": "extra:icons",
+      "title": "Icons · line & duo",
+      "group": "Foundations",
+      "description": "The app’s Nubo icon wrappers. Switch to the selected duo treatment.",
+      "kind": "Interactive specimen",
+      "file": "src/ui/icons.tsx"
+    },
+    {
+      "id": "screen:S-01",
+      "preview": "screen:S-01",
+      "title": "App shell",
+      "description": "The app frame, navigation, and connection states.",
+      "kind": "Screen study",
+      "group": "Screens",
+      "file": "src/design/screens/registry.tsx"
+    },
+    {
+      "id": "screen:S-02",
+      "preview": "screen:S-02",
+      "title": "Live workspace",
+      "description": "The service workspace with fourteen scenario fixtures. Device and cloud actions need the desktop app.",
+      "kind": "Screen study",
+      "group": "Screens",
+      "file": "src/design/screens/registry.tsx"
+    },
+    {
+      "id": "screen:S-03",
+      "preview": "screen:S-03",
+      "title": "Dashboard arrangement",
+      "description": "An existing wireframe for exploring the dashboard layout; boxes are intentional.",
+      "kind": "Wireframe",
+      "group": "Screens",
+      "file": "src/design/screens/registry.tsx"
+    },
+    {
+      "id": "screen:S-10",
+      "preview": "screen:S-10",
+      "title": "Settings",
+      "description": "The settings pages with example engine state.",
+      "kind": "Screen study",
+      "group": "Screens",
+      "file": "src/design/screens/registry.tsx"
+    },
+    {
+      "id": "screen:S-18",
+      "preview": "screen:S-18",
+      "title": "Popup dimensions",
+      "description": "Empty frames at the app’s popup sizes. These are layout studies, not complete modal previews.",
+      "kind": "Wireframe",
+      "group": "Screens",
+      "file": "src/design/screens/registry.tsx"
+    },
+    {
+      "id": "web:notes",
+      "preview": "web:notes",
+      "title": "Companion notes",
+      "description": "Populated and empty sermon notes, using the companion’s actual component.",
+      "kind": "Companion specimen",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/NotesTab.tsx"
+    },
+    {
+      "id": "web:reading",
+      "preview": "web:reading",
+      "title": "Reading options",
+      "description": "Text size, colour, and background preferences in a phone-sized canvas.",
+      "kind": "Companion specimen",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/ReadingOptions.tsx"
+    },
+    {
+      "id": "web:badges",
+      "preview": "web:badges",
+      "title": "Service badges",
+      "description": "The companion’s service-segment labels.",
+      "kind": "Companion specimen",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/SegmentBadge.tsx"
+    }
+  ],
+  "components": [
+    {
+      "id": "source:46b46a617b3e",
+      "title": "App",
+      "group": "Screens",
+      "file": "src/App.tsx",
+      "line": 156,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:7a4faa0d03ba",
+      "title": "BackgroundVideo",
+      "group": "Content & feedback",
+      "file": "src/components/BackgroundVideo.tsx",
+      "line": 8,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:781256271299",
+      "title": "MicPicker",
+      "group": "Connections",
+      "file": "src/components/MicPicker.tsx",
+      "line": 34,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:dea34f3483ee",
+      "title": "MobileConnectionLink",
+      "group": "Connections",
+      "file": "src/components/MobileConnectionLink.tsx",
+      "line": 6,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:afe0ca7b988a",
+      "title": "MobilePairingSteps",
+      "group": "Connections",
+      "file": "src/components/MobileConnectionLink.tsx",
+      "line": 22,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:977dfed64331",
+      "title": "MobileMenu",
+      "group": "Connections",
+      "file": "src/components/MobileMenu.tsx",
+      "line": 19,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:87a07c2ff0e7",
+      "title": "MobileRemoteIntro",
+      "group": "Connections",
+      "file": "src/components/MobileRemotePanel.tsx",
+      "line": 14,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8518be09b44d",
+      "title": "MobileRemotePanel",
+      "group": "Connections",
+      "file": "src/components/MobileRemotePanel.tsx",
+      "line": 29,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4da73afa3488",
+      "title": "MobileStreamPanel",
+      "group": "Connections",
+      "file": "src/components/MobileStreamPanel.tsx",
+      "line": 10,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:1c971686a28e",
+      "title": "NotificationCenter",
+      "group": "Content & feedback",
+      "file": "src/components/NotificationCenter.tsx",
+      "line": 22,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a898ab075d6c",
+      "title": "NotificationEmptyState",
+      "group": "Content & feedback",
+      "file": "src/components/NotificationCenter.tsx",
+      "line": 126,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c0513359acbb",
+      "title": "NotificationCards",
+      "group": "Content & feedback",
+      "file": "src/components/NotificationCenter.tsx",
+      "line": 137,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b7112430c9fc",
+      "title": "OrbActions",
+      "group": "Content & feedback",
+      "file": "src/components/OrbActions.tsx",
+      "line": 8,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a6d3404808af",
+      "title": "OrbActionButton",
+      "group": "Content & feedback",
+      "file": "src/components/OrbActions.tsx",
+      "line": 47,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:a9ee843185e7",
+      "title": "OrbStatusHint",
+      "group": "Content & feedback",
+      "file": "src/components/OrbStatusHint.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d8ca778d2e8b",
+      "title": "PhoneAudioMark",
+      "group": "Illustrations",
+      "file": "src/components/PhoneAudioMark.tsx",
+      "line": 33,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:7765ab324e30",
+      "title": "StreamScreenPage",
+      "group": "Illustrations",
+      "file": "src/components/PhoneConnectionArt.tsx",
+      "line": 11,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0b8cc0c6dcc3",
+      "title": "RemoteCards",
+      "group": "Illustrations",
+      "file": "src/components/PhoneConnectionArt.tsx",
+      "line": 24,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:fc6ebf916210",
+      "title": "PhoneConnectionArt",
+      "group": "Illustrations",
+      "file": "src/components/PhoneConnectionArt.tsx",
+      "line": 44,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:bcf0ea640f70",
+      "title": "PhoneMicIntro",
+      "group": "Connections",
+      "file": "src/components/PhoneMicPanel.tsx",
+      "line": 11,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d5f1638b2f44",
+      "title": "PhoneMicPanel",
+      "group": "Connections",
+      "file": "src/components/PhoneMicPanel.tsx",
+      "line": 31,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2da445fa24db",
+      "title": "Triangle",
+      "group": "Content & feedback",
+      "file": "src/components/ProductGuide.tsx",
+      "line": 15,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:48ad88bca3a4",
+      "title": "ProductGuide",
+      "group": "Content & feedback",
+      "file": "src/components/ProductGuide.tsx",
+      "line": 17,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:df691bba39cc",
+      "title": "ScriptureSearch",
+      "group": "Service & scripture",
+      "file": "src/components/ScriptureSearch.tsx",
+      "line": 67,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:12cd7eb0754a",
+      "title": "Button",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 25,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:56a3fae6aa5d",
+      "title": "TextButton",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 55,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:0991556dfaf8",
+      "title": "Panel",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 75,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:02796381d879",
+      "title": "PanelHeader",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 97,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:1ec91959bf39",
+      "title": "SectionLabel",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 106,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:ad17b9400c74",
+      "title": "Pill",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 116,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:be953610725c",
+      "title": "LevelMeter",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 138,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:df8cf996aacb",
+      "title": "Waveform",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 162,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:db8ad5eae27c",
+      "title": "TrustBar",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 193,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cb1094c4073b",
+      "title": "Toggle",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 209,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c5a7ea548ce3",
+      "title": "Field",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 241,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:0bc0def455f8",
+      "title": "EmptyState",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 251,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:807ab842843f",
+      "title": "EngineNote",
+      "group": "Legacy UI",
+      "file": "src/components/ui.tsx",
+      "line": 256,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cb98ce6d0b94",
+      "title": "HoverGallery",
+      "group": "Illustrations",
+      "file": "src/design/orb/HoverGallery.tsx",
+      "line": 74,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cebc5a12b11e",
+      "title": "SvgOrbsPill",
+      "group": "Illustrations",
+      "file": "src/design/orb/SvgOrbsPill.tsx",
+      "line": 472,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b51dcc938d28",
+      "title": "ThinkingOrbsPill",
+      "group": "Illustrations",
+      "file": "src/design/orb/ThinkingOrbsPill.tsx",
+      "line": 1178,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:9a66e87d6f3e",
+      "title": "ThinkingOrbsGallery",
+      "group": "Illustrations",
+      "file": "src/design/orb/ThinkingOrbsPill.tsx",
+      "line": 1346,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4f6e42932b63",
+      "title": "StockOrb",
+      "group": "Illustrations",
+      "file": "src/design/orb/renderers.tsx",
+      "line": 161,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0facb2a173f0",
+      "title": "WorkerOrb",
+      "group": "Illustrations",
+      "file": "src/design/orb/renderers.tsx",
+      "line": 197,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:305885312d67",
+      "title": "DomOrb",
+      "group": "Illustrations",
+      "file": "src/design/orb/renderers.tsx",
+      "line": 259,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:2b28f4264a5f",
+      "title": "P5Orb",
+      "group": "Illustrations",
+      "file": "src/design/orb/renderers.tsx",
+      "line": 355,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:50ee1ad51334",
+      "title": "RendererBoundary",
+      "group": "Illustrations",
+      "file": "src/design/orb/renderers.tsx",
+      "line": 421,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:19a419854721",
+      "title": "AppShell",
+      "group": "Screens",
+      "file": "src/design/screens/AppShell.tsx",
+      "line": 46,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:72ffa22c53d8",
+      "title": "AppShellScreen",
+      "group": "Screens",
+      "file": "src/design/screens/AppShell.tsx",
+      "line": 114,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d268faeba9ab",
+      "title": "AppearancePaletteArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/AppearancePaletteArt.tsx",
+      "line": 3,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:5aab7a741444",
+      "title": "BibleBookmarkArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/BibleBookmarkArt.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:10edc226b83e",
+      "title": "KindPill",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 38,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:a316c903069e",
+      "title": "CatchCredit",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 53,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:152882b34cdb",
+      "title": "CatchCountdown",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 82,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:15477427d68f",
+      "title": "SongResults",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 177,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:5c50d78d9311",
+      "title": "Spotlight",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 237,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:7cd38eac29b6",
+      "title": "CatchRow",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 313,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:874d3a981951",
+      "title": "CatchesPane",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 417,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:161a7818e57b",
+      "title": "CatchPeek",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 470,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:38b3b5108ef2",
+      "title": "PeekCard",
+      "group": "Service & scripture",
+      "file": "src/design/screens/CatchesPane.tsx",
+      "line": 490,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:48bd82ba3f4b",
+      "title": "CompanionBoxesArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/CompanionBoxesArt.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:10ac7039d100",
+      "title": "Bar",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 38,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0507969bd164",
+      "title": "Bars",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 47,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:99054389d1fb",
+      "title": "Block",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 58,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:05e90ed795af",
+      "title": "Tag",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 73,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:91886dce9160",
+      "title": "Absorbed",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 89,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:68c344193fd3",
+      "title": "Tile",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 98,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:7560c59c5644",
+      "title": "Header",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 120,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:fb5fb11090dd",
+      "title": "Bento",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 175,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:948f4595c63a",
+      "title": "OpenCard",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 282,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8bda941c658e",
+      "title": "ProfilePopup",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 316,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0df8bbf81f50",
+      "title": "Operator",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 360,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0bbb4c93d79f",
+      "title": "DashboardProtoScreen",
+      "group": "Screens",
+      "file": "src/design/screens/DashboardProto.tsx",
+      "line": 409,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a45c224ec193",
+      "title": "DisplayConnectionArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/DisplayConnectionArt.tsx",
+      "line": 6,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2c3837c13235",
+      "title": "GlobeEmptyArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/GlobeEmptyArt.tsx",
+      "line": 51,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:9286dd5dbae2",
+      "title": "Art",
+      "group": "Screens",
+      "file": "src/design/screens/GradientLab.tsx",
+      "line": 21,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:dc39da4ccb7e",
+      "title": "GradientLab",
+      "group": "Screens",
+      "file": "src/design/screens/GradientLab.tsx",
+      "line": 59,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8910d4064ea8",
+      "title": "LanguageLettersArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/LanguageLettersArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2b25ec9a4292",
+      "title": "LibraryToolbar",
+      "group": "Screens",
+      "file": "src/design/screens/LibraryToolbar.tsx",
+      "line": 18,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:f432a8b348ea",
+      "title": "LibraryAction",
+      "group": "Screens",
+      "file": "src/design/screens/LibraryToolbar.tsx",
+      "line": 69,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8350b805bac3",
+      "title": "LibraryControlSizer",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 243,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:c71aef222f0c",
+      "title": "LibraryTabs",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 255,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3cf9a39dfa75",
+      "title": "ThemesEditor",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 595,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9c4d7377c12d",
+      "title": "FadeScroller",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 756,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:b08999867897",
+      "title": "ThemeControls",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 860,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:568253e988dc",
+      "title": "MediaBrowser",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 914,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3e8b7123be90",
+      "title": "MediaGrid",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 1130,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:2b4a610ecf35",
+      "title": "MediaCard",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 1148,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d1a9101623e6",
+      "title": "ReferenceParts",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 1398,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:361e800747cb",
+      "title": "ScripturesBrowser",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 1408,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:232cf98d8e4d",
+      "title": "SongsBrowser",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2156,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:5f3d0764550d",
+      "title": "SongGrid",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2392,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:da442d3e58cd",
+      "title": "SongSheet",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2724,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:47d814de296f",
+      "title": "SongSearchTile",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2837,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0b50599cf523",
+      "title": "CatchActions",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2849,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:650fe64653b7",
+      "title": "CatchesTranscript",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2864,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:70bfdbab1f59",
+      "title": "OrbPortrait",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2907,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:5e5d87d2554e",
+      "title": "StatusOrb",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 2915,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d645ce43a710",
+      "title": "ViewTabs",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3300,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:c111b195207c",
+      "title": "DigitalClockBento",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3512,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:2ee67cefbae0",
+      "title": "ServiceLogKeyframes",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3635,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:aaaee20a6d9c",
+      "title": "ListeningSign",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3669,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:ac1a9e9ab6ac",
+      "title": "SlidePager",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3816,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:1ff61abf69bc",
+      "title": "PreviewScreenPicker",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3889,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:518c6584adb5",
+      "title": "StageBox",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 3936,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8bbcd98329be",
+      "title": "Stage",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 4058,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:eb481aa17c97",
+      "title": "StageSizer",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 4651,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:e481b3f86c54",
+      "title": "LiveScreen",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 4672,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:3c70fad0ddbf",
+      "title": "RunDragBridge",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 4695,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9d65563602bb",
+      "title": "LiveBody",
+      "group": "Screens",
+      "file": "src/design/screens/Live.tsx",
+      "line": 4719,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:484b174bbf46",
+      "title": "LogHistory",
+      "group": "Service & scripture",
+      "file": "src/design/screens/LogHistory.tsx",
+      "line": 44,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:68f178d3bb78",
+      "title": "MediaFilmArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/MediaFilmArt.tsx",
+      "line": 28,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:733fda8f0fe3",
+      "title": "MediaSlideArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/MediaSlideArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:80d0d0926e65",
+      "title": "NotificationBellArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/NotificationBellArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:14cc4069576f",
+      "title": "OperatorRail",
+      "group": "Service & scripture",
+      "file": "src/design/screens/OperatorRail.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:e285272ef191",
+      "title": "PocketWatchArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/PocketWatchArt.tsx",
+      "line": 6,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cfccf9dbefc6",
+      "title": "Ground",
+      "group": "Screens",
+      "file": "src/design/screens/Popups.tsx",
+      "line": 83,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:72b4199fce6d",
+      "title": "Facts",
+      "group": "Screens",
+      "file": "src/design/screens/Popups.tsx",
+      "line": 94,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:54caca1b6fb5",
+      "title": "Frame",
+      "group": "Screens",
+      "file": "src/design/screens/Popups.tsx",
+      "line": 107,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d23e768b38c0",
+      "title": "Placed",
+      "group": "Screens",
+      "file": "src/design/screens/Popups.tsx",
+      "line": 141,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:c7721703e166",
+      "title": "PopupsScreen",
+      "group": "Screens",
+      "file": "src/design/screens/Popups.tsx",
+      "line": 156,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:628ed0278818",
+      "title": "PreacherLecternArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/PreacherLecternArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:7d027bc2f32a",
+      "title": "PreacherPortraitArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/PreacherPortraitArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:050f62827bdb",
+      "title": "PresentationEmptyArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/PresentationEmptyArt.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:451aaf2709de",
+      "title": "QrProjectionConfirm",
+      "group": "Screens",
+      "file": "src/design/screens/QrProjectionConfirm.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:9c6741b5b206",
+      "title": "RunningOrderArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/RunningOrderArt.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:748a5e5c5f2e",
+      "title": "ScriptureCatches",
+      "group": "Service & scripture",
+      "file": "src/design/screens/ScriptureCatches.tsx",
+      "line": 19,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:9a0aea36b83a",
+      "title": "ScriptureSearch",
+      "group": "Service & scripture",
+      "file": "src/design/screens/ScriptureCatches.tsx",
+      "line": 65,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b164f7b0a38e",
+      "title": "ScriptureFindOverlay",
+      "group": "Service & scripture",
+      "file": "src/design/screens/ScriptureCatches.tsx",
+      "line": 140,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:e78af9d98320",
+      "title": "ScriptureLibraryEmpty",
+      "group": "Service & scripture",
+      "file": "src/design/screens/ScriptureLibraryEmpty.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:55dd32a80fe3",
+      "title": "ScriptureQuoteArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/ScriptureQuoteArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c69fc2fdfd00",
+      "title": "ScriptureTravel",
+      "group": "Service & scripture",
+      "file": "src/design/screens/ScriptureTravel.tsx",
+      "line": 41,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b859d42d0983",
+      "title": "SermonOutlineArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/SermonOutlineArt.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:64949f25f793",
+      "title": "SermonStartControl",
+      "group": "Service & scripture",
+      "file": "src/design/screens/SermonStartControl.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:834dbb607e0d",
+      "title": "PageBody",
+      "group": "Settings",
+      "file": "src/design/screens/Settings.tsx",
+      "line": 242,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:a855424d1d50",
+      "title": "SettingsSurface",
+      "group": "Settings",
+      "file": "src/design/screens/Settings.tsx",
+      "line": 461,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d44ef903e778",
+      "title": "SettingsScreen",
+      "group": "Settings",
+      "file": "src/design/screens/Settings.tsx",
+      "line": 528,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d9c0b18d7a75",
+      "title": "SongRackArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/SongRackArt.tsx",
+      "line": 6,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:1f2479db79f2",
+      "title": "StockCredential",
+      "group": "Screens",
+      "file": "src/design/screens/StockCredential.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4af7a2e520cc",
+      "title": "BentoCell",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/BentoCell.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d7f721ed3c55",
+      "title": "BentoGrid",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/BentoCell.tsx",
+      "line": 13,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:e625dd0b421e",
+      "title": "ArtLayer",
+      "group": "Illustrations",
+      "file": "src/design/screens/dashboard/CardArt.tsx",
+      "line": 25,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:83c84dcb76f6",
+      "title": "OrbitArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/dashboard/CardArt.tsx",
+      "line": 111,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c0b5999ccfdc",
+      "title": "Confirm",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/CompanionTile.tsx",
+      "line": 38,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:07741f0083a9",
+      "title": "CompanionTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/CompanionTile.tsx",
+      "line": 58,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a7bdcba10dad",
+      "title": "ConnectedTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/ConnectedTile.tsx",
+      "line": 32,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cac78836f01a",
+      "title": "ConnectionsTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/ConnectionsTile.tsx",
+      "line": 178,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:33e8d3bf110e",
+      "title": "MethodMark",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/GivingTile.tsx",
+      "line": 59,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:692230af97de",
+      "title": "GivingTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/GivingTile.tsx",
+      "line": 102,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4a435e2b02e3",
+      "title": "ReviewCard",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/LearningActions.tsx",
+      "line": 11,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:170a0ee6889d",
+      "title": "LearningActions",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/LearningActions.tsx",
+      "line": 46,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:6c1cc4641a86",
+      "title": "NotificationsTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/NotificationsTile.tsx",
+      "line": 13,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c9e53654bae0",
+      "title": "OutputsTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/OutputsTile.tsx",
+      "line": 101,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:27d39484d65f",
+      "title": "StagePill",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 53,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d0c8c1f6ca3b",
+      "title": "Avatar",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 83,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:be244a0fdad4",
+      "title": "TrustBar",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 106,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:5cfb6f7811f3",
+      "title": "Block",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 123,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:02e3063b5dc0",
+      "title": "Face",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 183,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:b6bc5f5ff352",
+      "title": "PreachersTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 272,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cba4da8e16d2",
+      "title": "PreacherList",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 390,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:49da3b7c3401",
+      "title": "AddRow",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 481,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4ceed5f5a819",
+      "title": "PreacherRow",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 552,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8466e88e01fa",
+      "title": "ProfileHeader",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 629,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:98064b624843",
+      "title": "Stepper",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 657,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:757b5528d5f3",
+      "title": "Gates",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 686,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:dd27e7f3689c",
+      "title": "TrustChart",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 724,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:2f940121185e",
+      "title": "ProfileBody",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachersTile.tsx",
+      "line": 778,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:e43cd49ab32f",
+      "title": "ReferencePhrase",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachingTile.tsx",
+      "line": 41,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:51ae62a7892d",
+      "title": "Marked",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachingTile.tsx",
+      "line": 71,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:175edbc80b60",
+      "title": "PreachingTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachingTile.tsx",
+      "line": 101,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:412aa6c36688",
+      "title": "TranscriptFace",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachingTile.tsx",
+      "line": 116,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:f39b067e9d13",
+      "title": "FullTranscript",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachingTile.tsx",
+      "line": 234,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:c841050b71db",
+      "title": "FullTranscriptView",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/PreachingTile.tsx",
+      "line": 239,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:f232879be868",
+      "title": "CompactRow",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/ProfileView.tsx",
+      "line": 19,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:7ba0f9b1e4c0",
+      "title": "ProfileView",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/ProfileView.tsx",
+      "line": 38,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d7b44f4fe017",
+      "title": "ReadinessTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/ReadinessTile.tsx",
+      "line": 92,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b36f59cc2660",
+      "title": "ReadinessTileFull",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/ReadinessTile.tsx",
+      "line": 126,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:983399172549",
+      "title": "RecentServicesTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/RecentServicesTile.tsx",
+      "line": 88,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:da8f80d4093a",
+      "title": "SermonNotesTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 97,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b2d3e3001043",
+      "title": "NotesOpen",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 117,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:4ff5d2e23a2b",
+      "title": "Outline",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 158,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:5d5648100724",
+      "title": "Section",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 231,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:380cf18f808c",
+      "title": "Actions",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 267,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:974caa6d293e",
+      "title": "NotesFace",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 321,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:85fb0ad93d70",
+      "title": "NotesEmpty",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/SermonNotesTile.tsx",
+      "line": 412,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:2943b12586e9",
+      "title": "Panel",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/Teaching.tsx",
+      "line": 37,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3e129381ac74",
+      "title": "AddLine",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/Teaching.tsx",
+      "line": 72,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:cd1ddff195d6",
+      "title": "Chip",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/Teaching.tsx",
+      "line": 107,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:dc6ae46608c5",
+      "title": "SoundsLikeRow",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/Teaching.tsx",
+      "line": 141,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:b0fa356df7bb",
+      "title": "TeachingPanels",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/Teaching.tsx",
+      "line": 186,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:300db91e80dd",
+      "title": "ScreenFace",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/TimersTile.tsx",
+      "line": 147,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:c2577121a9da",
+      "title": "TimersTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/TimersTile.tsx",
+      "line": 400,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8d219072295f",
+      "title": "Middot",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/TrustTrendTile.tsx",
+      "line": 180,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:65ba0a63fecf",
+      "title": "TrustTrendTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/TrustTrendTile.tsx",
+      "line": 196,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:6a744107050b",
+      "title": "Chip",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/VoiceCommandsTile.tsx",
+      "line": 57,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:a9d2517337f0",
+      "title": "SuggestionRow",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/VoiceCommandsTile.tsx",
+      "line": 70,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:52e2a235a4a0",
+      "title": "PhraseEditor",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/VoiceCommandsTile.tsx",
+      "line": 91,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:f6c8f2e4dedf",
+      "title": "VoiceCommandsTile",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/VoiceCommandsTile.tsx",
+      "line": 162,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:96f3eb43a526",
+      "title": "Expandable",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/expand.tsx",
+      "line": 126,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:9f13786ecb12",
+      "title": "DashboardBento",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/index.tsx",
+      "line": 36,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:26e9195df16b",
+      "title": "CallSheetOutputs",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/outputs/CallSheet.tsx",
+      "line": 21,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8262828389c5",
+      "title": "ScreenBox",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/outputs/FloorPlan.tsx",
+      "line": 32,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9cc988506925",
+      "title": "Step",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/outputs/FloorPlan.tsx",
+      "line": 58,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d4f2ed37d60d",
+      "title": "FloorPlanOutputs",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/outputs/FloorPlan.tsx",
+      "line": 80,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4c59bd698c26",
+      "title": "Row",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/outputs/PatchBay.tsx",
+      "line": 21,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:f65e6a249673",
+      "title": "PatchBayOutputs",
+      "group": "Dashboard",
+      "file": "src/design/screens/dashboard/outputs/PatchBay.tsx",
+      "line": 66,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2ee1e4714094",
+      "title": "DragProvider",
+      "group": "Screens",
+      "file": "src/design/screens/drag.tsx",
+      "line": 190,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:f4fd500a6aef",
+      "title": "DragLayer",
+      "group": "Screens",
+      "file": "src/design/screens/drag.tsx",
+      "line": 605,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9cbc21b69e51",
+      "title": "Chip",
+      "group": "Screens",
+      "file": "src/design/screens/drag.tsx",
+      "line": 780,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:de51181570a9",
+      "title": "ChipFace",
+      "group": "Screens",
+      "file": "src/design/screens/drag.tsx",
+      "line": 884,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0e00c6d3214b",
+      "title": "DragKeyframes",
+      "group": "Screens",
+      "file": "src/design/screens/drag.tsx",
+      "line": 925,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2a7485e533ac",
+      "title": "EmptyMotion",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 43,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b8ef69cab4bc",
+      "title": "EmptyMark",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 92,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:55308cd0fb92",
+      "title": "Wire",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 174,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:aca43a04e5e4",
+      "title": "RunArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 213,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:73b283731374",
+      "title": "MinuteScale",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 300,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:3843dc291908",
+      "title": "FlatlineArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 331,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a33bf3b0c653",
+      "title": "ListeningArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 383,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:51c4c6bbffa2",
+      "title": "GridArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 477,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a606f5497543",
+      "title": "ChartArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 528,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:739c620b458c",
+      "title": "TranscriptArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 603,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2ab96fe24889",
+      "title": "CompanionArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 661,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c2f7d0461a12",
+      "title": "LogArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 723,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:49a9950b8b4a",
+      "title": "KeptArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 797,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:acd3c6f207a0",
+      "title": "OutlineArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 836,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:71e936b03ee2",
+      "title": "Yui",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 907,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:858bc9382260",
+      "title": "PopStackArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 928,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:dc5a9c3cb5e6",
+      "title": "DominoArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 947,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a803293b2ef4",
+      "title": "UnrollArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 970,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:11a875d545c3",
+      "title": "QrRollArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 998,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2ddfc888c0b0",
+      "title": "TissueNotesArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 1032,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:38d9eceb8e99",
+      "title": "OrbitLogArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 1058,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:0f41a2de0171",
+      "title": "BalanceArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 1082,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:6ed3f114b079",
+      "title": "EqBars",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 1103,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:6f44f85c54b3",
+      "title": "ExpandCue",
+      "group": "Illustrations",
+      "file": "src/design/screens/emptyArt.tsx",
+      "line": 1132,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:55a619e58efb",
+      "title": "EngineProvider",
+      "group": "Screens",
+      "file": "src/design/screens/engine.tsx",
+      "line": 241,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4804d7079135",
+      "title": "LibrarySearch",
+      "group": "Songs & media",
+      "file": "src/design/screens/library.tsx",
+      "line": 29,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:5c25fc0115d3",
+      "title": "LibraryPane",
+      "group": "Songs & media",
+      "file": "src/design/screens/library.tsx",
+      "line": 73,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:775477019cea",
+      "title": "LibraryBrowser",
+      "group": "Songs & media",
+      "file": "src/design/screens/library.tsx",
+      "line": 128,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:3ad94f0cda10",
+      "title": "Panel",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 15,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b6e405b32dfb",
+      "title": "BlurbLink",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 219,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:357989530a73",
+      "title": "Pill",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 242,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:715e7b4c5d1a",
+      "title": "Dot",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 270,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:ec22caa0895b",
+      "title": "Meter",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 286,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8cd3760f24a2",
+      "title": "Scripture",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 315,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:51f3db4caaee",
+      "title": "Empty",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 341,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:06e545ef3c6a",
+      "title": "NotAvailable",
+      "group": "Content & feedback",
+      "file": "src/design/screens/parts.tsx",
+      "line": 363,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2d835c37ec7e",
+      "title": "QuickSlideModal",
+      "group": "Songs & media",
+      "file": "src/design/screens/presentations.tsx",
+      "line": 233,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9f818ae24175",
+      "title": "SlidesBrowser",
+      "group": "Songs & media",
+      "file": "src/design/screens/presentations.tsx",
+      "line": 349,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b6742995e235",
+      "title": "ProjectorProvider",
+      "group": "Screens",
+      "file": "src/design/screens/projector.tsx",
+      "line": 141,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:b732efdc29b6",
+      "title": "RunProvider",
+      "group": "Screens",
+      "file": "src/design/screens/run.tsx",
+      "line": 73,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:ed563bde3aad",
+      "title": "ContextMenu",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/ContextMenu.tsx",
+      "line": 84,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:277ab57b634b",
+      "title": "ForeignQuestions",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/ForeignQuestions.tsx",
+      "line": 12,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:092dae649796",
+      "title": "QuestionCard",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/ForeignQuestions.tsx",
+      "line": 26,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3a77df8b3120",
+      "title": "LayeredProgrammeArt",
+      "group": "Illustrations",
+      "file": "src/design/screens/run/LayeredProgrammeArt.tsx",
+      "line": 16,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:ac65ebe48dca",
+      "title": "ContentPreview",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunContentPicker.tsx",
+      "line": 22,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a1e2c542f267",
+      "title": "RunContentPicker",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunContentPicker.tsx",
+      "line": 31,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:7f46a53e22a7",
+      "title": "RunHeaderActions",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunHeaderActions.tsx",
+      "line": 33,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d5c46c43de93",
+      "title": "DefaultRunButton",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunHeaderActions.tsx",
+      "line": 123,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:f966ec2067c2",
+      "title": "ReplaceConfirm",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunHeaderActions.tsx",
+      "line": 150,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d58aeaa3f5f4",
+      "title": "CardEdge",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 29,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:cb9c116d9c89",
+      "title": "ComponentPicker",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 33,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:b63be0c140c3",
+      "title": "SegmentCard",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 49,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8a551905f82d",
+      "title": "QueuedItemCard",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 103,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:31f1e636698a",
+      "title": "ScheduleRow",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 157,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:23236dc24ec1",
+      "title": "SectionDialog",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 204,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:905aaca5da58",
+      "title": "RunOfService",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunRail.tsx",
+      "line": 309,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:1238d67aed1f",
+      "title": "RunSongEditor",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/RunSongEditor.tsx",
+      "line": 38,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8897984caeb2",
+      "title": "ScanReview",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/ScanReview.tsx",
+      "line": 67,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a5c9fcdd9ba1",
+      "title": "TriPackageActions",
+      "group": "Service & scripture",
+      "file": "src/design/screens/run/TriPackageActions.tsx",
+      "line": 21,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:fdf86c36c59a",
+      "title": "Toggle",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 86,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:26cb3e281849",
+      "title": "Secret",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 119,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:c90077d0a013",
+      "title": "StatusLine",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 132,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:1965d36de17a",
+      "title": "KeyList",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 152,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:78ec75a10821",
+      "title": "DisplayMap",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 205,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3ff82ab92472",
+      "title": "FontChooser",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 247,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:de4ec32ff32a",
+      "title": "SettingRow",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 312,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cdcdb3b9fe98",
+      "title": "RowList",
+      "group": "Settings",
+      "file": "src/design/screens/settingsRows.tsx",
+      "line": 467,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2f99f831d6a5",
+      "title": "SlideCanvas",
+      "group": "Content & feedback",
+      "file": "src/design/screens/slide.tsx",
+      "line": 213,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:1148c7b93d21",
+      "title": "AddSongDialog",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/AddSongDialog.tsx",
+      "line": 85,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:02604e01a821",
+      "title": "DiscoveryCard",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/AddSongDialog.tsx",
+      "line": 446,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:59a6f5cc19de",
+      "title": "Hint",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/AddSongDialog.tsx",
+      "line": 535,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:4e1f06cd32e0",
+      "title": "SongArtwork",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/AddSongDialog.tsx",
+      "line": 543,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9984a10cd48b",
+      "title": "FlightPopup",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/FlightPopup.tsx",
+      "line": 58,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:fdad1b0d8199",
+      "title": "SongEditor",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/SongEditor.tsx",
+      "line": 100,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:af9a97e47143",
+      "title": "CardAction",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/SongEditor.tsx",
+      "line": 571,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3f06c40d22ef",
+      "title": "SongClosePrompt",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/SongEditor.tsx",
+      "line": 601,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:b148160bf8eb",
+      "title": "SongLyricsEntry",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/SongLyricsEntry.tsx",
+      "line": 15,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8f1dd19e4d1c",
+      "title": "TabDock",
+      "group": "Songs & media",
+      "file": "src/design/screens/songs/TabDock.tsx",
+      "line": 26,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:ce3a907a5cce",
+      "title": "MediaKindPicker",
+      "group": "Songs & media",
+      "file": "src/design/screens/stockSearch.tsx",
+      "line": 30,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:587f05d37141",
+      "title": "StockSearch",
+      "group": "Songs & media",
+      "file": "src/design/screens/stockSearch.tsx",
+      "line": 45,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:3fc3ee297b41",
+      "title": "OnlineEmpty",
+      "group": "Songs & media",
+      "file": "src/design/screens/stockSearch.tsx",
+      "line": 258,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:1137fa5afe55",
+      "title": "StockCard",
+      "group": "Songs & media",
+      "file": "src/design/screens/stockSearch.tsx",
+      "line": 263,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8e524c770583",
+      "title": "Words",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/FocusLine.tsx",
+      "line": 55,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:37a353b3135b",
+      "title": "FocusLineTranscript",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/FocusLine.tsx",
+      "line": 87,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d804cc32b777",
+      "title": "LadderTranscript",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/Ladder.tsx",
+      "line": 65,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d7c98ce4800f",
+      "title": "LiveTranscript",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/LiveTranscript.tsx",
+      "line": 44,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:823ae7410ffb",
+      "title": "DemoBar",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/LiveTranscript.tsx",
+      "line": 88,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0055dde5846a",
+      "title": "PagesTranscript",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/Pages.tsx",
+      "line": 90,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:7e83f2c271d3",
+      "title": "RollUpTranscript",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/RollUp.tsx",
+      "line": 59,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:79013c8d4de2",
+      "title": "StripShell",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/StripShell.tsx",
+      "line": 19,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:83874057c0ac",
+      "title": "WordSpan",
+      "group": "Service & scripture",
+      "file": "src/design/screens/transcript/wordView.tsx",
+      "line": 23,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2029d2447a51",
+      "title": "ViewEnter",
+      "group": "Screens",
+      "file": "src/design/screens/viewEnter.tsx",
+      "line": 84,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:9b1dc7c84102",
+      "title": "VerseWords",
+      "group": "Screens",
+      "file": "src/output.tsx",
+      "line": 220,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:ea43e38fc032",
+      "title": "OutputSurface",
+      "group": "Screens",
+      "file": "src/output.tsx",
+      "line": 232,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:991f3096d097",
+      "title": "Bible",
+      "group": "Screens",
+      "file": "src/screens/Bible.tsx",
+      "line": 13,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:720e116b937e",
+      "title": "Cloud",
+      "group": "Screens",
+      "file": "src/screens/Cloud.tsx",
+      "line": 33,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:1d556d6d5bee",
+      "title": "ServiceOrderPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 40,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:7b4017a97e98",
+      "title": "PreviewPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 95,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3b8a2e878f6e",
+      "title": "ListenPrompt",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 146,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:432ee6b84aad",
+      "title": "TranscriptPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 181,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0a79ab7fca98",
+      "title": "OutputPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 231,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:719500f61a06",
+      "title": "AlertPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 348,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:563aeb18aafb",
+      "title": "TimersPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 472,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:71fcbaaa731b",
+      "title": "QueuePanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 580,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d79d6a0371f6",
+      "title": "PulpitLogPanel",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 614,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:e0a374da0206",
+      "title": "DbBanner",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 661,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3365fbaa80f7",
+      "title": "BottomBar",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 685,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3292a8cd9291",
+      "title": "PracticeBanner",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 800,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:a2d6e5f78298",
+      "title": "AmendInputs",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 827,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:a42e27d68596",
+      "title": "ReviewRow",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 849,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:7a30d101d8ee",
+      "title": "ServiceReview",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 896,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:231d7de5e87f",
+      "title": "Live",
+      "group": "Screens",
+      "file": "src/screens/Live.tsx",
+      "line": 972,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:6f371fff8752",
+      "title": "LiveHost",
+      "group": "Screens",
+      "file": "src/screens/LiveHost.tsx",
+      "line": 18,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cb463f453228",
+      "title": "LiveOutline",
+      "group": "Screens",
+      "file": "src/screens/Notes.tsx",
+      "line": 29,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3d0692d8045a",
+      "title": "NotesDocument",
+      "group": "Screens",
+      "file": "src/screens/Notes.tsx",
+      "line": 78,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:1079da607235",
+      "title": "Notes",
+      "group": "Screens",
+      "file": "src/screens/Notes.tsx",
+      "line": 130,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:eea826f36d66",
+      "title": "ReadinessRow",
+      "group": "Settings",
+      "file": "src/screens/Preachers.tsx",
+      "line": 39,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9980e276ee94",
+      "title": "TrustDetail",
+      "group": "Settings",
+      "file": "src/screens/Preachers.tsx",
+      "line": 48,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:abe795c6f02c",
+      "title": "Preachers",
+      "group": "Settings",
+      "file": "src/screens/Preachers.tsx",
+      "line": 137,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8943695739f0",
+      "title": "Presentations",
+      "group": "Screens",
+      "file": "src/screens/Presentations.tsx",
+      "line": 28,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:db05d46cf899",
+      "title": "SegmentTypeDatalist",
+      "group": "Screens",
+      "file": "src/screens/Schedule.tsx",
+      "line": 25,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0ffe6e1c0d9f",
+      "title": "Schedule",
+      "group": "Screens",
+      "file": "src/screens/Schedule.tsx",
+      "line": 35,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8621aa614125",
+      "title": "SaveProvider",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 40,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:ebda86e771a1",
+      "title": "SavedBadge",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 110,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:0dc82843cca8",
+      "title": "Row",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 125,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:6b1974dcfc81",
+      "title": "TextSetting",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 136,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:7a9970a2d928",
+      "title": "NumberSetting",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 172,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:004feac89117",
+      "title": "SelectSetting",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 195,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8e6a5c51c388",
+      "title": "PercentSetting",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 224,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:54d75cd82b9b",
+      "title": "LanguageSettings",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 259,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:5da345daaad3",
+      "title": "Section",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 304,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:8a32bd1b35db",
+      "title": "Settings",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 319,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:faadaf6e4626",
+      "title": "SettingsBody",
+      "group": "Settings",
+      "file": "src/screens/Settings.tsx",
+      "line": 327,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:57a23951b681",
+      "title": "Songs",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 121,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2c010e1515b5",
+      "title": "Header",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 476,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:1fc702fdd7dd",
+      "title": "ImportPanel",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 492,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:1d836a1ef9b9",
+      "title": "ParsePreview",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 583,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:bfaab6e6d3ab",
+      "title": "StagedReview",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 607,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:32786b04a5c7",
+      "title": "CommitReport",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 664,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3cc1c79e9c32",
+      "title": "Library",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 729,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d72009134ecf",
+      "title": "SongSheet",
+      "group": "Screens",
+      "file": "src/screens/Songs.tsx",
+      "line": 826,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:21bc9d788314",
+      "title": "Row",
+      "group": "Screens",
+      "file": "src/screens/Themes.tsx",
+      "line": 26,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:d3bf5c15daac",
+      "title": "Themes",
+      "group": "Screens",
+      "file": "src/screens/Themes.tsx",
+      "line": 37,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a0ff05f329e1",
+      "title": "CutoutIcon",
+      "group": "Controls",
+      "file": "src/ui/CutoutIcon.tsx",
+      "line": 13,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:16fcd586589d",
+      "title": "Component",
+      "group": "Controls",
+      "file": "src/ui/CutoutIcon.tsx",
+      "line": 25,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:4bfad6ca4dab",
+      "title": "ActionMenu",
+      "group": "Controls",
+      "file": "src/ui/primitives/ActionMenu.tsx",
+      "line": 77,
+      "scope": "Exported component",
+      "preview": "extra:action-menu"
+    },
+    {
+      "id": "source:50615ad29bca",
+      "title": "AddCard",
+      "group": "Controls",
+      "file": "src/ui/primitives/AddCard.tsx",
+      "line": 26,
+      "scope": "Exported component",
+      "preview": "extra:add-card"
+    },
+    {
+      "id": "source:74817ba351bc",
+      "title": "ArrangeList",
+      "group": "Controls",
+      "file": "src/ui/primitives/ArrangeList.tsx",
+      "line": 67,
+      "scope": "Exported component",
+      "preview": "extra:arrange"
+    },
+    {
+      "id": "source:2a47a7c10344",
+      "title": "Button",
+      "group": "Controls",
+      "file": "src/ui/primitives/Button.tsx",
+      "line": 38,
+      "scope": "Exported component",
+      "preview": "sheet:C-01"
+    },
+    {
+      "id": "source:6f4039bcfdc4",
+      "title": "DashboardButton",
+      "group": "Controls",
+      "file": "src/ui/primitives/DashboardButton.tsx",
+      "line": 30,
+      "scope": "Exported component",
+      "preview": "sheet:D-111"
+    },
+    {
+      "id": "source:b048a2e02401",
+      "title": "DisplayFontPicker",
+      "group": "Controls",
+      "file": "src/ui/primitives/DisplayFontPicker.tsx",
+      "line": 56,
+      "scope": "Exported component",
+      "preview": "sheet:C-05"
+    },
+    {
+      "id": "source:2e6d7dbf6d4e",
+      "title": "FontCardItem",
+      "group": "Controls",
+      "file": "src/ui/primitives/DisplayFontPicker.tsx",
+      "line": 134,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:4d388b4b55be",
+      "title": "IconCredits",
+      "group": "Controls",
+      "file": "src/ui/primitives/IconCredits.tsx",
+      "line": 4,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a02399884ae1",
+      "title": "ScriptureReferenceInput",
+      "group": "Controls",
+      "file": "src/ui/primitives/ScriptureReferenceInput.tsx",
+      "line": 161,
+      "scope": "Exported component",
+      "preview": "sheet:C-08"
+    },
+    {
+      "id": "source:dcb5cb30c91f",
+      "title": "SearchField",
+      "group": "Controls",
+      "file": "src/ui/primitives/SearchField.tsx",
+      "line": 24,
+      "scope": "Exported component",
+      "preview": "extra:search"
+    },
+    {
+      "id": "source:3c81270e2468",
+      "title": "SegmentedControl",
+      "group": "Controls",
+      "file": "src/ui/primitives/SegmentedControl.tsx",
+      "line": 37,
+      "scope": "Exported component",
+      "preview": "sheet:C-04"
+    },
+    {
+      "id": "source:35aeaff2587e",
+      "title": "Select",
+      "group": "Controls",
+      "file": "src/ui/primitives/Select.tsx",
+      "line": 40,
+      "scope": "Exported component",
+      "preview": "sheet:C-07"
+    },
+    {
+      "id": "source:4ea7f1310271",
+      "title": "SlideThumb",
+      "group": "Controls",
+      "file": "src/ui/primitives/SlideThumb.tsx",
+      "line": 84,
+      "scope": "Exported component",
+      "preview": "extra:slide-thumb"
+    },
+    {
+      "id": "source:bc1f07e48b59",
+      "title": "Slider",
+      "group": "Controls",
+      "file": "src/ui/primitives/Slider.tsx",
+      "line": 104,
+      "scope": "Exported component",
+      "preview": "sheet:C-20"
+    },
+    {
+      "id": "source:d746cbcbe12e",
+      "title": "TextPositionPicker",
+      "group": "Controls",
+      "file": "src/ui/primitives/TextPositionPicker.tsx",
+      "line": 27,
+      "scope": "Exported component",
+      "preview": "sheet:C-06"
+    },
+    {
+      "id": "source:f141b61ccef0",
+      "title": "PositionCardItem",
+      "group": "Controls",
+      "file": "src/ui/primitives/TextPositionPicker.tsx",
+      "line": 107,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:522eb7f3d61c",
+      "title": "PositionGraphic",
+      "group": "Controls",
+      "file": "src/ui/primitives/TextPositionPicker.tsx",
+      "line": 138,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:4da6cf042175",
+      "title": "TextTransitionPicker",
+      "group": "Controls",
+      "file": "src/ui/primitives/TextTransitionPicker.tsx",
+      "line": 7,
+      "scope": "Exported component",
+      "preview": "extra:transition"
+    },
+    {
+      "id": "source:397c1637204d",
+      "title": "FinishSetup",
+      "group": "Companion & web",
+      "file": "web/src/app/app/dashboard/FinishSetup.tsx",
+      "line": 14,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d3282dfa7d1e",
+      "title": "LinkCodeManager",
+      "group": "Companion & web",
+      "file": "web/src/app/app/dashboard/LinkCodeManager.tsx",
+      "line": 14,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a27a5f4b43ae",
+      "title": "QrCard",
+      "group": "Companion & web",
+      "file": "web/src/app/app/dashboard/QrCard.tsx",
+      "line": 16,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:fbbac80c88b9",
+      "title": "SignOutButton",
+      "group": "Companion & web",
+      "file": "web/src/app/app/dashboard/SignOutButton.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:a251964242bf",
+      "title": "DashboardPage",
+      "group": "Companion & web",
+      "file": "web/src/app/app/dashboard/page.tsx",
+      "line": 13,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:2e28f92f5324",
+      "title": "LoginPage",
+      "group": "Companion & web",
+      "file": "web/src/app/app/page.tsx",
+      "line": 7,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:22db4d631281",
+      "title": "ServiceDetailPage",
+      "group": "Companion & web",
+      "file": "web/src/app/app/services/[id]/page.tsx",
+      "line": 32,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:70d8af8ebab4",
+      "title": "ServicesPage",
+      "group": "Companion & web",
+      "file": "web/src/app/app/services/page.tsx",
+      "line": 19,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:f3677b79e09f",
+      "title": "SignupPage",
+      "group": "Companion & web",
+      "file": "web/src/app/app/signup/page.tsx",
+      "line": 7,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:4eb462054862",
+      "title": "CompanionClient",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/CompanionClient.tsx",
+      "line": 42,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:72e7334d59a0",
+      "title": "TabButton",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/CompanionClient.tsx",
+      "line": 222,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:436214ec29c1",
+      "title": "BrandMark",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/BrandMark.tsx",
+      "line": 2,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:5af35ddf5fbc",
+      "title": "CorrectionOverlay",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/CorrectionOverlay.tsx",
+      "line": 11,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c60f37845529",
+      "title": "GiveTab",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/GiveTab.tsx",
+      "line": 14,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:8ec18d77b96d",
+      "title": "GivingCard",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/GiveTab.tsx",
+      "line": 85,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:e5c75ada6499",
+      "title": "NotesTab",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/NotesTab.tsx",
+      "line": 8,
+      "scope": "Exported component",
+      "preview": "web:notes"
+    },
+    {
+      "id": "source:d735272457e5",
+      "title": "ReadingOptions",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/ReadingOptions.tsx",
+      "line": 8,
+      "scope": "Exported component",
+      "preview": "web:reading"
+    },
+    {
+      "id": "source:8880c9bd500a",
+      "title": "SegmentBadge",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/SegmentBadge.tsx",
+      "line": 5,
+      "scope": "Exported component",
+      "preview": "web:badges"
+    },
+    {
+      "id": "source:2a2e96f3f115",
+      "title": "StreamPlayer",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/StreamPlayer.tsx",
+      "line": 19,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:80e94f4c0514",
+      "title": "YouTubeFrame",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/StreamPlayer.tsx",
+      "line": 89,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:3b984b73af6c",
+      "title": "FacebookFrame",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/StreamPlayer.tsx",
+      "line": 180,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:af736a8d7009",
+      "title": "TranscriptStream",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 84,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:c82300fde920",
+      "title": "TranscriptBody",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 292,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:9be73565283a",
+      "title": "TranscriptLine",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 442,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:f8e7018fc5c4",
+      "title": "VersePill",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 505,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:cbd7503ce075",
+      "title": "SyncSheet",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 512,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:752541952956",
+      "title": "SheetButton",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 579,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:dc6a3b51ee30",
+      "title": "Placeholder",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/TranscriptStream.tsx",
+      "line": 599,
+      "scope": "Internal component",
+      "preview": null
+    },
+    {
+      "id": "source:57e273e99fdb",
+      "title": "VersesTab",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/components/VersesTab.tsx",
+      "line": 14,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:922ab5822485",
+      "title": "NotFound",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/not-found.tsx",
+      "line": 1,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:32ddc9759bdb",
+      "title": "LivePage",
+      "group": "Companion & web",
+      "file": "web/src/app/live/[slug]/page.tsx",
+      "line": 7,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:12fffe1fcd17",
+      "title": "MicClient",
+      "group": "Companion & web",
+      "file": "web/src/app/mic/MicClient.tsx",
+      "line": 45,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:08d45753b7f5",
+      "title": "MicPage",
+      "group": "Companion & web",
+      "file": "web/src/app/mic/page.tsx",
+      "line": 20,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:dd391e8257f5",
+      "title": "IconCredits",
+      "group": "Companion & web",
+      "file": "web/src/components/IconCredits.tsx",
+      "line": 1,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:cba2ed181dbf",
+      "title": "SermonNotesSections",
+      "group": "Companion & web",
+      "file": "web/src/components/SermonNotesSections.tsx",
+      "line": 32,
+      "scope": "Exported component",
+      "preview": null
+    },
+    {
+      "id": "source:d8391d137714",
+      "title": "BoxLedHero",
+      "group": "Companion & web",
+      "file": "web/src/components/box-led-hero/BoxLedHero.tsx",
+      "line": 12,
+      "scope": "Exported component",
+      "preview": null
+    }
+  ],
+  "checklist": [
+    {
+      "id": "F-01",
+      "title": "Color tokens",
+      "description": "paper / ink / accent / hairline / surface / canvas + the *semantic* additions we're missing: danger, warn, ok, live, preview, muted, overlay-scrim, focus-ring",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-02",
+      "title": "Dark mode",
+      "description": "Booth operators run in dark rooms. Either a full dark palette or a \"booth mode\" inversion. Decide now — it changes every component.",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-03",
+      "title": "Type scale",
+      "description": "display / h1 / h2 / h3 / body / body-sm / label / mono / scripture serif. Sizes, weights, line-heights, letter-spacing. Current UI uses uppercase-tracked labels everywhere — decide if that survives.",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-04",
+      "title": "Spacing scale",
+      "description": "4px base: 1,2,3,4,6,8,12,16,24 — plus the three *density modes* below",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-05",
+      "title": "Density modes",
+      "description": "comfortable (library screens) / compact (Live surface) / touch (if a tablet/stage-display client is ever built)",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-06",
+      "title": "Radius scale",
+      "description": "none / sm / md / lg / pill / full",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-07",
+      "title": "Elevation",
+      "description": "flat / hairline / raised / floating / modal — currently everything is hairline-only",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-08",
+      "title": "Motion tokens",
+      "description": "durations (instant 80 / fast 140 / base 220 / slow 400), easings, and a prefers-reduced-motion path. Live-surface transitions must never exceed ~150ms.",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-09",
+      "title": "Z-index ladder",
+      "description": "base → sticky header → popover → drawer → modal → toast → tour spotlight → output overlay",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-10",
+      "title": "Icon set",
+      "description": "~60 icons: play, stop, mic, mic-off, eye, eye-off, monitor, monitor-x, chevrons, plus, trash, edit, drag-handle, search, filter, check, x, alert, info, refresh, download, upload, cloud, cloud-off, qr, book, music, image, palette, calendar, user, settings, keyboard, wifi, wifi-off, lock, external-link, copy, more-horizontal, grid, list, arrow-up/down/left/right, skip-forward/back, clock, timer, sparkle (AI), waveform, projector, layers, link, unlink, star, flag, undo",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-11",
+      "title": "Focus & keyboard",
+      "description": "visible focus ring spec, tab order rules, roving tabindex for lists/grids",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-12",
+      "title": "Global shortcut map",
+      "description": "the whole keybinding table (see S-01 notes) — a design artifact, not just code",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-13",
+      "title": "Sound/haptics",
+      "description": "optional: a soft confirm tick on GO LIVE. Decide yes/no.",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-14",
+      "title": "Empty/loading/error voice",
+      "description": "the copy rules — how the app talks when it has nothing to show",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "F-15",
+      "title": "Seasonal theming hooks",
+      "description": "which tokens are allowed to shift for Advent/Lent/Easter/Christmas without breaking contrast",
+      "section": "PART 0 — FOUNDATIONS"
+    },
+    {
+      "id": "C-01",
+      "title": "Button",
+      "description": "variants: solid, outline, text, ghost, danger, live (the red/black go-live volume); sizes: xs/sm/md/lg/xl; states: default, hover, active, focus, disabled, loading; optional leading/trailing icon; full-width",
+      "section": "Actions"
+    },
+    {
+      "id": "C-02",
+      "title": "IconButton",
+      "description": "square/circle, all Button variants, requires aria-label, tooltip-on-hover built in",
+      "section": "Actions"
+    },
+    {
+      "id": "C-03",
+      "title": "ButtonGroup",
+      "description": "joined buttons, shared borders",
+      "section": "Actions"
+    },
+    {
+      "id": "C-04",
+      "title": "SegmentedControl",
+      "description": "2–5 exclusive options (e.g. Preview/Live/Both, KJV/BBE/RVR)",
+      "section": "Actions"
+    },
+    {
+      "id": "C-05",
+      "title": "SplitButton",
+      "description": "primary action + dropdown of variants (e.g. GO LIVE ▾ → \"go live & hold\")",
+      "section": "Actions"
+    },
+    {
+      "id": "C-06",
+      "title": "ToggleButton",
+      "description": "pressed/unpressed, used in transport bar",
+      "section": "Actions"
+    },
+    {
+      "id": "C-07",
+      "title": "Link",
+      "description": "internal + external (with external-link affordance)",
+      "section": "Actions"
+    },
+    {
+      "id": "C-08",
+      "title": "TextInput",
+      "description": "sizes, prefix/suffix slots, invalid state, char counter",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-09",
+      "title": "TextArea",
+      "description": "auto-grow, max rows, monospace variant",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-10",
+      "title": "NumberInput",
+      "description": "stepper buttons, min/max/step, unit suffix (ms, %, sec)",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-11",
+      "title": "PasswordInput",
+      "description": "reveal toggle, \"saved\" masked state for API keys",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-12",
+      "title": "SearchInput",
+      "description": "leading icon, clear button, Kbd shortcut hint, debounce",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-13",
+      "title": "Select",
+      "description": "custom listbox (not native) so it can be styled + keyboard-navigated",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-14",
+      "title": "Combobox",
+      "description": "typeahead + filter; the backbone of book search, song search, scene pickers",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-15",
+      "title": "MultiSelect",
+      "description": "tokenized chips inside the field",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-16",
+      "title": "Checkbox",
+      "description": "+ indeterminate",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-17",
+      "title": "CheckboxGroup",
+      "description": "",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-18",
+      "title": "Radio / RadioGroup",
+      "description": "incl. \"card radio\" (rich option cards, e.g. ASR provider choice)",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-19",
+      "title": "Switch / Toggle",
+      "description": "exists; needs sizes + loading state for async settings",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-20",
+      "title": "Slider",
+      "description": "single + range; tick marks; used for trust gate, timeouts, font size",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-21",
+      "title": "ColorPicker",
+      "description": "swatch grid + hex input (Themes)",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-22",
+      "title": "FontPicker",
+      "description": "family + weight preview (Themes)",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-23",
+      "title": "FileDropZone",
+      "description": "drag-drop + browse; images, media, sermon plans, schedules",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-24",
+      "title": "Field",
+      "description": "exists; add error text, required marker, help popover",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-25",
+      "title": "FormSection / Fieldset",
+      "description": "titled group with description",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-26",
+      "title": "FormActions",
+      "description": "sticky save/cancel bar with dirty-state detection",
+      "section": "Form controls"
+    },
+    {
+      "id": "C-27",
+      "title": "Panel / Card",
+      "description": "exists; add: header/body/footer slots, variant: flat/raised, tone: default/live/warning",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-28",
+      "title": "PanelHeader",
+      "description": "exists; add: icon, subtitle, overflow menu, collapse toggle",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-29",
+      "title": "SectionLabel",
+      "description": "exists",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-30",
+      "title": "Toolbar",
+      "description": "left/center/right slots, overflow collapse",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-31",
+      "title": "SplitPane",
+      "description": "draggable resizer, persisted sizes — the Live surface's 3 columns",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-32",
+      "title": "ScrollArea",
+      "description": "styled scrollbars, fade edges, scroll-to-bottom pin (transcript)",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-33",
+      "title": "Divider",
+      "description": "horizontal/vertical, optional label",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-34",
+      "title": "Stack / Grid",
+      "description": "layout primitives so screens stop hand-rolling flex classes",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-35",
+      "title": "Tabs",
+      "description": "underline + pill variants; horizontal + vertical (Settings sidebar)",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-36",
+      "title": "Accordion / Disclosure",
+      "description": "Settings advanced sections",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-37",
+      "title": "Breadcrumb",
+      "description": "Bible: Book › Chapter; Services archive",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-38",
+      "title": "Wizard / Stepper",
+      "description": "first-run setup, cloud linking",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-39",
+      "title": "AspectBox",
+      "description": "16:9 / 4:3 container for every monitor & thumbnail",
+      "section": "Structure & layout"
+    },
+    {
+      "id": "C-40",
+      "title": "List / ListRow",
+      "description": "selectable, multi-select, keyboard nav, drag-reorder handle, inline actions on hover",
+      "section": "Data display"
+    },
+    {
+      "id": "C-41",
+      "title": "Table",
+      "description": "sortable headers, sticky header, row selection, zebra off by default",
+      "section": "Data display"
+    },
+    {
+      "id": "C-42",
+      "title": "DescriptionList",
+      "description": "key/value pairs (service detail, about)",
+      "section": "Data display"
+    },
+    {
+      "id": "C-43",
+      "title": "Badge / Pill",
+      "description": "exists; add tones: neutral/live/preview/ok/warn/danger/ai",
+      "section": "Data display"
+    },
+    {
+      "id": "C-44",
+      "title": "Chip",
+      "description": "removable token",
+      "section": "Data display"
+    },
+    {
+      "id": "C-45",
+      "title": "Avatar / Monogram",
+      "description": "preacher initials",
+      "section": "Data display"
+    },
+    {
+      "id": "C-46",
+      "title": "Kbd",
+      "description": "keyboard key rendering",
+      "section": "Data display"
+    },
+    {
+      "id": "C-47",
+      "title": "CodeBlock",
+      "description": "for external-control docs / JSON config",
+      "section": "Data display"
+    },
+    {
+      "id": "C-48",
+      "title": "CopyableText",
+      "description": "value + copy button + copied confirmation",
+      "section": "Data display"
+    },
+    {
+      "id": "C-49",
+      "title": "RelativeTime",
+      "description": "\"2m ago\", live-ticking",
+      "section": "Data display"
+    },
+    {
+      "id": "C-50",
+      "title": "Duration",
+      "description": "mm:ss / h:mm:ss elapsed",
+      "section": "Data display"
+    },
+    {
+      "id": "C-51",
+      "title": "Stat",
+      "description": "big number + label + delta (Preachers, Cloud)",
+      "section": "Data display"
+    },
+    {
+      "id": "C-52",
+      "title": "Sparkline",
+      "description": "tiny trend line (corrections over services)",
+      "section": "Data display"
+    },
+    {
+      "id": "C-53",
+      "title": "ProgressBar",
+      "description": "determinate + indeterminate; used for model download",
+      "section": "Data display"
+    },
+    {
+      "id": "C-54",
+      "title": "RadialProgress",
+      "description": "trust %, training completeness",
+      "section": "Data display"
+    },
+    {
+      "id": "C-55",
+      "title": "Meter",
+      "description": "generic segmented meter (LevelMeter generalizes into this)",
+      "section": "Data display"
+    },
+    {
+      "id": "C-56",
+      "title": "Tooltip",
+      "description": "delay, placement, keyboard-accessible",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-57",
+      "title": "Popover",
+      "description": "anchored, focus-trapped optional",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-58",
+      "title": "Menu / DropdownMenu",
+      "description": "items, separators, submenus, checkable, destructive styling",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-59",
+      "title": "ContextMenu",
+      "description": "right-click on list rows, media, slides",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-60",
+      "title": "Modal / Dialog",
+      "description": "sizes, non-dismissible variant, focus trap",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-61",
+      "title": "ConfirmDialog",
+      "description": "destructive confirmation (delete preacher, end service, wipe data)",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-62",
+      "title": "Drawer / Sheet",
+      "description": "right-side inspector (slide editor, verse detail)",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-63",
+      "title": "Toast + ToastProvider",
+      "description": "success/error/info; action slot (\"Undo\"); stacking",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-64",
+      "title": "InlineAlert / Banner",
+      "description": "info/warn/error/success; dismissible; the DB banner + practice banner generalize into this",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-65",
+      "title": "Spinner",
+      "description": "sizes",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-66",
+      "title": "Skeleton",
+      "description": "text/rect/circle",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-67",
+      "title": "EmptyState",
+      "description": "exists; upgrade to icon + title + description + action",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-68",
+      "title": "ErrorState",
+      "description": "with retry + \"copy diagnostics\"",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-69",
+      "title": "ErrorBoundary",
+      "description": "screen-level crash fallback",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-70",
+      "title": "Spotlight",
+      "description": "dimmed cutout for the guided tour (currently in Tour.tsx)",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "C-71",
+      "title": "CommandPalette",
+      "description": "⌘K — jump to any verse/song/slide/setting. High leverage for operators.",
+      "section": "Feedback & overlays"
+    },
+    {
+      "id": "D-01",
+      "title": "StatusDot",
+      "description": "idle/connecting/listening/error/stopped with pulse",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-02",
+      "title": "AsrStatusCluster",
+      "description": "dot + label + level meter + detail line (currently inline in App.tsx)",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-03",
+      "title": "LevelMeter",
+      "description": "exists; add vertical variant + peak hold + clip indicator",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-04",
+      "title": "IntentIndicator",
+      "description": "idle → intent → reference → reading → commentary, as a 5-stage progression",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-05",
+      "title": "ConfidenceBadge",
+      "description": "0–1 as a readable confidence chip",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-06",
+      "title": "TrustMeter",
+      "description": "exists as TrustBar; add gate marker label, eligibility state, tooltip breakdown",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-07",
+      "title": "ModelDownloadCard",
+      "description": "whisper model download with progress + cancel",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-08",
+      "title": "EngineOfflineNotice",
+      "description": "\"running outside Electron\" / engine crashed",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-09",
+      "title": "ConnectionStatusRow",
+      "description": "reusable: OBS / vMix / Cloud / Companion — name, dot, latency, action",
+      "section": "Engine & status"
+    },
+    {
+      "id": "D-10",
+      "title": "VerseRef",
+      "description": "formatted reference text, canonical + localized",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-11",
+      "title": "VerseRefInput",
+      "description": "book combobox + chapter + verse + end-verse, with validation",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-12",
+      "title": "BookPicker",
+      "description": "66 books, OT/NT grouped, searchable, keyboard-first",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-13",
+      "title": "ChapterGrid",
+      "description": "numeric grid",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-14",
+      "title": "VerseGrid",
+      "description": "numeric grid",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-15",
+      "title": "VerseCard",
+      "description": "ref + serif text + version chip + actions (preview / live / queue / copy)",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-16",
+      "title": "VerseList",
+      "description": "chapter reading view with verse numbers, current-verse highlight",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-17",
+      "title": "VersionPicker",
+      "description": "translation switcher; shows which are installed vs importable",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-18",
+      "title": "ScriptureSearchPanel",
+      "description": "exists as ScriptureSearch.tsx; formalize",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-19",
+      "title": "VerseQueueList",
+      "description": "queued-for-later verses + reason + show-now",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-20",
+      "title": "VerseDiff",
+      "description": "\"heard X → proposed Y\" for corrections",
+      "section": "Scripture"
+    },
+    {
+      "id": "D-21",
+      "title": "PreviewMonitor",
+      "description": "16:9 render of what *would* go live",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-22",
+      "title": "ProgramMonitor",
+      "description": "16:9 mirror of what *is* live, with LIVE badge",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-23",
+      "title": "OutputRenderer",
+      "description": "the single shared renderer used by monitors *and* the real output window (one source of truth for what a slide looks like)",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-24",
+      "title": "TransportBar",
+      "description": "the bottom control strip: listen/stop, preview→live, clear, black, logo, freeze, practice, end service",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-25",
+      "title": "GoLiveButton",
+      "description": "oversized, unmistakable, keyboard-bound",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-26",
+      "title": "ClearBlackLogoTriad",
+      "description": "the three \"kill the screen\" actions",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-27",
+      "title": "TranscriptStream",
+      "description": "rolling transcript, auto-scroll w/ pin, detected refs highlighted inline",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-28",
+      "title": "TranscriptLine",
+      "description": "one utterance + timestamp + entity marks",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-29",
+      "title": "PulpitLog",
+      "description": "\"heard from the pulpit\" — voice commands + detections feed",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-30",
+      "title": "VoiceCommandRow",
+      "description": "kind icon + utterance + value + time",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-31",
+      "title": "OutputTargetBar",
+      "description": "one chip per connected display: name, resolution, open/close, identify",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-32",
+      "title": "ServiceTimer",
+      "description": "elapsed since listening started + segment elapsed",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-33",
+      "title": "SegmentBadge",
+      "description": "current segment type + confidence",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-34",
+      "title": "SegmentTimeline",
+      "description": "horizontal service progress bar with segment blocks",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-35",
+      "title": "ServiceOrderPanel",
+      "description": "the running order with current-item highlight, click to jump",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-36",
+      "title": "PrayerModeOverlay",
+      "description": "full-surface calm state when prayer mode is on",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-37",
+      "title": "PracticeBanner",
+      "description": "practice-mode indicator with scenario + stop",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-38",
+      "title": "FreezeIndicator",
+      "description": "output frozen state",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-39",
+      "title": "QrShowCard",
+      "description": "companion QR preview + push-to-output",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-40",
+      "title": "MediaSuggestionToast",
+      "description": "engine-suggested background/media, accept/dismiss",
+      "section": "Live surface"
+    },
+    {
+      "id": "D-41",
+      "title": "PreacherCard",
+      "description": "avatar, name, services, samples, trust meter, auto-eligible state",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-42",
+      "title": "PreacherPicker",
+      "description": "active-preacher selector (also lives in Live)",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-43",
+      "title": "TrainingProgressCard",
+      "description": "samples toward maturity, plateau state, \"training paused/reopened\"",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-44",
+      "title": "AccuracyTrend",
+      "description": "precision over last N services (sparkline + table)",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-45",
+      "title": "ReviewCard",
+      "description": "one review item: heard vs proposed, confirm / reject / amend",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-46",
+      "title": "AmendRefEditor",
+      "description": "inline verse-ref correction",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-47",
+      "title": "ReviewQueue",
+      "description": "end-of-service review flow with progress + \"done\" state",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-48",
+      "title": "VoiceNoteRecorder",
+      "description": "short voice sample for a hard reference (product vision item)",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-49",
+      "title": "MissLog",
+      "description": "historical misses table, filterable",
+      "section": "Preachers & training"
+    },
+    {
+      "id": "D-50",
+      "title": "SongCard",
+      "description": "title, author, key, CCLI, slide count",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-51",
+      "title": "SongList",
+      "description": "searchable library list",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-52",
+      "title": "LyricsEditor",
+      "description": "sectioned lyrics (verse/chorus/bridge) with slide-break markers",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-53",
+      "title": "SectionTag",
+      "description": "V1 / C / B / T tags",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-54",
+      "title": "SlideThumb",
+      "description": "rendered slide thumbnail w/ index + selected/live state",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-55",
+      "title": "SlideStrip",
+      "description": "horizontal filmstrip of a song/deck",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-56",
+      "title": "SlideGrid",
+      "description": "grid view of a deck",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-57",
+      "title": "ArrangementBuilder",
+      "description": "drag song sections into an order",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-58",
+      "title": "MediaThumb",
+      "description": "image/video with duration + type badge",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-59",
+      "title": "MediaGrid",
+      "description": "media library grid, multi-select",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-60",
+      "title": "MediaInspector",
+      "description": "drawer: filename, dimensions, use-as-background actions",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-61",
+      "title": "PresentationCard",
+      "description": "imported deck card",
+      "section": "Songs & presentation content"
+    },
+    {
+      "id": "D-62",
+      "title": "ThemeCard",
+      "description": "live 16:9 preview + name + active state",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-63",
+      "title": "ThemeEditor",
+      "description": "the whole editing surface",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-64",
+      "title": "TypographyControls",
+      "description": "family, size, weight, line-height, alignment, max lines",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-65",
+      "title": "BackgroundControls",
+      "description": "color / image / video / blur / dim overlay",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-66",
+      "title": "TextShadowControls",
+      "description": "shadow, outline, glow — legibility on video",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-67",
+      "title": "SafeAreaOverlay",
+      "description": "title-safe guides on the preview",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-68",
+      "title": "LowerThirdEditor",
+      "description": "if lower-thirds ship",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-69",
+      "title": "SeasonalThemeSelector",
+      "description": "Advent/Lent/Easter/Christmas variants + auto-switch toggle",
+      "section": "Themes & output design"
+    },
+    {
+      "id": "D-70",
+      "title": "ScheduleEditor",
+      "description": "reorderable list of segments",
+      "section": "Schedule"
+    },
+    {
+      "id": "D-71",
+      "title": "ScheduleRow",
+      "description": "type, title, time, notes, preacher pin",
+      "section": "Schedule"
+    },
+    {
+      "id": "D-72",
+      "title": "SegmentTypePicker",
+      "description": "with custom-type entry",
+      "section": "Schedule"
+    },
+    {
+      "id": "D-73",
+      "title": "ScheduleImportCard",
+      "description": "OCR flyer import: pick image → parsed entries → unmatched lines → accept",
+      "section": "Schedule"
+    },
+    {
+      "id": "D-74",
+      "title": "ScheduleSuggestionCard",
+      "description": "\"based on your last N services\" with confidence + apply",
+      "section": "Schedule"
+    },
+    {
+      "id": "D-75",
+      "title": "TimeInput",
+      "description": "service start/end",
+      "section": "Schedule"
+    },
+    {
+      "id": "D-76",
+      "title": "NotesOutline",
+      "description": "live-building outline of the sermon",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-77",
+      "title": "NotePointCard",
+      "description": "heading + explanation + scriptures",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-78",
+      "title": "DefinitionRow",
+      "description": "term + definition",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-79",
+      "title": "QuoteCard",
+      "description": "quoted line + attribution",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-80",
+      "title": "ApplicationRow",
+      "description": "application bullet",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-81",
+      "title": "NotesLiveIndicator",
+      "description": "\"still writing…\" streaming state",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-82",
+      "title": "NotesExportBar",
+      "description": "PDF / Markdown / copy / push-to-cloud",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-83",
+      "title": "NotesProviderBadge",
+      "description": "local vs cloud model, with status",
+      "section": "Notes (AI)"
+    },
+    {
+      "id": "D-84",
+      "title": "SettingsNav",
+      "description": "vertical section nav",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-85",
+      "title": "SettingRow",
+      "description": "label + description + control + \"changed\" indicator, in one consistent row",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-86",
+      "title": "AudioDevicePicker",
+      "description": "device list + live level test",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-87",
+      "title": "DisplayPicker",
+      "description": "detected monitors, assign output role, identify button",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-88",
+      "title": "ObsSceneTester",
+      "description": "connect, list scenes, fire a test",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-89",
+      "title": "VmixTester",
+      "description": "same for vMix",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-90",
+      "title": "ExternalControlDocs",
+      "description": "ws endpoint + command table + copyable examples",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-91",
+      "title": "VoiceCommandConfigEditor",
+      "description": "per-command phrase lists: defaults (read-only) + language pack + user additions, with add/remove",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-92",
+      "title": "LanguagePicker",
+      "description": "ASR language + UI language",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-93",
+      "title": "ThresholdControls",
+      "description": "every tunable gate (trust gate, auto-display timeout, batch interval, false-positive filter) with reset-to-default",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-94",
+      "title": "ApiKeyField",
+      "description": "masked, validate, clear",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-95",
+      "title": "DataPrivacyPanel",
+      "description": "what's stored locally, retention, wipe",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-96",
+      "title": "UpdateCard",
+      "description": "version, check for updates, release notes",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-97",
+      "title": "DiagnosticsPanel",
+      "description": "DB status, verse count, log path, copy diagnostics bundle",
+      "section": "Settings & system"
+    },
+    {
+      "id": "D-98",
+      "title": "CloudAuthPanel",
+      "description": "sign in / sign up / signed-in state",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-99",
+      "title": "AccountSetupCard",
+      "description": "church name + slug with availability check",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-100",
+      "title": "LinkCodeCard",
+      "description": "generate code, countdown to expiry, regenerate",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-101",
+      "title": "QrCard",
+      "description": "companion URL QR + copy link",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-102",
+      "title": "ServiceHistoryList",
+      "description": "past services with date, preacher, verse count",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-103",
+      "title": "AudienceStats",
+      "description": "live companion viewers count",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-104",
+      "title": "GivingMethodsEditor",
+      "description": "Zelle/Venmo/CashApp/PayPal/bank/custom + note",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-105",
+      "title": "SyncStatusRow",
+      "description": "write-behind queue depth, last synced, retry",
+      "section": "Cloud & companion"
+    },
+    {
+      "id": "D-106",
+      "title": "TourSpotlight",
+      "description": "dimmed cutout + tooltip + step counter (exists in Tour.tsx)",
+      "section": "Onboarding"
+    },
+    {
+      "id": "D-107",
+      "title": "TourTooltip",
+      "description": "body, next/back/skip",
+      "section": "Onboarding"
+    },
+    {
+      "id": "D-108",
+      "title": "SetupWizardStep",
+      "description": "one step of first-run",
+      "section": "Onboarding"
+    },
+    {
+      "id": "D-109",
+      "title": "ChecklistCard",
+      "description": "\"finish setting up\" with completion state",
+      "section": "Onboarding"
+    },
+    {
+      "id": "D-110",
+      "title": "PracticeScenarioPicker",
+      "description": "choose a scripted sermon to rehearse against",
+      "section": "Onboarding"
+    },
+    {
+      "id": "O-01",
+      "title": "Scripture slide",
+      "description": "ref + text + version, theme-driven, auto-fit long passages, multi-verse pagination",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-02",
+      "title": "Song/lyrics slide",
+      "description": "section-aware",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-03",
+      "title": "Media slide",
+      "description": "image/video fill, ken-burns optional",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-04",
+      "title": "Clean / black",
+      "description": "",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-05",
+      "title": "Logo / holding slide",
+      "description": "",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-06",
+      "title": "QR companion slide",
+      "description": "",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-07",
+      "title": "Lower third",
+      "description": "if shipped",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-08",
+      "title": "Countdown / pre-service",
+      "description": "timer to service start",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-09",
+      "title": "Announcement slide",
+      "description": "from schedule",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-10",
+      "title": "Stage display *(future)*",
+      "description": "preacher-facing: current verse, next item, timer, notes",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    },
+    {
+      "id": "O-11",
+      "title": "Transitions",
+      "description": "cross-fade spec between all of the above",
+      "section": "PART 4 — PROJECTOR OUTPUT WINDOWS"
+    }
+  ]
+}

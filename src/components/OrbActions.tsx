@@ -29,10 +29,18 @@ export function OrbActions({ state, hasPreview, previewKey, onNavigate, onSugges
   useEffect(() => {
     onSuggestionChange(first ? { key: first.key, text: first.action.detail } : null);
   }, [first?.key, first?.action.detail, onSuggestionChange]);
-  return <div className="tri-orb-actions" role="group" aria-label="Suggested actions">
-    {visible.map(({ key, action }) => <OrbActionButton key={key} action={action} onNavigate={onNavigate}
-      onDismiss={() => setDismissed(old => old.includes(key) ? old : [...old, key])} />)}
-    <span className="tri-orb-actions-empty">Actions appear here</span>
+  return <div data-guide-area="orb" className="tri-orb-actions" role="group" aria-label="Suggested actions">
+    {[0, 1].map(slot => {
+      // Fill from the orb outward: the nearest (right-hand) slot comes first.
+      const item = visible[1 - slot];
+      return <div className="tri-orb-action-slot" key={slot}>
+        {item ? <OrbActionButton key={item.key} action={item.action} onNavigate={onNavigate}
+          onDismiss={() => setDismissed(old => old.includes(item.key) ? old : [...old, item.key])} />
+          : <button type="button" className="tri-orb-action tri-orb-action-placeholder" disabled>
+            <span>Actions here</span><InfoIcon size={13} className="tri-orb-action-info" />
+          </button>}
+      </div>;
+    })}
   </div>;
 }
 
@@ -47,7 +55,7 @@ function OrbActionButton({ action, onNavigate, onDismiss }: { action: OrbAction;
     return () => window.clearTimeout(timer);
   }, [leaving]);
   if (gone) return null;
-  return <button type="button" className="tri-orb-action"
+  return <button type="button" data-guide="orb-action" className="tri-orb-action"
     data-attention={action.attention || undefined} data-leaving={leaving || undefined}
     disabled={leaving} title={action.detail}
     onTransitionEnd={event => { if (leaving && event.propertyName === 'opacity') setGone(true); }}

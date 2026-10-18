@@ -1,0 +1,3 @@
+.operator-rail-split[data-resizing] { user-select: none; }
+.operator-rail-split[data-resizing] .operator-rail-divider::before { background: rgb(229 243 242 / .36); }
+.operator-rail-split[data-resizing] .operator-rail-handle { color: var(--tri-ink); }

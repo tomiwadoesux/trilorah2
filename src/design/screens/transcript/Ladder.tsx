@@ -113,6 +113,7 @@ export function LadderTranscript({
   return (
     <button
       type="button"
+      data-guide="transcript-open"
       onClick={onOpenDashboard}
       className={cx(
         '@container relative flex min-w-[64px] flex-1 cursor-pointer overflow-hidden rounded-[var(--tri-radius-control)]',

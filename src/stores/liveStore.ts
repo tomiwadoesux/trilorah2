@@ -1,3 +1,5 @@
+import { formatNoteText } from '../../shared/noteDisplay';
+import { capitalizeScriptureNames } from '../../shared/scriptureNames';
 import { create } from 'zustand';
 
 const TRANSCRIPT_CAP = 400;
@@ -64,7 +66,7 @@ export const useLiveStore = create<LiveState>()((set) => ({
     set((s) => {
       const trimmed = text.trim();
       if (!trimmed) return s;
-      const lines = [...s.lines, { id: nextLineId++, text: trimmed, ts: Date.now() }];
+      const lines = [...s.lines, { id: nextLineId++, text: capitalizeScriptureNames(trimmed), ts: Date.now() }];
       return { lines: lines.length > TRANSCRIPT_CAP ? lines.slice(-TRANSCRIPT_CAP) : lines };
     }),
   setPreview: (preview) => set({ preview }),
@@ -80,7 +82,7 @@ export const useLiveStore = create<LiveState>()((set) => ({
     })),
   pushVoiceCommand: (event) =>
     set((s) => ({ voiceLog: [event, ...s.voiceLog].slice(0, VOICE_LOG_CAP) })),
-  setNotesSnapshot: (notesSnapshot) => set({ notesSnapshot }),
-  setGeneratedNotes: (generatedNotes) => set({ generatedNotes }),
+  setNotesSnapshot: (notesSnapshot) => set({ notesSnapshot: formatNoteText(notesSnapshot) }),
+  setGeneratedNotes: (generatedNotes) => set({ generatedNotes: formatNoteText(generatedNotes) }),
   setPractice: (practice) => set({ practice }),
 }));

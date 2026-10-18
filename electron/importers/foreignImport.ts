@@ -18,7 +18,8 @@ import type { Recipes } from './recipes'
 export interface ConvertedImport { directory: string; file: string; manifest: TriManifest; warnings: string[]; questions: ForeignQuestion[] }
 export interface ConvertOptions { answers?: ForeignAnswers; recipes?: Recipes }
 type Detected = SourceFile & { kind: Kind; reason?: string }
-const ext = (name: string) => path.extname(name).toLowerCase()
+const OFFICE_DOCUMENTS = new Set(['.docx', '.xlsx', '.pptx', '.pptm', '.ppsx', '.ppsm', '.potx', '.potm', '.odt', '.ods', '.odp', '.key'])
+const ext =(name: string) => path.extname(name).toLowerCase()
 const base = (name: string) => path.posix.basename(name.replace(/\\/g, '/'))
 const titleOf = (name: string) => base(name).replace(/\.[^.]+$/, '')
 const key = () => `foreign-${randomUUID()}`
@@ -310,7 +311,8 @@ export async function convertForeign(paths: string[], options: ConvertOptions = 
     let total = 0, expanded = 0, entries = 0
     const expand = async (entry: SourceFile, depth = 0) => {
       const extension = ext(entry.name)
-      if (await isZip(entry.file)) {
+      // Office documents are ZIPs too, but they are read whole (Word) or reported as their own kind (PowerPoint), never unpacked.
+      if (!OFFICE_DOCUMENTS.has(extension) && await isZip(entry.file)) {
         if (depth >= 4) throw new Error('The export contains too many nested archives. Select the presentation bundle directly.')
         const added = await unpack(entry.file, path.join(directory, key()), {
           maxBytes: IMPORT_LIMITS.bytes - expanded, maxEntries: IMPORT_LIMITS.entries - entries,
@@ -321,8 +323,6 @@ export async function convertForeign(paths: string[], options: ConvertOptions = 
           expanded += (await fs.stat(child.file)).size
           if (expanded > IMPORT_LIMITS.bytes) throw new Error('The selected exports expand to more than 2 GiB.')
         }
-        // Office documents are ZIPs too, but they are read whole by the Word reader.
-        if (extension === '.docx') { sources.push(entry); return }
         for (const child of added) await expand(child, depth + 1)
       } else {
         // Nested entries have already consumed the extraction budget above.

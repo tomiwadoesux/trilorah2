@@ -130,8 +130,8 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
         <footer className="flex shrink-0 items-center gap-2 px-6 pb-5 pt-3">
           {mode === 'review' ? (
             <>
-              <Button label="paste text" tone="ash" icon={<NoteIcon size={12} />} onClick={() => setMode('paste')} />
-              {onScanAgain && <Button label="scan another" tone="ash" icon={<ScanIcon size={12} />} onClick={onScanAgain} />}
+              <Button guideId="run-paste-mode" label="paste text" tone="ash" icon={<NoteIcon size={12} />} onClick={() => setMode('paste')} />
+              {onScanAgain && <Button guideId="run-scan-again" label="scan another" tone="ash" icon={<ScanIcon size={12} />} onClick={onScanAgain} />}
               <span className="min-w-0 flex-1 truncate text-right text-[length:var(--tri-size-xs)] lowercase tabular-nums text-[var(--tri-ink-muted)]" aria-live="polite">
                 {usable.length} {usable.length === 1 ? 'segment' : 'segments'}
                 {total > 0 ? ` · ${formatMinutes(total)}` : ''}
@@ -148,8 +148,8 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
             </>
           ) : (
             <>
-              {list.length > 0 && <Button label="back to the list" tone="ash" onClick={() => setMode('review')} />}
-              {onScanAgain && <Button label="scan an image instead" tone="ash" icon={<ScanIcon size={12} />} onClick={onScanAgain} />}
+              {list.length > 0 && <Button guideId="run-back-to-list" label="back to the list" tone="ash" onClick={() => setMode('review')} />}
+              {onScanAgain && <Button guideId="run-scan-instead" label="scan an image instead" tone="ash" icon={<ScanIcon size={12} />} onClick={onScanAgain} />}
               <span className="flex-1" />
               <Button guideId="run-read" label="read it" tone="go" icon={<SparkleIcon size={12} />} disabled={!text.trim()} onClick={read} />
             </>
@@ -217,6 +217,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                       {row.durationMin !== undefined ? formatMinutes(row.durationMin) : '—'}
                     </span>
                     <input
+                      data-guide="run-row-title"
                       value={row.title}
                       onChange={(e) => patch(row.key, { title: e.target.value })}
                       aria-label="segment name"
@@ -225,6 +226,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                     />
                     <button
                       type="button"
+                      data-guide="run-row-type"
                       aria-haspopup="menu"
                       aria-label={`type: ${flag === 'pick' ? 'not picked' : segmentTypeLabel(type)}`}
                       onClick={(e) => {
@@ -252,6 +254,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                       <ChevronDownIcon size={10} className="shrink-0 text-[rgb(229_243_242_/_0.4)]" />
                     </button>
                     <input
+                      data-guide="run-row-person"
                       value={row.person ?? ''}
                       onChange={(e) => patch(row.key, { person: e.target.value || undefined })}
                       placeholder="—"
@@ -261,6 +264,7 @@ export function ScanReview({ open, rows, note, onRequestClose, onClosed, onScanA
                     />
                     <button
                       type="button"
+                      data-guide="run-row-remove"
                       onClick={() => setList((prev) => prev.filter((r) => r.key !== row.key))}
                       title="leave this row out"
                       aria-label={`leave ${row.title} out`}

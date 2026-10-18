@@ -1,0 +1,102 @@
+[
+  {
+    "id": "celtic-knot",
+    "title": "Celtic knot + ring",
+    "author": "AnonMoos",
+    "source": "https://commons.wikimedia.org/wiki/File:Celtic-knot-cross.svg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/3/33/Celtic-knot-cross.svg",
+    "file": "celtic-knot.svg",
+    "license": "Public domain",
+    "description": "Interlaced strands running through a ring; no figure."
+  },
+  {
+    "id": "ethiopian",
+    "title": "Ethiopian branch cross",
+    "author": "Kwamikagami",
+    "source": "https://commons.wikimedia.org/wiki/File:Ethiopian_cross_(bold).svg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/9/98/Ethiopian_cross_%28bold%29.svg",
+    "file": "ethiopian.svg",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "description": "Bold branch-like terminals, designed for small sizes; no figure."
+  },
+  {
+    "id": "fleur-de-lis",
+    "title": "Fleur-de-lis border",
+    "author": "GDJ / OpenClipart",
+    "source": "https://freesvg.org/1535063105",
+    "original_source": "https://openclipart.org/detail/305581/fleur-de-lis-cross",
+    "url": "https://freesvg.org/img/1535063105.png",
+    "svg_url": "https://freesvg.org/download/130057",
+    "file": "fleur-de-lis.png",
+    "license": "Public domain / CC0",
+    "description": "Hollow Latin cross bordered by lily motifs; no figure."
+  },
+  {
+    "id": "jerusalem",
+    "title": "Jerusalem fivefold",
+    "author": "OpenClipart / FreeSVG",
+    "source": "https://freesvg.org/cross-jerusalem",
+    "url": "https://freesvg.org/img/cross-Jerusalem.png",
+    "svg_url": "https://freesvg.org/download/185336",
+    "file": "jerusalem.png",
+    "license": "Public domain / CC0",
+    "description": "Central cross potent surrounded by four small crosses; no figure."
+  },
+  {
+    "id": "maltese",
+    "title": "Eight-point Maltese",
+    "author": "OpenClipart / FreeSVG",
+    "source": "https://freesvg.org/maltese-cross",
+    "url": "https://freesvg.org/img/maltese-cross.png",
+    "svg_url": "https://freesvg.org/download/185172",
+    "file": "maltese.png",
+    "license": "Public domain / CC0",
+    "description": "Eight sharply flared points; no figure."
+  },
+  {
+    "id": "moline",
+    "title": "Moline curved tips",
+    "author": "paxed / OpenClipart",
+    "source": "https://freesvg.org/cross-moline",
+    "original_source": "https://openclipart.org/detail/63577/cross-moline",
+    "url": "https://freesvg.org/img/cross-moline.png",
+    "svg_url": "https://freesvg.org/download/185304",
+    "file": "moline.png",
+    "license": "Public domain / CC0",
+    "description": "Each arm has two curled tips; no figure."
+  },
+  {
+    "id": "ornamental-27",
+    "title": "Circular lattice",
+    "author": "OpenClipart / FreeSVG",
+    "source": "https://freesvg.org/ornamental-cross-27",
+    "url": "https://freesvg.org/img/OrnamentalCross27.png",
+    "svg_url": "https://freesvg.org/download/179661",
+    "file": "ornamental-27.png",
+    "license": "Public domain / CC0",
+    "description": "Latin cross filled with repeating interlaced rosettes; no figure."
+  },
+  {
+    "id": "decorative-ornamental",
+    "title": "Filigree outline",
+    "author": "OpenClipart / FreeSVG",
+    "source": "https://freesvg.org/decorative-ornamental-cross",
+    "url": "https://freesvg.org/img/Decorative-Ornamental-Cross.png",
+    "svg_url": "https://freesvg.org/download/162531",
+    "file": "decorative-ornamental.png",
+    "license": "Public domain / CC0",
+    "description": "Hollow Latin cross bordered by tiny scroll ornament; no figure."
+  },
+  {
+    "id": "coptic",
+    "title": "Coptic ornament",
+    "author": "Sagredo",
+    "source": "https://commons.wikimedia.org/wiki/File:Coptic_cross.svg",
+    "url": "https://upload.wikimedia.org/wikipedia/commons/7/71/Coptic_cross.svg",
+    "file": "coptic.svg",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "description": "Blue and yellow ornate Coptic cross, Christogram lettering, no human figure."
+  }
+]

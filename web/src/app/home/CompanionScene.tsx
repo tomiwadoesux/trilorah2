@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useId, useState } from "react";
-import { BookOpen, Check, StickyNote } from "@/components/icons";
+import { ArrowUpRight, BookOpen, Check, StickyNote } from "@/components/icons";
 import operator from "./assets/operator-workspace.png";
 import transcript from "./assets/companion-transcript.png";
 import verses from "./assets/companion-verses.png";
@@ -47,7 +47,7 @@ export function CompanionScene() {
 
       <div className="pd-app-details" aria-label="A closer look at the companion">
         <div className="pd-app-fragment pd-reading-fragment" aria-hidden="true"><Image draggable={false} src={reading} alt="" sizes="230px" quality={95} /></div>
-        <button className="pd-app-fragment pd-notes-fragment" type="button" aria-label="Show sermon notes in the phone preview" onClick={() => setScreen("notes")}><span className="pd-fragment-crop"><Image draggable={false} src={notes} alt="" sizes="260px" quality={95} /></span><span className="pd-fragment-label">Keep the message close <span aria-hidden="true">↗</span></span></button>
+        <button className="pd-app-fragment pd-notes-fragment" type="button" aria-label="Show sermon notes in the phone preview" onClick={() => setScreen("notes")}><span className="pd-fragment-crop"><Image draggable={false} src={notes} alt="" sizes="260px" quality={95} /></span><span className="pd-fragment-label">Keep the message close <span aria-hidden="true"><ArrowUpRight size={12} /></span></span></button>
       </div>
 
       <div className="pd-floating-verse" aria-hidden="true"><span><BookOpen size={14} /> Scripture identified</span><strong>Psalm 46:10</strong><small>Ready for the room.</small><Check size={15} className="pd-floating-check" /></div>

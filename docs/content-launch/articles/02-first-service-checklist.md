@@ -1,63 +1,61 @@
 ---
-title: "Your first service in Trilorah: a rehearsal checklist"
+title: "Your first Trilorah service starts with a rehearsal"
 slug: "first-service-checklist"
 audience: "A volunteer preparing to operate Trilorah for the first time"
 question: "What should I check before using Trilorah in a service?"
 proposed_publication_date: "2026-03-05"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; release walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [outputs.assign, run.build-edit, output.publish-preview, output.clear-restore, audio.choose-input, files.save-open-transfer]
 ---
 
-# Your first service in Trilorah: a rehearsal checklist
+# Your first Trilorah service starts with a rehearsal
 
-Your first rehearsal should answer a few concrete questions: Is the right content ready? Does it reach the right screen? Can you recover when the plan changes?
+Run a short service before you run a real one. You will learn more from putting four items on the projector than from opening every setting.
 
-Use a short practice service before operating for a congregation. A welcome slide, one song, one scripture reading, and a closing slide are enough to exercise the main workflow.
+Prepare a welcome slide, one song, a scripture reading, and a closing slide. Use the computer, display, and audio equipment intended for the service. Work through these six checks while the room is available for testing.
 
-## 1. Check the screen people will actually see
+## 1. Check the actual screen
 
-Connect your display, open the dashboard, and expand **Outputs**. Check the output's **job** and **display**. A projector, a stage display, a stream output, and a timer serve different purposes.
+Connect the display and open **Dashboard → Outputs**. Each output has a **job**, such as projector or stage, and a **display**, which determines where its window appears.
 
-Send a test item during rehearsal and look at the physical screen. A correct preview on the laptop cannot confirm the cable, projector input, or room display.
+Choose the intended destination, send a test item, and look at the physical screen. Check the projector's input and the edges of the image. A correct laptop preview tells you what you prepared; this check tells you what the room receives.
 
-Do this before the congregation arrives. Output changes affect where the app's windows appear.
+## 2. Put the practice service in order
 
-## 2. Build a small run of service
+Use the plus beside **run of show** to open **Add a section**. Choose suitable section types, then rename them for your service: welcome, worship, scripture, and closing.
 
-Use the plus beside the run of service to **add segment**. Put your welcome, worship, sermon, and closing sections in the order you expect to use them. Rename or move a segment when the service needs a different structure.
+Open each section and choose **Add items** to add its prepared content. For a cue, choose **Notes** and **Add note**. For example: “Show the first lyric section when the worship leader begins.” Notes stay with the operator. Use a slide for words the congregation should read.
 
-Add a short note wherever a volunteer needs an instruction, such as “Wait for the speaker before showing the closing slide.” Use the segment's note control for this. A run note is for the operator; create a slide for words the congregation needs to read.
+## 3. Inspect every item
 
-## 3. Open every item you plan to use
+Open the song and read every lyric section. Preview the slides. Play the video if you are using one. Check the scripture reference, translation, and text.
 
-Open the saved song and check its lyric sections. Preview the announcement slide. Check that local media loads. Confirm that the Bible translation and passage you need are available.
+This includes online results and imported files. A familiar title or a good thumbnail is a reason to open an item, not evidence that it is ready for the service.
 
-Finding a title in a library is only the beginning of the check. Look at the actual words or image that will appear.
+## 4. Practice the screen-changing controls
 
-If an item came from an online search or an imported file, give it the same review as something you typed yourself.
+Preview a lyric section, then choose **Go live**. Use **Clear** to remove the words while retaining the background. Choose **Restore** to bring them back. Black and logo screen states have separate controls.
 
-## 4. Rehearse preview, live, and clear
+Practice scripture selection too:
 
-Prepare a lyric section in preview, then send it live. Clear the words during a pretend instrumental break, and restore them when the song resumes.
+- A single click on a verse row previews it.
+- Double-clicking a verse row, or pressing Enter on it, sends it live.
+- Enter in the scripture reference field sends the resolved passage live.
 
-The clear-words control retains the background. Black and logo screen states are different controls, so learn the one your team intends to use.
+Do these exercises during rehearsal, when an unexpected change is easy to correct.
 
-For scripture, single-click a verse row to preview it. Enter in the reference field, Enter on a verse row, and double-clicking a row are direct-send actions in the current app. Practice them deliberately so that a search does not become an unexpected screen change.
+## 5. Test listening with fresh speech
 
-## 5. Check listening separately
+If you plan to use recognition, open **Audio** beneath preview and select the intended input. Start listening and say a complete sentence. Confirm both a responding audio level and new transcript words.
 
-If you will use scripture recognition, select the actual input beneath preview in **Audio**. Start listening, say a complete sentence, and look for both a responding level and new transcript words.
+The built-in practice sermon can demonstrate recognition, but it does not test your microphone. It also uses the real recognition and output paths. Treat it as rehearsal material.
 
-A practice sermon can demonstrate the recognition flow, but it does not test your microphone. It also uses the real recognition and output pathways, so use it as a rehearsal activity.
+## 6. Save and name your fallback
 
-## 6. Save the service and identify the fallback
+Use the **.tri** file controls to save the service. Check the success message and any warnings. The file needs an initial save before its autosave can help.
 
-Use the run's **.tri** file controls to save the prepared service. Check the success message and any file warnings. Initial saving is required before that file's autosave can help.
+Choose a fallback you can actually use: manual scripture lookup if listening fails, or a local image if an online download is unfinished. Then follow the four-item run once more without stopping to change settings.
 
-Finally, name the fallback out loud: “If listening fails, I will use manual scripture lookup. If an image is missing, I will use this local alternative.”
-
-The rehearsal is complete when another volunteer can follow the run and you know what each screen-changing action does.
-
-Next: [connect and check your microphone](03-connect-a-microphone.md) and [assign your outputs](05-connect-the-right-screens.md).
+Continue with [microphone setup](03-connect-a-microphone.md) or [screen assignment](05-connect-the-right-screens.md) for any check that needs more work.

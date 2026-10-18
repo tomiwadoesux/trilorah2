@@ -19,6 +19,10 @@ export interface SearchFieldProps {
   onSubmit?: (value: string) => void;
   className?: string;
   ariaLabel?: string;
+  /** Stable anchor for the in-app guide (data-guide on the input). */
+  guideId?: string;
+  /** Accept type-anywhere input while this library tab is visible. */
+  operatorSearch?: boolean;
 }
 
 export function SearchField({
@@ -29,6 +33,8 @@ export function SearchField({
   onSubmit,
   className = '',
   ariaLabel,
+  guideId,
+  operatorSearch,
 }: SearchFieldProps) {
   return (
     <div
@@ -41,6 +47,8 @@ export function SearchField({
       <SearchOutlineIcon size={13} className="shrink-0 text-[rgb(229_243_242_/_0.45)]" />
       <input
         type="text"
+        data-guide={guideId}
+        data-operator-search={operatorSearch || undefined}
         aria-label={ariaLabel}
         value={value}
         disabled={disabled}

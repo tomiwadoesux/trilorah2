@@ -13,6 +13,7 @@ import { parts } from '../../../shared/referenceParts';
 import { editSongCard, songCards } from '../../../shared/songCards';
 import { isTextPosition } from '../../../shared/textPosition';
 import { readingStep } from '../../lib/readingStep';
+import { capitalizeScriptureNames } from '../../../shared/scriptureNames';
 
 export function useMobileRemote() {
   const engine = useEngine();
@@ -52,7 +53,9 @@ export function useMobileRemote() {
     const text = (v: unknown, max=200) => typeof v === 'string' ? v.slice(0,max) : '';
     const index = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 0 ? Number(v) : 0;
     // An online Bible's copyright line travels with its words (YouVersion: "always display" it).
-    const publicItem = (item: LiveItem | null) => item && ({source:item.source,id:item.id,label:item.label,reference:item.reference,version:item.version,text:item.text,lines:item.lines,
+    const publicItem = (item: LiveItem | null) => item && ({source:item.source,id:item.id,label:capitalizeScriptureNames(item.label),reference:item.reference,version:item.version,
+      text:item.text && capitalizeScriptureNames(item.text),
+      lines:item.lines && (item.lines.length ? capitalizeScriptureNames(item.lines.join('\n')).split('\n') : []),
       credit:item.source === 'scripture' ? versionCredit(item.version) ?? undefined : undefined});
     async function decks(): Promise<{id:string;title:string;slides:string[]}[]> {
       const imported=await api!.loadPresentations();

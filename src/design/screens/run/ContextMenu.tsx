@@ -3,6 +3,7 @@ import { popupBounds } from '../../../ui/primitives/usePopupPlacement';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckIcon, ChevronDownIcon, cx } from '../../../ui';
+import { GUIDE_ACTION_SELECTOR, requestControlGuide } from '../../../lib/contextGuide';
 
 /*
  * A menu that opens where you pointed.
@@ -35,13 +36,15 @@ export interface ContextMenuState {
   y: number;
   /** What to refocus on close. */
   from: HTMLElement | null;
+  /** The precise control under the pointer, which can differ from the focusable row. */
+  guideTarget?: HTMLElement | null;
 }
 
 /** A compact, neutral surface for pointer and keyboard context menus. */
 const BUBBLE = {
-  borderRadius: '10px',
+  borderRadius: '12px',
   backgroundColor: '#202020',
-  boxShadow: '0 8px 24px rgb(0 0 0 / 0.3), inset 0 0 0 1px rgb(255 255 255 / 0.18)',
+  boxShadow: '0 12px 32px rgb(0 0 0 / 0.4), inset 0 0 0 1px rgb(255 255 255 / 0.1)',
 } as const;
 
 
@@ -63,7 +66,8 @@ export function useContextMenu() {
       const focusable = e.currentTarget.matches('button, [tabindex]')
         ? e.currentTarget
         : e.currentTarget.querySelector<HTMLElement>('button, [tabindex]');
-      setAt({ x: e.clientX, y: e.clientY, from: focusable });
+      const guideTarget = e.target instanceof Element ? e.target.closest<HTMLElement>(GUIDE_ACTION_SELECTOR) : null;
+      setAt({ x: e.clientX, y: e.clientY, from: focusable, guideTarget: guideTarget ?? e.currentTarget });
     },
   };
   const keys = {
@@ -193,7 +197,7 @@ export function ContextMenu({
       aria-label={label}
       onKeyDown={onKey}
       onContextMenu={(e) => e.preventDefault()}
-      className="tri-context-menu fixed z-[70] flex flex-col p-1.5"
+      className="tri-context-menu fixed z-[850] flex flex-col p-1.5"
       style={{
         ...BUBBLE,
         ...popupBounds,
@@ -207,21 +211,23 @@ export function ContextMenu({
     >
       {parent && (
         <>
-          <button type="button" role="menuitem" onClick={() => setPath((p) => p.slice(0, -1))} className={cx(row, 'text-[rgb(229_243_242_/_0.62)]')}>
+          <button type="button" role="menuitem" data-guide="run-menu-back" onClick={() => setPath((p) => p.slice(0, -1))} className={cx(row, 'text-[rgb(229_243_242_/_0.62)]')}>
             <ChevronDownIcon size={11} className="shrink-0 rotate-90" />
             <span className="truncate">{parent.label}</span>
           </button>
           <span aria-hidden className="mx-1 my-0.5 h-px shrink-0 bg-[rgb(255_255_255_/_0.08)]" />
         </>
       )}
-      {list.map((item) => (
+      {list.map((item, index) => (
         <div key={item.id} className="contents">
-          {item.danger && <span aria-hidden className="mx-1 my-0.5 h-px shrink-0 bg-[rgb(255_255_255_/_0.08)]" />}
+          {item.danger && !list[index - 1]?.danger && <span aria-hidden className="mx-1 my-0.5 h-px shrink-0 bg-[rgb(255_255_255_/_0.08)]" />}
           <button
             type="button"
+            data-guide={`run-menu-${item.id}`}
             role={item.checked !== undefined ? 'menuitemradio' : 'menuitem'}
             aria-checked={item.checked}
             aria-haspopup={item.items ? 'menu' : undefined}
+            data-danger={item.danger || undefined}
             onClick={() => {
               if (item.items) {
                 setPath((p) => [...p, item.id]);
@@ -252,6 +258,14 @@ export function ContextMenu({
           </button>
         </div>
       ))}
+      {(at.guideTarget ?? at.from) && <>
+        {list.length > 0 && <span aria-hidden className="mx-1 my-0.5 h-px shrink-0 bg-[rgb(255_255_255_/_0.08)]" />}
+        <button type="button" role="menuitem" className={cx(row, 'text-[#ededed]')} onClick={() => {
+          const target = at.guideTarget ?? at.from;
+          close(false);
+          if (target) requestControlGuide(target);
+        }}><span aria-hidden className="product-guide-context-mark">△</span><span>Guide to use</span></button>
+      </>}
     </div>,
     document.body,
   );

@@ -24,16 +24,8 @@ export const SLIDE_RULES = {
   maxWordsPerSlide: PAGE_WORDS,
 };
 
-/**
- * "Verse four and five" means show four and five — together (owner,
- * 2026-10-07: "Genesis 3 verse 3-5 should show 3-5", and 3-7 likewise).
- *
- * A range is one slide. Fitting it is the screen's job, not a word count's:
- * the wall and the preview shrink the words until they fit, to half size at
- * most, and past that end them with "…" (lib/useFitText). Before, a range
- * past TIGHT_WORDS was walked verse by verse — which is why 3-5 showed 3.
- * Apart is still the operator's to choose, with the preview's
- * together/apart control (`together` false).
+/** Keep short ranges together; longer readings use pages of whole verses.
+ * The preview and wall fit every word of each page without truncation.
  */
 export function fitRules(verses: { text: string }[], together?: boolean) {
   const keep = together ?? verses.length > 1;

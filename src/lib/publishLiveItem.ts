@@ -31,7 +31,14 @@ export async function publishLiveItem(item: LiveItem, api = window.api, rules: S
       item.slides?.length ? undefined : api.getSetting?.('breakOnVerse'),
     ])
     const version = typeof selectedVersion === 'string' && selectedVersion ? selectedVersion : 'KJV'
-    const reading = await api.mobileVerse(item.reference ?? item.label, version, true)
+    if ((item.verses?.length ?? 0) > 1 && item.slides?.length && api.setSetting) {
+      // Page spans, not slide count: two long verses may each need a page.
+      const apart = item.slides.every(slide => slide.verseStart === slide.verseEnd);
+      await api.setSetting('breakOnVerse', apart);
+    }
+    const reading = await (item.followFrom
+      ? api.mobileVerse(item.reference ?? item.label, version, true, item.followFrom)
+      : api.mobileVerse(item.reference ?? item.label, version, true))
     if (reading.superseded) return null
     /* The item comes back the way the engine names it ("Psalms", not the run
        of service's "Psalm"; a hyphen, not the phone's en dash) and sliced, so
@@ -50,7 +57,8 @@ export async function publishLiveItem(item: LiveItem, api = window.api, rules: S
       : !reading.book || !reading.verses?.length
         ? item.slides
         : buildVerseSlides({ book: reading.book, chapter: reading.chapter, version: delivered }, reading.verses, rules(reading.verses, apart ? false : undefined))
-    return { ...item, reference, version: delivered, text: reading.text, verses: reading.verses, slides }
+    const { followFrom: _guard, ...confirmed } = item
+    return { ...confirmed, reference, version: delivered, text: reading.text, verses: reading.verses, slides }
   } else if (item.source === 'song' && item.lines) {
     if (!api.pushLiveContent) throw new Error('Restart the app to enable song output.')
     const result = await api.pushLiveContent({ id: item.id, kind: 'song', title: item.title ?? item.label, label: item.section ?? '', lines: item.lines })

@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { defaultSegments, type PlannedSegment } from '../../../shared/runPlan';
+import { applyRunDrop, moveRunSegments, type RunCarry } from '../../../shared/runCards';
 
 /*
  * The run of service — segments, and what is queued inside each.
@@ -25,39 +26,18 @@ import { defaultSegments, type PlannedSegment } from '../../../shared/runPlan';
  */
 
 export type { QueueSource, QueueItem, RunSegment } from '../../../shared/operatorRun';
-import type { QueueSource, QueueItem, RunSegment } from '../../../shared/operatorRun';
+import type { QueueItem, RunSegment } from '../../../shared/operatorRun';
 import { operatorRunStore } from '../../stores/operatorRunStore';
-/*
- * Which segment each kind of thing lands in when the drop names none.
- *
- * Deliberately coarse. This is a guess made so the operator does not have to
- * build the run before using it, and a guess that is wrong is cheap — the
- * segment is right there in the rail to rename or drag out of. Being wrong
- * quietly and often would be worse than being coarse: hence songs to worship
- * and everything with words on a screen to sermon, which is where a reading,
- * a slide deck and a photo actually go in the services this is built for.
- *
- * The ids match SEGMENT_TYPES in Live.tsx — a segment made here is the same
- * kind of object as one picked from the "+" menu, not a special case.
- */
-const SEGMENT_FOR: Record<QueueSource, { id: string; label: string }> = {
-  song: { id: 'worship', label: 'worship' },
-  scripture: { id: 'sermon', label: 'sermon' },
-  presentation: { id: 'sermon', label: 'sermon' },
-  media: { id: 'sermon', label: 'sermon' },
-  note: { id: 'sermon', label: 'sermon' },
-};
-
-/* ------------------------------------------------------------------ */
-
 interface RunValue {
   segments: RunSegment[];
   addSegments: (picked: PlannedSegment[]) => void;
   /** Take a whole segment out of the run, queued contents and all. */
   removeSegment: (key: string) => void;
+  removeSegments: (keys: string[]) => void;
   /** Swap a segment with its neighbour. Ends of the list are no-ops, so a
       caller can offer the action unconditionally and let it decline. */
   moveSegment: (key: string, delta: -1 | 1) => void;
+  moveSegments: (keys: string[], delta: -1 | 1) => void;
   /** A new segment beside an existing one rather than at the end. */
   insertSegment: (key: string, where: 'above' | 'below', picked: PlannedSegment) => void;
   /** The same segment again, contents and all, directly below it. */
@@ -80,7 +60,7 @@ interface RunValue {
   queueMany: (segmentKey: string, items: Omit<QueueItem, 'key'>[]) => void;
   /** A drop from the drag layer. A null segment means "nowhere in
       particular" — see dropInto: it makes the segment the carry belongs in. */
-  dropInto: (segmentKey: string | null, items: Omit<QueueItem, 'key'>[]) => void;
+  dropInto: (segmentKey: string | null, items: RunCarry[]) => void;
   remove: (segmentKey: string, itemKey: string) => void;
   /** Rewrite one item's label — how a note is edited in place. */
   updateItem: (segmentKey: string, itemKey: string, label: string) => void;
@@ -98,25 +78,6 @@ export function RunProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState<string[]>([]);
   const seq = useRef(Date.now());
   useEffect(() => { void operatorRunStore.hydrate(); }, []);
-
-  /*
-   * Open a segment from inside a setSegments updater.
-   *
-   * The updater runs during render in StrictMode, and calling setOpen from
-   * in there is a state update inside another component's render — React
-   * warns, and under StrictMode's double-invoke it would queue twice. So the
-   * key is stashed and the effect below does the opening, after commit.
-   */
-  const openSoon = useRef<string | null>(null);
-  const setOpenSoon = (key: string) => {
-    openSoon.current = key;
-  };
-  useEffect(() => {
-    const key = openSoon.current;
-    if (!key) return;
-    openSoon.current = null;
-    setOpen((prev) => (prev.includes(key) ? prev : [...prev, key]));
-  });
 
   const make = (p: PlannedSegment): RunSegment => ({
     key: `${p.id}-${(seq.current += 1)}`,
@@ -151,6 +112,16 @@ export function RunProvider({ children }: { children: ReactNode }) {
   const removeSegment = useCallback((key: string) => {
     setSegments((prev) => prev.filter((s) => s.key !== key));
     setOpen((prev) => prev.filter((k) => k !== key));
+  }, []);
+
+  const removeSegments = useCallback((keys: string[]) => {
+    const selected = new Set(keys);
+    setSegments(previous => previous.filter(segment => !selected.has(segment.key)));
+    setOpen(previous => previous.filter(key => !selected.has(key)));
+  }, []);
+
+  const moveSegments = useCallback((keys: string[], delta: -1 | 1) => {
+    setSegments(previous => moveRunSegments(previous, keys, delta));
   }, []);
 
   /* Reordering is a swap, not a splice-and-insert: the two calls a menu can
@@ -246,73 +217,9 @@ export function RunProvider({ children }: { children: ReactNode }) {
     setOpen((prev) => (prev.includes(segmentKey) ? prev : [...prev, segmentKey]));
   }, []);
 
-  /*
-   * A drop that did not land on a segment.
-   *
-   * The rail starts empty, and the first thing anyone does is drag a song
-   * into it — at which point the old behaviour was nothing at all, because
-   * there was no segment under the pointer to receive it and the drop was
-   * discarded silently. Requiring the operator to go and build the run's
-   * skeleton before it can hold anything is backwards: what they are
-   * carrying already says which segment it belongs in.
-   *
-   * So a drop with no target fills one in. If a segment of the fitting type
-   * is already there it queues into that one rather than making a second —
-   * dropping three songs makes one worship segment holding three, not three
-   * worship segments.
-   */
-  const dropInto = useCallback(
-    (segmentKey: string | null, items: Omit<QueueItem, 'key'>[]) => {
-      if (items.length === 0) return;
-      if (segmentKey) {
-        queueMany(segmentKey, items);
-        return;
-      }
-      /*
-       * Each thing goes where IT belongs, not where the first one did.
-       *
-       * A carry is one gesture but not necessarily one kind of thing — two
-       * songs and a reading picked up together is an ordinary way to build
-       * the top of a service. Sending the whole stack to the first item's
-       * segment would put that reading under worship, which is not what the
-       * operator dragged. So the stack is grouped by what each item is, and
-       * each group lands in its own segment.
-       *
-       * Insertion order follows the carry, not SEGMENT_FOR: the segments
-       * appear in the order their first item was picked up, so the run comes
-       * out in the order the operator was thinking in.
-       */
-      setSegments((prev) => {
-        const next = [...prev];
-        let firstTouched: string | null = null;
-
-        for (const item of items) {
-          const fit = SEGMENT_FOR[item.source];
-          const at = next.findIndex((sg) => sg.type === fit.id);
-          const queued = { ...item, key: `${item.source}-${(seq.current += 1)}` };
-          if (at >= 0) {
-            next[at] = { ...next[at], items: [...next[at].items, queued] };
-            firstTouched ??= next[at].key;
-          } else {
-            const made = {
-              key: `${fit.id}-${(seq.current += 1)}`,
-              type: fit.id,
-              label: fit.label,
-              items: [queued],
-            };
-            next.push(made);
-            firstTouched ??= made.key;
-          }
-        }
-
-        /* Open the first one the drop touched. Opening all of them would
-           push the rest of the run off the rail on a mixed carry. */
-        if (firstTouched) setOpenSoon(firstTouched);
-        return next;
-      });
-    },
-    [queueMany],
-  );
+  const dropInto = useCallback((target: string | null, items: RunCarry[]) => {
+    setSegments(previous => applyRunDrop(previous, target, items, () => `run-${++seq.current}`));
+  }, []);
 
   const remove = useCallback((segmentKey: string, itemKey: string) => {
     setSegments((prev) =>
@@ -372,7 +279,9 @@ export function RunProvider({ children }: { children: ReactNode }) {
       segments,
       addSegments,
       removeSegment,
+      removeSegments,
       moveSegment,
+      moveSegments,
       insertSegment,
       duplicateSegment,
       clearSegment,
@@ -393,7 +302,9 @@ export function RunProvider({ children }: { children: ReactNode }) {
       segments,
       addSegments,
       removeSegment,
+      removeSegments,
       moveSegment,
+      moveSegments,
       insertSegment,
       duplicateSegment,
       clearSegment,

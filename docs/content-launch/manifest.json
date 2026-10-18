@@ -2,12 +2,12 @@
   "product": "Trilorah",
   "created_on": "2026-10-10",
   "audience": "Church volunteers setting up and running services",
-  "schedule_status": "Proposed March–July 2026 planning dates requested by user; not published history",
+  "schedule_status": "Launch-relative phases and verified-event triggers govern the new plan. Original March–July 2026 requested planning dates are retained on articles 01–16 only; none represent publication history.",
   "articles": [
     {
       "id": "01",
       "file": "articles/01-meet-trilorah.md",
-      "title": "Meet Trilorah: prepare the service, follow the sermon",
+      "title": "Meet Trilorah: ready for the next part of the service",
       "proposed_publication_date": "2026-03-02",
       "audience": "Church volunteers, worship leaders, and church leaders evaluating Trilorah",
       "question": "What does Trilorah do, and where should our team begin?",
@@ -26,7 +26,7 @@
         "src/design/screens/run/RunRail.tsx",
         "electron/engine/verseDelivery.ts"
       ],
-      "evidence": "LiveBody and LibraryTabs establish the current workspace. RunRail supplies the service structure. VerseDelivery.promote accepts explicit operator/remote sources only.",
+      "evidence": "Current run of show uses section cards. LiveBody and the library tabs establish the workspace. Recognized scripture suggestions require an explicit operator/remote publication action; configured voice commands are separate.",
       "visuals": [
         {
           "shot": "Operator workspace with a short synthetic run, library tabs, preview, and live all visible. Add four small labels; keep their UI names unchanged.",
@@ -38,12 +38,19 @@
         }
       ],
       "release_check": "Walk the four-item sample service in the release desktop build. Confirm the current tab labels and explicit publication behavior. Do not use the website example assistant as proof of desktop capability.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "meet-trilorah",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; release walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Blog",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "02",
       "file": "articles/02-first-service-checklist.md",
-      "title": "Your first service in Trilorah: a rehearsal checklist",
+      "title": "Your first Trilorah service starts with a rehearsal",
       "proposed_publication_date": "2026-03-05",
       "audience": "A volunteer preparing to operate Trilorah for the first time",
       "question": "What should I check before using Trilorah in a service?",
@@ -63,9 +70,12 @@
         "src/design/screens/dashboard/OutputsTile.tsx",
         "src/components/MicPicker.tsx",
         "src/design/screens/Live.tsx",
-        "src/design/screens/run/TriPackageActions.tsx"
+        "src/design/screens/run/TriPackageActions.tsx",
+        "src/design/screens/run/RunHeaderActions.tsx",
+        "src/design/screens/run/RunRail.tsx",
+        "src/design/screens/run/RunContentPicker.tsx"
       ],
-      "evidence": "OutputsTile maps roles/displays; MicPicker selects audio; Stage/ScripturesBrowser distinguish preview and direct-send actions; TriPackageActions requires an initial file save for autosave.",
+      "evidence": "OutputsTile assigns jobs/displays; Add a section and Add items build the practice run; Notes/Add note stores cues. MicPicker selects audio. Verse rows and reference submission have distinct preview/direct-send behaviour. Initial .tri save precedes autosave.",
       "visuals": [
         {
           "shot": "Dashboard Outputs with a real connected rehearsal display and its job/display controls. Use a generic device label where possible.",
@@ -77,12 +87,19 @@
         }
       ],
       "release_check": "Rehearse on actual hardware. Verify clear/restore and initial save. The practice sermon is not an isolated output sandbox; all sample live actions belong in rehearsal.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "first-service-checklist",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; release walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "03",
       "file": "articles/03-connect-a-microphone.md",
-      "title": "Connect a microphone to Trilorah and check that it hears you",
+      "title": "Connect a microphone and check it in Trilorah",
       "proposed_publication_date": "2026-03-09",
       "audience": "An operator setting up sermon listening",
       "question": "How do I select the right microphone and confirm that transcription works?",
@@ -102,7 +119,7 @@
         "src/components/PhoneMicPanel.tsx",
         "src/design/screens/engine.tsx"
       ],
-      "evidence": "MicPicker.choose persists input and can restart listening. openMicrophone handles permissions/devices. PhoneMicPanel connects separately from use phone audio. The engine listen path updates UI before all backend work completes.",
+      "evidence": "MicPicker selects input and can restart listening. PhoneMicPanel separates Allow microphone approval from Use phone audio, which selects that source and starts listening. UI state can update before backend startup finishes; check fresh level and words.",
       "visuals": [
         {
           "shot": "Open Audio beneath preview with the intended device selected; mask personal device names if necessary.",
@@ -114,12 +131,19 @@
         }
       ],
       "release_check": "Run a real input and transcription test; if showing phone steps, pair a test phone and verify use phone audio separately. Exclude live pairing codes from the published image. No engine-key provisioning tutorial is asserted.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "connect-a-microphone",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; microphone hardware walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "04",
       "file": "articles/04-how-scripture-recognition-works.md",
-      "title": "How Trilorah recognizes scripture during a sermon",
+      "title": "How Trilorah finds scripture while the preacher speaks",
       "proposed_publication_date": "2026-03-13",
       "audience": "Operators and church leaders evaluating sermon recognition",
       "question": "How do spoken references and quotations become scripture suggestions, and who controls projection?",
@@ -139,7 +163,7 @@
         "electron/engine/quoteMatcher.ts",
         "src/design/screens/ScriptureCatches.tsx"
       ],
-      "evidence": "main.ts stages detections with manualOnly and rejects auto-mode-set enabled. VerseDelivery.promote blocks automatic sources. QuoteMatcher.loadIndex reports KJV/BSB wordings. ScriptureCatches exposes recent and typed search with live result selection.",
+      "evidence": "main.ts stages detections with manualOnly and rejects enabling auto mode. VerseDelivery blocks automatic promotion of scripture suggestions. QuoteMatcher indexes KJV/BSB wording. ScriptureCatches result selection directly publishes. Configured voice commands are a separate screen-control path.",
       "visuals": [
         {
           "shot": "A real captured reference with the transcript clue and candidate reference visible. Caption the example and tested Bible translation.",
@@ -151,12 +175,19 @@
         }
       ],
       "release_check": "Record explicit-reference and quotation examples on the release build. If a quotation example does not match, show the failure/fallback or choose a verified example; do not fake the UI. Reconfirm auto-mode prohibition before publishing.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "how-scripture-recognition-works",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; recorded recognition walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides / feature explanation",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "05",
       "file": "articles/05-connect-the-right-screens.md",
-      "title": "Put the right content on the right screen in Trilorah",
+      "title": "Get Trilorah onto the right screens",
       "proposed_publication_date": "2026-03-20",
       "audience": "Operators setting up a projector, stage display, stream, or timer",
       "question": "How do I assign an output to a connected display and verify it?",
@@ -188,12 +219,19 @@
         }
       ],
       "release_check": "Test screen assignments and no-screen/off on real hardware. Never substitute design.html sample screens. A stream role does not prove an external broadcast is configured.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "connect-the-right-screens",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; physical multi-display walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "06",
       "file": "articles/06-build-an-order-of-service.md",
-      "title": "Build an order of service your next volunteer can follow",
+      "title": "Build a service another volunteer can run",
       "proposed_publication_date": "2026-03-27",
       "audience": "Service planners and volunteer presentation operators",
       "question": "How do I organize segments, content, and notes for a service?",
@@ -210,26 +248,36 @@
         "src/design/screens/run/RunHeaderActions.tsx",
         "src/design/screens/run/RunRail.tsx",
         "src/design/screens/run.tsx",
-        "src/design/screens/Live.tsx"
+        "src/design/screens/Live.tsx",
+        "src/design/screens/run/RunContentPicker.tsx",
+        "src/design/screens/run/ContextMenu.tsx",
+        "shared/runCards.ts"
       ],
-      "evidence": "RunHeaderActions onArrange adds segments and loadDefault replaces the run. RunRail/useRun provide segment edits and notes. Library drag payloads carry content; a queued song label alone is insufficient for live text.",
+      "evidence": "Current run of show provides Add a section, section menus, Add items, saved song sections, file import, Verse and Notes/Add note. Default run replacement has confirmation. The older header-media/note limitation describes superseded UI.",
       "visuals": [
         {
-          "shot": "The run plus menu with add segment expanded and a small example order.",
-          "alt_text": "Adding and arranging segments in a service run."
+          "shot": "Current run of show with Add a section and prepared section cards, using an original rehearsal service.",
+          "alt_text": "A prepared service with sections and their content in Trilorah."
         },
         {
-          "shot": "A segment containing valid queued material and an operator note, with no real congregation data.",
-          "alt_text": "A service segment with prepared content and a timing note."
+          "shot": "Open section Add items picker at Notes, followed by the saved operator cue. Preserve enough surrounding UI to locate the action.",
+          "alt_text": "Adding an operator note to a service section."
         }
       ],
-      "release_check": "Create/edit/reorder a small run; test a library drag and segment note. Do not demonstrate the unwired header media/note tiles as a working route. Confirm saved content after reopening.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "release_check": "Exercise Add a section, a saved song section, imported visual, Notes/Add note, reordering, default-run replacement confirmation, and save/reopen in the current release build.",
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "build-an-order-of-service",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; release walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "07",
       "file": "articles/07-prepare-song-lyrics.md",
-      "title": "Prepare song lyrics that are easy to follow on Sunday",
+      "title": "Get the lyrics right before the first song",
       "proposed_publication_date": "2026-04-07",
       "audience": "Worship volunteers creating or editing lyric slides",
       "question": "How do I add a song, organize its sections, and preview the words?",
@@ -261,12 +309,19 @@
         }
       ],
       "release_check": "Create/save/reopen a song, split a long section, and test preview then send during rehearsal. Online results require review and save. Do not use a copyrighted full lyric as sample documentation.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "prepare-song-lyrics",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; save-and-present walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "08",
       "file": "articles/08-use-images-and-videos.md",
-      "title": "Add images and videos to Trilorah without confusing media and backgrounds",
+      "title": "Add images and videos to Trilorah",
       "proposed_publication_date": "2026-04-17",
       "audience": "Operators preparing visuals for worship, sermons, and announcements",
       "question": "How do I import media, find online visuals, and decide how they should appear?",
@@ -284,9 +339,12 @@
         "src/design/screens/Live.tsx",
         "src/design/screens/stockSearch.tsx",
         "src/design/screens/mediaLibrary.ts",
-        "src/lib/backgroundDrop.ts"
+        "src/lib/backgroundDrop.ts",
+        "src/design/screens/Settings.tsx",
+        "src/design/screens/settingsRows.tsx",
+        "src/design/screens/StockCredential.tsx"
       ],
-      "evidence": "MediaBrowser.addHere imports and stages media. StockSearch.pick awaits download before onPick. Theme clicks stage backgrounds; double-click/live drops change live backgrounds. Online tab stages standalone media.",
+      "evidence": "Current Media/Online routes distinguish standalone media and backgrounds. StockCredential persists Pixabay/Pexels keys and states that an actual search tests provider acceptance. Stock selection awaits download. Theme double-click and LIVE background drop can affect live output.",
       "visuals": [
         {
           "shot": "Media library with one original local example and its standalone preview.",
@@ -295,15 +353,26 @@
         {
           "shot": "The same visual behind original text using the themes shelf; label preview and live only where they actually appear. Optional 10–15 second preview drop clip.",
           "alt_text": "An image used as a background behind words in preview."
+        },
+        {
+          "shot": "Optional current Settings API keys provider row with no secret exposed; retain the note that a successful search checks key acceptance.",
+          "alt_text": "Provider setup and the reminder to check the key with a search."
         }
       ],
       "release_check": "Test local import, download, provider failure state, and media playback in the release build. Credential setup is evolving in parallel: update only after the parent verifies the working path. Do not promise all remote links are offline files.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "use-images-and-videos",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; online-provider and media playback walkthrough pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-01-08.md"
     },
     {
       "id": "09",
       "file": "articles/09-find-scripture-from-a-phrase.md",
-      "title": "Find a Bible passage when you remember the words, not the reference",
+      "title": "Find a Bible passage from the words you remember",
       "proposed_publication_date": "2026-04-29",
       "audience": "Operators following a sermon or preparing a scripture reading",
       "question": "How can I search by a phrase, person, event, or recent speech?",
@@ -335,12 +404,19 @@
         }
       ],
       "release_check": "Run each example in the intended translation; avoid implying a guaranteed top match. Verify typo reversal and unavailable meaning behavior. Recent speech is limited; no whole-sermon search claim.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "find-scripture-from-a-phrase",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; search examples and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "10",
       "file": "articles/10-create-announcements-and-import-slides.md",
-      "title": "Create an announcement slide or bring in a prepared presentation",
+      "title": "Make an announcement slide or import a presentation",
       "proposed_publication_date": "2026-05-12",
       "audience": "Volunteers preparing welcome screens, announcements, and sermon slides",
       "question": "When should I use Quick slide, and how do I import an existing deck?",
@@ -357,9 +433,10 @@
       "source_paths": [
         "src/design/screens/presentations.tsx",
         "electron/media/pptxConverter.ts",
-        "src/design/screens/Live.tsx"
+        "src/design/screens/Live.tsx",
+        "electron/main.ts"
       ],
-      "evidence": "QuickSlideDialog creates title/subtitle/body content; imports render presentation pages; nameOnly editing prevents arbitrary imported-slide changes; Live supplies stage/send interactions.",
+      "evidence": "QuickSlideModal supports title/subtitle/points. Presentation import converts PPTX/PPT/ODP through LibreOffice and Poppler to static slide images; imported decks are not a native editable presentation. Missing conversion dependencies produce explicit errors.",
       "visuals": [
         {
           "shot": "Quick slide with the original Community lunch example and create slide visible.",
@@ -371,12 +448,19 @@
         }
       ],
       "release_check": "Create/save/reopen a quick slide and convert a test presentation. Inspect every rendered page. No promise that original animation/interactivity survives conversion; content edits belong in the source deck.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "create-announcements-and-import-slides",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; import-conversion walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "11",
       "file": "articles/11-save-and-transfer-a-service.md",
-      "title": "Save a Trilorah service and move it to another computer",
+      "title": "Save your service. Open it on the church computer.",
       "proposed_publication_date": "2026-05-26",
       "audience": "Volunteers preparing at home or handing a service to another operator",
       "question": "What should I save, and what is the difference between opening and importing a .tri file?",
@@ -407,12 +491,19 @@
         }
       ],
       "release_check": "Perform an actual save/open/import and, before publishing cross-computer claims, transfer to another machine or clean profile. Check local assets and warnings. Do not equate remote URLs with offline packaging or settings with connected hardware.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "save-and-transfer-a-service",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; two-computer package walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "12",
       "file": "articles/12-make-projected-words-readable.md",
-      "title": "Make scripture and lyrics readable from the back of the room",
+      "title": "Make your slides readable from the back row",
       "proposed_publication_date": "2026-06-09",
       "audience": "Volunteers choosing text styles and backgrounds",
       "question": "Which Trilorah controls help projected words remain clear in the actual room?",
@@ -443,12 +534,19 @@
         }
       ],
       "release_check": "Check the longest sample content on the real display and show the exact settings used. Avoid universal font-size claims or a simulated room image presented as a real check.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "make-projected-words-readable",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; in-room readability check and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "13",
       "file": "articles/13-when-trilorah-cannot-hear-you.md",
-      "title": "Trilorah cannot hear the preacher: check the problem in three stages",
+      "title": "No scripture appearing? Check sound, words, then recognition.",
       "proposed_publication_date": "2026-06-23",
       "audience": "An operator troubleshooting sermon listening",
       "question": "Is the problem the audio input, transcription, or scripture recognition?",
@@ -482,12 +580,19 @@
         }
       ],
       "release_check": "Exercise at least no-input and speech-engine-not-ready conditions. Verify displayed notice labels and fresh-word checks. Keep practice sermon distinct from the isolated guide demo.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "when-trilorah-cannot-hear-you",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; hardware/error-state walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "14",
       "file": "articles/14-train-a-new-volunteer.md",
-      "title": "Teach a new Trilorah volunteer one complete service",
+      "title": "Train a new volunteer by running a small service",
       "proposed_publication_date": "2026-07-07",
       "audience": "Volunteer coordinators and experienced operators training a teammate",
       "question": "What should a new operator learn first, and how can we tell they are ready?",
@@ -521,12 +626,19 @@
         }
       ],
       "release_check": "Have a volunteer try the rehearsal or clearly present it as an untested suggested training format. Parent must confirm final guide controls/coverage before capturing. No claim that the guide knows every possible instruction or verifies all hardware.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "train-a-new-volunteer",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; volunteer trial and companion-release review pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "15",
       "file": "articles/15-preacher-sound-check-and-review.md",
-      "title": "Use a preacher sound check and review missed scripture",
+      "title": "Help Trilorah recognise your preacher’s references",
       "proposed_publication_date": "2026-07-17",
       "audience": "Operators improving recognition with a regular preacher",
       "question": "How do sound checks, corrections, and teaching help without promising perfect recognition?",
@@ -544,9 +656,10 @@
         "src/design/screens/dashboard/ProfileView.tsx",
         "src/design/screens/dashboard/LearningActions.tsx",
         "src/design/screens/dashboard/Teaching.tsx",
-        "electron/main.ts"
+        "electron/main.ts",
+        "electron/engine/verseDelivery.ts"
       ],
-      "evidence": "ProfileView selects today’s preacher. LearningActions provides local sound checks, verified review answers, corrections and missed examples. Teaching separates alias/vocabulary/ignored-tail stages. main rejects automatic projection regardless of readiness.",
+      "evidence": "Sound check uses local speech. Review and teaching are profile-specific. Visible sections are sounds like, their words, and ignored after a verse. Verified review affects readiness; it does not automatically publish scripture catches. Voice commands are separate controls.",
       "visuals": [
         {
           "shot": "Sound check & review with an original rehearsal profile and available exercise controls.",
@@ -557,13 +670,20 @@
           "alt_text": "Review choices for a recognition example before confirming or correcting it."
         }
       ],
-      "release_check": "Test sound-check model setup and one saved correction. Confirm local test/provider distinction. Do not claim acoustic voice cloning, perfect learning, or automatic projection when a score rises.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "release_check": "Test sound-check model setup and one saved correction. Confirm local test/provider distinction. Do not claim acoustic voice cloning, perfect learning, or automatic projection when a score rises. Use current teaching labels: sounds like, their words, ignored after a verse; distinguish configured voice commands from scripture catches.",
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "preacher-sound-check-and-review",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; sound-check and correction workflow verification pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
     },
     {
       "id": "16",
       "file": "articles/16-turn-a-programme-into-a-service.md",
-      "title": "Turn a service programme into a run you can rehearse",
+      "title": "Turn the programme in your group chat into a service plan",
       "proposed_publication_date": "2026-07-28",
       "audience": "Volunteers receiving the service plan as a message, flyer, or image",
       "question": "How do I scan or paste a programme, review it, and finish the service preparation?",
@@ -583,7 +703,7 @@
         "shared/runOfServiceParse.ts",
         "src/design/screens/run.tsx"
       ],
-      "evidence": "RunHeaderActions.scan returns rows to review and falls back to text with explanatory errors. onAdd appends run.addSegments but replaces the engine schedule through setServiceSchedule. ScanReview edits proposed rows before adding.",
+      "evidence": "Paste/Scan controls are in the run footer; read it creates editable review rows; add to run appends visible segments and replaces the separate schedule. The exact text example passed parseOrderOfService. Photo OCR remains unverified.",
       "visuals": [
         {
           "shot": "Create an original four-line programme from the article, then capture the actual paste/scan review.",
@@ -594,8 +714,218 @@
           "alt_text": "A reviewed service run with its content prepared for rehearsal."
         }
       ],
-      "release_check": "Parse the exact article sample and scan an original programme image. Check duplicate import and schedule replacement behavior. Use additive run vs replaced schedule wording until implementation changes.",
-      "status": "draft_source_reviewed_runtime_and_visual_review_pending"
+      "release_check": "Parse the exact article sample and scan an original programme image. Check duplicate import and schedule replacement behavior. Use additive run vs replaced schedule wording until implementation changes. Capture current Paste/Scan footer controls. The text parser example passed on October 11; this does not verify photo OCR.",
+      "status": "draft_source_reviewed_runtime_and_visual_review_pending",
+      "slug": "turn-a-programme-into-a-service",
+      "reviewed_on": "2026-10-11",
+      "copy_status": "draft — source reviewed; OCR/parser example walkthrough and visuals pending",
+      "publication_status": "draft_not_published_or_scheduled",
+      "publish_trigger": "Make available when the corresponding released workflow, article review, and required visuals are verified; promotional timing follows the brand plan.",
+      "collection": "Guides",
+      "rewrite_review": "rewrite-review-09-16.md"
+    },
+    {
+      "id": "17",
+      "title": "Your phone has been promoted.",
+      "slug": "mobile-remote-controls",
+      "subtitle": "Control scripture, lyrics, slides, and media from a paired phone.",
+      "audience": "Church volunteers who need presentation controls away from the computer",
+      "status": "draft — ready for copy review; release verification pending",
+      "reviewed_on": "2026-10-11",
+      "publication_date": null,
+      "publish_trigger": "Mobile remote passes paired-phone and desktop release checks.",
+      "source_paths": [
+        "public/mobile-remote.html",
+        "src/components/MobileRemotePanel.tsx",
+        "src/design/screens/useMobileRemote.ts",
+        "electron/integrations/mobileServer.ts",
+        "electron/integrations/mobileBridge.ts"
+      ],
+      "release_gate": "Verify real-phone pairing, approval, revocation, preview/live actions, and connection loss in the release build.",
+      "evidence": "evidence.md#1-mobile-remote-controls",
+      "visuals": "README.md#components-and-visuals",
+      "file": "future-features/17-mobile-remote.md",
+      "collection": "Blog / feature introductions",
+      "format": "Feature introduction",
+      "buyer_stage": "Awareness / consideration",
+      "publication_status": "draft_not_published_or_scheduled",
+      "task_ids": [],
+      "evidence_file": "future-features/evidence.md#1-mobile-remote-controls",
+      "visual_plan": "future-features/README.md#components-and-visuals"
+    },
+    {
+      "id": "18",
+      "title": "The verse wasn't on the service plan.",
+      "slug": "introducing-scripture-catches",
+      "subtitle": "Scripture suggestions for the passages that come up during the sermon.",
+      "audience": "Volunteers following a sermon and teams evaluating recognition",
+      "status": "draft — ready for copy review; release verification pending",
+      "reviewed_on": "2026-10-11",
+      "publication_date": null,
+      "publish_trigger": "Recorded reference and quotation demonstrations pass the release review.",
+      "source_paths": [
+        "electron/main.ts",
+        "electron/engine/verseDelivery.ts",
+        "electron/engine/quoteMatcher.ts",
+        "src/design/screens/ScriptureCatches.tsx"
+      ],
+      "release_gate": "Record reference and quotation examples, verify the manual-only publication boundary, and show an honest fallback.",
+      "evidence": "evidence.md#2-scripture-catches-with-operator-control",
+      "visuals": "README.md#components-and-visuals",
+      "file": "future-features/18-scripture-catches.md",
+      "collection": "Blog / feature introductions",
+      "format": "Feature introduction",
+      "buyer_stage": "Awareness / consideration",
+      "publication_status": "draft_not_published_or_scheduled",
+      "task_ids": [],
+      "evidence_file": "future-features/evidence.md#2-scripture-catches-with-operator-control",
+      "visual_plan": "future-features/README.md#components-and-visuals"
+    },
+    {
+      "id": "19",
+      "title": "Show me where.",
+      "slug": "introducing-the-in-app-guide",
+      "subtitle": "A guide that can point, demonstrate, and wait for your next move.",
+      "audience": "First-time volunteers and the people training them",
+      "status": "draft — ready for copy review; release verification pending",
+      "reviewed_on": "2026-10-11",
+      "publication_date": null,
+      "publish_trigger": "Supported guide walkthroughs and setup recovery pass the release review.",
+      "source_paths": [
+        "src/components/ProductGuide.tsx",
+        "src/components/useGuideCursor.ts",
+        "src/lib/guideWalkthroughs.ts",
+        "src/lib/guidePrerequisites.ts",
+        "scripts/guideIndex.ts"
+      ],
+      "release_gate": "Verify supported walkthroughs, user takeover, reduced motion, and a real missing-key setup/search/recovery path.",
+      "evidence": "evidence.md#3-in-app-guide",
+      "visuals": "README.md#components-and-visuals",
+      "file": "future-features/19-in-app-guide.md",
+      "collection": "Blog / feature introductions",
+      "format": "Feature introduction",
+      "buyer_stage": "Awareness / consideration",
+      "publication_status": "draft_not_published_or_scheduled",
+      "task_ids": [],
+      "evidence_file": "future-features/evidence.md#3-in-app-guide",
+      "visual_plan": "future-features/README.md#components-and-visuals"
+    },
+    {
+      "id": "20",
+      "title": "You already typed the programme once.",
+      "slug": "introducing-programme-import",
+      "subtitle": "Start your Trilorah run from the service plan you have.",
+      "audience": "Volunteers receiving a service programme as text or an image",
+      "status": "draft — ready for copy review; release verification pending",
+      "reviewed_on": "2026-10-11",
+      "publication_date": null,
+      "publish_trigger": "The pictured text and scan examples pass review in the release build.",
+      "source_paths": [
+        "src/design/screens/run/RunHeaderActions.tsx",
+        "src/design/screens/run/ScanReview.tsx",
+        "shared/runOfServiceParse.ts",
+        "src/design/screens/run.tsx"
+      ],
+      "release_gate": "Test the exact text/image examples, row corrections, and effects on an existing run and schedule.",
+      "evidence": "evidence.md#4-programme-to-prepared-run",
+      "visuals": "README.md#components-and-visuals",
+      "file": "future-features/20-programme-import.md",
+      "collection": "Blog / feature introductions",
+      "format": "Feature introduction",
+      "buyer_stage": "Awareness / consideration",
+      "publication_status": "draft_not_published_or_scheduled",
+      "task_ids": [],
+      "evidence_file": "future-features/evidence.md#4-programme-to-prepared-run",
+      "visual_plan": "future-features/README.md#components-and-visuals"
+    },
+    {
+      "id": "21",
+      "title": "Tell Trilorah what it got wrong.",
+      "slug": "introducing-preacher-corrections",
+      "subtitle": "Keep verified recognition feedback with the preacher it belongs to.",
+      "audience": "Operators who work with a regular preacher",
+      "status": "draft — ready for copy review; release verification pending",
+      "reviewed_on": "2026-10-11",
+      "publication_date": null,
+      "publish_trigger": "A verified correction, replay, and local sound check pass release review.",
+      "source_paths": [
+        "src/design/screens/dashboard/ProfileView.tsx",
+        "src/design/screens/dashboard/LearningActions.tsx",
+        "src/design/screens/dashboard/Teaching.tsx",
+        "electron/main.ts",
+        "shared/preacherLearning.ts"
+      ],
+      "release_gate": "Verify profile selection, a saved correction and replay, sound-check setup, and provider/settings distinctions.",
+      "evidence": "evidence.md#5-preacher-specific-corrections",
+      "visuals": "README.md#components-and-visuals",
+      "file": "future-features/21-preacher-corrections.md",
+      "collection": "Blog / feature introductions",
+      "format": "Feature introduction",
+      "buyer_stage": "Awareness / consideration",
+      "publication_status": "draft_not_published_or_scheduled",
+      "task_ids": [],
+      "evidence_file": "future-features/evidence.md#5-preacher-specific-corrections",
+      "visual_plan": "future-features/README.md#components-and-visuals"
+    },
+    {
+      "id": "22",
+      "title": "The next volunteer needs more than a file name.",
+      "slug": "introducing-service-packages",
+      "subtitle": "Package the prepared service and check it on the computer that will run it.",
+      "audience": "Volunteers preparing at home or handing work to another operator",
+      "status": "draft — ready for copy review; release verification pending",
+      "reviewed_on": "2026-10-11",
+      "publication_date": null,
+      "publish_trigger": "The demonstrated package passes save, transfer, open, and import checks.",
+      "source_paths": [
+        "src/design/screens/run/TriPackageActions.tsx",
+        "src/lib/triClient.ts",
+        "shared/triPackage.ts",
+        "shared/triBridge.ts"
+      ],
+      "release_gate": "Verify selected-resource save/open/import on a second computer or clean profile, including local assets and warnings.",
+      "evidence": "evidence.md#6-service-packages-and-handoff",
+      "visuals": "README.md#components-and-visuals",
+      "file": "future-features/22-service-handoff.md",
+      "collection": "Blog / feature introductions",
+      "format": "Feature introduction",
+      "buyer_stage": "Awareness / consideration",
+      "publication_status": "draft_not_published_or_scheduled",
+      "task_ids": [],
+      "evidence_file": "future-features/evidence.md#6-service-packages-and-handoff",
+      "visual_plan": "future-features/README.md#components-and-visuals"
+    },
+    {
+      "id": "23",
+      "title": "Why I started Trilorah",
+      "slug": "why-i-started-trilorah",
+      "audience": "Church volunteers and teams meeting Trilorah for the first time",
+      "question": "What problem led to Trilorah, and who is it being built for?",
+      "status": "draft — founder account supplied; expanded framing and release claims need final review",
+      "reviewed_on": "2026-10-11",
+      "publish_trigger": "Launch introduction is ready and the founder has reviewed this first-person draft",
+      "task_ids": [
+        "run.build-edit",
+        "scripture.catch-and-project",
+        "output.publish-preview"
+      ],
+      "file": "stories/23-why-i-started-trilorah.md",
+      "collection": "Blog / founder story",
+      "format": "Founder introduction",
+      "buyer_stage": "Awareness",
+      "publication_date": null,
+      "publication_status": "draft_not_published_or_scheduled",
+      "source_paths": [
+        "src/design/screens/Live.tsx",
+        "src/design/screens/run/RunRail.tsx",
+        "electron/engine/verseDelivery.ts"
+      ],
+      "evidence_file": "stories/editorial-notes.md",
+      "visual_plan": "stories/editorial-notes.md#visuals-and-links"
     }
-  ]
+  ],
+  "reviewed_on": "2026-10-11",
+  "voice_guide": "TONE.md",
+  "publishing_plan": "brand-plan.md",
+  "publication_status": "23 complete copy drafts; no external publication or schedule; runtime, visual and final editorial gates remain"
 }

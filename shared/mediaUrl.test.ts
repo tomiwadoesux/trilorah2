@@ -1,4 +1,4 @@
-import { isVideoUrl } from './mediaUrl'
+import { isLocalAssetUrl, isVideoUrl } from './mediaUrl'
 import { describe, it, expect } from 'vitest'
 import { cssImageUrl, toDisplayUrl, fileToDisplayUrl } from './mediaUrl'
 
@@ -46,4 +46,19 @@ it('distinguishes looping clips from animated image backgrounds', () => {
   expect(isVideoUrl('https://example.test/loop.webm?token=abc')).toBe(true)
   expect(isVideoUrl('file:///animated.gif')).toBe(false)
   expect(isVideoUrl('data:video/mp4;base64,AAAA')).toBe(true)
+})
+
+describe('local library assets', () => {
+  const origin = 'http://127.0.0.1:5173'
+  it('keeps device files, downloaded stock, embedded previews, and bundled assets', () => {
+    for (const url of ['file:///Users/a/song.png', 'C:\\Media\\clip.mp4', '/assets/photo.jpg', './slides/one.png', 'local-media://file/downloaded.jpg', 'data:image/png;base64,AA', `${origin}/assets/photo.jpg`, `blob:${origin}/image-id`]) {
+      expect(isLocalAssetUrl(url, origin), url).toBe(true)
+    }
+  })
+  it('excludes remote images and previews even if they are stored in the library', () => {
+    for (const url of ['https://images.example.com/photo.jpg', '//images.example.com/photo.jpg', 'blob:https://images.example.com/id', 'file://server/shared/photo.jpg', '\\\\server\\photos\\one.jpg', 'javascript:alert(1)', '']) {
+      expect(isLocalAssetUrl(url, origin), url).toBe(false)
+    }
+    expect(isLocalAssetUrl(undefined, origin)).toBe(false)
+  })
 })

@@ -46,6 +46,10 @@ export interface VerseDetection {
   /** Set on the preview an operator's own push makes on its way to the wall
       (Go live, a step, a catch sent by reference). Not heard, so not a catch. */
   operatorPush?: boolean
+  /** The session moved on by itself — the end of a verse read out, "next",
+      "back" — rather than the preacher naming a reference. Still a catch;
+      it raises no signal (owner, 2026-10-17). */
+  stepped?: boolean
 }
 
 /** Payload ScriptureSession emits toward the display layer. */
@@ -58,6 +62,8 @@ export interface VerseDisplayPayload {
   chunkSize: number
   isPreview: boolean
   version?: string
+  /** Moved on by itself, not named (see VerseDetection.stepped). */
+  stepped?: boolean
 }
 
 export interface TranscriptChunk {

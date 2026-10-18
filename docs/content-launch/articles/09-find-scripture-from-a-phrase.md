@@ -1,59 +1,60 @@
 ---
-title: "Find a Bible passage when you remember the words, not the reference"
+title: "Find a Bible passage from the words you remember"
 slug: "find-scripture-from-a-phrase"
 audience: "Operators following a sermon or preparing a scripture reading"
 question: "How can I search by a phrase, person, event, or recent speech?"
 proposed_publication_date: "2026-04-29"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; search examples and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-18"
 task_ids: [scripture.phrase-topic-search, scripture.recent-speech-search, bible.lookup-preview-reference, bible.change-session-version]
 ---
 
-# Find a Bible passage when you remember the words, not the reference
+# Find a Bible passage from the words you remember
 
-Sometimes you know the passage's address. Sometimes you remember a phrase, a person, or a story. Trilorah has separate paths for these situations, so begin with the clue you actually have.
+You remember “Jesus calms the storm.” The chapter and verse are another matter. Start with what you have.
 
-In **Verses**, use the reference field for a known address and the scripture search field for remembered wording, people, events, or topics.
+Trilorah can search for a phrase, person, event or topic. You can also ask it to search the speech it just heard. Knowing every reference by heart is not a job requirement.
 
-## When you know the reference
+## Search the clue you have
 
-A reference such as John 3:16 identifies the passage directly. Check the service translation, enter the reference, and review the text that becomes available.
+1. Open **Verses** and find the scripture search field beside the reference field.
+2. Type a distinctive clue, such as “Jesus calms the storm,” and press Enter.
+3. Read the suggested passages and their supporting text.
+4. Check the reference, wording and translation before choosing one.
 
-Be aware of the current controls: pressing Enter in the reference field sends the passage live. A single click on a verse row previews it; double-clicking or pressing Enter on that row sends it.
+The results may match a named passage, details of a story or a possible meaning. A plausible result still needs your judgment: similar events can appear in more than one passage.
 
-If your goal is only to inspect the passage, use the preview interaction. A reference search is not a harmless rehearsal of the Enter key while a congregation is watching.
+**Selecting a search result sends it live.** Read the card before clicking. If none fits, close the results or use the pencil button to edit your search.
 
-## When you remember a phrase or story
+For example, suppose the preacher mentions frightened disciples, a boat and Jesus speaking to the wind. Those details give you a useful starting point. If the preacher later names the passage, use that reference to confirm your choice.
 
-Use the field labeled **search scripture by phrase, person, event, or topic**. Enter the distinctive words you remember. “Jesus calms the storm” is a more useful starting clue than “that story from the sermon.”
+Shared wording is highlighted inside each result. Those highlights identify matching words, not proof that a possible meaning match is the right passage. Click outside the results, press Escape, or use × to close them without sending anything.
 
-Submit the search and read the returned candidates. A result may be supported by matching wording, named passage information, story details, or a possible meaning match. Treat it as a passage to check.
+## Fix the search before giving up
 
-Trilorah can correct some spelling in the query. If the correction changes what you intended, use **use original**, or edit the searched words and try again.
+If Trilorah corrects a spelling and changes what you meant, choose **use original**. You can also add a person, place or distinctive phrase and search again.
 
-Meaning search is not always available. The interface can fall back to checking names and wording and will tell you when that is happening. A search with no clear result may need a more distinctive clue.
+Meaning search may not be ready on your computer. When that happens, Trilorah says it is checking names and wording instead. Try a more specific clue; a broad word such as “faith” may not narrow the search enough.
 
-## Read a result before selecting it
+These searches run in the desktop app. The examples here are starting queries, not a promise that the same passage will always rank first.
 
-Result cards show the proposed passage and supporting text. Check whether it fits what the preacher is discussing.
+## Search what the preacher just said
 
-In this search interface, clicking a result card is a live-send action. It is not just a way to open another details page. Read first, then select the result only when you want it on screen. Close the results if none is right.
+Choose **find reference** below the transcript to search recent speech. Use it soon after the words you want to find. The search joins nearby transcript fragments to retain more of the sentence, up to 80 words. A long pause breaks that context; this is not a search of the whole sermon.
 
-This differs from the single-click preview behavior of the ordinary verse list. Teach both interactions to a new operator.
+If there is no recent speech and listening is off, Trilorah can start listening and ask you to try again once words appear. It cannot search something it never heard. For an earlier part of the sermon, type the words you remember instead.
 
-## Search what was just said
+## Know which actions go live
 
-The **find scripture** action near the catches searches recent speech. Use it soon after the preacher's words, while those words are still in the listening window.
+The two search fields behave differently. Keep this distinction handy during rehearsal:
 
-If there is no recent speech and listening is off, the action can start listening and ask you to try again after someone speaks. It cannot recover a sentence the app never heard.
+| Action | What happens |
+|---|---|
+| Enter in the phrase search | Searches for possible passages |
+| Select a phrase-search result | Sends that passage live |
+| Enter in the reference field | Sends the entered reference live |
+| Single-click an ordinary verse row | Previews the verse |
+| Double-click or press Enter on a verse row | Sends the verse live |
 
-For an older moment, type what you remember into the phrase search. The recent-speech feature is not an unlimited sermon-history search.
-
-## Use the result in context
-
-Suppose the preacher mentions a storm, frightened disciples, and Jesus speaking to the wind. Search those concrete details, compare the passages offered, and check the translation. Similar accounts may describe related events, so the first plausible result is not automatically the intended one.
-
-If the preacher later gives a specific reference, use that information to confirm or replace the candidate.
-
-For the broader listening flow, read [how scripture recognition works](04-how-scripture-recognition-works.md). For a reliable starting setup, use [the microphone guide](03-connect-a-microphone.md).
+For spoken references and quotations, read [how scripture recognition works](04-how-scripture-recognition-works.md). If Trilorah is missing the speech itself, start with [the microphone guide](03-connect-a-microphone.md).

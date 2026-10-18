@@ -1,19 +1,13 @@
 'use client';
 
-import { useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
-import { ArrowRight, Check, Download } from '../../components/icons';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
+import { ArrowRight, Check, Download, RotateCcw } from '../../components/icons';
+import GenerativeArtwork, { type ArtworkHandle } from './GenerativeArtwork';
+import { ART_PALETTES, ART_PATTERNS, type ArtSettings, type ArtMode } from './generative-art';
 import './line-studio.css';
 
 export type LinePattern = 'orbit' | 'rays' | 'diamond' | 'waves' | 'weave' | 'contour' | 'grid' | 'arches' | 'bloom' | 'meridian';
 export type LinePalette = 'forest' | 'blue' | 'violet' | 'amber' | 'silver';
-
-const PATTERNS: { id: LinePattern; name: string }[] = [
-  { id: 'orbit', name: 'Orbit' }, { id: 'rays', name: 'Radiate' },
-  { id: 'diamond', name: 'Diamond' }, { id: 'waves', name: 'Wavelength' },
-  { id: 'weave', name: 'Interlace' }, { id: 'contour', name: 'Contour' },
-  { id: 'grid', name: 'Perspective' }, { id: 'arches', name: 'Arcade' },
-  { id: 'bloom', name: 'Bloom' }, { id: 'meridian', name: 'Meridian' },
-];
 
 const PALETTES: Record<LinePalette, { name: string; base: string; glow: string; line: string; swatch: string }> = {
   forest: { name: 'Forest', base: '#07120f', glow: '#2d785e', line: '#afdfcf', swatch: '#46c695' },
@@ -114,79 +108,120 @@ export function LineArtwork({ pattern = 'orbit', density = 16, dotted = true, pa
   );
 }
 
+const INITIAL_ART: ArtSettings = { seed: '842719', mode: 'patterns', pattern: 'orbit', dotted: true, palette: 'aurora', tension: 48, openness: 56, density: 65 };
+const clampControl = (n: number) => Math.max(0, Math.min(100, n));
+
 export default function LineStudio() {
-  const [pattern, setPattern] = useState<LinePattern>('orbit');
-  const [density, setDensity] = useState(16);
-  const [dotted, setDotted] = useState(true);
-  const [palette, setPalette] = useState<LinePalette>('forest');
-  const [downloaded, setDownloaded] = useState(false);
-  const [downloadError, setDownloadError] = useState(false);
-  const artwork = useRef<SVGSVGElement>(null);
-  const controlId = useId();
-  const activePattern = PATTERNS.find((item) => item.id === pattern)!;
+  const [settings, setSettings] = useState<ArtSettings>(INITIAL_ART);
+  const [seedDraft, setSeedDraft] = useState(INITIAL_ART.seed);
+  const [playing, setPlaying] = useState(true);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setReducedMotion(preference.matches);
+    sync();
+    preference.addEventListener('change', sync);
+    return () => preference.removeEventListener('change', sync);
+  }, []);
+  const [keepPalette, setKeepPalette] = useState(true);
+  const [status, setStatus] = useState('');
+  const artwork = useRef<ArtworkHandle>(null);
+  const id = useId();
+  const variations = useMemo(() => [
+    { name: 'Unfold', tension: -20, openness: 20, density: -6 },
+    { name: 'Gather', tension: 16, openness: -24, density: 10 },
+    { name: 'Drift', tension: -30, openness: -10, density: -18 },
+    { name: 'Intensify', tension: 26, openness: 12, density: 18 },
+  ].map(v => ({ name: v.name, settings: { ...settings,
+    tension: clampControl(settings.tension + v.tension),
+    openness: clampControl(settings.openness + v.openness),
+    density: clampControl(settings.density + v.density),
+  } })), [settings]);
 
-  function saveArtwork() {
-    if (!artwork.current) return;
+  function update(next: Partial<ArtSettings>) {
+    setSettings(current => ({ ...current, ...next }));
+    setStatus('');
+  }
+  function generate() {
+    if (!seedDraft.trim()) { setStatus('Enter a number to begin.'); return; }
+    update({ seed: seedDraft });
+    artwork.current?.reset();
+  }
+  function surprise() {
+    const values = crypto.getRandomValues(new Uint32Array(2));
+    const seed = String(values[0]);
+    setSeedDraft(seed);
+    update({ seed, palette: keepPalette ? settings.palette : ART_PALETTES[values[1] % ART_PALETTES.length].id });
+  }
+  function download() {
     try {
-      const svg = artwork.current.cloneNode(true) as SVGSVGElement;
-      svg.setAttribute('width', String(Math.round(artwork.current.clientWidth * 2) || 1280));
-      svg.setAttribute('height', String(Math.round(artwork.current.clientHeight * 2) || 880));
-      svg.removeAttribute('class');
-      const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `trilorah-${pattern}-${palette}-${dotted ? 'dotted' : 'solid'}-${density}.svg`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setDownloaded(true);
-      setDownloadError(false);
-    } catch {
-      setDownloadError(true);
-    }
+      artwork.current?.downloadSVG();
+      setStatus('Your frame is ready. Keep exploring.');
+    } catch { setStatus('Could not download. Please try again.'); }
   }
 
-  function changeSelection() {
-    setDownloaded(false);
-    setDownloadError(false);
-  }
-
-  return (
-    <section id="line-studio" className="home-section line-studio" aria-labelledby={`${controlId}-heading`}>
-      <div className="home-container">
-        <div className="ls-heading">
-          <div><p className="ls-eyebrow"><span /> Visual studio</p><h2 id={`${controlId}-heading`}>A little structure.<br />Endless possibilities.</h2></div>
-          <p>Find a rhythm for your next idea. Explore a collection of original line patterns, make one your own, and take it with you.</p>
-        </div>
-        <div className="ls-workspace">
-          <div className="ls-preview">
-            <LineArtwork svgRef={artwork} pattern={pattern} density={density} dotted={dotted} palette={palette} label={`${activePattern.name} pattern in ${PALETTES[palette].name}, ${density} lines, ${dotted ? 'dotted' : 'solid'} strokes`} />
-            <div className="ls-preview-top"><span>TRILORAH / PATTERN STUDIES</span><span>{String(PATTERNS.findIndex((item) => item.id === pattern) + 1).padStart(2, '0')} — 10</span></div>
-            <div className="ls-preview-bottom"><span>{activePattern.name}</span><span>Made to make it yours <ArrowRight size={15} /></span></div>
-          </div>
-          <div className="ls-controls">
-            <div className="ls-control-title"><span>Your composition</span><span className="ls-live"><span /> Live preview</span></div>
-            <div className="ls-control-group">
-              <label className="ls-label" htmlFor={`${controlId}-density`}>Line density <output htmlFor={`${controlId}-density`}>{density}</output></label>
-              <input id={`${controlId}-density`} type="range" min="6" max="28" step="1" value={density} onChange={(event) => { setDensity(Number(event.target.value)); changeSelection(); }} />
-              <div className="ls-range-labels"><span>Quiet</span><span>Intricate</span></div>
+  return <section id="line-studio" className="home-section line-studio" aria-labelledby={`${id}-heading`}>
+    <div className="home-container">
+      <div className="ls-heading">
+        <div><p className="ls-eyebrow"><span /> The art of possibility</p><h2 id={`${id}-heading`}>A little structure.<br /><span>Endless possibilities.</span></h2></div>
+        <p>Enter a number.<br />See what unfolds.</p>
+      </div>
+      <div className="ls-instrument">
+        <div className="ls-art-stage">
+          <GenerativeArtwork ref={artwork} settings={settings} playing={playing && !reducedMotion} className="ls-generative-canvas" />
+          <div className="ls-stage-top">
+            <div className="ls-modes" role="group" aria-label="Art form">
+              {([{ id: 'patterns', label: 'Patterns' }, { id: 'flow', label: 'Flow field' }] as { id: ArtMode; label: string }[]).map(mode => <button key={mode.id} type="button" aria-pressed={settings.mode === mode.id} onClick={() => update({ mode: mode.id })}>{mode.label}</button>)}
             </div>
-            <fieldset className="ls-control-group"><legend className="ls-label">Line style</legend><div className="ls-segmented">
-              <button type="button" aria-pressed={dotted} onClick={() => { setDotted(true); changeSelection(); }}><span className="ls-stroke-example ls-stroke-dotted" />Dotted</button>
-              <button type="button" aria-pressed={!dotted} onClick={() => { setDotted(false); changeSelection(); }}><span className="ls-stroke-example" />Solid</button>
-            </div></fieldset>
-            <fieldset className="ls-control-group"><legend className="ls-label">Color <span>{PALETTES[palette].name}</span></legend><div className="ls-palettes">
-              {(Object.keys(PALETTES) as LinePalette[]).map((item) => <button key={item} type="button" aria-label={PALETTES[item].name} title={PALETTES[item].name} aria-pressed={palette === item} style={{ '--ls-swatch': PALETTES[item].swatch } as CSSProperties} onClick={() => { setPalette(item); changeSelection(); }}>{palette === item && <Check size={14} />}</button>)}
-            </div></fieldset>
-            <div className="ls-export"><button type="button" className="ls-download" onClick={saveArtwork}>{downloaded ? <Check size={17} /> : <Download size={17} />}{downloaded ? 'Download again' : 'Download SVG'}</button><p role="status">{downloadError ? 'Download unavailable. Please try again.' : downloaded ? 'Your artwork is ready. Make another?' : 'Yours to use. Crisp at any size.'}</p></div>
+            <span className="ls-edition">GENERATIVE STUDIES / 001</span>
+          </div>
+          <div className="ls-stage-bottom">
+            <div><span className="ls-art-kicker">{settings.mode === 'patterns' ? `${ART_PATTERNS.find(pattern => pattern.id === (settings.pattern ?? 'orbit'))?.name} / Pattern studies` : 'Weather of light'}</span><span className="ls-art-number">Nº {settings.seed}</span></div>
+            <button type="button" className="ls-motion-toggle" disabled={reducedMotion} title={reducedMotion ? "Motion follows your reduced-motion preference" : undefined} aria-pressed={!playing || reducedMotion} onClick={() => setPlaying(!playing)}>
+              <span className={playing && !reducedMotion ? 'ls-pause-icon' : 'ls-play-icon'} aria-hidden="true" />{reducedMotion ? 'Still frame' : playing ? 'Freeze frame' : 'Resume motion'}
+            </button>
           </div>
         </div>
-        <div className="ls-presets" role="group" aria-label="Choose a line pattern">
-          {PATTERNS.map((item, index) => <button key={item.id} type="button" className="ls-preset" aria-pressed={pattern === item.id} onClick={() => { setPattern(item.id); changeSelection(); }}><LineArtwork pattern={item.id} density={10} dotted={false} palette={palette} /><span><span>{item.name}</span><span className="ls-preset-number">{String(index + 1).padStart(2, '0')}</span></span></button>)}
+        <div className="ls-command-bar">
+          <form className="ls-seed-form" onSubmit={event => { event.preventDefault(); generate(); }}>
+            <label htmlFor={`${id}-seed`}>Your seed</label>
+            <div className="ls-seed-field"><span aria-hidden="true">#</span><input id={`${id}-seed`} inputMode="numeric" pattern="[0-9]+" maxLength={12} required value={seedDraft} onChange={event => setSeedDraft(event.target.value.replace(/[^0-9]/g, ''))} aria-describedby={`${id}-seed-note`} /><button type="submit" aria-label="Generate from seed" title="Generate from seed"><ArrowRight size={17} /></button></div>
+          </form>
+          <button className="ls-surprise" type="button" onClick={surprise}><RotateCcw size={15} />Surprise me</button>
+          <p id={`${id}-seed-note`}>Your number. Your starting point.</p>
+          <button className="ls-save" type="button" onClick={download}><Download size={15} /><span>Save frame</span></button>
+        </div>
+        {settings.mode === 'patterns' && <div className="ls-pattern-library">
+          <div className="ls-pattern-heading"><span>Choose a structure</span><div role="group" aria-label="Pattern stroke" className="ls-stroke-controls">
+            <button type="button" aria-pressed={!!settings.dotted} onClick={() => update({ dotted: true })}>Dotted</button>
+            <button type="button" aria-pressed={!settings.dotted} onClick={() => update({ dotted: false })}>Solid</button>
+          </div></div>
+          <div className="ls-pattern-options" role="group" aria-label="Pattern structure">{ART_PATTERNS.map(pattern => <button type="button" key={pattern.id} aria-label={`${pattern.name} pattern`} aria-pressed={(settings.pattern ?? 'orbit') === pattern.id} onClick={() => update({ pattern: pattern.id })}>
+            <LineArtwork pattern={pattern.id} density={12} dotted={false} palette={({ aurora: 'forest', ember: 'amber', glacier: 'blue', orchid: 'violet', pearl: 'silver' } as const)[settings.palette]} />
+            <span>{pattern.name}</span>
+          </button>)}</div>
+        </div>}
+        <div className="ls-tuning">
+          <div className="ls-dials">
+            {([{ key: 'tension', label: 'Tension', low: 'Soft', high: 'Sculpted' }, { key: 'openness', label: 'Openness', low: 'Gathered', high: 'Expansive' }, { key: 'density', label: 'Detail', low: 'Quiet', high: 'Intricate' }] as const).map(control => <div className="ls-dial" key={control.key}>
+              <label htmlFor={`${id}-${control.key}`}>{control.label}<output htmlFor={`${id}-${control.key}`}>{settings[control.key]}</output></label>
+              <input type="range" id={`${id}-${control.key}`} min="0" max="100" value={settings[control.key]} onChange={event => update({ [control.key]: Number(event.target.value) })} />
+              <div><span>{control.low}</span><span>{control.high}</span></div>
+            </div>)}
+          </div>
+          <fieldset className="ls-palette-group"><legend>Color atmosphere</legend><div className="ls-palette-row">
+            {ART_PALETTES.map(palette => <button key={palette.id} type="button" className="ls-color" aria-label={palette.name} title={palette.name} aria-pressed={settings.palette === palette.id} style={{ '--art-swatch': palette.swatch } as CSSProperties} onClick={() => update({ palette: palette.id })}>{settings.palette === palette.id && <Check size={12} />}</button>)}
+          </div><label className="ls-color-lock"><input type="checkbox" checked={keepPalette} onChange={event => setKeepPalette(event.target.checked)} />Keep colors on surprise</label></fieldset>
         </div>
       </div>
-    </section>
-  );
+      <div className="ls-variations-heading"><div><span>Stay in this world</span><p>Four ways to take this form a little further.</p></div><span className="ls-variation-note">SAME SEED · NEW POSSIBILITIES</span></div>
+      <div className="ls-variations" role="group" aria-label="Explore nearby variations">
+        {variations.map((variation, index) => <button type="button" key={variation.name} onClick={() => update(variation.settings)} aria-label={`Explore ${variation.name} variation`}>
+          <div className="ls-variation-art"><GenerativeArtwork settings={variation.settings} playing={false} still label={`${variation.name} variation preview`} /></div>
+          <span><span><small>0{index + 1}</small>{variation.name}</span><ArrowRight size={14} /></span>
+        </button>)}
+      </div>
+      <div className="ls-footnote"><span>Made with mathematics. Yours to make something of.</span><span role="status">{status || 'Download a still as SVG · No account needed'}</span></div>
+    </div>
+  </section>;
 }

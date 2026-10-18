@@ -3,7 +3,7 @@ import { isEmptyPreview } from '../emptyPreviewMode';
 import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
 import { useProjector } from './projector';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BACKDROP_BY_CONTENT, Button, ImportIcon, PencilIcon, PresentationIcon, SearchField, SearchIcon, SegmentedControl, SlideThumb, SparkleIcon, TrashIcon, cx, surface, toneClass } from '../../ui';
+import { BACKDROP_BY_CONTENT, Button, ImportIcon, PencilIcon, PresentationIcon, SearchField, SegmentedControl, SlideThumb, SparkleIcon, TrashIcon, cx, surface, toneClass } from '../../ui';
 import { FlightPopup } from './songs/FlightPopup';
 import { LibraryToolbar } from './LibraryToolbar';
 import { LibraryBrowser, LibraryPane, LibrarySearch, useLibrarySelection } from './library';
@@ -298,6 +298,7 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
       open={isOpen}
       size={{ w: 520, h: 500 }}
       label={nameOnly ? 'edit presentation' : editing ? 'edit slide' : 'quick slide'}
+      guideArea="quickslide"
       onRequestClose={() => { if (!saving) onClose(); }}
       header={
         <div>
@@ -309,15 +310,16 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
       }
       footer={
         <footer className="flex shrink-0 justify-end px-6 pb-5">
-          <Button label={saving ? 'saving…' : nameOnly ? 'save presentation' : editing ? 'save slide' : 'create slide'} tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim() || saving} onClick={() => void handleCreate()} />
+          <Button guideId="slides-save" label={saving ? 'saving…' : nameOnly ? 'save presentation' : editing ? 'save slide' : 'create slide'} tone="go" icon={<SparkleIcon size={12} />} disabled={!title.trim() || saving} onClick={() => void handleCreate()} />
         </footer>
       }
     >
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-6 pb-4 pt-4">
-        <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="title — welcome to church" aria-label="slide title" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
+        <input ref={titleRef} data-guide="slides-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="title — welcome to church" aria-label="slide title" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
         {!nameOnly && <>
-        <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="line under it (optional) — sunday service · 10:00" aria-label="subtitle" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
+        <input data-guide="slides-subtitle" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="line under it (optional) — sunday service · 10:00" aria-label="subtitle" className={cx(input, 'h-[var(--tri-field-h)] shrink-0')} />
         <SegmentedControl
+          guideId="slides-align"
           label="alignment"
           size="sm"
           options={[
@@ -329,6 +331,7 @@ function QuickSlideModal({ isOpen, onClose, onCreate, editing = null }: QuickSli
           onChange={setAlign}
         />
         <textarea
+          data-guide="slides-points"
           value={bodyText}
           onChange={(e) => setBodyText(e.target.value)}
           placeholder="points or notes, one per line (optional)"
@@ -464,7 +467,6 @@ export function SlidesBrowser() {
     });
 
   const searchRow = useRef<HTMLDivElement>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const importSlides = () => {
     setImportNote('importing…');
     void importAndSavePresentation().then(deck => {
@@ -515,44 +517,16 @@ export function SlidesBrowser() {
       <LibraryBrowser
         searchInset="var(--tri-card-gap)"
         gap={16}
-        search={
-          searchOpen || allDecks.length === 0 || importNote ? <div ref={searchRow} className="flex min-w-0 flex-1 items-center gap-3">
-            {searchOpen || allDecks.length === 0 ? (
-            <LibrarySearch disabled={allDecks.length === 0}>
-            <SearchField
-              value={query}
-              onChange={setQuery}
-              placeholder="type a deck name or anything written on a slide..."
-            />
-            </LibrarySearch>
-            ) : null}
-            {/* What the import said, where the "import slides" card used to
-                say it. Only while there is something to say. */}
-            {importNote ? (
-              <span className="max-w-[45%] shrink-0 truncate text-[length:var(--tri-size-xs)] lowercase text-[var(--tri-ink-muted)]">
-                {importNote}
-              </span>
-            ) : null}
-          </div> : null
-        }
+        search={importNote ? <span role="status" className="truncate text-[length:var(--tri-size-xs)] text-[var(--tri-ink-muted)]">{importNote}</span> : null}
         dock={
           <LibraryToolbar
             label="presentations"
-            searchActions={[
-              {
-                id: 'search',
-                label: 'search slides',
-                disabled: allDecks.length === 0,
-                text: 'search slides',
-                icon: <SearchIcon size={13} />,
-                active: searchOpen,
-                onClick: () => {
-                  setSearchOpen(!searchOpen);
-                  if (searchOpen) setQuery('');
-                  else requestAnimationFrame(() => searchRow.current?.querySelector('input')?.focus());
-                },
-              },
-            ]}
+            search={<div ref={searchRow} className="flex min-w-0">
+              <LibrarySearch disabled={allDecks.length === 0}>
+                <SearchField guideId="slides-search" operatorSearch value={query} onChange={setQuery}
+                  ariaLabel="Search slides" placeholder="Start typing to search" />
+              </LibrarySearch>
+            </div>}
             actions={[
               {
                 id: 'import',
@@ -580,9 +554,9 @@ export function SlidesBrowser() {
               hint={allDecks.length === 0 ? 'import a deck or create your first slide' : 'try a different deck name or a line from a slide'}
               below={<div className="mt-4 flex gap-2">
                 {allDecks.length === 0 ? <>
-                  {window.api?.importPresentation && <Button label="import slides" icon={<ImportIcon size={14} />} onClick={importSlides} />}
-                  <Button label="quick slide" tone="go" icon={<PresentationIcon size={14} />} onClick={() => setQuickModalOpen(true)} />
-                </> : <Button label="clear search" onClick={() => setQuery('')} />}
+                  {window.api?.importPresentation && <Button guideId="slides-import-empty" label="import slides" icon={<ImportIcon size={14} />} onClick={importSlides} />}
+                  <Button guideId="slides-quick-empty" label="quick slide" tone="go" icon={<PresentationIcon size={14} />} onClick={() => setQuickModalOpen(true)} />
+                </> : <Button guideId="slides-clear-search" label="clear search" onClick={() => setQuery('')} />}
               </div>}
             />
           ) : (
@@ -599,21 +573,20 @@ export function SlidesBrowser() {
                 return (
                   <div
                     key={deck.id}
-                    {...drag.bind(() => ({
-                      source: 'presentation' as const,
-                      label: `${deck.title} — slide ${at + 1}`,
-                      /* The chip carries the page itself. A deck dragged
-                         into the run is unrecognisable as a word — every
-                         deck's name is a date or a noun — and completely
-                         recognisable as a picture. */
-                      preview,
-                    }))}
                     className="group/card relative pb-3 transition-transform duration-150 ease-out hover:-translate-y-[2px]"
                     style={{ boxShadow: 'inset 0 -1px 0 rgb(255 255 255 / 0.08)' }}
                   >
                     <SlideThumb
+                      guideId={`slides-deck-${deck.id}`}
                       index={i}
                       label={deck.title}
+                      dragProps={drag.bind(() => ({
+                        source: 'presentation' as const,
+                        label: `${deck.title} — slide ${at + 1}`,
+                        preview,
+                        path: deck.paths?.[at] ?? preview,
+                        mediaKind: 'photo',
+                      }))}
                       /* The real first page the moment there is one. Until
                          then the wash carries the words off the front of the
                          deck, as the song card carries its verse. */
@@ -657,12 +630,12 @@ export function SlidesBrowser() {
                         {deck.title}
                       </p>
                       <div className="flex shrink-0 items-center gap-1.5" onPointerDown={event => event.stopPropagation()}>
-                        <button type="button" title={`edit ${deck.title}`} aria-label={`edit ${deck.title}`}
+                        <button type="button" data-guide={`slides-edit-${deck.id}`} title={`edit ${deck.title}`} aria-label={`edit ${deck.title}`}
                           className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
                           onClick={event => { event.stopPropagation(); setEditingDeck(deck); setQuickModalOpen(true); }}>
                           <PencilIcon size={12} />
                         </button>
-                        <button type="button" title={`delete ${deck.title}`} aria-label={`delete ${deck.title}`}
+                        <button type="button" data-guide={`slides-delete-${deck.id}`} title={`delete ${deck.title}`} aria-label={`delete ${deck.title}`}
                           className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
                           onClick={event => { event.stopPropagation(); void removeDeck(deck); }}>
                           <TrashIcon size={12} />

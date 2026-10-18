@@ -1,0 +1,16 @@
+{
+  "purpose": "Select cross-only designs that communicate Jesus Christ and the Crucifixion clearly.",
+  "excludedNumbers": [13, 14, 17, 25, 26, 30, 31, 32, 35],
+  "note": "This is a visual clarity selection, not a claim that excluded symbols lack Christian associations. Original reference numbers are retained.",
+  "reasons": {
+    "13": "Wood grain removed at the user's request.",
+    "14": "Floral grunge removed at the user's request.",
+    "17": "Abstract diamond tile makes the cross difficult to recognize.",
+    "25": "Maltese cross has a prominent association with the Order of Malta.",
+    "26": "This moline design reads primarily as a heraldic symbol.",
+    "30": "Tau cross removed at the user's request.",
+    "31": "Brigid's cross is specifically associated with Saint Brigid.",
+    "32": "Cross of Lorraine has prominent historical and political associations.",
+    "35": "Cross and Bible removed at the user's request."
+  }
+}

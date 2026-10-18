@@ -9,6 +9,8 @@ import { formatReference } from '../../../../shared/verseDisplay';
 import type { VoiceCommandEvent } from '../../../../shared/types';
 import type { Spoken } from '../transcript/types';
 import { Expandable } from './expand';
+import { EmptyMark } from '../emptyArt';
+import { ScriptureQuoteArt } from '../ScriptureQuoteArt';
 import { cx, surface, ArrowIcon, BookIcon, Button, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, PauseIcon, PencilIcon, PlayIcon, PrayerIcon, SearchField } from '../../../ui';
 import './preachingTile.css';
 
@@ -101,7 +103,7 @@ export const Marked = memo(function Marked({ text, dim, partial = false, command
 export function PreachingTile({ className }: { className?: string }) {
   const { spoken, asr } = useEngine();
   return (
-    <Expandable className={className} title="Preacher transcript" glyph={false}
+    <Expandable guideArea="transcript" className={className} title="Preacher transcript" glyph={false}
       blurb="The whole service, in order. Scroll back to any moment."
       bodyClassName="transcript-dialog-body"
       size={{ w: 820, h: 720 }}
@@ -120,6 +122,9 @@ export function TranscriptFace({ spoken, asr, className, onOpen, rail = false }:
   rail?: boolean;
 }) {
   const history = useRef<HTMLDivElement>(null);
+  const historyArea = useRef<HTMLDivElement>(null);
+  const sentences = useRef<HTMLDivElement>(null);
+  const [quietSpace, setQuietSpace] = useState({ height: 0, opacity: 0 });
   const followHistory = useRef(true);
   const caption = useRef<HTMLDivElement>(null);
   // Start near live speech when opening the dashboard. After that, completed
@@ -131,6 +136,24 @@ export function TranscriptFace({ spoken, asr, className, onOpen, rail = false }:
   const captionLines = spoken.lines.filter((line) => line.id > retiredThrough);
   if (spoken.partial) captionLines.push({ id: nextLineId(spoken), text: spoken.partial, commands: spoken.partialCommands });
   const listening = asr === 'listening';
+  useLayoutEffect(() => {
+    const area = historyArea.current;
+    const text = sentences.current;
+    if (!area || !text) return;
+    const measure = () => {
+      // Keep the illustration in unused space above the transcript. Its
+      // visibility depends on rendered lines, so narrow cards make room
+      // for words sooner than wide cards without guessing a word count.
+      const height = Math.max(0, Math.floor(area.clientHeight - text.getBoundingClientRect().height));
+      const opacity = Math.max(0, Math.min(1, (height - 56) / 72));
+      setQuietSpace(previous => previous.height === height && previous.opacity === opacity ? previous : { height, opacity });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(area);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, []);
   useLayoutEffect(() => {
     const el = history.current;
     if (el && followHistory.current) el.scrollTop = el.scrollHeight;
@@ -195,26 +218,28 @@ export function TranscriptFace({ spoken, asr, className, onOpen, rail = false }:
         if (e.deltaY < 0) followHistory.current = false;
         el.scrollTop += e.deltaY;
       }}>
-        <button type="button" className="preaching-card__header" onClick={onOpen} aria-label="Open the whole preacher transcript">
+        <button type="button" data-guide="transcript-open-header" className="preaching-card__header" onClick={onOpen} aria-label="Open the whole preacher transcript">
           <div className="min-w-0">
             <h3 className="preaching-card__title">Preacher transcript</h3>
           </div>
           {!rail && <ArrowIcon size={14} />}
         </button>
-        <div className="preaching-card__history">
-          {settled.length > 0 ?
+        <div ref={historyArea} className="preaching-card__history">
+          <div className="preaching-card__quiet" aria-hidden="true" style={{ height: quietSpace.height, opacity: quietSpace.opacity }}>
+            <EmptyMark w={120} h={100} plain art={<ScriptureQuoteArt />} play="hover"
+              line={!spoken.lines.length && !spoken.partial ? listening ? 'Listening for the preacher…' : 'Start listening to see the transcript.' : ''} />
+          </div>
             <div ref={history} className="preaching-card__history-scroll" style={{ overflowAnchor: 'none' }}
-              tabIndex={0} role="region" aria-label="Earlier speech" onScroll={(e) => {
+              tabIndex={settled.length ? 0 : -1} role="region" aria-label="Earlier speech" onScroll={(e) => {
                 const el = e.currentTarget;
                 followHistory.current = el.scrollHeight - el.clientHeight - el.scrollTop < 24;
               }} onWheel={(e) => { if (e.deltaY < 0) followHistory.current = false; }}>
-              <div className="preaching-card__sentences">
+              <div ref={sentences} className="preaching-card__sentences">
                 {settled.map((line) => (
                   <p key={line.id}><Marked text={line.text} commands={line.commands} dim /></p>
                 ))}
               </div>
             </div>
-          : <div className="preaching-card__empty"><p>{captionLines.length ? '' : listening ? 'Listening for the preacher…' : 'Start listening to see the transcript.'}</p></div>}
         </div>
         <div className="preaching-card__live">
           <div ref={caption} className="preaching-card__caption" style={{ overflowAnchor: 'none' }}>
@@ -226,7 +251,7 @@ export function TranscriptFace({ spoken, asr, className, onOpen, rail = false }:
             </div>
           </div>
         </div>
-        {!rail && <button type="button" className="preaching-card__footer" onClick={onOpen}>open transcript<ArrowIcon size={14} /></button>}
+        {!rail && <button type="button" data-guide="transcript-open-footer" className="preaching-card__footer" onClick={onOpen}>open transcript<ArrowIcon size={14} /></button>}
       </div>
     </Panel>
   );
@@ -271,9 +296,9 @@ export function FullTranscriptView({ spoken, asr }: { spoken: Spoken; asr: strin
     <div className="transcript-reader">
       <div className="transcript-reader__toolbar">
         <label className="transcript-reader__search"><span className="sr-only">Find in transcript</span>
-          <SearchField value={query} onChange={(value) => { follow.current = false; setFollowing(false); setQuery(value); }} placeholder="find a word or reference…" />
+          <SearchField guideId="transcript-search" value={query} onChange={(value) => { follow.current = false; setFollowing(false); setQuery(value); }} placeholder="find a word or reference…" />
         </label>
-        <Button label={following && !query ? 'following live' : 'latest words'} icon={<ChevronDownIcon size={12} />} onClick={latest} tone="ash" />
+        <Button guideId="transcript-latest" label={following && !query ? 'following live' : 'latest words'} icon={<ChevronDownIcon size={12} />} onClick={latest} tone="ash" />
       </div>
       <div ref={box} className="transcript-reader__scroll" tabIndex={0} role="region" aria-label="Full service transcript"
         style={{ overflowAnchor: 'none' }} onWheel={(e) => { if (e.deltaY < 0) { follow.current = false; setFollowing(false); } }}

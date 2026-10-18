@@ -1,0 +1,20 @@
+#scene-look { min-height: 44px; max-width: 210px; padding: 10px 30px 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--ink); background: var(--surface); cursor: pointer; }
+#glow-toggle { font-size: 12px; background: var(--surface); }
+html:not([data-look="alpine"]) #glow-toggle { display: none; }
+html[data-look="alpine"] #canvas-wrapper { background: #0b131e; isolation: isolate; }
+html[data-look="alpine"] #canvas-wrapper canvas { position: relative; z-index: 1; }
+.alpine-backdrop { position: absolute; inset: 0; overflow: hidden; pointer-events: none; background: #0b131e; }
+.alpine-sky-day, .alpine-sky-night, .alpine-sun-position, .alpine-ray-position, .alpine-speck-position { position: absolute; inset: 0; }
+.alpine-sky-day { background: radial-gradient(ellipse at 28% 22%, #e0e5e5 0%, #b8c4c9 38%, #8397a5 76%); }
+.alpine-sky-night { background: radial-gradient(ellipse at 77% 48%, #293c50 0%, #142232 38%, #0b131e 74%); }
+.alpine-halo-day, .alpine-halo-night { position: absolute; inset: -10%; }
+.alpine-halo-day { background: radial-gradient(ellipse at 50% 43%, #f4f2e366, #d5e0e82b 30%, transparent 59%); }
+.alpine-halo-night { background: radial-gradient(ellipse at 50% 43%, #ab99832b, #51769a24 28%, transparent 57%); }
+.alpine-rays { position: absolute; width: 62%; height: 105%; top: -5%; left: 0; opacity: .62; background: linear-gradient(90deg, transparent 3%, #79b5d700 9%, #79b5d752 11%, #79b5d700 14%, transparent 25%, #79b5d740 28%, transparent 32%, #a5cce650 37%, transparent 41%, #6c9cbd38 46%, transparent 49%, #9ebfda30 55%, transparent 59%, #608aa438 65%, transparent 70%); mask-image: radial-gradient(ellipse at 48% 52%, #000 0%, #0009 30%, transparent 66%); animation: alpine-rays-drift 14s ease-in-out infinite alternate; }
+.alpine-specks { position: absolute; inset: 0; opacity: .38; background: radial-gradient(circle at 44% 34%, #9bdaec 0 1px, transparent 2px), radial-gradient(circle at 52% 24%, #9bdaec 0 1px, transparent 2px), radial-gradient(circle at 61% 41%, #9bdaec 0 1px, transparent 2px), radial-gradient(circle at 74% 29%, #9bdaec 0 1px, transparent 2px), radial-gradient(circle at 84% 17%, #9bdaec 0 1px, transparent 2px), radial-gradient(circle at 36% 58%, #9bdaec 0 1px, transparent 2px); animation: alpine-specks-drift 22s linear infinite alternate; }
+html[data-glow-motion="paused"] .alpine-backdrop .alpine-rays, html[data-glow-motion="paused"] .alpine-backdrop .alpine-specks { animation-play-state: paused; }
+@keyframes alpine-rays-drift { from { transform: translate3d(-3%, 1%, 0) scaleX(.96); opacity: .42; } to { transform: translate3d(3%, -1%, 0) scaleX(1.04); opacity: .72; } }
+@keyframes alpine-specks-drift { from { transform: translate3d(-1%, 1%, 0); } to { transform: translate3d(1%, -2%, 0); } }
+@media (prefers-reduced-motion: reduce) { .alpine-backdrop .alpine-rays, .alpine-backdrop .alpine-specks { animation: none; } }
+@media (max-width: 767px) { #scene-look { max-width: 155px; } .alpine-rays { left: 0; width: 100%; } }
+

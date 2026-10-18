@@ -7,14 +7,27 @@
  * throwaway stream to unlock the labels, and enumerate again.
  */
 
-import { DEVICE_AUDIO, DEVICE_AND_MIC } from '../../shared/audioInput';
+import { DEVICE_AUDIO, DEVICE_AND_MIC, networkSoundLabel } from '../../shared/audioInput';
 
 export interface AudioInput {
   id: string;
   label: string;
 }
 
-export async function listAudioInputs(): Promise<AudioInput[]> {
+/**
+ * Every input this computer can listen through. `network` adds the sound
+ * other computers send over NDI® (sender mode) after the local devices. Off
+ * by default: looking starts NDI and, on a Mac, the local-network permission
+ * prompt, so only a picker someone has opened asks for it.
+ */
+export async function listAudioInputs({ network = false }: { network?: boolean } = {}): Promise<AudioInput[]> {
+  const local = await listLocalInputs();
+  if (!network) return local;
+  const sources = await window.api?.listNetworkSounds?.().catch(() => [] as string[]) ?? [];
+  return [...local, ...sources.map((source) => ({ id: `network:${source}`, label: networkSoundLabel(source) }))];
+}
+
+async function listLocalInputs(): Promise<AudioInput[]> {
   const capabilities = await window.api?.getAudioCaptureCapabilities?.().catch(() => undefined);
   const deviceInputs = capabilities?.deviceAudio ? [
     { id: 'device-audio', label: DEVICE_AUDIO },

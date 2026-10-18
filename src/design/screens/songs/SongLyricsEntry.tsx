@@ -17,7 +17,7 @@ export function SongLyricsEntry({ title, author, lyrics, cards, onTitle, onAutho
   const firstSlide = cards[0];
 
   return (
-    <div className="song-entry" data-guide="song-entry">
+    <div className="song-entry" data-guide="song-entry" data-guide-area="songs">
       <section className="song-entry-compose" aria-label="song details and lyrics">
         <div className="song-entry-details">
           <label className="song-entry-field">
@@ -26,7 +26,7 @@ export function SongLyricsEntry({ title, author, lyrics, cards, onTitle, onAutho
           </label>
           <label className="song-entry-field">
             <span>artist <span className="song-entry-optional">optional</span></span>
-            <input aria-label="artist or author" value={author} onChange={(e) => onAuthor(e.target.value)} placeholder="artist or author" spellCheck={false} />
+            <input data-guide="song-author" aria-label="artist or author" value={author} onChange={(e) => onAuthor(e.target.value)} placeholder="artist or author" spellCheck={false} />
           </label>
         </div>
 

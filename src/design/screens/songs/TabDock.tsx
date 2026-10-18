@@ -1,3 +1,4 @@
+import { IconSelection } from '../../../ui/NuboIcon';
 import { Fragment, type ReactNode } from 'react';
 import { cx } from '../../../ui';
 import './songs.css';
@@ -45,6 +46,7 @@ export function TabDock({ actions, label }: { actions: DockAction[]; label: stri
             ) : null}
             <button
               type="button"
+              data-guide={`dock-${label}-${a.id}`}
               title={a.label}
               aria-label={a.text}
               aria-description={a.label}
@@ -62,7 +64,7 @@ export function TabDock({ actions, label }: { actions: DockAction[]; label: stri
               style={{ minHeight: 'max(32px, var(--tri-control-h))' }}
             >
               <span className="inline-flex items-center justify-center gap-2">
-                <span aria-hidden="true" className="flex shrink-0 items-center">{a.icon}</span>
+                <span aria-hidden="true" className="flex shrink-0 items-center"><IconSelection selected={a.active}>{a.icon}</IconSelection></span>
                 <span>{a.text}</span>
               </span>
             </button>

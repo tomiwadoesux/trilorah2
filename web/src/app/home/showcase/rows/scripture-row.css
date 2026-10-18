@@ -1,0 +1,24 @@
+/* Row 1 · #scripture. Front: the preacher transcript. Back: the operator workspace. */
+
+/*
+ * Both captures are drawn at the same scale (front 900px wide, back 2570px: 35% and 100%
+ * of the stage), so the transcript and the workspace read as one app, not a close-up
+ * beside a thumbnail. The back starts just inside the front, so the front hides only the
+ * empty panel left of the preview, and Psalm 46:10 waits in preview beside go live.
+ */
+.sc-row-scripture .sc-stage{
+  --sc-front-width:35%;
+  --sc-back-left:27%;--sc-back-top:5.5%;--sc-back-width:100%;
+  --sc-fade-x:50%;--sc-fade-x-end:94%;--sc-fade-y:42%;
+  --sc-back-dim:.6;
+
+  /* Phone: the workspace across the top (preview and go live clear of the front panel),
+     the transcript below it, over the verses list. */
+  --sc-m-stage-ratio:3 / 4;
+  --sc-m-back-left:0%;--sc-m-back-top:0%;--sc-m-back-width:190%;
+  --sc-m-fade-x:52%;--sc-m-fade-x-end:96%;--sc-m-fade-y:40%;
+  --sc-m-front-top:28%;--sc-m-front-width:72%;
+}
+
+/* The capture ends in empty card; crop it to the last line plus the card's own padding. */
+.sc-row-scripture .sc-front{aspect-ratio:900 / 1006}

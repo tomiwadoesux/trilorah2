@@ -67,7 +67,7 @@ export function GradientLab() {
     <h2>Find the right atmosphere.</h2>
     <p>Six directions, all still. See how each sits behind the controls.</p>
     <div className="gradient-studies" aria-label="Gradient styles">
-      {STYLES.map((s, i) => <button key={s.id} type="button" aria-pressed={chosen === s.id} onClick={() => setChosen(s.id)} aria-label={`${s.name} gradient`}>
+      {STYLES.map((s, i) => <button key={s.id} type="button" data-guide={`gradient-style-${s.id}`} aria-pressed={chosen === s.id} onClick={() => setChosen(s.id)} aria-label={`${s.name} gradient`}>
         <span className="gradient-study-art"><Art style={s.id}/></span>
         <span className="gradient-study-name"><small>0{i+1}</small>{s.name}</span>
       </button>)}
@@ -82,7 +82,7 @@ export function GradientLab() {
     </div>
     <div className="gradient-lab-tools">
       <div className="gradient-colors" aria-label="Preview colour">{COLORS.map((c,i) => <button key={c.name} type="button" aria-label={`${c.name} preview colour`} title={c.name} aria-pressed={color===i} style={{'--swatch':c.a} as CSSProperties} onClick={() => setColor(i)}/>)}</div>
-      <button type="button" aria-pressed={context} onClick={() => setContext(v => !v)}>{context ? 'Hide controls' : 'Show controls'}</button>
+      <button type="button" data-guide="gradient-controls" aria-pressed={context} onClick={() => setContext(v => !v)}>{context ? 'Hide controls' : 'Show controls'}</button>
     </div>
     <p className="gradient-lab-note">{selected.note} These studies only change this preview.</p>
   </section>;

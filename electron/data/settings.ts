@@ -52,7 +52,15 @@ export const defaults = {
   vmixEnabled: false,
   vmixHost: 'localhost',
   vmixPort: 8088,
+  /** This computer only sends its sound to another Trilorah (electron/ndi/networkSound.ts):
+   *  it opens as the small sender window instead of the operator window. */
+  senderMode: false,
+  /** What sender mode sends: an input's label, or '' for the system default. */
+  senderDeviceLabel: '',
+  /** Which side of that input it passes on (shared/audioInput SenderChannels). */
+  senderChannels: 'both' as 'both' | 'left' | 'right',
   audienceTrainingEnabled: false,
+  givingSettingsPending: false,
   givingZelle: '',
   givingVenmo: '',
   givingCashApp: '',

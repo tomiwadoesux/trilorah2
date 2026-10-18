@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f0f1f3">
+  <title>Mountain & clouds — scene study</title>
+  <script>
+    const params = new URLSearchParams(location.search);
+    if (params.get('look') === 'alpine') document.documentElement.dataset.look = 'alpine';
+    if (params.has('embedded')) document.documentElement.dataset.embedded = 'true';
+    if (params.get('view') === 'final' || params.get('look') === 'alpine') document.documentElement.dataset.presentation = 'true';
+    try {
+      const theme = JSON.parse(localStorage.getItem('montfort-scene-settings-v2') || '{}').theme;
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch { /* The scene still works when browser storage is unavailable. */ }
+  </script>
+  <link rel="stylesheet" href="./scene.css">
+  <link rel="stylesheet" href="./alpine-look.css">
+  <link rel="stylesheet" href="./camera-playground.css">
+</head>
+<body>
+  <div id="canvas-wrapper" aria-hidden="true"><canvas></canvas></div>
+  <button id="scroll-top" type="button" hidden aria-hidden="true" tabindex="-1">Top</button>
+  <main data-scene="Homepage" aria-label="Interactive mountain and clouds">
+    <div class="top-chapters" data-chapter="TopChapters" data-chapter-first="true">
+      <section class="hero" data-chapter="Hero" data-chapter-first="true"></section>
+    </div>
+  </main>
+  <div id="loading" role="status">Loading mountain & clouds…</div>
+  <header class="scene-ui">
+    <a class="source" href="https://mont-fort.com/" target="_blank" rel="noreferrer">Montfort <span>/ scene study ↗</span></a>
+    <div id="device-controls" role="group" aria-label="Preview device">
+      <button type="button" data-device="window" aria-pressed="true">Full window</button>
+      <button type="button" data-device="phone" aria-pressed="false">Phone</button>
+      <button type="button" data-device="ipad" aria-pressed="false">iPad</button>
+      <button type="button" data-device="laptop" aria-pressed="false">Laptop</button>
+      <button type="button" data-device="desktop" aria-pressed="false">Desktop</button>
+      <button id="device-rotate" type="button" disabled>Rotate</button>
+    </div>
+    <div class="scene-toolbar">
+    <select id="scene-look" aria-label="Mountain style"><option value="clouds">Clouded mountain</option><option value="alpine">Alpine valley</option></select>
+    <button id="glow-toggle" type="button" aria-pressed="true">Pause glow</button>
+    <button id="theme-toggle" type="button" aria-pressed="false" aria-label="Dark theme">
+      <svg class="theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+      <svg class="theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.7 8.7 0 0 1 9.8 3.5a8.7 8.7 0 1 0 10.7 10.7Z"/></svg>
+      <span id="theme-label">Dark mode</span>
+    </button>
+    <details id="controls">
+      <summary>Adjust scene <span>+</span></summary>
+      <form id="settings" data-lenis-prevent>
+        <div class="panel-heading">Mountain & clouds <span>01</span></div>
+        <p>Dark rocky peaks. Scroll to travel through the clouds.</p>
+        <label for="progress">Scroll position <output id="progress-value">0%</output></label>
+        <input id="progress" type="range" min="0" max="100" step="0.1" value="0">
+        <label for="cloudSpeed">Cloud speed <output id="cloudSpeed-value">1.00</output></label>
+        <input id="cloudSpeed" name="cloudSpeed" type="range" min="0" max="3" step="0.05" value="1.00">
+        <label for="cloudDensity">Cloud density <output id="cloudDensity-value">0.90</output></label>
+        <input id="cloudDensity" name="cloudDensity" type="range" min="0" max="2" step="0.05" value="0.90">
+        <label for="fov">Field of view <output id="fov-value">55°</output></label>
+        <input id="fov" name="fov" type="range" min="20" max="90" step="1" value="55">
+        <div class="colors"><label>Light <input name="lightColor" type="color" value="#d6dadd"></label><label>Shadow <input name="darkColor" type="color" value="#cbd0d2"></label></div>
+        <div class="actions"><button id="reset" type="button">Reset scene</button><button id="export" type="button">Export settings ↓</button></div>
+        <p class="fine">Your adjustments stay in this browser. Press H to hide the controls.</p>
+        <output id="feedback" aria-live="polite"></output>
+      </form>
+    </details>
+    <details id="camera-controls" open>
+      <summary>Camera <span>+</span></summary>
+      <section id="camera-panel" aria-label="Camera editor" data-lenis-prevent>
+        <div class="preview-controls">
+          <label for="preview-device">Preview screen <output id="preview-size" aria-live="polite"></output></label>
+          <div class="preview-device-row">
+            <select id="preview-device">
+              <option value="window">Full window</option>
+              <option value="phone">Phone</option>
+              <option value="ipad">iPad</option>
+              <option value="laptop">Laptop</option>
+              <option value="desktop">Desktop</option>
+            </select>
+            <button id="preview-rotate" type="button">Rotate</button>
+          </div>
+          <p class="fine">Each screen opens your chosen camera framing.</p>
+          <button id="use-chosen-view" type="button">Use chosen framing</button>
+          <a class="clean-preview-link" href="./index.html?view=final" target="_blank" rel="noopener">Open clean preview ↗</a>
+        </div>
+        <div class="panel-heading">Find your view <span id="camera-status" role="status">Scroll view</span></div>
+        <p class="camera-help">Drag to rotate · Shift-drag or right-drag to pan · Scroll to zoom. On touch, drag to rotate; use two fingers to pan or pinch to zoom.</p>
+        <button id="camera-edit" class="camera-primary" type="button" aria-pressed="false">Explore camera</button>
+        <fieldset id="camera-tools" disabled>
+          <legend class="visually-hidden">Camera navigation</legend>
+          <div class="camera-zoom-row"><span>Zoom</span><div><button id="camera-zoom-out" type="button" aria-label="Zoom out">−</button><button id="camera-zoom-in" type="button" aria-label="Zoom in">+</button></div></div>
+          <label for="camera-distance">Distance <output id="camera-distance-value">200</output></label>
+          <input id="camera-distance" type="range" min="20" max="800" step="0.5" value="200">
+          <label for="camera-yaw">Horizontal angle <output id="camera-yaw-value">0°</output></label>
+          <input id="camera-yaw" type="range" min="-180" max="180" step="0.1" value="0">
+          <label for="camera-pitch">Vertical angle <output id="camera-pitch-value">0°</output></label>
+          <input id="camera-pitch" type="range" min="-85" max="85" step="0.1" value="0">
+          <label for="camera-fov">Field of view <output id="camera-fov-value">55°</output></label>
+          <input id="camera-fov" type="range" min="20" max="90" step="1" value="55">
+          <details class="camera-coordinates">
+            <summary>Coordinates <span>+</span></summary>
+            <div class="coordinate-group"><span>Position</span><div class="coordinate-row">
+              <label for="camera-x">X<input id="camera-x" type="number" step="0.1" value="0" aria-label="Camera position X"></label>
+              <label for="camera-y">Y<input id="camera-y" type="number" step="0.1" value="0" aria-label="Camera position Y"></label>
+              <label for="camera-z">Z<input id="camera-z" type="number" step="0.1" value="0" aria-label="Camera position Z"></label>
+            </div></div>
+            <div class="coordinate-group"><span>Look at</span><div class="coordinate-row">
+              <label for="camera-target-x">X<input id="camera-target-x" type="number" step="0.1" value="0" aria-label="Camera target X"></label>
+              <label for="camera-target-y">Y<input id="camera-target-y" type="number" step="0.1" value="0" aria-label="Camera target Y"></label>
+              <label for="camera-target-z">Z<input id="camera-target-z" type="number" step="0.1" value="0" aria-label="Camera target Z"></label>
+            </div></div>
+          </details>
+          <button id="camera-reset-view" type="button">Reset view</button>
+        </fieldset>
+        <div class="camera-preset-actions"><button id="camera-copy" type="button">Copy view</button><button id="camera-save" type="button">Save view</button><button id="camera-load" type="button" disabled>Load saved</button></div>
+        <button id="copy-all-views" type="button">Copy all saved views</button>
+        <output id="saved-views-status" role="status"></output>
+        <button id="clear-saved-view" type="button" hidden>Remove this saved view</button>
+        <label for="camera-json" class="camera-json-label">Camera setup <span>JSON</span></label>
+        <textarea id="camera-json" readonly spellcheck="false" rows="3" placeholder="Your camera setup will appear here."></textarea>
+        <output id="camera-feedback" role="status"></output>
+      </section>
+    </details>
+    </div>
+  </header>
+  <footer class="scene-ui"><span id="interaction-hint">Scroll to explore</span><button id="restart" type="button">Back to summit ↑</button></footer>
+  <button id="restore-ui" type="button" hidden>Show controls</button>
+  <script type="module">
+    if (!document.documentElement.dataset.embedded) await import('./scene-look-picker.js');
+    await import(document.documentElement.dataset.embedded ? './scene.js'
+      : document.documentElement.dataset.presentation ? './final-preview.js' : './studio.js');
+  </script>
+</body>
+</html>

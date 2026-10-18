@@ -100,7 +100,7 @@ export function Themes() {
   const secondaryVersion = typeof settings?.secondaryVersion === 'string' ? settings.secondaryVersion : '';
 
   return (
-    <div key={loaded ? 'loaded' : 'loading'} className="space-y-6">
+    <div key={loaded ? 'loaded' : 'loading'} data-guide-area="appearance" className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-xl font-semibold tracking-tight">Themes</h2>
         <p className="text-sm text-neutral-500">
@@ -114,7 +114,7 @@ export function Themes() {
           <PanelHeader>scripture display</PanelHeader>
           <div className="space-y-4">
             <Row label="font">
-              <select value={preset} onChange={(e) => save('scriptureFontPreset', e.target.value)} className="text-sm">
+              <select data-guide="appearance-font" value={preset} onChange={(e) => save('scriptureFontPreset', e.target.value)} className="text-sm">
                 {FONT_PRESETS.map((f) => (
                   <option key={f.id} value={f.id}>
                     {f.label}
@@ -124,6 +124,7 @@ export function Themes() {
             </Row>
             <Row label="size">
               <input
+                data-guide="appearance-size"
                 type="range"
                 min="0.6"
                 max="1.8"
@@ -135,7 +136,7 @@ export function Themes() {
               <span className="text-xs tabular-nums text-neutral-400">{Math.round(scale * 100)}%</span>
             </Row>
             <Row label="weight">
-              <select value={String(weight)} onChange={(e) => save('defaultFontWeight', Number(e.target.value))} className="text-sm">
+              <select data-guide="appearance-weight" value={String(weight)} onChange={(e) => save('defaultFontWeight', Number(e.target.value))} className="text-sm">
                 {[300, 400, 500, 600, 700].map((w) => (
                   <option key={w} value={String(w)}>
                     {w}
@@ -145,6 +146,7 @@ export function Themes() {
             </Row>
             <Row label="text color">
               <input
+                data-guide="appearance-colour"
                 type="color"
                 value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#ffffff'}
                 onChange={(e) => save('defaultTextColor', e.target.value)}
@@ -160,6 +162,7 @@ export function Themes() {
           <div className="space-y-4">
             <Row label="slides">
               <select
+                data-guide="appearance-slides"
                 value={breakOnVerse ? 'verse' : 'whole'}
                 onChange={(e) => save('breakOnVerse', e.target.value === 'verse')}
                 className="text-sm"
@@ -170,6 +173,7 @@ export function Themes() {
             </Row>
             <Row label="verse numbers">
               <select
+                data-guide="appearance-verse-numbers"
                 value={showVerseNumbers ? 'on' : 'off'}
                 onChange={(e) => save('showVerseNumbers', e.target.value === 'on')}
                 className="text-sm"
@@ -179,7 +183,7 @@ export function Themes() {
               </select>
             </Row>
             <Row label="reference">
-              <select value={referenceMode} onChange={(e) => save('referenceMode', e.target.value)} className="text-sm">
+              <select data-guide="appearance-reference" value={referenceMode} onChange={(e) => save('referenceMode', e.target.value)} className="text-sm">
                 <option value="each">on every slide</option>
                 <option value="first">on the first slide only</option>
                 <option value="last">on the last slide only</option>
@@ -188,6 +192,7 @@ export function Themes() {
             </Row>
             <Row label="translation">
               <select
+                data-guide="appearance-translation"
                 value={showTranslation ? 'on' : 'off'}
                 onChange={(e) => save('showTranslation', e.target.value === 'on')}
                 className="text-sm"
@@ -198,6 +203,7 @@ export function Themes() {
             </Row>
             <Row label="second translation">
               <select
+                data-guide="appearance-second-translation"
                 value={secondaryVersion}
                 onChange={(e) => save('secondaryVersion', e.target.value)}
                 className="text-sm"
@@ -212,6 +218,7 @@ export function Themes() {
             </Row>
             <Row label="split long verses">
               <input
+                data-guide="appearance-split"
                 type="range"
                 min="0"
                 max="400"
@@ -236,9 +243,9 @@ export function Themes() {
           <div className="space-y-4">
             <Row label="image">
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
-                <Button label="Choose image…" variant="solid" onClick={() => void chooseImage()} />
+                <Button guideId="appearance-image" label="Choose image…" variant="solid" onClick={() => void chooseImage()} />
                 {backgroundUrl && (
-                  <TextButton label="REMOVE" onClick={() => { save('defaultBackgroundUrl', ''); setBgNote('background removed'); }} />
+                  <TextButton guideId="appearance-image-remove" label="REMOVE" onClick={() => { save('defaultBackgroundUrl', ''); setBgNote('background removed'); }} />
                 )}
                 {bgNote && <span className="text-xs text-neutral-400">{bgNote}</span>}
               </div>
@@ -246,6 +253,7 @@ export function Themes() {
             <Row label="or image url">
               <input
                 key={backgroundUrl}
+                data-guide="appearance-image-url"
                 defaultValue={backgroundUrl}
                 placeholder="https://… or file:///… (empty = transparent for obs/vmix)"
                 onBlur={(e) => save('defaultBackgroundUrl', e.target.value.trim())}
@@ -253,14 +261,14 @@ export function Themes() {
               />
             </Row>
             <Row label="image fit">
-              <select value={bgFit} onChange={(e) => save('backgroundFit', e.target.value)} className="text-sm">
+              <select data-guide="appearance-image-fit" value={bgFit} onChange={(e) => save('backgroundFit', e.target.value)} className="text-sm">
                 <option value="cover">fill the screen (crop edges)</option>
                 <option value="contain">fit inside (no cropping)</option>
                 <option value="fill">stretch to screen</option>
               </select>
             </Row>
             <Row label="image position">
-              <select value={bgPosition} onChange={(e) => save('backgroundPosition', e.target.value)} className="text-sm">
+              <select data-guide="appearance-image-position" value={bgPosition} onChange={(e) => save('backgroundPosition', e.target.value)} className="text-sm">
                 <option value="center">center</option>
                 <option value="top">top</option>
                 <option value="bottom">bottom</option>
@@ -268,6 +276,7 @@ export function Themes() {
             </Row>
             <Row label="dim overlay">
               <input
+                data-guide="appearance-overlay"
                 type="range"
                 min="0"
                 max="0.9"

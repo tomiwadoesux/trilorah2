@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ArrowIcon } from '../ui/icons';
 import { useAppStore } from '../stores/appStore';
 import { useLiveStore } from '../stores/liveStore';
 import {
@@ -621,7 +622,7 @@ function PulpitLogPanel() {
         {voiceLog.slice(0, 5).map((event, i) => (
           <li key={`${event.ts}-${i}`} className="text-xs text-neutral-500">
             <span className="font-scripture italic">“…{event.utterance}”</span>
-            <span className="px-1.5">→</span>
+            <span className="px-1.5"><ArrowIcon size={14} /></span>
             {describeVoiceCommand(event)}
             <span className="pl-2 text-[10px] text-neutral-400">{clockTime(event.ts)}</span>
           </li>

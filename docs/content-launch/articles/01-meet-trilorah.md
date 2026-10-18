@@ -1,53 +1,51 @@
 ---
-title: "Meet Trilorah: prepare the service, follow the sermon"
+title: "Meet Trilorah: ready for the next part of the service"
 slug: "meet-trilorah"
 audience: "Church volunteers, worship leaders, and church leaders evaluating Trilorah"
 question: "What does Trilorah do, and where should our team begin?"
 proposed_publication_date: "2026-03-02"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; release walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [navigation.open-library, run.build-edit, scripture.catch-and-project, output.publish-preview]
 ---
 
-# Meet Trilorah: prepare the service, follow the sermon
+# Meet Trilorah: ready for the next part of the service
 
-A service has a plan. It also has moments nobody put in the plan: a repeated chorus, a different scripture, an announcement that arrives just before the welcome.
+The person running the screens has plenty to follow: the worship leader, the preacher, the service order, and the announcement that arrived ten minutes ago. (It was marked urgent.)
 
-Trilorah brings the material you prepare and the words you hear into one church presentation workspace. You can organize an order of service, prepare lyrics and slides, choose media, and look up scripture. During a sermon, Trilorah can listen for spoken Bible references and recognizable quotations, then offer passages for the operator to review.
+Trilorah puts the material for those moments in one church presentation workspace. Prepare songs, slides, scripture, and media. Arrange them in a run of show. Then follow the service with a clear view of what is ready and what the congregation can see.
 
-The operator decides what reaches the screen. Recognizing a passage does not automatically project it.
+Our starting point is practical: a volunteer should be able to prepare the service and hand it to another volunteer without narrating the entire computer.
 
-## A place to prepare what comes next
+## Prepare the parts people will need
 
-The operator workspace has libraries for verses, themes, songs, slides, media, and online media. The run of service keeps the day's segments and queued material together.
+A welcome slide belongs near the welcome. Song sections belong with the music. A note about waiting for the speaker belongs beside that part of the service.
 
-That gives a volunteer a practical starting point. Prepare the welcome slide. Add the songs the worship team will use. Organize the sermon and announcements. Put a note beside a segment when another operator needs context.
+The run of show gives these items a place. Create sections, add prepared content, and arrange the order. A section can hold more than its label suggests: a sermon section might need scripture, an image, and a reminder for the operator.
 
-The plan can change. Segments can be renamed and reordered, and you can prepare additional content while the service is under way. A queued note is an operator reminder; it does not become an announcement slide simply because it is in the run.
+The libraries hold the material itself. Open a saved song to check its lyrics. Preview an imported slide. Choose a background that leaves the words readable. Preparation means opening the actual content and checking it before anyone is waiting for it.
 
-## A clear difference between preview and live
+## See the next item before the room does
 
-Preview is where you inspect the next item. Live is what you have sent to the audience.
+Preview gives you somewhere to inspect the next item. Live shows what you have sent to the outputs.
 
-For example, a lyric section can be prepared in preview while the congregation still sees the previous section. When it is time to change, use **Go live** or the content's explicit send control.
+During a song, you can prepare the next lyric section while the current section remains on screen. At the cue, send it with **Go live**. Use **Clear** to take the words down while keeping the background, then **Restore** when they are needed again.
 
-Learn the direct-send shortcuts too. In the current scripture interface, submitting the reference field with Enter sends the passage live. Double-clicking a verse row also sends it. A single click on a verse row previews it. These distinctions are part of operating the app confidently.
+Some controls send content directly, including scripture reference submission and explicit send buttons. Learning those controls belongs in rehearsal, alongside checking the physical projector.
 
-## Help with the unexpected scripture
+## Follow spoken scripture with help
 
-Suppose the preacher says, “Let's turn to John chapter three, verse sixteen.” With a working audio input and speech engine, Trilorah can recognize that reference and prepare a candidate passage.
+With a working microphone and speech engine, Trilorah can listen for Bible references and recognizable quotations. When the preacher names a passage, a candidate can appear for you to inspect. Quoted wording can also provide a clue when no reference is spoken.
 
-It can also look for recognizable quoted wording. You still check the reference, translation, and text before sending it. A noisy recording or an incomplete quotation may produce no useful suggestion. Manual scripture lookup remains available.
+You check the passage and decide when to show it. Speech recognition does not automatically project scripture in the current app.
 
-There is no requirement to use recognition for every service. Songs, slides, media, and manual Bible lookup remain useful parts of the workspace on their own.
+That distinction matters. A suggestion might be incomplete or wrong. You can leave it alone, look up the reference yourself, or search for a remembered phrase. Trilorah helps find the passage; the operator makes the screen decision.
 
-## Start with one complete rehearsal
+## Begin with a small service
 
-For a first session, choose a small service: a welcome, one song, a scripture reading, and a closing announcement. Prepare those items, check the connected screen, and rehearse moving between them.
+Prepare a welcome, one song, a scripture reading, and a closing slide. Check the connected display. Rehearse the transitions, clear the words once, and save the service.
 
-If you want to try sermon listening, check that speech produces both an audio level and new transcript words. The listening button alone does not prove the microphone and speech engine are working together.
+Add sermon listening after that basic flow feels familiar. You can use songs, slides, media, and manual scripture lookup without using recognition.
 
-You do not need to learn every setting before you begin. Start with the controls that prepare content, show it, and take the words down. Build from a workflow you can explain to the next volunteer.
-
-Continue with [your first-service checklist](02-first-service-checklist.md), or see [how scripture recognition works](04-how-scripture-recognition-works.md).
+Start with [the first-service rehearsal](02-first-service-checklist.md). For a closer look at spoken references and quotations, read [how scripture recognition works](04-how-scripture-recognition-works.md).

@@ -35,6 +35,7 @@ export function QrProjectionConfirm({ onDiscard, onConfirm }: {
         </p>
         <button
           type="button"
+          data-guide="qr-dont-ask"
           role="switch"
           aria-checked={dontShowAgain}
           onClick={() => setDontShowAgain(value => !value)}
@@ -48,8 +49,8 @@ export function QrProjectionConfirm({ onDiscard, onConfirm }: {
           </span>
         </button>
         <div className="mt-5 flex justify-end gap-2">
-          <span data-discard><Button label="Discard" onClick={onDiscard} /></span>
-          <Button label="Yes" tone="gold" onClick={() => onConfirm(dontShowAgain)} />
+          <span data-discard><Button guideId="qr-discard" label="Discard" onClick={onDiscard} /></span>
+          <Button guideId="qr-confirm" label="Yes" tone="gold" onClick={() => onConfirm(dontShowAgain)} />
         </div>
       </div>
     </dialog>

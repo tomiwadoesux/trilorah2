@@ -96,9 +96,16 @@ the temporary conversion file the active autosave destination; use Save As.
 
 Archive entries are bounded before extraction and written to generated filenames.
 Traversal, links, encrypted entries, duplicate paths, and unsupported compression
-are rejected. CRCs are checked except for EasyWorship's known nonstandard
-`main.db` CRC. XML entities/DTDs are rejected. Protobuf only traverses known field
-paths. SQLite files are opened read-only with trusted schemas disabled.
+are rejected. Windows backslash separators (EasyWorship 7 packs media as
+`media\qwtbdq.JPG`) are read as folders; absolute and `..` paths are still
+rejected. Empty entries, such as EasyWorship's `media` folder marker, are skipped.
+CRCs are checked except inside `.ewsx` schedules: real EasyWorship 7.4 files carry a
+nonstandard CRC on every entry, `main.db` and packed media alike, so only sizes are
+enforced there. PowerPoint, Keynote and other Office files found inside an export are
+kept whole and listed as skipped (bring slides in from slides → import slides);
+they are never unpacked as archives. XML entities/DTDs are rejected. Protobuf only
+traverses known field paths. SQLite files are opened read-only with trusted
+schemas disabled.
 
 Abandoned previews are removed on dismissal, eviction, or normal app exit. A crash
 can leave an OS temporary directory; it is not part of the user's library.

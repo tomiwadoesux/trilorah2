@@ -1,0 +1,72 @@
+{
+  "scope": "Shared decorative dither texture on stage backdrops, library rail, transcript strip, empty states and notification empty state",
+  "reference": "Inspected 16 frames from the supplied 16-second recording. The exact reference implementation is unknown; this uses cached smooth noise fields with an ordered dot mask.",
+  "build": "npm run build passed; existing CSS placeholder-token, chunk-size and mixed-import warnings remain",
+  "bundle": {
+    "javascriptBytes": 7749,
+    "gzipKilobytes": 3.72,
+    "newDependencies": 0
+  },
+  "limits": {
+    "framesPerSecondMaximum": 24,
+    "dotsPerSurfaceMaximum": 4800,
+    "rasterPixelsPerSurfaceMaximumApproximate": 360000,
+    "concurrentRipplesPerSurfaceMaximum": 8,
+    "clickRadiusCssPixelsMaximum": 192,
+    "clickFadeMilliseconds": 1200,
+    "maximumConcurrentBursts": 1,
+    "heartsPerBurst": 6,
+    "flowersPerBurst": 4,
+    "totalVisibleLightsMaximum": 8,
+    "redShapeLifetimeMilliseconds": 1100,
+    "redShapeIntervalMilliseconds": 400,
+    "heartSequenceMilliseconds": 3100,
+    "flowerSequenceMilliseconds": 2300,
+    "maximumConcurrentRedShapes": 3
+  },
+  "browserMeasurement": {
+    "surfaceFrames": 800,
+    "averageMilliseconds": 0.169,
+    "p95Milliseconds": 0.4,
+    "drawMillisecondsPerSecond": 27.0,
+    "notes": "Historical rest measurement of the colored renderer before the outward-ring interaction. Current active-ripple performance has not been profiled. Synchronous field and canvas submission work only; excludes GPU utilization and older-hardware profiling."
+  },
+  "checks": {
+    "reducedMotion": "Zero surface updates during a five-second sample; a click produced zero pixel-alpha change while the button still worked",
+    "hiddenSurfaces": "Zero surface updates during a five-second sample",
+    "unmountedSurfaces": "Zero surface updates during a five-second sample",
+    "offscreenSurfaces": "Only four intersecting surfaces drew in a ten-surface fixture",
+    "clickResponse": "A real button click incremented its action counter and produced +18653 alpha change around the click after 180 ms",
+    "resize": "The same renderer remained clipped within 340px panels",
+    "largeSurfaceBudget": "Checked zero-size, narrow, normal, 1080p and 8K dimensions; all stayed within 4800 dots",
+    "layering": "Full operator preview confirmed decorative pointer-events:none, stage z-index:0 inside backdrop, other textures z-index:-1"
+  },
+  "uiChecklist": {
+    "highestPriorities": [
+      "Emission cadence reduced from 1000ms to 400ms, with 1100ms growth/fade: timing tests passed",
+      "Regular five-petal icon replaced by uneven layered bloom contours: sampled renderer image inspected; live browser check blocked by connection",
+      "Review layout adapts to a narrow panel rather than squeezing two columns: code fixed following the observed narrow screenshot; live recheck pending"
+    ],
+    "gettingStarted": "PASS: reuses existing decorative surfaces",
+    "typography": "PASS for this change: text does not animate or shift",
+    "layout": "PASS for this change: absolute canvas adds no layout space; tested wide and narrow surfaces",
+    "color": "PASS: ordinary green/yellow accents; requested red hearts/flowers fade smoothly without flashing",
+    "style": "Renderer sample review: bloom has irregular offset contour layers and varied outlines. Full live review pending browser reconnection.",
+    "imagery": "PASS: no animated video background or additional blur introduced",
+    "elements": "PASS: pointer-transparent canvas; normal button actions still work; no motion with reduced-motion preference",
+    "tactics": "PASS: local interactive fixture and full app preview inspected",
+    "remainingVerification": "Older booth hardware and a full live service with ASR/video running were not profiled"
+  },
+  "clickFeedback": {
+    "sequence": "Triangle, square, circle, then a freeform organic shape every fourth click; organic outlines vary between appearances",
+    "buildup": "Repeated presses brighten subsequent rings and increase their travel distance; capped at eight concurrent rings and a 192px outer edge",
+    "motion": "Rounded geometry with stable gentle edge irregularity; each click produces three rolling fronts and a soft interior wash, forming a broad textured patch. Cached contours spread and fade over 1200ms.",
+    "reset": "Each ring expires after 1200ms; a pause longer than 650ms resets buildup. No cooldown or special rapid-click mode.",
+    "automatedTests": "18 tests passed, including faster cadence, exact counts/expiry, accelerated growth, varied layered bloom contours, opacity bounds, and existing interaction behavior",
+    "browserChecks": [
+      "The updated preview text was observed. The narrow browser revealed a squeezed two-column review layout, fixed with an adaptive grid. A subsequent reload timed out and reconnect failed; the animation could not be rechecked live."
+    ],
+    "burst": "Six hearts or four blooms, emitted 400ms apart. Each grows to 168px over 1100ms while fading. Blooms have three offset layers of irregular ruffled contours, with a different cached outline for each emission.",
+    "visualEvidence": "ruffled-bloom-samples.png: offline samples produced using the actual interaction and opacity functions at 300/600/900ms, then rasterized as dots; not a browser screenshot"
+  }
+}

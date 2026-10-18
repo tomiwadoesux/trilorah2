@@ -27,3 +27,11 @@ clear · black (toggle) · logo (toggle) · auto mode · show a reference · mes
 
 Listening, pending verse, screen state (live / clear / black / logo), alert on screen;
 variables `$(trilorah:pending)`, `$(trilorah:live)`, `$(trilorah:screen)`, `$(trilorah:alert)`.
+
+## Licence
+
+Original module source is available under [PolyForm Perimeter 1.0.1](LICENSE).
+See [NOTICE](NOTICE) for copyright information. Third-party dependencies retain
+their own licences. The permitted-purpose/noncompete conditions also restrict
+free competing offerings. Valid rights already granted under earlier MIT or
+Apache licences are not revoked by this update.

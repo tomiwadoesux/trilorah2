@@ -1,63 +1,57 @@
 ---
-title: "Build an order of service your next volunteer can follow"
+title: "Build a service another volunteer can run"
 slug: "build-an-order-of-service"
 audience: "Service planners and volunteer presentation operators"
 question: "How do I organize segments, content, and notes for a service?"
 proposed_publication_date: "2026-03-27"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; release walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [run.build-edit, run.queue-content-note, files.save-open-transfer]
 ---
 
-# Build an order of service your next volunteer can follow
+# Build a service another volunteer can run
 
-A useful order of service tells an operator what happens next and gives them the material for that moment. “Worship” is a helpful heading. The correct songs, in the expected order, make that heading usable.
+A service plan should still make sense when someone else sits at the computer. Leave enough detail for the next volunteer to follow it. (Including you, a week later.)
 
-Trilorah's run of service organizes the day into segments. Start with the structure, add the content, then leave the notes another volunteer would otherwise have to ask you for.
+Trilorah's **run of show** holds sections, their content, and operator notes. Build enough detail that the next volunteer can see what to prepare and which cue to wait for.
 
-## Create the structure first
+## 1. Add and name the sections
 
-Use the plus beside the run of service and choose **add segment**. Select and arrange the segment types you need.
+Use the plus beside **run of show** to open **Add a section**. Choose from the section types, including Music, Slides, Sermon, Verse, Image, Video, and Notes.
 
-For a simple service, you might begin with welcome, worship, sermon, and closing. Treat that as an example, not a required format. Your run should follow the service your team has planned.
+Create a small order first. For example, use Slides for a welcome, Music for worship, Sermon for the message, and another Slides section for the closing announcement. Right-click a section and choose **rename** so its label matches your service.
 
-Use a segment's menu to rename it, move it earlier or later, change its type or duration, duplicate it, or remove it. Give names enough detail to be useful at a glance: “Welcome — host” is clearer than several repeated segments called “Other.”
+Drag sections into order, or use **move earlier** and **move later**. The menu also offers a planned length, duplication, and a type change.
 
-The default order of service is another starting point. Loading it replaces the existing run after confirmation, so decide whether to use it before you spend time arranging a custom service.
+The default order is another starting point. Loading it replaces the current run after confirmation. Use it before investing time in a custom arrangement, or save your existing work first.
 
-## Put the material where it belongs
+## 2. Put content inside each section
 
-Open the relevant library and drag supported content onto the segment that should contain it. The queued item then sits beside the part of the service where the operator will need it.
+Open a section and choose **Add items**. Choose a content type, then select the prepared material. Saved song sections appear under **Music**. Images, videos, and slides can be selected from the available files; those categories also offer **Import files**.
 
-For example, put the welcome slide in the welcome segment and the closing image in the closing segment. Prepare song content in the Songs library before relying on it in the run.
+Use **Verse** to add a scripture reference. You can also drag supported content into a section and arrange items in the order you need them.
 
-A name is not enough to make an item presentable. A queued song needs its lyric content; media and presentations need usable files. Open and inspect the material as part of preparation.
+Add the lyric sections your team will sing. A saved title alone does not show the words. Open queued items to inspect their content; adding them to the run is preparation, not a command to project them.
 
-## Add notes for decisions, not decoration
+## 3. Leave the cue with the content
 
-Use the plus within a segment to add an operator note. Write the action and the cue that matters:
+Within **Add items**, choose **Notes**, write the cue, and select **Add note**. A useful note tells the operator what to do and when:
 
-“Wait for the host to finish the welcome before showing the first lyric section.”
+- “Wait for the host to finish before showing the first lyric section.”
+- “Clear the words during the instrumental.”
+- “The speaker will announce the scripture reference.”
 
-“Keep the background visible during the instrumental.”
+You can edit the note in the section. It stays an operator note; create a slide for text the congregation should see.
 
-“Speaker will announce the scripture reference.”
+## 4. Rehearse one change of plan
 
-These are examples of useful handoff instructions. A note stays an editable run note; it is not automatically turned into a slide for the audience.
+Follow the order from beginning to end. Check what you will preview, when you will send it, and which items have their own **Go live** control.
 
-Use the library drag-and-drop path for media and the segment's note control for notes. Those are the preparation paths covered here.
+Then move an announcement earlier or repeat a song section. The run should remain understandable after a small change. Adding sections does not schedule every screen change automatically.
 
-## Rehearse the transitions
+## 5. Save the handoff
 
-Follow the run from beginning to end. For each transition, ask what should be in preview, what should be live, and what cue tells the operator to change it.
+Use the **.tri** file controls to save the service. Give it a recognizable name, inspect the selected contents, and read any warnings. Reopen the saved service and confirm the content is there.
 
-Try one deliberate change of plan. Move the closing announcement earlier or repeat a song section. This reveals whether the run is understandable or only makes sense to the person who built it.
-
-The order of service organizes the work. Do not assume that adding a segment schedules every screen change automatically.
-
-## Save a service another person can open
-
-Use the **.tri** file controls to save the service, inspect the selected contents, and review any warnings. Use a descriptive service name so the next operator can choose the right file.
-
-If your church already has a programme in a message or image, [import and review that programme](16-turn-a-programme-into-a-service.md). When preparation moves between computers, follow [the service-file handoff guide](11-save-and-transfer-a-service.md).
+Already have a programme in a message or image? [Import and review it](16-turn-a-programme-into-a-service.md), then add the material the proposed sections need. For another computer, use [the service-file handoff guide](11-save-and-transfer-a-service.md).

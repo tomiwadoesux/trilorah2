@@ -124,7 +124,7 @@ function Secret({ set }: { set: boolean }) {
         <span className="tracking-[0.2em]">{set ? '••••••••••••••••••' : ''}</span>
         {!set && <span className="text-[rgb(229_243_242_/_0.28)]">not set</span>}
       </div>
-      <Button label={set ? 'reveal' : 'add'} className="shrink-0" />
+      <Button guideId="settings-secret" label={set ? 'reveal' : 'add'} className="shrink-0" />
     </div>
   );
 }
@@ -167,6 +167,7 @@ function KeyList({ keys }: { keys: DeepgramKey[] }) {
             <button
               type="button"
               role="radio"
+              data-guide={`settings-key-${k.id}`}
               aria-checked={on}
               onClick={() => setActive(k.id)}
               title={`use ${k.name}`}
@@ -181,6 +182,7 @@ function KeyList({ keys }: { keys: DeepgramKey[] }) {
             </span>
             <button
               type="button"
+              data-guide="settings-key-reveal"
               title="reveal — asks for the password set when this key was added"
               className="shrink-0 text-[length:var(--tri-size-eyebrow)] lowercase text-[rgb(229_243_242_/_0.4)] transition-colors hover:text-[rgb(229_243_242_/_0.75)]"
             >
@@ -190,7 +192,7 @@ function KeyList({ keys }: { keys: DeepgramKey[] }) {
         );
       })}
       <div className="flex justify-end pt-0.5">
-        <Button label="add a key" />
+        <Button guideId="settings-key-add" label="add a key" />
       </div>
     </div>
   );
@@ -217,7 +219,7 @@ function DisplayMap({ displays }: { displays: DisplayInfo[] }) {
         const h = Math.round((w * d.h) / d.w);
         const ink = d.role ? ROLE_INK[d.role] : 'rgb(229 243 242 / 0.3)';
         return (
-          <button key={d.id} type="button" className="group flex flex-col items-center gap-1.5">
+          <button key={d.id} type="button" data-guide={`settings-display-${d.id}`} className="group flex flex-col items-center gap-1.5">
             <span
               className="tri-rounded-control relative flex items-center justify-center overflow-hidden bg-[rgb(0_0_0_/_0.25)] transition-colors group-hover:bg-[rgb(0_0_0_/_0.35)]"
               style={{ width: w, height: h, boxShadow: `inset 0 0 0 1.5px ${d.role ? ink : 'rgb(255 255 255 / 0.1)'}` }}
@@ -250,6 +252,7 @@ function FontChooser({ value, faces, onChange }: { value: string; faces: FontFac
   return (
     <div className="flex w-[420px] flex-col gap-3">
       <SegmentedControl
+        guideId="settings-font-kind"
         size="sm"
         value={kind}
         options={[
@@ -266,6 +269,7 @@ function FontChooser({ value, faces, onChange }: { value: string; faces: FontFac
             <button
               key={f.id}
               type="button"
+              data-guide={`settings-font-${f.id}`}
               onClick={() => onChange(f.id)}
               className={cx(
                 'tri-rounded-control flex flex-col items-start gap-1 px-3 pb-2 pt-2.5 text-left transition-colors',

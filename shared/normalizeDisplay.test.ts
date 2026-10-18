@@ -432,7 +432,7 @@ describe('divine names and titles on transcript surfaces', () => {
       'our Heavenly Father, the Most High, Ancient of Days and Prince of Peace.',
     )
     expect(capitalizeScriptureNames('the spirit of the lord, the lamb of god, king of kings and lord of lords.')).toBe(
-      'the Spirit of the Lord, the Lamb of God, King of kings and Lord of lords.',
+      'the Spirit of the Lord, the Lamb of God, King of Kings and Lord of Lords.',
     )
   })
 
@@ -458,7 +458,7 @@ describe('divine names and titles on transcript surfaces', () => {
 
   it('matches whole names and does not join titles across punctuation', () => {
     const ordinary = 'gods, godliness, godly, elohimish, jesús, spirit. of god'
-    expect(capitalizeScriptureNames(ordinary)).toBe('gods, godliness, godly, elohimish, jesús, spirit. of God')
+    expect(capitalizeScriptureNames(ordinary)).toBe('gods, godliness, godly, elohimish, Jesús, spirit. of God')
   })
 
   it('keeps display spans reversible and length-stable while Scripture is being read', () => {

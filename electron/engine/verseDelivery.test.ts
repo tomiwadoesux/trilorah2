@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseSync } from 'node:sqlite'
-import { VerseDelivery, detectionKey, readVersePreview, readVerseRange, type VersePreview } from './verseDelivery'
+import { VerseDelivery, alreadyShowing, detectionKey, readVersePreview, readVerseRange, type VersePreview } from './verseDelivery'
 
 function verse(book = 'Romans'): VersePreview {
   return { book, chapter: 6, verse: 5, text: `${book} verse text`, verses: [{ verse: 5, text: `${book} verse text` }], isRange: false, version: 'KJV' }
@@ -57,6 +57,24 @@ describe('VerseDelivery', () => {
 })
 
 describe('readVersePreview — operator selections', () => {
+  it.each([
+    ['KJV', 'god and the holy spirit', 'God and the Holy Spirit'],
+    ['RVR', 'dios y el espíritu santo', 'Dios y el Espíritu Santo'],
+    ['APEE', 'dieu et le saint-esprit', 'Dieu et le Saint-Esprit'],
+    ['AA', 'deus e o espírito santo', 'Deus e o Espírito Santo'],
+    ['CUV', '神、耶稣、圣灵', '神、耶稣、圣灵'],
+  ])('cases previews and range reads from %s while preserving the database', (version, raw, text) => {
+    const db = new DatabaseSync(':memory:')
+    try {
+      db.exec('CREATE TABLE bible (Book INTEGER, Chapter INTEGER, Versecount INTEGER, verse TEXT, Version TEXT)')
+      db.prepare('INSERT INTO bible VALUES (?, ?, ?, ?, ?)').run(42, 3, 16, raw, version)
+      const readable = db as unknown as Parameters<typeof readVersePreview>[0]
+      expect(readVersePreview(readable, 'John 3:16', version)?.text).toBe(text)
+      expect(readVerseRange(readable, 42, 3, 16, 16, version)).toEqual([{ verse: 16, text }])
+      expect(db.prepare('SELECT verse FROM bible').get()).toEqual({ verse: raw })
+    } finally { db.close() }
+  })
+
   function database() {
     const db = new DatabaseSync(':memory:')
     db.exec("CREATE TABLE bible (Book INTEGER, Chapter INTEGER, Versecount INTEGER, verse TEXT, Version TEXT); INSERT INTO bible VALUES (44,6,5,'Romans text','KJV'), (47,6,5,'Galatians text','KJV'), (42,3,16,'John sixteen','KJV'), (42,3,17,'John seventeen','KJV'), (42,3,16,'John BBE','BBE')")
@@ -134,3 +152,19 @@ describe('readVersePreview — versions that leave a verse out', () => {
     } finally { db.close() }
   })
 })
+
+
+describe('already displayed scriptures', () => {
+  const live = { ...verse('John'), chapter: 15, verse: 5, endVerse: 7 };
+  it('suppresses the same reference and any quotation wholly inside the live range', () => {
+    expect(alreadyShowing(live, { book: 'John', chapter: 15, verse: 5 })).toBe(true);
+    expect(alreadyShowing(live, { book: 'John', chapter: 15, verse: 6, endVerse: 7 })).toBe(true);
+  });
+  it('allows extensions, different books or chapters, and a cleared wall', () => {
+    expect(alreadyShowing(live, { book: 'John', chapter: 15, verse: 5, endVerse: 8 })).toBe(false);
+    expect(alreadyShowing(live, { book: '1 John', chapter: 15, verse: 5 })).toBe(false);
+    expect(alreadyShowing(live, { book: 'John', chapter: 14, verse: 5 })).toBe(false);
+    expect(alreadyShowing(null, { book: 'John', chapter: 15, verse: 5 })).toBe(false);
+    expect(alreadyShowing({ ...live, book: 'unknown' }, { book: 'missing', chapter: 15, verse: 5 })).toBe(false);
+  });
+});

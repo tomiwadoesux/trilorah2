@@ -32,6 +32,7 @@ const ROWS: Row[] = [
 export function ConnectedTile({ className }: { className?: string }) {
   return (
     <Expandable
+      guideArea="connected"
       notificationTarget="connections"
       className={className}
       title="Connected"

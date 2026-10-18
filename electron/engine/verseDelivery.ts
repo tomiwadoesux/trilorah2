@@ -1,3 +1,5 @@
+import { capitalizeScriptureNames } from '../../shared/scriptureNames'
+
 import type Database from 'better-sqlite3'
 import type { VerseDetection } from '../../shared/types'
 import { parseReference } from '../../shared/parseReference'
@@ -65,9 +67,10 @@ export function readVerseRange(
   bookId: number, chapter: number, start: number, end: number, version: string
 ): { verse: number; text: string }[] {
   if (![bookId, chapter, start, end].every(Number.isSafeInteger) || chapter < 1 || start < 1 || end < start) return []
-  return database.prepare(
+  const rows = database.prepare(
     'SELECT Versecount AS verse, verse AS text FROM bible WHERE Book = ? AND Chapter = ? AND Versecount BETWEEN ? AND ? AND Version = ? ORDER BY Versecount'
   ).all(bookId, chapter, start, end, version) as { verse: number; text: string }[]
+  return rows.map((row) => ({ ...row, text: capitalizeScriptureNames(row.text) }))
 }
 
 /** Direct operator selections bypass speech filters and duplicate suppression. */
@@ -90,4 +93,13 @@ export function readVersePreview(database: Pick<Database.Database, 'prepare'>, r
     text: verses.map((row) => row.text).join(' '), verses, version,
     isRange: endVerse !== verse, isPreview: true
   }
+}
+
+/** Repeating the reference, or reading any verse already displayed, is not a new catch. */
+export function alreadyShowing(live: VersePreview | null, ref: { book?: string | null; chapter?: number | null; verse?: number | null; rangeEnd?: number | null; endVerse?: number | null }): boolean {
+  if (!live || !ref.book || !ref.chapter || !ref.verse) return false
+  const end = ref.rangeEnd ?? ref.endVerse ?? ref.verse
+  const book = resolveBookId(ref.book)
+  return book !== undefined && book !== null && book === resolveBookId(live.book) && live.chapter === ref.chapter &&
+    ref.verse >= live.verse && end <= (live.endVerse ?? live.verse)
 }

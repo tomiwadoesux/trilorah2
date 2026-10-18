@@ -97,7 +97,7 @@
      card cut the last line in half. */
   flex: none; overflow: hidden;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-  font-size: clamp(9px, 1.75cqw, 12px); line-height: 1.5; color: var(--tri-ink-muted);
+  font-size: clamp(11px, 1.75cqw, 13px); line-height: 1.5; color: var(--tri-ink-muted);
 }
 .find-go {
   position: absolute; right: 2.2cqw; bottom: 1.6cqw;
@@ -126,7 +126,7 @@
 .find-veil[data-tier='micro'] { gap: 4px; }
 .find-veil[data-tier='micro'] .find-round { width: 22px; }
 .find-veil[data-tier='micro'] .find-ref { font-size: clamp(11px, 2.5cqw, 13px); }
-.find-veil[data-tier='micro'] .find-text { -webkit-line-clamp: 1; font-size: clamp(9px, 1.75cqw, 10px); }
+.find-veil[data-tier='micro'] .find-text { -webkit-line-clamp: 1; font-size: 11px; }
 .find-veil[data-tier='micro'] .find-card { padding-block: 3px; }
 
 @keyframes find-veil-in { from { opacity: 0; } to { opacity: 1; } }
@@ -167,3 +167,5 @@
 [data-scripture-browser] .story-search > .tri-rounded-control:focus-within {
   border-color: rgb(229 243 242 / 0.28);
 }
+.find-text mark { color: var(--tri-accent-yellow, #e4d87a); background: rgb(228 216 122 / .13); border-radius: 2px; }
+.find-heard { font-size: max(12px, var(--tri-size-xs)); line-height: 1.5; }

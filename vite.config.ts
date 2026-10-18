@@ -22,6 +22,8 @@ const external = [
   'whisper-node',
   'ws',
   'yauzl',
+  // NDI®, for sound between computers — a native addon plus the NDI library.
+  'grandi',
   // optional on-device notes model — installed only by user opt-in,
   // imported lazily behind try/catch in notesProvider.ts
   '@xenova/transformers',
@@ -63,6 +65,11 @@ export default defineConfig({
         // in production, so it has to be emitted alongside the app.
         design: resolve(__dirname, 'design.html'),
         emptyPreview: resolve(__dirname, 'empty-preview.html'),
+        // The see-through window a catch's signal plays in over the whole
+        // screen (electron/output/catchSignalOverlay.ts loads dist/signal.html).
+        signal: resolve(__dirname, 'signal.html'),
+        // Sender mode's small window (electron/main.ts createSenderWindow).
+        sender: resolve(__dirname, 'sender.html'),
       },
     },
   },

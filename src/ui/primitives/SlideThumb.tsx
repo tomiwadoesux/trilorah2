@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { capitalizeScriptureNames } from '../../../shared/scriptureNames';
 import { cx } from '../lib/cx';
 import { slideBackdrop, type BackdropStyle } from '../lib/slideBackdrop';
 import { ChevronDownIcon, PencilIcon } from '../icons';
@@ -74,9 +75,13 @@ export interface SlideThumbProps {
   /** The commit gesture — double-click, matching the verse rows. */
   onSend?: () => void;
   onEdit?: () => void;
+  /** Pointer capture must live on the same button that receives click/double-click. */
+  dragProps?: Pick<ButtonHTMLAttributes<HTMLButtonElement>, 'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel'>;
   /** Position in its grid, so a selection can be scrolled into view. */
   index?: number;
   className?: string;
+  /** Stable anchor for the in-app guide (data-guide on the slide button). */
+  guideId?: string;
 }
 
 export function SlideThumb({
@@ -93,9 +98,13 @@ export function SlideThumb({
   onSelect,
   onSend,
   onEdit,
+  dragProps,
   index,
   className = '',
+  guideId,
 }: SlideThumbProps) {
+  label = capitalizeScriptureNames(label);
+  stanzas = stanzas?.map(lines => capitalizeScriptureNames(lines.join('\n')).split('\n'));
   return (
     <div
       data-row={index}
@@ -124,11 +133,15 @@ export function SlideThumb({
       />
       <button
         type="button"
+        data-guide={guideId}
+        {...dragProps}
         onClick={onSelect}
         onDoubleClick={onSend}
+        aria-label={`Preview ${label}`}
+        title={onSend ? 'Click to preview · double-click to go live' : undefined}
         aria-pressed={selected}
         className="relative block w-full cursor-pointer overflow-hidden bg-black focus:outline-none"
-        style={{ aspectRatio: '16 / 9' }}
+        style={{ aspectRatio: '16 / 9', touchAction: 'manipulation' }}
       >
         {/*
           The picture. A real render when there is one; otherwise the drawn
@@ -303,6 +316,7 @@ export function SlideThumb({
           the pointer and then ignores the click is worse than none. */}
       {onEdit ? <button
         type="button"
+        data-guide={guideId ? `${guideId}-edit` : undefined}
         onClick={onEdit}
         aria-label={`edit ${label}`}
         className={cx(

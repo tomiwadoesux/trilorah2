@@ -20,7 +20,7 @@ export function NavigationMedia({ kind }: { kind: NavigationMediaKind }) {
     {kind === 'branding' && <div className="nm-branding-cards"><div className="nm-branding-back" /><div className="nm-branding-card"><small>YOUR CHURCH, YOUR WAY</small><div className="nm-branding-type">Aa<span>Make it yours.</span></div><div className="nm-branding-swatches"><i /><i /><i /><i /><i /></div><div className="nm-branding-samples"><span /><span /><span /></div></div></div>}
     {kind === 'guides' && <div className="nm-guide-cards">{['Prepare', 'Present', 'Connect'].map((title, index) => <div className={`nm-guide nm-guide-${index}`} key={title}><div className="nm-guide-image"><span>0{index + 1}</span></div><strong>{title}</strong><i /><i /></div>)}</div>}
     {kind === 'blog' && <div className="nm-editorial"><div className="nm-editorial-back" /><div className="nm-editorial-cover"><small>FROM TRILORAH</small><p>Made for<br />the message.</p><span /></div></div>}
-    {kind === 'updates' && <div className="nm-release-card"><div className="nm-release-heading"><i /><span>What’s new</span><small>LATEST</small></div><div className="nm-release-image" /><div className="nm-release-row"><i /><span /><span /></div><div className="nm-release-row"><i /><span /><span /></div></div>}
+    {kind === 'updates' && <><div className="nm-release-back nm-release-back-one" /><div className="nm-release-back nm-release-back-two" /><div className="nm-release-card"><div className="nm-release-heading"><i /><span>What’s new</span><small>LATEST</small></div><div className="nm-release-image" /><div className="nm-release-row"><i /><span /><span /></div><div className="nm-release-row"><i /><span /><span /></div></div></>}
   </div></div>;
 }
 

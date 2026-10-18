@@ -1,59 +1,61 @@
 ---
-title: "Trilorah cannot hear the preacher: check the problem in three stages"
+title: "No scripture appearing? Check sound, words, then recognition."
 slug: "when-trilorah-cannot-hear-you"
 audience: "An operator troubleshooting sermon listening"
 question: "Is the problem the audio input, transcription, or scripture recognition?"
 proposed_publication_date: "2026-06-23"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; hardware/error-state walkthrough and visuals pending"
-reviewed_on: "2026-10-10"
+reviewed_on: "2026-10-11"
 task_ids: [audio.troubleshoot, audio.choose-input, audio.start-stop-listening, scripture.catch-and-project, notifications.resolve]
 ---
 
-# Trilorah cannot hear the preacher: check the problem in three stages
+# No scripture appearing? Check sound, words, then recognition.
 
-When no scripture appears, it is tempting to change several settings at once. A clearer approach is to check the path in order: audio arriving, words being transcribed, and scripture being recognized.
+If Trilorah is not suggesting scripture, check three things in order: is sound arriving, are new words appearing, and do those words identify a passage?
 
-Each stage gives you different evidence. A moving level, a transcript, and a suggested passage answer different questions.
+Start at the first stage that fails. Changing scripture settings will not fix a muted input.
 
-## Stage 1: is sound reaching Trilorah?
+| What you see | Check next |
+|---|---|
+| No response on the audio level | Input, connection, mute and microphone permission |
+| Level responds, but no new words | Speech-engine status and errors |
+| New words appear, but no passage | Transcribed reference, quotation or search clue |
 
-Open **Audio** beneath the operator preview and check the selected input. Confirm that it is the microphone or soundboard feed you intend to use.
+## 1. Check the audio input
 
-Start listening and speak into that source. If the level does not respond, check the hardware connection, the source's mute state, and the computer's microphone permission.
+Open **Audio** beneath preview and select the microphone or soundboard feed you intend to use. Start listening and speak into that source.
 
-If you reconnected an interface, inspect the input list again. Device names can change, and a previously selected device may no longer be available. Choosing another input while listening restarts the capture path, so repeat the check afterward.
+If the level does not respond, check the cable or interface, the source's mute setting and microphone access in the computer's privacy settings. After reconnecting equipment, inspect the device list again; the saved input may no longer be available.
 
-For a phone microphone, confirm both that the phone is connected and that **use phone audio** was selected. A connection status alone does not mean the phone is the active listening source.
+Choosing a different input while listening restarts listening. Speak again after the change rather than relying on the earlier level reading.
 
-## Stage 2: are new words appearing?
+For a phone microphone, check that the phone is connected, then select **Use phone audio**. Connecting the phone and making it the active input are separate steps.
 
-If the audio level responds, say a complete sentence you have not used in this check. Look for new transcript text.
+## 2. Look for fresh words
 
-No new words can mean the speech engine is still preparing, has reported an error, or cannot use its required resources. Read the status and any notification. A local engine needs its model; a cloud engine needs valid configuration and connectivity.
+Once the level responds, say a complete sentence you have not used in this check. Look for those words in the transcript.
 
-The listening control may update before the engine finishes starting. Avoid treating the button's appearance as a successful transcription test.
+If they do not appear, read the speech status and notifications. The engine may still be starting or may have reported a problem. Local speech needs its model available; cloud speech needs valid setup and connectivity.
 
-A saved transcript from earlier in the session also does not prove that this input is working now. Use fresh speech as your evidence.
+The listening button can change before startup finishes. Earlier transcript text can also remain visible. Neither confirms that the app is transcribing this microphone now.
 
-## Stage 3: do those words identify scripture?
+Follow the action in any error notice and repeat the sentence. Dismissing a notice does not fix the cause.
 
-When new words appear but no passage is suggested, read what was transcribed. Did it contain the full book, chapter, and verse? Was the book name or number misheard? Was the quotation distinctive enough to identify a passage?
+## 3. Check what was recognised
 
-Try one complete reference during rehearsal. If that works but a loose paraphrase does not, you have learned something about the recognition example rather than proving the microphone failed.
+If fresh words appear, read them. Did the transcript capture the book name and numbers correctly? Did the preacher give a full reference, quote a distinctive phrase, or only mention a broad idea?
 
-During a service, use manual reference lookup or the phrase search as the fallback. Check a candidate before sending it live. The current runtime does not automatically project scripture from speech.
+During rehearsal, try one complete reference. If that produces a suggestion but a loose paraphrase does not, investigate the wording rather than changing the microphone again.
 
-## Use notifications as directions
+During a service, use manual reference lookup or [search by phrase](09-find-scripture-from-a-phrase.md) when needed. Read the candidate before choosing it. Recognising scripture does not automatically put that suggestion on screen.
 
-An active notice can point to the relevant audio or configuration controls. Follow its destination and read the actual problem.
+## Know what the practice sermon tests
 
-Dismissing a notice only hides it; it does not restore a microphone or finish a model download. If you ask for help, include the notice wording and the last stage that worked: for example, “The level moves, but no new transcript appears.”
+The practice sermon supplies simulated transcript text. It can exercise scripture recognition, but it does not test your microphone or real speech transcription.
 
-## Know what a practice test proves
+It also uses the app's normal recognition and output controls. Run it during rehearsal, then return to the real input and repeat your spoken check.
 
-The practice sermon can exercise the recognition flow with simulated recognizer text. It cannot verify microphone capture or the accuracy of your real speech engine. Use it during rehearsal; it shares the real recognition and output pathways.
+If you need help, describe the last stage that worked and include the error wording: “The audio level moves, but no new transcript appears” gives someone a useful place to start.
 
-Once the issue is resolved, repeat a real sentence and a complete reference. That closes the loop with current evidence rather than a setting that merely looks correct.
-
-For initial setup, follow [the microphone guide](03-connect-a-microphone.md). For recognition expectations, read [how scripture recognition works](04-how-scripture-recognition-works.md).
+For a fresh setup, follow [the microphone guide](03-connect-a-microphone.md). For how references and quotations become suggestions, read [the recognition guide](04-how-scripture-recognition-works.md).

@@ -53,6 +53,7 @@ export function useCompanionFeed<S extends FeedService>(
   supabase: Supabase,
   accountId: string,
   initialService: S | null,
+  pinned = false,
 ) {
   const [service, setService] = useState<S | null>(initialService);
   const [transcript, setTranscript] = useState<Row[]>([]);
@@ -60,6 +61,8 @@ export function useCompanionFeed<S extends FeedService>(
   const [notes, setNotes] = useState<Row | null>(null);
   const [segment, setSegment] = useState<string>("unknown");
   const [health, setHealth] = useState<FeedHealth>("live");
+  const [loading, setLoading] = useState(!!initialService);
+  const [loadError, setLoadError] = useState(false);
 
   const serviceRef = useRef<S | null>(initialService);
   const transcriptRef = useRef<Row[]>([]);
@@ -71,7 +74,7 @@ export function useCompanionFeed<S extends FeedService>(
   /** Move to `candidate` if it is this service's update or a newer service. */
   const adopt = useCallback((candidate: S | null) => {
     const current = serviceRef.current;
-    if (!candidate || !shouldAdopt(current, candidate)) return;
+    if (!candidate || (pinned && candidate.id !== initialService?.id) || !shouldAdopt(current, candidate)) return;
     if (current && candidate.id === current.id && JSON.stringify(current) === JSON.stringify(candidate)) return;
     if (!current || candidate.id !== current.id) {
       // A different service: nothing on screen belongs to it.
@@ -79,12 +82,19 @@ export function useCompanionFeed<S extends FeedService>(
       setVerses([]);
       setNotes(null);
       setSegment("unknown");
+      setLoading(true);
+      setLoadError(false);
     }
     serviceRef.current = candidate;
     setService(candidate);
-  }, []);
+  }, [pinned, initialService?.id]);
 
   const discover = useCallback(async () => {
+    if (pinned && initialService) {
+      const { data } = await supabase.from("services").select("*").eq("id", initialService.id).eq("account_id", accountId).eq("is_public", true).maybeSingle();
+      if (data) adopt(data as S);
+      return;
+    }
     const since = new Date(Date.now() - SERVICE_WINDOW_MS).toISOString();
     const { data } = await supabase
       .from("services")
@@ -96,7 +106,7 @@ export function useCompanionFeed<S extends FeedService>(
       .limit(1)
       .maybeSingle();
     if (data) adopt(data as S);
-  }, [supabase, accountId, adopt]);
+  }, [supabase, accountId, adopt, pinned, initialService?.id]);
 
   /** Answers for a service the page has since moved off are thrown away. */
   const stillOn = (id: string) => serviceRef.current?.id === id;
@@ -121,20 +131,20 @@ export function useCompanionFeed<S extends FeedService>(
   );
 
   /**
-   * The first read for a service. Three minutes of transcript, newest first so
-   * the row limit keeps the RECENT rows — a recogniser that reconnects can
+   * The first read for a service. Fetch the newest saved rows even when the
+   * publisher is quiet or a visitor reopens an older service. A wall-clock
+   * cutoff made an existing transcript look empty after three minutes.
+   * The row limit keeps this bounded — a recogniser that reconnects can
    * flush a burst of near-identical timestamps, and a phone should not take a
    * thousand rows to the face for it.
    */
   const backfill = useCallback(
     async (id: string) => {
-      const since = new Date(Date.now() - 3 * 60 * 1000).toISOString();
       const [tcRes, vRes] = await Promise.all([
         supabase
           .from("transcript_chunks")
           .select("*")
           .eq("service_id", id)
-          .gte("timestamp", since)
           .order("timestamp", { ascending: false })
           .limit(120),
         supabase
@@ -145,6 +155,8 @@ export function useCompanionFeed<S extends FeedService>(
           .order("pushed_at", { ascending: false }),
       ]);
       if (!stillOn(id)) return;
+      setLoading(false);
+      setLoadError(!!tcRes.error);
       if (tcRes.data) setTranscript((prev) => mergeChunks(prev, tcRes.data));
       if (vRes.data) setVerses((prev) => mergeVerses(prev, vRes.data));
       await fetchNotesAndSegment(id);
@@ -224,7 +236,7 @@ export function useCompanionFeed<S extends FeedService>(
 
   // ── The first read whenever the page moves to a service. ──
   useEffect(() => {
-    if (serviceId) void backfill(serviceId).catch(() => undefined);
+    if (serviceId) void backfill(serviceId).catch(() => { if (stillOn(serviceId)) { setLoading(false); setLoadError(true); } });
   }, [serviceId, backfill]);
 
   // ── Live rows for the service on screen. ──
@@ -326,5 +338,5 @@ export function useCompanionFeed<S extends FeedService>(
     };
   }, [serviceId, isLive, supabase, catchUp]);
 
-  return { service, isLive, transcript, verses, notes, segment, health };
+  return { service, isLive, transcript, verses, notes, segment, health, loading, loadError, retry: () => { if (serviceId) { setLoading(true); void backfill(serviceId).catch(() => { if (stillOn(serviceId)) { setLoading(false); setLoadError(true); } }); } } };
 }

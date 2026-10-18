@@ -2,75 +2,21 @@ import { usePopupPlacement, popupBounds } from '../../../ui/primitives/usePopupP
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ActionMenu,
   Button,
   HistoryIcon,
-  MediaIcon,
-  NoteIcon,
-  PlusIcon,
-  ScanIcon,
-  type ActionMenuGroup,
 } from '../../../ui';
 import { rowsToSchedule, type ParsedRow } from '../../../../shared/runOfServiceParse';
 import { rowsToSegments } from '../../../../shared/runPlan';
 import { useRun } from '../run';
 import { ScanReview } from './ScanReview';
-import { SEGMENT_TYPES } from './segmentTypes';
 import { TriPackageActions } from './TriPackageActions';
 import './run.css';
 
 /*
- * What sits beside "run of service": the "+" and the clock.
- *
- * What the "+" offers. Two ways in at the top level — read the programme the
- * church already made, or name a segment yourself — and the second opens the
- * list rather than flying it out sideways, because there is no room beside a
- * rail pinned to the left edge.
+ * Programme dialogs stay mounted alongside the rail and are opened by the
+ * full schedule's service tools.
  */
-export const ADD_MENU: ActionMenuGroup[] = [
-  {
-    items: [
-      /* The one route that saves real work: the church already made a flyer,
-         so read it rather than retyping it. It gets the gradient; nothing
-         else in the menu does, or the emphasis means nothing. */
-      { id: 'scan', label: 'scan image', icon: <ScanIcon size={14} />, accent: true },
-      /* The same programme, when it arrived as a message rather than a
-         sheet of paper. Same review, same parser. */
-      { id: 'paste', label: 'paste programme', icon: <NoteIcon size={13} /> },
-      {
-        id: 'segment',
-        label: 'add segment',
-        icon: <PlusIcon size={13} />,
-        /* Not a list of choices — a set you tick and put in order, which is
-           what a run of service is. What you arrange here is literally what
-           lands in the rail behind the menu. */
-        arrange: true,
-        items: SEGMENT_TYPES.map((t) => ({ id: t.value, label: t.label })),
-      },
-    ],
-  },
-  {
-    /* Attaching to the service rather than building it — a clip or a note
-       hangs off a segment rather than being one. Tiles because they are peers
-       and neither leads anywhere. */
-    layout: 'tiles',
-    items: [
-      { id: 'media', label: 'add media', icon: <MediaIcon size={15} /> },
-      { id: 'note', label: 'add note', icon: <NoteIcon size={15} /> },
-    ],
-  },
-];
-
-/*
- * How the empty rail's own buttons reach the dialogs that live here.
- *
- * The scan review, the paste box and the .tri files window are mounted once,
- * in the header, and stay mounted when the rail goes from empty to built —
- * a programme that has just been added must not take its own review window
- * down with it. So the empty rail's big buttons do not own a second copy;
- * they ask this one.
- */
-export type RunAsk = 'scan' | 'paste' | 'tri';
+export type RunAsk = 'scan' | 'paste' | 'tri' | 'components';
 const RUN_ASK_EVENT = 'trilorah-run-ask';
 export const TRI_OPEN_EVENT = 'trilorah-open-tri';
 
@@ -86,17 +32,16 @@ interface Review {
 
 export function RunHeaderActions({
   say,
-  hidden = false,
+  onOverlayChange,
 }: {
   say?: (line: { text: string }) => void;
-  /** Keep the dialogs alive but draw no buttons — the empty rail draws its own. */
-  hidden?: boolean;
+  onOverlayChange?: (open: boolean) => void;
 }) {
   const run = useRun();
   const [review, setReview] = useState<Review | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [confirm, setConfirm] = useState(false);
-  const clock = useRef<HTMLSpanElement>(null);
+  const [triOpen, setTriOpen] = useState(false);
+  useEffect(() => { onOverlayChange?.(triOpen || scanning || !!review?.open); }, [triOpen, scanning, review?.open, onOverlayChange]);
 
   const canScan = typeof window !== 'undefined' && !!window.api?.importScheduleImage;
 
@@ -146,50 +91,9 @@ export function RunHeaderActions({
     return () => window.removeEventListener(RUN_ASK_EVENT, onAsk);
   }, []);
 
-  const loadDefault = () => {
-    run.loadSundayTemplate();
-    setConfirm(false);
-    say?.({ text: 'default order of service loaded' });
-  };
-
   return (
-    <div
-      className={hidden ? 'hidden' : 'flex items-center gap-[var(--tri-gap)]'}
-      style={{ '--tri-control-h': '26px', '--tri-control-pad-x': '8px' } as React.CSSProperties}
-    >
-      <TriPackageActions />
-      <Button guideId="run-paste" label="paste" title="paste a programme" onClick={() => setReview({ open: true })} />
-      <ActionMenu
-        groups={ADD_MENU}
-        onArrange={(_parent, picked) => run.addSegments(picked)}
-        onSelect={(item) => {
-          if (item.id === 'scan') void scan();
-          else if (item.id === 'paste') setReview({ open: true });
-        }}
-        trigger={<Button label="" icon={<PlusIcon size={12} />} title="add to the run" />}
-      />
-      <span ref={clock} className="inline-flex">
-        <Button
-          label=""
-          tone="ash"
-          icon={<HistoryIcon size={12} />}
-          title="load the default order of service"
-          /* An empty rail has nothing to lose, so it just loads. Anything
-             already built is asked about first — right here under the
-             button, not in a system dialog that stops the whole app. */
-          onClick={() => (run.segments.length > 0 ? setConfirm((c) => !c) : loadDefault())}
-        />
-      </span>
-
-      {confirm && (
-        <ReplaceConfirm
-          anchor={clock.current}
-          count={run.segments.length}
-          queued={run.segments.reduce((n, s) => n + s.items.length, 0)}
-          onYes={loadDefault}
-          onNo={() => setConfirm(false)}
-        />
-      )}
+    <>
+      <TriPackageActions showTrigger={false} onOpenChange={setTriOpen} />
 
       {review && (
         <ScanReview
@@ -212,8 +116,24 @@ export function RunHeaderActions({
           }}
         />
       )}
-    </div>
+    </>
   );
+}
+
+export function DefaultRunButton({ label = '', onLoaded }: { label?: string; onLoaded?: () => void }) {
+  const run = useRun();
+  const [confirm, setConfirm] = useState(false);
+  const clock = useRef<HTMLSpanElement>(null);
+  const dismiss = () => { setConfirm(false); clock.current?.querySelector('button')?.focus({ preventScroll: true }); };
+  const loadDefault = () => {
+    run.loadSundayTemplate();
+    dismiss();
+    onLoaded?.();
+  };
+  return <>
+    <span ref={clock} className="inline-flex"><Button guideId="run-default" label={label} tone="ash" icon={<HistoryIcon size={14} />} title="Load the default order of service" onClick={() => run.segments.length ? setConfirm(c => !c) : loadDefault()} /></span>
+    {confirm && <ReplaceConfirm anchor={clock.current} count={run.segments.length} queued={run.segments.reduce((n, s) => n + s.items.length, 0)} onYes={loadDefault} onNo={dismiss} />}
+  </>;
 }
 
 /*
@@ -271,7 +191,15 @@ function ReplaceConfirm({
     <div
       ref={box}
       role="alertdialog"
+      aria-modal="true"
       aria-label="replace the run of service?"
+      onKeyDown={event => {
+        if (event.key !== 'Tab') return;
+        event.stopPropagation();
+        const buttons = [...(box.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])];
+        if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons.at(-1)?.focus(); }
+        else if (!event.shiftKey && document.activeElement === buttons.at(-1)) { event.preventDefault(); buttons[0]?.focus(); }
+      }}
       className="tri-ctx-in fixed z-[70] w-[236px] p-3"
       style={{
         ...popupBounds,
@@ -303,9 +231,9 @@ function ReplaceConfirm({
       </p>
       <div className="mt-3 flex justify-end gap-2" style={{ '--tri-control-h': '28px' } as React.CSSProperties}>
         <span data-keep className="inline-flex">
-          <Button label="keep mine" tone="ash" onClick={onNo} />
+          <Button guideId="run-replace-keep" label="keep mine" tone="ash" onClick={onNo} />
         </span>
-        <Button label="replace" tone="caution" onClick={onYes} />
+        <Button guideId="run-replace-confirm" label="replace" tone="caution" onClick={onYes} />
       </div>
     </div>,
     document.body,

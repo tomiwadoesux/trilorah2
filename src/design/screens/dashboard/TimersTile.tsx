@@ -667,6 +667,7 @@ export function TimersTile({ className }: { className?: string }) {
         {running ? (
           <button
             type="button"
+            data-guide="timer-pause"
             onClick={() => activeTimer && handlePause(activeTimer.id)}
             className={`flex items-center gap-1.5 rounded-[var(--tri-radius-control)] border border-white/15 bg-white/10 font-bold text-[var(--tri-ink)] transition-colors hover:bg-white/[0.15] ${pad}`}
           >
@@ -676,6 +677,7 @@ export function TimersTile({ className }: { className?: string }) {
         ) : (
           <button
             type="button"
+            data-guide="timer-start"
             onClick={() =>
               activeTimer && activeTimer.state === 'paused'
                 ? handleStart(activeTimer.id)
@@ -690,6 +692,7 @@ export function TimersTile({ className }: { className?: string }) {
 
         <button
           type="button"
+          data-guide="timer-reset"
           onClick={() => activeTimer && handleReset(activeTimer.id)}
           disabled={!activeTimer}
           className={`flex items-center gap-1.5 rounded-[var(--tri-radius-control)] border border-white/10 bg-white/5 text-[rgb(229_243_242_/_0.75)] transition-colors hover:bg-white/10 hover:text-[var(--tri-ink)] disabled:opacity-35 ${pad}`}
@@ -700,6 +703,7 @@ export function TimersTile({ className }: { className?: string }) {
 
         <button
           type="button"
+          data-guide="timer-delete"
           onClick={handleRemove}
           disabled={timers.length === 0}
           title="Delete — back to the default 45:00"
@@ -719,6 +723,7 @@ export function TimersTile({ className }: { className?: string }) {
         <button
           key={min}
           type="button"
+          data-guide={`timer-extra-${min}`}
           onClick={() => void handleAddMinutes(min)}
           title={`Give the preacher ${min} more minutes — the clock counts down again from ${min}:00`}
           className={`rounded-[var(--tri-radius-control)] border border-white/10 bg-white/5 font-bold text-[rgb(229_243_242_/_0.8)] transition-colors hover:bg-white/10 hover:text-[var(--tri-ink)] ${
@@ -754,6 +759,7 @@ export function TimersTile({ className }: { className?: string }) {
 
   return (
     <Expandable
+      guideArea="timers"
       notificationTarget="timers"
       className={className}
       title="Service Timers"
@@ -788,6 +794,7 @@ export function TimersTile({ className }: { className?: string }) {
               footerRight: !activeTimer ? (
                 <button
                   type="button"
+                  data-guide="timer-start-face"
                   onClick={(e) => {
                     e.stopPropagation();
                     void handleStartFace();
@@ -813,6 +820,7 @@ export function TimersTile({ className }: { className?: string }) {
         <div className="flex flex-col items-center gap-4 py-2">
           <input
             type="text"
+            data-guide="timer-name"
             value={activeTimer ? activeTimer.name : name}
             onChange={(e) => setName(e.target.value)}
             disabled={running}
@@ -871,6 +879,7 @@ export function TimersTile({ className }: { className?: string }) {
             </div>
             <button
               type="button"
+              data-guide="timer-screen"
               onClick={() => window.api?.openOutput?.('timer')}
               className="shrink-0 rounded-lg bg-white/10 px-4 py-2 text-sm font-bold text-[var(--tri-ink)] transition-colors hover:bg-white/[0.15] border border-white/15"
             >

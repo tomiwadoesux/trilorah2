@@ -1,6 +1,7 @@
 {
   "name": "@trilorah/web",
   "version": "0.1.0",
+  "license": "SEE LICENSE IN LICENSE",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3003",
@@ -10,9 +11,10 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@solar-icons/react": "2.3.2",
+    "@nubo-icons/react": "0.3.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.0",
+    "lenis": "^1.3.27",
     "lil-gui": "0.21.0",
     "next": "^15.0.3",
     "qrcode": "^1.5.4",

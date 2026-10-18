@@ -16,8 +16,25 @@ function pause(ms: number, signal: AbortSignal): Promise<void> {
     signal.addEventListener('abort', abort, { once: true });
   });
 }
+// Brand triangle, 28 x 25: apex up, the eye rides one of the two long edges.
+export const triangleGeometry = { apex: { x: 14, y: 1.5 }, left: { x: 1.5, y: 22.5 }, right: { x: 26.5, y: 22.5 } };
+/**
+ * Where the eye sits. side 0 = left edge, 1 = right edge; t runs from the apex (0) to the base (1).
+ * A side switch slides up to the apex and down the other edge, never through the triangle.
+ */
+export function eyePosition(side: number, t: number): { x: number; y: number } {
+  const { apex, left, right } = triangleGeometry;
+  const edge = side >= 0.5 ? right : left;
+  const along = t * Math.abs(2 * side - 1);
+  return { x: apex.x + (edge.x - apex.x) * along, y: apex.y + (edge.y - apex.y) * along };
+}
+const pointer = { x: -1, y: -1 };
+if (typeof window !== 'undefined') window.addEventListener('pointermove', event => { pointer.x = event.clientX; pointer.y = event.clientY; }, { passive: true, capture: true });
+
 export function useGuideCursor(panel: RefObject<HTMLElement | null>, avoid: (x: number, y: number) => void) {
   const cursor = useRef<HTMLDivElement>(null);
+  const eye = useRef<SVGCircleElement>(null);
+  const eyeState = useRef({ side: 1, t: 0.5 });
   const controller = useRef<AbortController | null>(null);
   const animation = useRef<Animation | null>(null);
   const [visible, setVisible] = useState(false);
@@ -41,6 +58,27 @@ export function useGuideCursor(panel: RefObject<HTMLElement | null>, avoid: (x: 
     if (hide) { setVisible(false); setTarget(null); initialized.current = false; }
   }, []);
   useEffect(() => () => cancel(), [cancel]);
+  // At rest the eye faces the mouse and drifts a little along its edge. While travelling it stays put.
+  useEffect(() => {
+    if (!visible) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let frame = 0;
+    const tick = () => {
+      frame = requestAnimationFrame(tick);
+      if (animation.current || !eye.current) return;
+      const centre = { x: position.current.x, y: position.current.y };
+      const known = pointer.x >= 0;
+      const wantSide = known ? (pointer.x >= centre.x ? 1 : 0) : 1;
+      const wantT = known && !reduced ? Math.max(0.3, Math.min(0.7, 0.5 + (pointer.y - centre.y) / 420)) : 0.5;
+      const state = eyeState.current;
+      if (reduced) { state.side = wantSide; state.t = 0.5; }
+      else { state.side += (wantSide - state.side) * 0.14; state.t += (wantT - state.t) * 0.1; }
+      const at = eyePosition(state.side, state.t);
+      eye.current.setAttribute('cx', at.x.toFixed(2)); eye.current.setAttribute('cy', at.y.toFixed(2));
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [visible]);
   useEffect(() => {
     if (!target) { setRect(null); return; }
     const measure = () => {
@@ -62,7 +100,7 @@ export function useGuideCursor(panel: RefObject<HTMLElement | null>, avoid: (x: 
       let element: HTMLElement | null = null;
       for (let retry = 0; retry < (step.id === 'stock-pick' ? 100 : 20) && !element; retry++) { element = guideElement(step.target); if (!element) await pause(100, signal); }
       if (!element) throw new Error('I can’t see that control. Return to this task, then try again.');
-      if (element.matches(':disabled, [aria-disabled="true"]')) throw new Error('That control isn’t available yet.');
+      if (perform && element.matches(':disabled, [aria-disabled="true"]')) throw new Error('That control isn’t available yet.');
       const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
       // Re-measure after panel movement and after flight: never click old coordinates.
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -143,5 +181,5 @@ export function useGuideCursor(panel: RefObject<HTMLElement | null>, avoid: (x: 
       throw error;
     } finally { if (controller.current === control) { controller.current = null; setBusy(false); } }
   }, [avoid, cancel, panel]);
-  return { cursor, visible, busy, target, rect, pulse, caption, bubble, run, cancel };
+  return { cursor, eye, visible, busy, target, rect, pulse, caption, bubble, run, cancel };
 }

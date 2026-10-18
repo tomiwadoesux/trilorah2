@@ -97,6 +97,7 @@ function useNotes() {
 export function SermonNotesTile({ className }: { className?: string }) {
   return (
     <Expandable
+      guideArea="notes"
       notificationTarget="notes"
       className={className}
       title="Sermon notes"
@@ -283,18 +284,21 @@ function Actions({
     <div className="flex shrink-0 flex-col gap-1.5">
       <div className="flex gap-2">
         <Button
+          guideId="notes-generate"
           label={busy ? 'generating…' : 'generate'}
           disabled={busy}
           onClick={() => void onGenerate()}
           className="flex-1"
         />
         <Button
+          guideId="notes-export-pdf"
           label={compact ? 'pdf' : 'export pdf'}
           disabled={!canExport}
           onClick={() => void onExport('pdf')}
           className="flex-1"
         />
         <Button
+          guideId="notes-export-md"
           label={compact ? 'markdown' : 'export markdown'}
           disabled={!canExport}
           onClick={() => void onExport('md')}
@@ -415,7 +419,7 @@ function NotesEmpty({ onOpen }: { onOpen: () => void }) {
       <EmptyMark plain art={<PocketWatchArt />} w={180} h={170}
         line="points, scriptures and quotes"
         hint="appear here as the sermon is preached"
-        below={<Button label="open sermon notes" onClick={onOpen} />} />
+        below={<Button guideId="notes-open" label="open sermon notes" onClick={onOpen} />} />
     </Panel>
   );
 }

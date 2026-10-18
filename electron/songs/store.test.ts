@@ -31,6 +31,17 @@ afterEach(() => {
 })
 
 describe('SongStore', () => {
+  it('cases old and new song display copies while retaining imported source lyrics', () => {
+    const store = make()
+    const sections = [{ label: 'Chorus', lines: ['praise god and the holy', 'spirit; jesus is lord'] }]
+    const added = store.add(song('jesus is lord', { sections }))
+    expect(added.title).toBe('Jesus is Lord')
+    expect(added.sections[0].lines).toEqual(['praise God and the Holy', 'Spirit; Jesus is Lord'])
+    expect(added.originalSections).toEqual(sections)
+    expect(make().get(added.id)?.sections).toEqual(added.sections)
+    expect(JSON.parse(fs.readFileSync(file, 'utf8')).songs[0].sections).toEqual(sections)
+  })
+
   it('adds a parsed song, keeping sections and dropping empty metadata', () => {
     const store = make()
     const added = store.add(song('Amazing Grace', { authors: [' John Newton ', ''], ccliNumber: '22025', copyright: 'Public domain' }))
@@ -83,6 +94,7 @@ describe('SongStore', () => {
       ]
     })
     expect(added.sections.map((s) => s.label)).toEqual(['Verse 1', 'Instrumental', 'Verse 2'])
+    expect(added.sections[1].lines).toEqual([])
     // Round-tripping a patch gives back what was sent.
     const patched = store.update('id1', { sections: added.sections })
     expect(patched.sections).toEqual(added.sections)

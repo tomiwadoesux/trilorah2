@@ -1,3 +1,7 @@
+import { matchesFollowedReading, type ReadAlongGuard } from '../shared/readAlongGuard'
+import { capitalizeScriptureNames } from '../shared/scriptureNames'
+import { formatNoteText } from '../shared/noteDisplay'
+
 // `session` is already the ScriptureSession instance in this file, so Electron's
 // comes in aliased rather than renaming an engine object used throughout.
 import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, protocol, screen as electronScreen, session as electronSession, shell, systemPreferences } from 'electron'
@@ -51,7 +55,7 @@ import {
 // --- 2026-09 engine additions (IDEAS-BACKLOG.md / BUILD-MAP.md) ---
 import { buildCandidates, candidatesFromQuotes, type Candidate } from './engine/candidates'
 import { AutoModeController } from './engine/autoMode'
-import { VerseDelivery, detectionKey, readVersePreview, readVerseRange, type VersePushSource } from './engine/verseDelivery'
+import { alreadyShowing, VerseDelivery, detectionKey, readVersePreview, readVerseRange, type VersePushSource } from './engine/verseDelivery'
 import { sortVersions, versionLabel, versionName, type BibleVersionRow } from '../shared/bibleVersions'
 import { chooseVersion } from './data/versionChoice'
 import { OnlineBibles, WANTED_ONLINE, failureText, type OnlineFailure } from './data/bibleOnline/onlineBibles'
@@ -63,10 +67,9 @@ import { CommandLog } from './preachers/commandLog'
 import { VocabularyStore, applyVocabulary, deepgramKeywords } from './preachers/vocabulary'
 import { exportFixturesFromLedger } from './preachers/evalExport'
 import { setDeepgramKeywords } from './asr/deepgram'
-import { startWhisperLocal, stopWhisperLocal } from './asr/whisperLocal'
 import { TeachingStore, applyBookAliases } from './preachers/teaching'
-import { SoundCheck } from './preachers/soundCheck'
-import type { PreacherTeaching } from '../shared/preacherLearning'
+import { VoiceTraining, TrainingLog } from './preachers/voiceTraining'
+import { bookStandings, nextTrainingBooks, shelfBook, trainingSummary, type BookAlias, type PreacherTeaching } from '../shared/preacherLearning'
 import { PairingStore } from './integrations/pairing'
 import { MobileServer } from './integrations/mobileServer'
 import { MobileBridge } from './integrations/mobileBridge'
@@ -159,7 +162,9 @@ ipcMain.handle('mobile-qr', async (_event, url: string) => {
   const qr = await import('qrcode')
   return qr.toDataURL(url, {width:240,margin:2})
 })
-ipcMain.handle('mobile-verse', async (_event, reference: string, version: string, live: boolean) => {
+ipcMain.handle('mobile-verse', async (_event, reference: string, version: string, live: boolean, followFrom?: ReadAlongGuard) => {
+  const mayFollow = () => !followFrom || (following() && readAlongOwner?.id === _event.sender.id && matchesFollowedReading(followFrom, verseDelivery.live))
+  if (!mayFollow()) return { superseded: true }
   if (!db || typeof reference !== 'string' || reference.length > 160 || typeof version !== 'string') throw new Error('Invalid reference')
   const stillCurrent = live ? startPress() : () => true
   // An online Bible's chapter not kept yet is fetched first (or the fallback is said).
@@ -167,7 +172,7 @@ ipcMain.handle('mobile-verse', async (_event, reference: string, version: string
   const verse = readVersePreview(bibleFor(version)!, reference, version)
   if (!verse) throw new Error('That verse or translation is unavailable.')
   // Overtaken while its chapter loaded: the newer thing stays up (the renderer drops it too).
-  if (!stillCurrent()) return { ...verse, superseded: true }
+  if (!stillCurrent() || !mayFollow()) return { ...verse, superseded: true }
   if (live) { if (!stageOperatorPush(() => stageVerseReference(reference,version))) throw new Error('Could not load verse'); pushPreviewToLive('remote') }
   return verse
 })
@@ -193,8 +198,10 @@ import { Readable } from 'node:stream'
 import { placeOutput } from './output/displays'
 import { applyDisplaySelection } from './output/displaySelection'
 import { moveOutputWindow } from './output/moveWindow'
+import { CatchSignalOverlay } from './output/catchSignalOverlay'
+import { isCatchSignal, type SignalAnswer } from '../shared/catchSignal'
 import { describeOutputs } from './output/outputsStatus'
-import type { LiveContent } from '../shared/liveContent'
+import { formatLiveContent, type LiveContent } from '../shared/liveContent'
 import { buildQrCard } from '../shared/qrCard'
 import { searchBible } from './data/bibleSearch'
 import { emitEngineEvent } from './emitters'
@@ -208,6 +215,7 @@ import { CorrectionLedger } from './preachers/correctionLedger'
 import { seasonalBoost, seasonalThemeId } from './engine/seasonalPriors'
 import { resolveNotesProvider } from './llm/notesProvider'
 import { ScriptureSession } from './engine/scriptureSession'
+import { GIVING_SETTING_KEYS, givingFromSettings, publicStreamUrl } from '../shared/companionSettings'
 import { getAllSettings, getSetting, setSetting, getStore } from './data/settings'
 import { registerTriPackages } from './packages/triIpc'
 import { TransitionDetector } from './engine/transitionDetector'
@@ -265,6 +273,7 @@ import {
 } from './integrations/websocketServer'
 import { getOBSClient, disposeOBSClient } from './integrations/obsClient'
 import { getVMixClient } from './integrations/vmixClient'
+import { announceSender, closeNetworkSound, isSending, listNetworkSounds, senderStatus, sendSound, stopSending, type SoundFrame } from './ndi/networkSound'
 import { importScheduleFromImage } from './media/ocrSchedule'
 import { suggestSchedule, suggestionToEntries } from './data/scheduleLearner'
 import {
@@ -287,6 +296,7 @@ import {
   markVersePushed,
   upsertNotes,
   syncGivingMethods,
+  syncServiceCompanion,
   generateLinkCode,
   redeemLinkCode,
   completeAccountSetup,
@@ -595,18 +605,43 @@ function teachingFor(id: string): PreacherTeaching {
   })
   return store.get(id)
 }
-function teachTranscript(id: string, text: string): string {
+function teachTranscript(id: string, text: string, extra: BookAlias[] = []): string {
   const t = teachingFor(id)
   if (getSetting('rememberPreacherStyle')) text = ledger?.correctedUtterance(id, text) ?? text
-  return applyBookAliases(getSetting('vocabularyEnabled') ? applyVocabulary(text, t.vocabulary) : text, t.soundsLike)
+  return applyBookAliases(getSetting('vocabularyEnabled') ? applyVocabulary(text, t.vocabulary) : text, [...t.soundsLike, ...extra])
 }
 function preacherCommandsEnabled() {
   return getSetting('voiceCommandsEnabled') && teachingFor(activePreacherId()).voiceCommands
 }
-const soundCheck = new SoundCheck({ start: startWhisperLocal, stop: stopWhisperLocal }, (pid, text) => {
-  return stripIgnoreTails(teachTranscript(pid, text), teachingFor(pid).ignoreTails)
+let trainingLog: TrainingLog | null = null
+function trainingRounds() {
+  return trainingLog ??= new TrainingLog(path.join(app.getPath('userData'), 'preacher-training'))
+}
+/* Voice training listens through the engine the operator picks, runs the
+   live pipeline's own clean-up, and saves each proven book-name fix into
+   the preacher's teaching file — see preachers/voiceTraining.ts. */
+const training = new VoiceTraining({
+  speech: (engine) => {
+    const provider = resolveASRProvider(engine)
+    return { engine: provider.id === 'deepgram' ? 'deepgram' : 'whisper-local', speech: provider }
+  },
+  transform: (pid, text, extra) => stripIgnoreTails(teachTranscript(pid, text, extra), teachingFor(pid).ignoreTails),
+  learn: (pid, alias) => { teachingFor(pid); teachings().addAlias(pid, alias) },
+  forget: (pid, heard) => { teachings().removeAlias(pid, heard) },
+  save: (pid, record) => trainingRounds().add(pid, record),
 })
-let soundCheckOwner: number | null = null
+let trainingOwner: number | null = null
+function quotedBooks(id: string): Map<string, number> {
+  const books = new Map<string, number>()
+  for (const item of loadProfile(id)?.favoriteVerses ?? []) {
+    const book = item.ref.replace(/\s+\d.*$/, '')
+    books.set(book, (books.get(book) ?? 0) + item.frequency)
+  }
+  return books
+}
+function standingsFor(id: string) {
+  return bookStandings(trainingRounds().list(id), teachingFor(id).soundsLike, Object.fromEntries(quotedBooks(id)))
+}
 let lastRawHeardText = ''
 let manualReferenceInput = false
 let recentReview: { id: string; preacherId: string; ref: string; ts: number } | null = null
@@ -743,6 +778,7 @@ const voiceCallbacks: VoiceCommandCallbacks = {
     if (inPrayer && getSetting('autoScreenActions')) dismissLiveVerse()
   },
   onNavigate: (direction) => {
+    if (following()) { readAlongOwner!.send('on-read-along-nav', direction); return }
     session.exitReadingMode()
     if (direction === 'next') session.advance()
     else session.goBack()
@@ -1220,6 +1256,7 @@ function withdrawProvisionalRecognition(): void {
 
 const session = new ScriptureSession((display: any) => {
   if (!db) return
+  if (!operatorStaging && !display.stepped && screen.get() === 'live' && alreadyShowing(verseDelivery.live, { book: display.book, chapter: display.chapter, verse: display.verseStart, endVerse: display.verseEnd })) return
   const wanted = display.version ? resolveVersion(display.version) : activeVersion()
   const reference = `${display.book} ${display.chapter}:${display.verseStart}-${display.verseEnd}`
   /* An online Bible's chapter not kept yet: the catch shows now in the
@@ -1243,6 +1280,8 @@ const session = new ScriptureSession((display: any) => {
     ...preview,
     ...(operatorPush ? {} : { confidence: lastResolverConfidence }),
     ...(pendingRecognition ? { recognition: pendingRecognition, source: pendingRecognition.source } : {}),
+    // The session moved on by itself: still a catch, but not a reference named.
+    ...(display.stepped ? { stepped: true } : {}),
     // Pass range metadata
     rangeEnd: display.rangeEnd,
     chunkSize: display.chunkSize
@@ -1357,7 +1396,7 @@ function stageVerseReference(reference: string, requested?: string): boolean {
 }
 
 function startASR(deviceLabel?: string) {
-  if (soundCheck.active) { emitASRStatus('Finish the sound check before starting a service.'); return }
+  if (training.active) { emitASRStatus('Finish voice training before starting a service.'); return }
   if (isListening) return
   resetSpokenSearch()
   withdrawProvisionalRecognition()
@@ -1436,7 +1475,7 @@ function startASR(deviceLabel?: string) {
           return
         }
       }
-      session.processTranscript(text)
+      if (!following()) session.processTranscript(text)
       if (getSetting('agentEnabled')) {
         displayTimingManager.onTranscript(text, isFinal)
         if (isFinal && transitionDetector) {
@@ -1525,6 +1564,14 @@ function handleMLVerseDetection(data: any) {
       data = { ...data, book: bookOnly }
     }
   }
+  if (data.alternateBooks?.length && data.chapter && data.verse) {
+    const books = data.alternateBooks.filter((book: string) => verseExists(book, data.chapter, data.verse) &&
+      (!data.endVerse || verseExists(book, data.chapter, data.endVerse)))
+    if (books.length) emitEngineEvent('on-scripture-ambiguity', { books, chapter: data.chapter, verse: data.verse, endVerse: data.endVerse, heard: lastHeardText })
+    return
+  }
+  if (data.alternateBooks?.length) return
+  if (screen.get() === 'live' && alreadyShowing(verseDelivery.live, data)) return
   if (typeof data.confidence === 'number') lastResolverConfidence = data.confidence
   // Seasonal prior: in-season chapters get a small confidence boost
   if (getSetting('seasonalEnabled') && typeof data.confidence === 'number') {
@@ -1599,6 +1646,15 @@ let navFiredOnPartial = false
  * jumps. Report only commands it acted on, using the same configured phrase. */
 function handleSessionCommand(text: string): boolean {
   if (!preacherCommandsEnabled()) return false
+  if (following() && (session.isNextCommand(text) || session.isPreviousCommand(text))) {
+    const direction = session.navCommand(text)
+    if (direction) {
+      readAlongOwner!.send('on-read-along-nav', direction)
+      voiceCallbacks.onCommand({ kind: direction === 'next' ? 'navigate-next' : 'navigate-previous', utterance: text, phrase: text, ts: Date.now() })
+    }
+    // Consume repeated partials during the debounce too.
+    return true
+  }
   const before = session.currentVerse
   const consumed = session.onCommand(text)
   if (consumed && session.currentVerse !== before && session.currentVerse !== null) {
@@ -1695,6 +1751,7 @@ function handleASRText(text: string, isFinal = true) {
 }
 
 function stageRecognizedPassage(candidate: RecognitionCandidate, heard: string, strength?: number, isFinal = true): boolean {
+  if (screen.get() === 'live' && alreadyShowing(verseDelivery.live, candidate)) return true
   if (!db || !verseExists(candidate.book, candidate.chapter, candidate.verse)) return false
   if (candidate.endVerse && !verseExists(candidate.book, candidate.chapter, candidate.endVerse)) return false
   // A reference existing in another translation is not enough: only accept a
@@ -1909,7 +1966,112 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+  // The signal window goes with it, or the app could never quit.
+  const win = mainWindow
+  win.on('closed', () => {
+    catchSignalOverlay.dispose()
+    // Sender mode closes this window while the app runs on; a destroyed
+    // window left here would throw on the next `mainWindow?.webContents`.
+    if (mainWindow === win) mainWindow = null
+  })
 }
+
+/*
+ * Sender mode: this computer only sends its sound to another Trilorah over
+ * the network (electron/ndi/networkSound.ts) — the soundboard computer at the
+ * back, say. It opens as one small window instead of the operator window,
+ * the way vMix Desktop Capture is a small bar, and keeps doing so on every
+ * start until "back to Trilorah" is pressed.
+ */
+let senderWindow: BrowserWindow | null = null
+let senderStatusTimer: ReturnType<typeof setInterval> | null = null
+
+function createSenderWindow() {
+  if (senderWindow && !senderWindow.isDestroyed()) {
+    senderWindow.focus()
+    return
+  }
+  senderWindow = new BrowserWindow({
+    width: 460,
+    height: 340,
+    minWidth: 380,
+    minHeight: 320,
+    title: 'Trilorah Sender',
+    backgroundColor: '#050505',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      // Sound keeps flowing while the window sits behind vMix all service.
+      backgroundThrottling: false
+    }
+  })
+  if (isDev) {
+    senderWindow.loadURL('http://localhost:5173/sender.html')
+  } else {
+    senderWindow.loadFile(path.join(__dirname, '../dist/sender.html'))
+  }
+  senderWindow.on('closed', () => {
+    senderWindow = null
+    stopSenderStatus()
+    stopSending()
+  })
+}
+
+function stopSenderStatus() {
+  if (senderStatusTimer) clearInterval(senderStatusTimer)
+  senderStatusTimer = null
+}
+
+function sendSenderStatus(error?: string) {
+  if (!senderWindow || senderWindow.isDestroyed()) return
+  senderWindow.webContents.send('on-network-sound-status', { ...senderStatus(), ...(error ? { error } : {}) })
+}
+
+/** Close everything this computer shows, for the switch into sender mode. */
+function closeOperatorWindows() {
+  if (isListening) stopASR()
+  for (const win of Object.values(outputWindows)) if (win && !win.isDestroyed()) win.close()
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close()
+}
+
+/*
+ * A catch's signal (owner, 2026-10-17: "over other apps too, never on the
+ * projector"). The app window asks for its own edges or the whole screen;
+ * this lights the screen the operator is on, or lets the window light its
+ * edges, and answers 'none' when either would be a screen the room sees.
+ */
+function outputDisplayIds(): Set<number> {
+  const ids = new Set<number>()
+  for (const win of Object.values(outputWindows)) {
+    if (!win || win.isDestroyed()) continue
+    const bounds = win.getBounds()
+    const display = electronScreen.getDisplayMatching(bounds)
+    // An output that fills its screen. One in a window on the operator's own
+    // screen (no projector plugged in) is a preview, not the room's picture.
+    const fills = bounds.width >= display.bounds.width && bounds.height >= display.bounds.height
+    if (win.isFullScreen() || fills) ids.add(display.id)
+  }
+  // The projector's screen, even before its window is opened.
+  const projector = placementFor('main')
+  if (!projector.disabled && projector.display) ids.add(projector.display.id)
+  return ids
+}
+
+const catchSignalOverlay = new CatchSignalOverlay({
+  load: (win) => (isDev ? win.loadURL('http://localhost:5173/signal.html') : win.loadFile(path.join(__dirname, '../dist/signal.html'))),
+  outputDisplayIds,
+  appWindow: () => mainWindow
+})
+
+ipcMain.handle('catch-signal', async (event, signal: unknown, place: unknown): Promise<SignalAnswer> => {
+  if (!isCatchSignal(signal)) return 'none'
+  if (place === 'screen' && (await catchSignalOverlay.play(signal))) return 'screen'
+  // The asking window's own edges — unless that window is on the room's screen.
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win || win.isDestroyed()) return 'none'
+  return outputDisplayIds().has(electronScreen.getDisplayMatching(win.getBounds()).id) ? 'none' : 'window'
+})
 
 let designWindow: BrowserWindow | null = null
 
@@ -2068,7 +2230,7 @@ async function ensureCloudService(): Promise<void> {
        fine without it. The operator can name the service in the Cloud tab. */
     const res = await serializeService(async () => {
       if (publicSharingPaused || getActiveServiceId()) return {success:true,serviceId:getActiveServiceId()}
-      return startService({ preacherId: activePreacherId() || null })
+      return startService({ preacherId: activePreacherId() || null, streamUrl: publicStreamUrl(getSetting('streamUrl')), audienceTrainingEnabled: Boolean(getSetting('audienceTrainingEnabled')) })
     })
     if (res.success && res.serviceId) {
       cloudServiceError = null
@@ -2084,10 +2246,37 @@ async function ensureCloudService(): Promise<void> {
 }
 
 ipcMain.on('start-listening', (_event, deviceLabel) => {
-  if (soundCheck.active) return
+  if (training.active) return
   console.log('▶️ Start listening requested', deviceLabel ? `(device: ${deviceLabel})` : '')
   startASR(deviceLabel)
   if (deviceLabel !== PRACTICE_SERMON_DEVICE) void ensureCloudService()
+})
+
+/** One operator window owns reading-follow navigation; a reload releases it. */
+let readAlongOwner: import('electron').WebContents | null = null
+let releaseReadAlong = () => {}
+function following(): boolean {
+  return !!readAlongOwner && !readAlongOwner.isDestroyed() && !!verseDelivery.live && screen.get() === 'live'
+}
+ipcMain.on('set-read-along', (event, enabled: unknown) => {
+  if (enabled !== true) {
+    if (readAlongOwner === event.sender) releaseReadAlong()
+    return
+  }
+  if (readAlongOwner === event.sender) return
+  releaseReadAlong()
+  readAlongOwner = event.sender
+  const owner = event.sender
+  const release = () => {
+    if (readAlongOwner === owner) readAlongOwner = null
+    owner.removeListener('destroyed', release)
+    owner.removeListener('render-process-gone', release)
+    owner.removeListener('did-start-loading', release)
+  }
+  releaseReadAlong = release
+  owner.once('destroyed', release)
+  owner.once('render-process-gone', release)
+  owner.once('did-start-loading', release)
 })
 
 /* The operator stepped the live reading to another page: every output follows. */
@@ -2361,13 +2550,11 @@ ipcMain.handle('preacher-learning-get', (_event, id: string) => {
   requirePreacher(id)
   const profile = loadProfile(id)!
   const history = profile.sermonHistory
-  const books = new Map<string, number>()
-  for (const item of profile.favoriteVerses) {
-    const book = item.ref.replace(/\s+\d.*$/, '')
-    books.set(book, (books.get(book) ?? 0) + item.frequency)
-  }
+  const books = quotedBooks(id)
+  const sessions = trainingRounds().list(id)
   return {
     ...teachingFor(id), stats: ledger!.stats(id),
+    training: trainingSummary(sessions), books: standingsFor(id),
     gates: { trust: getSetting('autoModeMinTrust'), samples: getSetting('autoModeMinSamples'), services: getSetting('autoModeMinServices') },
     reviews: ledger!.getReviewItems(id), history: ledger!.history(id), legacySamples: ledger!.legacySamples(id), serviceOpen: ledger!.hasOpenService(id),
     habits: { avgSermonMin: history.length ? Math.round(history.reduce((n, s) => n + s.durationMinutes, 0) / history.length) : null,
@@ -2377,6 +2564,10 @@ ipcMain.handle('preacher-learning-get', (_event, id: string) => {
 })
 ipcMain.handle('preacher-learning-save', (_event, { preacherId, patch }) => {
   requirePreacher(preacherId)
+  /* Book names are saved as a whole list. While training runs it writes new
+     fixes straight to the file, so a list built before them would wipe them. */
+  if (patch && typeof patch === 'object' && Object.hasOwn(patch, 'soundsLike') &&
+    training.active && training.snapshot()?.preacherId === preacherId) throw new Error('Finish voice training before changing book names.')
   teachingFor(preacherId)
   const result = teachings().patch(preacherId, patch)
   if (preacherId === activePreacherId()) applyLanguageAndConfig()
@@ -2389,25 +2580,41 @@ ipcMain.handle('preacher-review-missed', (_event, { preacherId, heard }) => {
   return ledger!.addReviewItem({ preacherId, kind: 'miss', reason: 'missed', ts: Date.now(), heard: text, proposed: null })
 })
 ipcMain.handle('preacher-use-offline', () => {
-  if (isListening || soundCheck.active) throw new Error('Stop listening before changing the speech engine.')
+  if (isListening || training.active) throw new Error('Stop listening before changing the speech engine.')
   setSetting('asrProvider', 'whisper-local')
   return { success: true }
 })
-ipcMain.handle('preacher-sound-check-start', (event, { preacherId, promptIndex, deviceLabel }) => {
+ipcMain.handle('preacher-training-options', () => ({
+  service: getSetting('asrProvider') === 'deepgram' ? 'deepgram' : 'whisper-local',
+  online: !!process.env.DEEPGRAM_API_KEY,
+}))
+ipcMain.handle('preacher-training-start', (event, { preacherId, engine, books, deviceLabel }) => {
   requirePreacher(preacherId)
-  if (isListening) throw new Error('Stop service listening before starting a sound check.')
-  if (soundCheck.active) throw new Error('A sound check is already running.')
-  if (!Number.isInteger(promptIndex)) throw new Error('Choose a sound-check reference.')
-  soundCheckOwner = event.sender.id
-  const result = soundCheck.start(preacherId, promptIndex, typeof deviceLabel === 'string' ? deviceLabel : undefined)
+  if (isListening) throw new Error('Stop service listening before starting voice training.')
+  if (training.active) throw new Error('Voice training is already running.')
+  if (engine !== 'deepgram' && engine !== 'whisper-local') throw new Error('Choose how training should listen.')
+  if (engine === 'deepgram' && !process.env.DEEPGRAM_API_KEY) throw new Error('Online speech is not set up on this computer. Use offline speech.')
+  const chosen = Array.isArray(books) ? books.filter((b): b is string => typeof b === 'string' && !!shelfBook(b)).slice(0, 66) : []
   const owner = event.sender.id
-  event.sender.once('destroyed', () => { if (soundCheckOwner === owner) { soundCheck.stop(); soundCheckOwner = null } })
-  return result
+  trainingOwner = owner
+  event.sender.once('destroyed', () => { if (trainingOwner === owner) { training.stop(); trainingOwner = null } })
+  return training.start(preacherId, engine, chosen.length ? chosen : nextTrainingBooks(standingsFor(preacherId)), typeof deviceLabel === 'string' ? deviceLabel : undefined)
 })
-ipcMain.handle('preacher-sound-check-state', (event) => event.sender.id === soundCheckOwner ? soundCheck.snapshot() : null)
-ipcMain.handle('preacher-sound-check-stop', (event, sessionId: string) => event.sender.id === soundCheckOwner && soundCheck.snapshot()?.sessionId === sessionId ? soundCheck.stop() : null)
+ipcMain.handle('preacher-training-state', (event) => event.sender.id === trainingOwner ? training.snapshot() : null)
+ipcMain.handle('preacher-training-action', (event, { sessionId, action, index }) => {
+  const current = training.snapshot()
+  if (event.sender.id !== trainingOwner || !current || current.sessionId !== sessionId) return null
+  /* "Next" and "undo" act on the reference the operator saw. If the round
+     has already moved on by itself, they would hit the following one. */
+  if ((action === 'skip' || action === 'undo') && typeof index === 'number' && index !== current.index) return current
+  if (action === 'skip') return training.skip()
+  if (action === 'again') return training.again()
+  if (action === 'undo') return training.undo()
+  if (action === 'stop') return training.stop()
+  throw new Error('Unknown training action.')
+})
 ipcMain.on('mic-capture-error', (_event, message) => {
-  if (soundCheck.active) soundCheck.fail(typeof message === 'string' ? message : 'Microphone capture failed.')
+  if (training.active) training.fail(typeof message === 'string' ? message : 'Microphone capture failed.')
   else { stopASR(); emitASRStatus(`Error: ${message}`) }
 })
 
@@ -2487,6 +2694,60 @@ ipcMain.on('audio-level', (_event, level: number) => {
 
 ipcMain.handle('get-audio-capture-capabilities', () => ({ deviceAudio: process.platform === 'win32' }))
 
+/* -------- network sound (sender mode ⇄ the listening Trilorah) -------- */
+
+ipcMain.handle('list-network-sounds', async () => {
+  try {
+    return await listNetworkSounds()
+  } catch (e: any) {
+    console.error('🔊 Could not look for network sound:', e?.message ?? e)
+    return []
+  }
+})
+
+ipcMain.handle('enter-sender-mode', () => {
+  setSetting('senderMode', true)
+  createSenderWindow()
+  closeOperatorWindows()
+  return true
+})
+
+ipcMain.handle('exit-sender-mode', (event) => {
+  // Only the live sender window can leave sender mode, and only once.
+  if (!senderWindow || senderWindow.isDestroyed() || event.sender !== senderWindow.webContents) return false
+  setSetting('senderMode', false)
+  stopSenderStatus()
+  stopSending()
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus()
+  else createWindow()
+  senderWindow.close()
+  return true
+})
+
+ipcMain.handle('network-sound-start', async () => {
+  try {
+    const status = await announceSender()
+    stopSenderStatus()
+    // The window may have closed while NDI was starting.
+    if (isSending() && senderWindow && !senderWindow.isDestroyed()) senderStatusTimer = setInterval(() => sendSenderStatus(), 1000)
+    return status
+  } catch (e: any) {
+    return { name: '', connections: 0, error: e?.message ?? String(e) }
+  }
+})
+
+ipcMain.handle('network-sound-stop', () => {
+  stopSenderStatus()
+  stopSending()
+  return senderStatus()
+})
+
+ipcMain.on('network-sound-frame', (event, frame: SoundFrame) => {
+  if (event.sender !== senderWindow?.webContents) return
+  if (!frame || !(frame.data instanceof ArrayBuffer) || frame.channels < 1 || frame.samples < 1) return
+  sendSound(frame, (message) => sendSenderStatus(message))
+})
+
 ipcMain.handle('open-mic-permissions', async () => {
   const url = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone' : process.platform === 'win32' ? 'ms-settings:privacy-microphone' : null
   if (!url) return { supported: false }
@@ -2518,6 +2779,7 @@ let currentLiveContent: LiveContent | null = null
 
 ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
   if (!content || typeof content !== 'object' || (content.kind !== 'song' && content.kind !== 'slide')) return { success: false }
+  content = formatLiveContent(content)
   currentLiveContent = content
   verseDelivery.clearLive()
   console.log(`🎵 Live: ${content.kind === 'song' ? `${content.title} — ${content.label}` : content.title}`)
@@ -2691,7 +2953,7 @@ ipcMain.handle('get-chapter', async (_event, { bookId, chapter, version }) => {
       data: verses.map((row) => ({
         id: row.verse,
         ref: `${bookName} ${chapter}:${row.verse}`,
-        text: row.text,
+        text: capitalizeScriptureNames(row.text),
         version: ver
       }))
     }
@@ -2720,7 +2982,7 @@ ipcMain.handle('search-verse', async (_event, { book, chapter, verse, version })
       .get(bookId, chapter, verse, ver) as { text: string } | undefined
     return {
       success: !!row,
-      data: row ? { text: row.text, version: ver } : null
+      data: row ? { text: capitalizeScriptureNames(row.text), version: ver } : null
     }
   } catch (error) {
     console.error('SQL Error:', error)
@@ -3101,7 +3363,7 @@ ipcMain.on('set-service-schedule', (_event, schedule, persist = true) => {
 })
 
 ipcMain.handle('get-sermon-transcript', () => {
-  return serviceAgent ? serviceAgent.getSermonText() : ''
+  return capitalizeScriptureNames(serviceAgent ? serviceAgent.getSermonText() : '')
 })
 
 ipcMain.handle('get-sermon-start', () => transitionDetector?.sermonStart.getState() ?? null)
@@ -3129,7 +3391,7 @@ ipcMain.handle('generate-sermon-notes', async () => {
   // Honors the notesProvider setting (cloud | local); local falls back to
   // cloud until the on-device model integration graduates.
   const provider = resolveNotesProvider(getSetting('notesProvider'))
-  const notes = await provider.generate(transcript)
+  const notes = formatNoteText(await provider.generate(transcript))
   triCurrentNotes = notes
   return notes
 })
@@ -3203,6 +3465,20 @@ const THEME_KEYS = new Set([
   'textTransitionMs',
 ])
 
+let companionSettingsTimer: ReturnType<typeof setTimeout> | null = null
+let serviceCompanionSettingsPending = false
+let givingSyncInFlight = false
+async function syncPendingGiving(): Promise<void> {
+  if (givingSyncInFlight || !getSetting('givingSettingsPending')) return
+  givingSyncInFlight = true
+  const methods = givingFromSettings(getAllSettings() as Record<string, unknown>)
+  try {
+    const queued = await syncGivingMethods(methods)
+    if (queued && JSON.stringify(methods) === JSON.stringify(givingFromSettings(getAllSettings() as Record<string, unknown>))) setSetting('givingSettingsPending', false)
+  } catch { /* The saved fields remain pending until the next connection. */ }
+  finally { givingSyncInFlight = false }
+}
+
 ipcMain.handle('set-setting', (_event, { key, value }) => {
   const previousDisplays = key === 'outputDisplays' ? getSetting('outputDisplays') : null
   // Every Go live writes the whole look again, about a dozen keys, and each
@@ -3210,6 +3486,22 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
   // A look that has not changed is not written and not announced.
   const sameTheme = THEME_KEYS.has(key) && JSON.stringify(getSetting(key)) === JSON.stringify(value)
   if (!sameTheme) setSetting(key, value)
+  if (GIVING_SETTING_KEYS.includes(key)) setSetting('givingSettingsPending', true)
+  if (key === 'streamUrl' || key === 'audienceTrainingEnabled') serviceCompanionSettingsPending = true
+  if (GIVING_SETTING_KEYS.includes(key) || key === 'streamUrl' || key === 'audienceTrainingEnabled') {
+    if (companionSettingsTimer) clearTimeout(companionSettingsTimer)
+    companionSettingsTimer = setTimeout(() => {
+      void syncPendingGiving()
+      const rawStream = String(getSetting('streamUrl') ?? '').trim()
+      const streamUrl = publicStreamUrl(rawStream)
+      // An unfinished URL is a saved draft. Only an explicitly empty field
+      // clears a running service's stream; giving edits never touch it.
+      if (serviceCompanionSettingsPending && (!rawStream || streamUrl)) {
+        serviceCompanionSettingsPending = false
+        syncServiceCompanion({ streamUrl, audienceTrainingEnabled: Boolean(getSetting('audienceTrainingEnabled')) })
+      }
+    }, 800)
+  }
   // Language / trust-gate changes reconfigure the live engines instantly.
   if (RECONFIGURE_KEYS.has(key) && ledger) {
     applyLanguageAndConfig()
@@ -3287,9 +3579,10 @@ ipcMain.handle(
 )
 
 ipcMain.handle('delete-preacher-profile', (_event, id) => {
-  if (soundCheck.snapshot()?.preacherId === id) soundCheck.stop()
+  if (training.snapshot()?.preacherId === id) training.stop()
   ledger?.remove(id)
   teachings().remove(id)
+  trainingRounds().remove(id)
   if (activePreacherId() === id) { setSetting('activePreacherId', ''); applyLanguageAndConfig() }
   return { success: deleteProfile(id) }
 })
@@ -3395,6 +3688,7 @@ ipcMain.handle('service-notices', () => currentServiceNotices())
 ipcMain.handle('cloud-status', async () => {
   if (!isCloudConfigured()) return { configured: false, signedIn: false }
   const identity = await readCloudIdentity().catch(() => ({ signedIn: false, hasAccount: false, email: null }))
+  if (identity.signedIn && identity.hasAccount) void syncPendingGiving()
   return {
     configured: true,
     ...identity,
@@ -3462,7 +3756,7 @@ ipcMain.handle('cloud-sign-out', async () => {
 
 ipcMain.handle('cloud-start-service', async (_event, opts) => {
   publicSharingPaused = false
-  return serializeService(async () => getActiveServiceId() ? {success:true,serviceId:getActiveServiceId()} : startService(opts ?? {}))
+  return serializeService(async () => getActiveServiceId() ? {success:true,serviceId:getActiveServiceId()} : startService({ ...opts, streamUrl: publicStreamUrl(getSetting('streamUrl')), audienceTrainingEnabled: opts?.audienceTrainingEnabled ?? Boolean(getSetting('audienceTrainingEnabled')) }))
 })
 
 ipcMain.handle('cloud-end-service', async () => {
@@ -3481,8 +3775,8 @@ ipcMain.handle('cloud-upsert-notes', (_event, notes) => {
 })
 
 ipcMain.handle('cloud-sync-giving', async (_event, methods) => {
-  await syncGivingMethods(methods)
-  return { success: true }
+  const success = await syncGivingMethods(methods)
+  return { success }
 })
 
 ipcMain.handle('cloud-generate-link-code', async () => {
@@ -3896,13 +4190,14 @@ app.whenReady().then(() => {
   // TCC prompt in 'request-mic-permission' is a different gate entirely and
   // granting it cannot substitute for this one.
   electronSession.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
-    callback(permission === 'media' || (permission === 'display-capture' && wc === mainWindow?.webContents))
+    callback(permission === 'media' || (permission === 'display-capture' && (wc === mainWindow?.webContents || wc === senderWindow?.webContents)))
   })
   electronSession.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media')
   // Windows loopback captures the computer's sound. Only the operator window
   // may request it; screen video is required by Chromium but is never consumed.
   electronSession.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-    if (process.platform !== 'win32' || request.frame !== mainWindow?.webContents.mainFrame || !request.audioRequested) {
+    const asker = request.frame === mainWindow?.webContents.mainFrame || request.frame === senderWindow?.webContents.mainFrame
+    if (process.platform !== 'win32' || !asker || !request.audioRequested) {
       callback({})
       return
     }
@@ -4116,7 +4411,8 @@ app.whenReady().then(() => {
     slowPath.start()
     console.log('🧠 Slow-path reasoning loop initialized')
   }
-  createWindow()
+  if (getSetting('senderMode')) createSenderWindow()
+  else createWindow()
   // SANDBOX=1 opens the component gallery *beside* the running app, both
   // served by the same Vite instance — edit a component once and watch it
   // hot-reload in the sheet and on the real screen at the same time.
@@ -4196,6 +4492,8 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     if (process.env.DESIGN_MODE === '1') {
       createDesignWindow()
+    } else if (getSetting('senderMode')) {
+      createSenderWindow()
     } else {
       createWindow()
       if (process.env.SANDBOX === '1') createDesignWindow()
@@ -4204,6 +4502,7 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', () => {
+  closeNetworkSound()
   mobileServer?.stop()
   alerts.dispose()
   timers.dispose()

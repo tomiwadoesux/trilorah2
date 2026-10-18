@@ -61,7 +61,7 @@ async function run() {
   await loaded;
   await until(() => js('!!document.querySelector("[data-view=profile]")').catch(() => false));
   await js('document.querySelector("[data-view=profile]").click()');
-  await until(() => js('document.body.innerText.includes("Try a few references")'));
+  await until(() => js('document.body.innerText.includes("Voice training")'));
   await js('document.querySelector("[aria-label=\"close tour\"]")?.click()');
   detail = await js('window.api.getPreacherLearning("qa-pastor")');
   assert.equal(detail.reviews[0].id, pending.id);
@@ -70,18 +70,19 @@ async function run() {
   fs.writeFileSync(path.join(artifacts, 'profile.png'), (await win.webContents.capturePage()).toPNG());
   if (fs.existsSync(audio)) {
     const before = await js('window.api.getScreenState()');
-    await js('window.api.startPreacherSoundCheck("qa-pastor", 0)');
+    // reference.wav reads Proverbs 3:5 — the shelf's Proverbs verse.
+    await js('window.api.startPreacherTraining("qa-pastor", "whisper-local", ["Proverbs"])');
     const check = await until(async () => {
-      const state = await js('window.api.getPreacherSoundCheck()');
+      const state = await js('window.api.getPreacherTraining()');
       return state && ['finished', 'error'].includes(state.status) ? state : null;
     }, 240000);
     assert.equal(check.status, 'finished', check.message);
-    assert.equal(check.matches, true, JSON.stringify(check));
+    assert.equal(check.results[0]?.outcome, 'caught', JSON.stringify(check));
     assert.equal(await js('window.api.getScreenState()'), before);
     assert.equal((await js('window.api.getPreacherLearning("qa-pastor")')).stats.samples, 0);
     console.log('REAL LOCAL ASR:', JSON.stringify(check));
   }
-  console.log('PASS: preacher teaching, persisted review, attribution, offline mode, UI reload and isolated sound check.');
+  console.log('PASS: preacher teaching, persisted review, attribution, offline mode, UI reload and isolated voice training.');
   console.log('Isolated test profile:', profile);
   app.exit(0);
 }

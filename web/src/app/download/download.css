@@ -1,0 +1,64 @@
+html:has(.download-page), body:has(.download-page) { background: #131313; }
+html:has(.download-page[data-theme='light']), body:has(.download-page[data-theme='light']) { background: #f6f5f1; }
+
+.download-page {
+  --home-bg: #131313;
+  --home-ink: #faf9f6;
+  --home-muted: #92918a;
+  --hero-secondary: #242424;
+  --hero-primary-hover: #e4e3df;
+  --download-line: #ffffff1f;
+}
+.download-page[data-theme='light'] { --download-line: #24231c26; }
+.download-main { border-top: 1px solid var(--download-line); }
+.download-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  padding: 72px var(--hero-gutter) 112px;
+  border-bottom: 1px solid var(--download-line);
+  scroll-margin-top: var(--hero-nav-height);
+  text-align: center;
+}
+.download-hero h1 {
+  margin: 0 0 24px;
+  font-size: 80px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -2.4px;
+  text-wrap: balance;
+}
+.download-intro { margin: 0 0 18px; color: var(--home-muted); font-size: 24px; line-height: 1.4; text-wrap: balance; }
+.download-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  background: var(--home-ink);
+  color: var(--home-bg);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 22px;
+  touch-action: manipulation;
+  transition: background-color 150ms ease;
+}
+.download-primary svg { flex-shrink: 0; }
+.download-primary:active { opacity: .9; }
+@media (hover: hover) and (pointer: fine) {
+  .download-primary:hover { background: var(--hero-primary-hover); }
+}
+@media (max-width: 760px) {
+  .download-hero { min-height: 400px; padding-block: 72px 96px; }
+  .download-hero h1 { font-size: clamp(44px, 8.5vw, 64px); letter-spacing: -1.6px; }
+  .download-intro { max-width: 520px; font-size: 19px; }
+}
+@media (max-width: 420px) {
+  .download-hero h1 { max-width: 320px; }
+  .download-intro { max-width: 320px; font-size: 18px; }
+}
+@media (pointer: coarse) { .download-primary { min-height: 44px; } }

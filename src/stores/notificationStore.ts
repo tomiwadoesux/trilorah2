@@ -51,3 +51,6 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   dismiss: id => set(s => ({ entries: s.entries.map(e => e.id === id ? { ...e, dismissed: true, read: true } : e) })),
   readAll: () => set(s => s.entries.some(e => !e.read) ? { entries: s.entries.map(e => ({ ...e, read: true })) } : s),
 }));
+
+// Dev only: lets a notice be raised from the devtools console to see how the app and the Messenger answer it.
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __trilorahNotice?: (notice: ServiceNotice) => void }).__trilorahNotice = notice => useNotificationStore.getState().receive(notice);

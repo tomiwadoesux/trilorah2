@@ -36,6 +36,12 @@ describe('HeardWindow', () => {
     expect(heard.forSearch(11000)).toBe('David faced Goliath')
     expect(heard.forSearch(60000)).toBe('')
   })
+  it('keeps the surrounding sentence even when the last fragment already has eight words', () => {
+    const heard = new HeardWindow()
+    heard.note('I laboured more abundantly than they all', true, 1000)
+    heard.note('yet not I but the grace of God which was with me', true, 3000)
+    expect(heard.forSearch(4000)).toBe('I laboured more abundantly than they all yet not I but the grace of God which was with me')
+  })
   it('preserves earlier actions in a long utterance and clears them on reset', () => {
     const heard = new HeardWindow()
     const text = 'Goliath killed David ' + Array(30).fill('word').join(' ')

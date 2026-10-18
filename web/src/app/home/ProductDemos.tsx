@@ -20,7 +20,7 @@ export function ProductWorkspace() {
         <aside className="pd-workspace-sidebar">
           <p className="pd-tiny-heading">YOUR WORKSPACE</p>
           <div className="pd-sidebar-link"><span className="pd-sidebar-square" />Overview</div>
-          <div className="pd-sidebar-link pd-sidebar-link-active"><Radio size={17} />Live service</div>
+          <div className="pd-sidebar-link pd-sidebar-link-active"><Radio selected size={17} />Live service</div>
           <div className="pd-sidebar-link"><BookOpen size={17} />Scripture library</div>
           <div className="pd-sidebar-link"><StickyNote size={17} />Sermon notes</div>
           <div className="pd-sidebar-divider" />
@@ -73,7 +73,7 @@ function replyFor(tab: DemoTab, prompt: string): DemoReply {
   if (tab === "follow") {
     if (/note/.test(text)) return { heading: "Keep the thought. Return to it.", body: "Sermon notes sit beside the live message in the congregation companion.", details: ["Open your church’s companion link", "Choose Notes", "Read the key thoughts from the message"] };
     if (/scripture|verse|psalm|read/.test(text)) return { heading: "Psalm 46:10", body: `“${verse}”`, details: ["King James Version", "Open Verses to return to passages shared in the service"] };
-    return { heading: "The gathering, in your hands.", body: "The companion brings the live transcript, scriptures, and sermon notes into one simple mobile view.", details: ["Open your church’s companion link", "Choose Now, Verses, or Notes", "Follow along at your own pace"] };
+    return { heading: "The gathering, in your hands.", body: "The companion brings the live transcript, scriptures, and sermon notes into one simple mobile view.", details: ["Open your church’s companion link", "Choose Follow along, Scriptures, or Notes", "Follow along at your own pace"] };
   }
   if (tab === "present") {
     if (/transcript|listen|spoken/.test(text)) return { heading: "Every word has a place.", body: "“Let us turn to Psalm forty-six, verse ten. Be still, and know that I am God.”", details: ["A sample of the live transcript", "Scripture reference identified: Psalm 46:10"] };

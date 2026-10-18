@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CircleIcon, SuccessIcon } from '../ui/icons';
 import { useAppStore } from '../stores/appStore';
 import {
   Button,
@@ -38,7 +39,7 @@ function slugify(name: string): string {
 function ReadinessRow({ met, children }: { met: boolean; children: string }) {
   return (
     <li className={`flex items-baseline gap-x-2 text-sm ${met ? 'text-ink' : 'text-neutral-400'}`}>
-      <span aria-hidden="true" className="font-mono">{met ? '●' : '○'}</span>
+      <span aria-hidden="true">{met ? <SuccessIcon size={12} /> : <CircleIcon size={12} />}</span>
       {children}
     </li>
   );

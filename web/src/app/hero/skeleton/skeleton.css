@@ -1,0 +1,29 @@
+.hero-skeleton-page { min-height: 100svh; padding: 24px; background: var(--home-bg); color: var(--home-ink); font-family: var(--font-heading), sans-serif; }
+.hero-skeleton-container { max-width: 1120px; margin-inline: auto; }
+.hero-skeleton-nav { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 14px; }
+.hero-skeleton-nav a { color: var(--home-muted); text-decoration: none; }
+.hero-skeleton-nav a:hover { color: var(--home-ink); }
+.hero-skeleton-modes { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--hero-study-rule); border-radius: 8px; }
+.hero-skeleton-modes button { padding: 6px 14px; border: 0; border-radius: 5px; background: transparent; color: var(--home-muted); font: inherit; cursor: pointer; }
+.hero-skeleton-modes button[aria-pressed='true'] { background: var(--hero-accent); color: var(--hero-study-button-ink); }
+.hero-skeleton-page :is(a, button):focus-visible { outline: 2px solid var(--hero-accent); outline-offset: 4px; }
+.hero-skeleton-heading { margin: 36px 0 24px; }
+.hero-skeleton-heading h1 { margin: 0 0 8px; font-size: clamp(26px, 3vw, 36px); font-weight: 500; letter-spacing: -.03em; line-height: 1.2; }
+.hero-skeleton-heading p { color: var(--home-muted); font-size: 14px; line-height: 1.6; }
+.hero-skeleton-heading p { margin: 0; }
+.hero-skeleton-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 24px; }
+.hero-skeleton-figure { margin: 0; min-width: 0; }
+.hero-skeleton-canvas { display: grid; place-items: center; height: 270px; padding: 20px; border: 1px solid var(--hero-study-rule); border-radius: 10px; background: var(--hero-secondary); }
+.hero-skeleton-canvas > svg { display: block; width: 100%; height: 100%; min-height: 0; overflow: visible; }
+.hero-skeleton-figure figcaption { margin-top: 14px; }
+.hero-skeleton-figure h2 { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: 15px; font-weight: 500; }
+.hero-skeleton-figure h2 span { color: var(--home-muted); font-size: 11px; font-weight: 400; }
+.hero-skeleton-figure figcaption p { margin: 6px 0 0; color: var(--home-muted); font-size: 12px; line-height: 1.5; }
+.hero-skeleton-footer { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--hero-study-rule); font-size: 14px; }
+.hero-skeleton-footer a { color: var(--hero-accent); text-decoration: none; }
+@media (max-width: 760px) {
+  .hero-skeleton-page { padding: 20px 16px; }
+  .hero-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
+  .hero-skeleton-canvas { height: 240px; padding: 16px; }
+}
+@media (max-width: 480px) { .hero-skeleton-grid { grid-template-columns: minmax(0, 1fr); } }

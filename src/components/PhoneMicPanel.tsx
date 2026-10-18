@@ -15,7 +15,7 @@ export function PhoneMicIntro({ onConnect, disabled = false, busy = false, messa
     <p className="tri-phone-mic-purpose">Use your phone as the room’s microphone.</p>
     <PhoneConnectionArt variant="microphone" />
     {message && <p className="tri-phone-mic-message" data-error={error} role={error ? 'alert' : 'status'}>{message}</p>}
-    <Button label={busy ? 'creating code…' : retry ? 'new code' : 'connect phone'} tone="go" disabled={disabled || busy} onClick={onConnect} />
+    <Button guideId="phone-connect" label={busy ? 'creating code…' : retry ? 'new code' : 'connect phone'} tone="go" disabled={disabled || busy} onClick={onConnect} />
     <p className="tri-phone-mic-hint">Same Wi-Fi. Internet is only needed to connect.</p>
   </div>;
 }
@@ -92,13 +92,15 @@ export function PhoneMicPanel({ open, onClose, preview = false }: { open: boolea
         role="dialog"
         aria-modal="true"
         aria-label="Phone microphone"
+        data-guide="phone-panel"
+        data-guide-area="phone"
         className="tri-phone-mic-panel tri-rounded-surface w-full max-w-[460px] bg-[var(--tri-pop)] p-6 text-[var(--tri-ink)]"
         style={{ boxShadow: 'inset 0 0 0 var(--tri-border) rgb(255 255 255 / 0.1), 0 24px 60px rgb(0 0 0 / 0.55)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="tri-phone-mic-heading" data-empty={showIntro}>
           <h2>Phone microphone</h2>
-          <button type="button" aria-label="Close phone microphone" onClick={onClose}><CloseIcon size={14} /></button>
+          <button type="button" data-guide="phone-close" aria-label="Close phone microphone" onClick={onClose}><CloseIcon size={14} /></button>
         </div>
         {showIntro ? <PhoneMicIntro onConnect={() => void connect()} disabled={!api?.phoneMicStart} busy={busy}
           message={startError || (busy ? undefined : line)} error={!!startError || state === 'error' || state === 'declined'} retry={state !== 'idle'} /> : <>
@@ -126,16 +128,16 @@ export function PhoneMicPanel({ open, onClose, preview = false }: { open: boolea
           </div>}
           {actionError && <p className="mobile-connection-error" role="alert">{actionError}</p>}
           <div className="mobile-connection-footer" aria-busy={actionBusy}>
-            {state === 'waiting' && <Button label="Cancel pairing" tone="ash" disabled={actionBusy} onClick={() => {
+            {state === 'waiting' && <Button guideId="phone-cancel" label="Cancel pairing" tone="ash" disabled={actionBusy} onClick={() => {
               if (!api) { onClose(); return; }
               void act(async () => { await api.phoneMicStop(); onClose(); });
             }} />}
             {state === 'pending' && <>
-              <Button label="Decline" tone="ash" disabled={!api || actionBusy} onClick={() => void act(() => api!.phoneMicApprove(false))} />
-              <Button label={actionBusy ? 'Please wait…' : 'Allow microphone'} tone="go" disabled={!api || actionBusy} onClick={() => void act(() => api!.phoneMicApprove(true))} />
+              <Button guideId="phone-decline" label="Decline" tone="ash" disabled={!api || actionBusy} onClick={() => void act(() => api!.phoneMicApprove(false))} />
+              <Button guideId="phone-allow" label={actionBusy ? 'Please wait…' : 'Allow microphone'} tone="go" disabled={!api || actionBusy} onClick={() => void act(() => api!.phoneMicApprove(true))} />
             </>}
-            {(state === 'connected' || state === 'connecting') && <Button label="Disconnect" tone="ash" disabled={!api || actionBusy} onClick={() => void act(() => api!.phoneMicStop())} />}
-            {state === 'connected' && <Button label={actionBusy ? 'Starting…' : 'Use phone audio'} tone="go" disabled={!api || actionBusy} onClick={() => void act(async () => {
+            {(state === 'connected' || state === 'connecting') && <Button guideId="phone-disconnect" label="Disconnect" tone="ash" disabled={!api || actionBusy} onClick={() => void act(() => api!.phoneMicStop())} />}
+            {state === 'connected' && <Button guideId="phone-use" label={actionBusy ? 'Starting…' : 'Use phone audio'} tone="go" disabled={!api || actionBusy} onClick={() => void act(async () => {
               await api!.setSetting('micDeviceLabel', PHONE_MIC_LABEL);
               useAppStore.getState().patchSetting('micDeviceLabel', PHONE_MIC_LABEL);
               api!.stopListening(); api!.startListening(PHONE_MIC_LABEL); onClose();

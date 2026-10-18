@@ -1,0 +1,70 @@
+# Trilorah Sender — the small separate download for the computer the sound
+# desk is plugged into (electron/sender/main.ts). Build it with
+# `npm run dist:sender`, which stages dist-sender/ first; never run
+# electron-builder on this file directly.
+#
+# dist-sender/ holds only the sender's window, main process and the NDI®
+# packages, so none of the main app's engine, Bible, models or whisper are in
+# this installer.
+
+appId: com.trilorah.sender
+productName: Trilorah Sender
+artifactName: Trilorah-Sender-${version}-${arch}.${ext}
+
+directories:
+  app: dist-sender
+  output: release/sender
+  buildResources: build
+
+files:
+  - "**/*"
+  - "!**/.DS_Store"
+  # scripts/build-sender.mjs stages only the target's NDI package. (No
+  # ${platform} filter as in the main app: that is the building computer's
+  # platform, so a Windows build made on a Mac would drop the Windows library.)
+  # The Windows package also carries the link library, which only a compiler needs.
+  - "!**/node_modules/@grandi/**/*.lib"
+
+# grandi is a prebuilt N-API addon: nothing to compile, and a native module
+# has to sit outside app.asar to load.
+npmRebuild: false
+asarUnpack:
+  - "**/node_modules/grandi/**"
+  - "**/node_modules/@grandi/**"
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  # Unsigned, like the main app (right-click → Open the first time).
+  identity: null
+  extendInfo:
+    NSMicrophoneUsageDescription: Trilorah Sender sends the sound you choose, such as your sound desk's input, to Trilorah on another computer.
+    # NDI finds and is found by other computers with Bonjour, which macOS
+    # gates behind the Local Network permission.
+    NSLocalNetworkUsageDescription: Trilorah Sender puts this computer's sound on your church network so Trilorah on another computer can hear it.
+    NSBonjourServices:
+      - _ndi._tcp
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+
+dmg:
+  sign: false
+
+win:
+  icon: build/icon-1024.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  artifactName: Trilorah-Sender-Setup-${version}.${ext}
+  oneClick: true
+  # Installed for every user, with one Windows permission prompt, because the
+  # firewall rule in sender-installer.nsh needs an administrator.
+  perMachine: true
+  allowElevation: true
+  deleteAppDataOnUninstall: false
+  include: build/sender-installer.nsh

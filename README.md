@@ -1,14 +1,31 @@
 # Trilorah — AI Preacher Assistant
 
 Church presentation software with an agentic sermon engine.
-**Beautiful, effortless, intelligent.**
 
-While the preacher speaks, the engine transcribes the sermon, detects
-scripture references (explicit *and* quoted), follows along as verses are
-read, understands service segments, obeys natural voice commands
-("…in the King James Version", "I said verse thirty-four"), learns each
-preacher over time, and drives the displays — locally, with no operator
-required once a preacher reaches auto-mode trust.
+Prepare songs, scripture, slides, media and the service order in one workspace.
+With listening configured, Trilorah can transcribe speech and suggest passages
+from spoken references or quotations. The operator checks and sends newly
+caught passages live. Separately enabled Auto advance can follow reading
+through scripture already on screen; configured voice commands can also
+change the output.
+
+## Start here
+
+- [Install and rehearse your first service](docs/community/GETTING-STARTED.md).
+- [Run or build from source](docs/community/BUILD-FROM-SOURCE.md).
+- [Community documentation and task guides](docs/community/README.md).
+- [Support information draft](docs/support/SUPPORT-PAGE.draft.md).
+- [Source licence and scope](docs/legal/LICENSING.md).
+
+## Licence
+
+Original Trilorah source code is available under [PolyForm Perimeter 1.0.1](LICENSE),
+with copyright and scope information in [NOTICE](NOTICE). It permits church use
+and internal customisation while restricting providing competing products to others,
+including free competing offerings. This is a source-available licence.
+Third-party material retains its own terms; see [third-party notices](THIRD-PARTY-NOTICES.md).
+Valid rights already granted for earlier copies under their licences are not revoked.
+An optional Trilorah-operated paid service is for a later decision.
 
 ## Structure
 
@@ -50,8 +67,12 @@ npm run dev           # vite + electron dev
 `.env.local` (never committed): `DEEPGRAM_API_KEY`, `HF_API_TOKEN`,
 `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`.
 
-Free tier runs fully local (whisper ASR + tiny notes model);
-Deepgram/HF keys enable the cloud tier.
+Local Whisper is the default speech engine; Deepgram is a separately configured
+cloud option. Local speech does not make the whole application local-only:
+generated notes currently use the cloud provider, and a signed-in configured
+cloud account can start sharing when listening starts. See the
+[privacy draft and evidence](docs/legal/README.md) and check the intended
+configuration before using real service material.
 
 ## Portable service files (.tri)
 

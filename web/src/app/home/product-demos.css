@@ -1,6 +1,6 @@
 /* Product illustrations are self-contained, so the marketing page and app keep
    separate visual systems. */
-.pd-workspace, .pd-companion-scene, .pd-assistant-demo { --pd-ink: #e8eee9; --pd-muted: #919c95; --pd-line: rgba(213, 235, 220, .1); --pd-accent: #46c695; color: var(--pd-ink); font-family: inherit; }
+.pd-workspace, .pd-companion-scene, .pd-assistant-demo { --pd-ink: #e8eee9; --pd-muted: #919c95; --pd-line: rgba(213, 235, 220, .1); --pd-accent: var(--site-yellow); color: var(--pd-ink); font-family: inherit; }
 .pd-workspace *, .pd-companion-scene *, .pd-assistant-demo * { box-sizing: border-box; }
 .pd-workspace { margin: 0; border: 1px solid rgba(197, 226, 209, .16); border-radius: 12px; background: #101311; box-shadow: 0 2px 3px #0003, 0 32px 100px #0004, 0 0 90px #46c69505; overflow: hidden; text-align: left; }
 .pd-wordmark { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 550; letter-spacing: -.4px; white-space: nowrap; color: #e8eee9; }

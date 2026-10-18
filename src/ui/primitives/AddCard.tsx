@@ -8,6 +8,8 @@ export interface AddCardProps {
   hint?: string;
   onClick?: () => void;
   className?: string;
+  /** Stable anchor for the in-app guide. */
+  guideId?: string;
 }
 
 /**
@@ -23,10 +25,11 @@ export interface AddCardProps {
  * the top left where the eye starts, not behind however many rows the
  * library has grown to.
  */
-export function AddCard({ label, hint, onClick, className = '' }: AddCardProps) {
+export function AddCard({ label, hint, onClick, className = '', guideId }: AddCardProps) {
   return (
     <button
       type="button"
+      data-guide={guideId}
       onClick={onClick}
       className={cx(
         'group/card block w-full pb-3 text-left transition-transform duration-150 ease-out hover:-translate-y-[2px]',

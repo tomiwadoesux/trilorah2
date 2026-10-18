@@ -4,7 +4,7 @@ import { splitVerseNumbers, type VerseSlide } from '../../../shared/verseDisplay
 import type { TextTransition } from '../../../shared/textTransitions';
 import { resolveTextPosition } from '../../../shared/textPosition';
 import { textWidthFrame } from '../../../shared/textWidth';
-import { resolveTextCase, type TextCase } from '../../../shared/textCase';
+import { formatDisplayText, resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { displayFontFamily } from '../../../shared/displayFont';
@@ -135,6 +135,9 @@ export interface SlideCanvasProps {
  * Keep these three in step with output.css; nothing else can.
  */
 const TX_CSS = `
+  .tri-words-visibility { width: 100%; opacity: 0; transform: scale(.98); transition: opacity var(--tri-tx-ms, 250ms) cubic-bezier(.23,1,.32,1), transform var(--tri-tx-ms, 250ms) cubic-bezier(.23,1,.32,1); pointer-events: none; }
+  .tri-words-visibility.is-visible { opacity: 1; transform: none; pointer-events: auto; }
+  @media (prefers-reduced-motion: reduce) { .tri-words-visibility { transform: none; transition-duration: 150ms; } }
   .tri-slide-words :where(*) { font-family: inherit; }
   .tri-tx { animation-duration: var(--tri-tx-ms, 450ms); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); animation-fill-mode: both; }
   .tri-tx-fade { animation-name: tri-tx-fade; }
@@ -262,18 +265,22 @@ export function SlideCanvas({
 
   /* 'clear' is the app's word for background-only — the words go, the
      picture stays. Black and logo are covers and handled further down. */
-  const words = screen === 'live' && slide;
+  const retained = useRef(slide);
+  if (slide) retained.current = slide;
+  const showingWords = screen === 'live' && !!slide;
+  const words = retained.current;
+  slide = retained.current;
 
   /* The same shrink-to-fit the wall does (lib/useFitText), so a reading
      too tall for the box is seen here the way the room will see it: smaller,
-     and past half size cut with "…" — not running off the top. */
+     without cutting off any scripture words. */
   const textBoxRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   useFitText(textBoxRef, wordsRef, JSON.stringify([
-    words ? slide.lines : null, words ? slide.reference : null, transition?.play ?? null,
+    words?.lines ?? null, words?.reference ?? null, transition?.play ?? null,
     theme.font, theme.size, theme.verseSize, theme.refGap, theme.layout, theme.safeMargin, theme.textWidth,
     theme.textCase, theme.textSpacing, screen,
-  ]));
+  ]), undefined, true);
 
   /*
    * Dragging a corner.
@@ -464,7 +471,8 @@ export function SlideCanvas({
             className="pointer-events-none absolute inset-0 border-x border-dashed border-white/25"
           />
         )}
-        {words ? (
+        {words && slide ? (
+          <div className={`tri-words-visibility ${showingWords ? 'is-visible' : ''} tx-${transition?.id ?? 'blur'}`} aria-hidden={!showingWords} style={{ '--tri-tx-ms': `${transition?.ms ?? 250}ms` } as React.CSSProperties}>
           <div
             /* Re-mounted when `play` changes, which is what replays the
                entrance — the same trick the wall uses on .output-enter.
@@ -481,7 +489,7 @@ export function SlideCanvas({
               fontWeight: 500,
               lineHeight: 1.35,
               textWrap: 'balance',
-              textTransform,
+              textTransform: 'none',
               textShadow: `0 2px ${Math.round(5 + theme.shadow / 7)}px rgb(0 0 0 / ${Math.min(0.92, 0.25 + theme.shadow / 110)})`,
               alignItems: alignItems === 'flex-start' ? 'flex-start' : alignItems === 'flex-end' ? 'flex-end' : 'center',
             }}
@@ -508,7 +516,7 @@ export function SlideCanvas({
                   ...ringFor('reference'),
                 }}
               >
-                {slide.reference}
+                {formatDisplayText(slide.reference, textTransform)}
               </p>
             )}
             {/* The body is the container's own em — `size` sets it up on the
@@ -539,7 +547,7 @@ export function SlideCanvas({
                 >
                   {/* Verse numbers raised, as the wall sets them
                       (.output-verse-num). */}
-                  {splitVerseNumbers(line.text).map((part, n) =>
+                  {splitVerseNumbers(formatDisplayText(line.text, textTransform)).map((part, n) =>
                     part.kind === 'verse'
                       ? <sup key={n} style={VERSE_NUM_STYLE}>{part.verse}</sup>
                       : <Fragment key={n}>{part.text}</Fragment>,
@@ -566,7 +574,7 @@ export function SlideCanvas({
                   ...ringFor('reference'),
                 }}
               >
-                {slide.reference}
+                {formatDisplayText(slide.reference, textTransform)}
               </p>
             )}
             {/* An online Bible's copyright line, as the wall sets it
@@ -591,6 +599,7 @@ export function SlideCanvas({
                 {slide.credit}
               </p>
             )}
+          </div>
           </div>
         ) : screen === 'live' && empty ? (
           /* Not styled like scripture: an empty stage is chrome talking

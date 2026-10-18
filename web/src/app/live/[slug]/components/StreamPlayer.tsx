@@ -40,7 +40,7 @@ export default function StreamPlayer({
   if (!embed) return null;
 
   return (
-    <div className="px-4 pt-3">
+    <div className="companion-stream">
       {!open ? (
         <button
           onClick={() => setOpen(true)}
@@ -48,9 +48,9 @@ export default function StreamPlayer({
         >
           <Headphones size={15} className="text-brand shrink-0" />
           <span className="text-xs text-gray-300 flex-1">
-            Listen to the live stream
+            Open the service stream
             <span className="block text-[10px] text-gray-600 mt-0.5">
-              Playing it syncs the transcript exactly
+              {embed.kind === 'youtube' ? 'Follow the video with the transcript' : 'Listen here; adjust text timing with Sync'}
             </span>
           </span>
         </button>
@@ -67,7 +67,7 @@ export default function StreamPlayer({
               onSeconds(null);
               onDrivingChange(false);
             }}
-            className="w-full flex items-center justify-center gap-1 py-1.5 text-[10px] uppercase tracking-widest text-gray-600 hover:text-gray-400 transition-colors"
+            className="companion-stream-close"
           >
             <ChevronDown size={12} />
             Hide
@@ -112,19 +112,23 @@ function YouTubeFrame({
       player = new YT.Player(hostRef.current, {
         events: {
           onStateChange: (e: any) => {
-            const playing = e.data === YT.PlayerState.PLAYING;
-            cb.current.onDrivingChange(playing);
-            if (!playing) cb.current.onSeconds(null);
+            // Pausing the video must freeze its transcript, not jump to live.
+            const ownsClock = [YT.PlayerState.PLAYING, YT.PlayerState.PAUSED, YT.PlayerState.BUFFERING, YT.PlayerState.ENDED].includes(e.data);
+            if (ownsClock) {
+              const seconds = player?.getCurrentTime?.();
+              if (Number.isFinite(seconds)) cb.current.onSeconds(seconds);
+            }
+            cb.current.onDrivingChange(ownsClock);
           },
-          onError: () => setFailed(true),
+          onError: () => { setFailed(true); cb.current.onSeconds(null); cb.current.onDrivingChange(false); },
         },
       });
       poll = setInterval(() => {
         if (dead || !player?.getCurrentTime) return;
         try {
           const state = player.getPlayerState?.();
-          // 1 === PLAYING. A paused player must not keep driving the highlight.
-          if (state !== 1) return;
+          // A paused or buffering player owns a stationary transcript clock.
+          if (![0, 1, 2, 3].includes(state)) return;
           const t = player.getCurrentTime();
           if (typeof t === "number" && Number.isFinite(t)) cb.current.onSeconds(t);
         } catch {

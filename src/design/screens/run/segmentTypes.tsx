@@ -8,6 +8,10 @@ import {
   GiftIcon,
   MicIcon,
   MusicIcon,
+  MediaIcon,
+  NoteIcon,
+  PresentationIcon,
+  VideoPlayIcon,
   PencilIcon,
   PrayerIcon,
   SparkleIcon,
@@ -55,10 +59,15 @@ export function segmentTypeLabel(type: string): string {
     call site, never a colour of its own. */
 export function segmentIcon(type: string, size = 13): ReactNode {
   switch (type) {
+    case 'music':
     case 'worship':
       return <MusicIcon size={size} />;
-    case 'sermon':
-      return <BookIcon size={size} />;
+    case 'slides': return <PresentationIcon size={size} />;
+    case 'notes': return <NoteIcon size={size} />;
+    case 'image': return <MediaIcon size={size} />;
+    case 'video': return <VideoPlayIcon size={size} />;
+    case 'verse': return <BookIcon size={size} />;
+    case 'sermon': return <MicIcon size={size} />;
     case 'welcome':
       return <SparkleIcon size={size} />;
     case 'announcements':

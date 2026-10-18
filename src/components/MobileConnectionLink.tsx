@@ -9,9 +9,9 @@ export function MobileConnectionLink({ url, label = 'Or open this link on your p
   useEffect(() => { setCopied(false); setError(false); }, [url]);
   return <div className="mobile-connection-link">
     <label><span>{label}</span><div className="mobile-connection-link__field">
-      <input readOnly value={url} aria-label="Connection link" spellCheck={false} onFocus={event => event.currentTarget.select()} />
+      <input readOnly data-guide="remote-link" value={url} aria-label="Connection link" spellCheck={false} onFocus={event => event.currentTarget.select()} />
     </div></label>
-    <button type="button" aria-label={copied ? 'Link copied' : 'Copy connection link'} onClick={async () => {
+    <button type="button" data-guide="remote-copy" aria-label={copied ? 'Link copied' : 'Copy connection link'} onClick={async () => {
       try { await navigator.clipboard.writeText(url); setCopied(true); setError(false); }
       catch { setError(true); }
     }}>{copied ? <CheckIcon size={15} /> : <CopyIcon size={15} />}<span>{copied ? 'Copied' : 'Copy'}</span></button>

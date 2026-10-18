@@ -1,3 +1,5 @@
+import { formatNoteText } from '../../../shared/noteDisplay';
+
 /**
  * Presentational sermon-notes sections, extracted from the live NotesTab so
  * the archive detail page renders notes identically. No "use client" — this
@@ -34,6 +36,7 @@ export default function SermonNotesSections({
 }: {
   notes: SermonNotesData;
 }) {
+  notes = formatNoteText(notes);
   const mainPoints = notes.main_points ?? [];
   const applications = notes.applications ?? [];
   const quotes = notes.memorable_quotes ?? [];
@@ -115,9 +118,9 @@ export default function SermonNotesSections({
             {quotes.map((q, i) => (
               <li
                 key={i}
-                className="rounded-lg bg-white/[0.02] border-l-2 border-brand pl-3 py-2 text-sm italic text-gray-300"
+                className="sermon-quote rounded-lg bg-white/[0.02] border-l-2 border-brand pl-3 py-2 text-sm italic text-gray-300"
               >
-                &ldquo;{q}&rdquo;
+                <blockquote><span className="sermon-quote-mark" aria-hidden="true">&ldquo;</span>{q}<span className="sermon-quote-close" aria-hidden="true">&rdquo;</span></blockquote>
               </li>
             ))}
           </ul>

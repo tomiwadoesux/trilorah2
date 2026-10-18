@@ -1,3 +1,5 @@
+import { capitalizeScriptureNames } from '../../../shared/scriptureNames';
+
 /**
  * Shared date/duration formatting for service listings.
  * Locale is pinned so server-rendered output is deterministic.
@@ -38,5 +40,5 @@ export function serviceTitle(
   sermonTitle: string | null,
   startedAt: string,
 ): string {
-  return sermonTitle || `Sunday Service — ${formatServiceDate(startedAt)}`;
+  return (sermonTitle ? capitalizeScriptureNames(sermonTitle) : sermonTitle) || `Sunday Service — ${formatServiceDate(startedAt)}`;
 }

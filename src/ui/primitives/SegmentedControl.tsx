@@ -16,6 +16,8 @@ export interface SegmentedControlProps<T extends string = string> {
   size?: 'sm' | 'md';
   disabled?: boolean;
   className?: string;
+  /** Stable anchor prefix for the in-app guide: each segment gets `${guideId}-${id}`. */
+  guideId?: string;
 }
 
 /*
@@ -42,6 +44,7 @@ export function SegmentedControl<T extends string = string>({
   size = 'md',
   disabled = false,
   className = '',
+  guideId,
 }: SegmentedControlProps<T>) {
   const [internal, setInternal] = useState<T>(options[0]?.id as T);
   const selected = value ?? internal;
@@ -117,6 +120,7 @@ export function SegmentedControl<T extends string = string>({
             <button
               key={opt.id}
               ref={(el) => { refs.current[i] = el; }}
+              data-guide={guideId ? `${guideId}-${opt.id}` : undefined}
               type="button"
               role="radio"
               aria-checked={isSelected}

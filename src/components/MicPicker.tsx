@@ -6,7 +6,7 @@ import { useAppStore } from '../stores/appStore';
 import { listAudioInputs, onDeviceChange } from '../lib/audioDevices';
 import { usePracticeStore } from '../stores/practiceStore';
 import { PRACTICE_SERMON_DEVICE } from '../../shared/practiceSermon';
-import { PHONE_MIC_LABEL } from '../../shared/audioInput';
+import { PHONE_MIC_LABEL, isNetworkSound, networkSoundComputer, networkSoundLabel, networkSoundSource, networkSoundTitle } from '../../shared/audioInput';
 import { PhoneMicPanel } from './PhoneMicPanel';
 import { usePhoneMicStore } from '../lib/phoneMic';
 import { useNoticeNavigation } from '../lib/notificationNavigation';
@@ -25,8 +25,10 @@ import { useNoticeNavigation } from '../lib/notificationNavigation';
  * The names are in the menu it opens, and in the tooltip.
  */
 
-/** Seven letters and an ellipsis — enough to tell two inputs apart. */
+/** Seven letters and an ellipsis — enough to tell two inputs apart. A
+    network input goes by the computer it comes from. */
 function nickname(label: string) {
+  if (isNetworkSound(label)) label = networkSoundComputer(networkSoundSource(label));
   if (label.length <= 7) return label;
   return `${label.slice(0, 7).replace(/[^a-z0-9]+$/i, '')}…`;
 }
@@ -36,6 +38,11 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
   const settings = useAppStore((s) => s.settings);
   const patchSetting = useAppStore((s) => s.patchSetting);
   const [inputs, setInputs] = useState<string[]>([]);
+  /* Sound other computers send (sender mode). Looked for when the menu
+     opens, never on mount: looking starts NDI, and on a Mac asks for
+     local-network permission, which a church that never uses it should
+     never see. */
+  const [network, setNetwork] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -56,6 +63,20 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    const look = () => {
+      void window.api?.listNetworkSounds?.()
+        .then((sources) => { if (!cancelled) setNetwork(sources.map(networkSoundLabel)); })
+        .catch(() => undefined);
+    };
+    look();
+    // A sender switched on while the menu is open shows up without reopening it.
+    const timer = window.setInterval(look, 3000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [open]);
+
   const saved = typeof settings?.micDeviceLabel === 'string' ? settings.micDeviceLabel : '';
   const busy = asrStatus === 'listening' || asrStatus === 'connecting';
   /* The practice sermon is one more input in the list, but it is never
@@ -73,9 +94,13 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
   const phone = usePhoneMicStore((s) => s.status);
   const phoneLabel = phone.state === 'connected' && phone.phoneName ? `phone · ${phone.phoneName}` : 'phone (over wi-fi)';
 
+  /* The saved network input stays listed while its computer is off, so the
+     menu still says what Start Listening will try to hear. */
+  const networkInputs = isNetworkSound(saved) && !network.includes(saved) ? [...network, saved] : network;
   const options = [
     { value: '', label: 'system default' },
     ...inputs.map((label) => ({ value: label, label })),
+    ...networkInputs.map((label) => ({ value: label, label: networkSoundTitle(label) })),
     /* Three minutes of scripted preaching through the real engine — for
        trying every kind of catch without speaking. */
     { value: PRACTICE_SERMON_DEVICE, label: PRACTICE_SERMON_DEVICE },
@@ -156,6 +181,7 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
       <button
         ref={triggerRef}
         data-guide="audio-input"
+        data-guide-area="audio"
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -168,7 +194,7 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
       >
         <SoundwaveIcon size={compact ? 14 : 12} className={compact ? "shrink-0 opacity-60" : "tri-header-icon"} />
         <span>audio</span>
-        {!compact && current && <span className="opacity-70">{nickname(currentLabel)}</span>}
+        {!compact && current && <span className="opacity-70">{nickname(isNetworkSound(current) ? current : currentLabel)}</span>}
         {/* The phone chosen: a dot for its state. */}
         {!compact && phoneDot && (
           <span
@@ -209,6 +235,7 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
                 key={o.value || 'default'}
                 type="button"
                 role="menuitemradio"
+                data-guide={o.value === PHONE_MIC_LABEL ? "audio-option-phone" : o.value ? "audio-option" : "audio-option-default"}
                 aria-checked={on}
                 onClick={() => { void choose(o.value).catch(() => undefined); }}
                 className={cx(
@@ -223,6 +250,14 @@ export function MicPicker({ compact = false }: { compact?: boolean } = {}) {
               </button>
             );
           })}
+          {/* NDI's terms: its mark is credited, with a link, where its sources are chosen. */}
+          {networkInputs.length > 0 && (
+            <p className="px-3.5 pb-1 pt-1.5 text-[length:var(--tri-size-xs)] leading-snug text-[rgb(229_243_242_/_0.4)]">
+              Network sound uses{' '}
+              <a href="https://ndi.video" target="_blank" rel="noreferrer" className="underline underline-offset-2">NDI®</a>
+              , a registered trademark of Vizrt NDI AB.
+            </p>
+          )}
         </div>,
         document.body,
       )}

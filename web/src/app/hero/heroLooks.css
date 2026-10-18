@@ -1,0 +1,13 @@
+/* Carbon is the selected hero palette; named study URLs preview alternatives. */
+html:has(.hero-landing-page[data-look='carbon']), body:has(.hero-landing-page[data-look='carbon']) { background: #060907; }
+html:has(.hero-landing-page[data-look='carbon'][data-theme='light']), body:has(.hero-landing-page[data-look='carbon'][data-theme='light']) { background: #f0f1f3; }
+.hero-landing-page[data-look] { background: var(--hero-study-background); }
+.hero-landing-page[data-look] .home-nav { background: var(--home-bg); }
+.hero-landing-page[data-look] .hero-intro { --hero-reveal-yellow: var(--hero-accent); }
+.hero-landing-page[data-look] .hero-action-primary { --hero-action-fill: var(--hero-accent); color: var(--hero-study-button-ink); background: var(--hero-accent); }
+.hero-landing-page[data-look] .home-nav-actions .home-button { background: var(--hero-accent); color: var(--hero-study-button-ink); }
+.hero-landing-page[data-look] .home-nav-actions .home-button:hover,
+.hero-landing-page[data-look] .hero-action-primary:hover { --hero-action-fill: var(--hero-primary-hover); background: var(--hero-primary-hover); }
+.hero-look-return { position: fixed; bottom: 20px; left: 20px; z-index: 100; display: inline-flex; align-items: center; gap: 10px; padding: 11px 15px; border: 1px solid var(--hero-study-rule); border-radius: 8px; background: var(--hero-secondary); color: var(--home-ink); font-size: 13px; box-shadow: 0 4px 18px #00000014; }
+.hero-look-return span { color: var(--home-muted); }
+.hero-look-return:hover { background: var(--hero-secondary-hover); }

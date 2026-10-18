@@ -55,6 +55,7 @@ export interface StartServiceOpts {
   isPublic?: boolean
   publishTranscript?: boolean
   audienceTrainingEnabled?: boolean
+  streamUrl?: string | null
 }
 
 async function loadCurrentAccountId(): Promise<string | null> {
@@ -160,7 +161,8 @@ export async function startService(
         sermon_title: opts.sermonTitle ?? null,
         is_public: opts.isPublic ?? true,
         publish_transcript: opts.publishTranscript ?? true,
-        audience_training_enabled: opts.audienceTrainingEnabled ?? false
+        audience_training_enabled: opts.audienceTrainingEnabled ?? false,
+        stream_url: opts.streamUrl ?? null
       })
       .select('id')
       .single()
@@ -313,12 +315,21 @@ export function upsertNotes(notes: any): void {
   })
 }
 
-export async function syncGivingMethods(methods: any): Promise<void> {
+export async function syncGivingMethods(methods: Record<string, unknown>): Promise<boolean> {
   const supa = getSupabase()
-  if (!supa) return
+  if (!supa) return false
   const accountId = await loadCurrentAccountId()
-  if (!accountId) return
-  await supa.from('accounts').update({ giving_methods: methods }).eq('id', accountId)
+  if (!accountId) return false
+  enqueue({ table: 'accounts', op: 'update', payload: { id: accountId, giving_methods: methods } })
+  flushSoon()
+  return true
+}
+
+/** Preserve the same retry/error reporting used by the transcript publisher. */
+export function syncServiceCompanion(settings: { streamUrl: string | null; audienceTrainingEnabled: boolean }): void {
+  if (!activeServiceId) return
+  enqueue({ table: 'services', op: 'update', payload: { id: activeServiceId, stream_url: settings.streamUrl, audience_training_enabled: settings.audienceTrainingEnabled } })
+  flushSoon()
 }
 
 export async function generateLinkCode(): Promise<{

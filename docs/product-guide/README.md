@@ -10,11 +10,25 @@ The first pass covers **59 task families across 22 areas** of the desktop app, p
 
 ## What is ready
 
-There are 46 tasks with UI and supporting code paths, 11 partial tasks with known gaps, and 2 surfaces needing deeper verification. Every full task record retains `runtimeTested: false` and `guideReady: false`: end-to-end hardware and service behavior has not been certified. The interactive guide preview and its isolated microphone demo have been exercised in the running desktop app; this is tracked separately in `guideImplementation`.
+Task status and verification detail are maintained per record in the product map. Earlier records retained `runtimeTested: false` and `guideReady: false`: end-to-end hardware and service behavior has not been certified. The interactive guide preview and its isolated microphone demo have been exercised in the running desktop app; this is tracked separately in `guideImplementation`.
 
 Each task records its entry point, controls, prerequisites, observable completion signals, limitations, and evidence files. Task IDs identify searchable help entries. Microphone guide anchors now bind to actual controls; IDs alone are not permission to perform an action. `wired` means a code path was found; it is not a release-readiness guarantee.
 
 The current desktop entry is `App` → `LiveHost` → `LiveScreen`. Although `LiveScreen` is under `src/design`, it is the active product surface. Some older modules, including Cloud and Themes, are still embedded in current Settings. The old search registry's route strings are not authoritative navigation destinations.
+
+## The Messenger: lessons, questions, nerves
+
+Built 13 October 2026 on top of the map. Design notes and the open questions are in [MESSENGER-PLAN.md](MESSENGER-PLAN.md).
+
+- **Lessons.** A task may carry `lesson`: ordered points, each with `say` (one line plus up to three written rephrases), an `anchor`, a `do` action and an optional `done` signal. `walkthroughFor` builds steps from the lesson; the old hand-written flows remain only for tasks without one. The panel's **another way** button cycles the rephrases; nothing is generated.
+- **Asks.** `asks` are the questions people actually type, typos included. They feed the local search in the app and on the site.
+- **Nerves.** Screens and cards carry `data-guide-area`. The last area the pointer crossed decides what the Messenger offers first ("Around here."). `near` on a task names the areas it belongs to.
+- **Troubles.** `troubles` maps a notice id (then `target:<destination>`) to a line and a task. When a warning or error notice arrives and no walkthrough is running, the Messenger says one line near the trigger with **show me**. Nothing unprompted otherwise.
+- **Progress.** Completed lessons are remembered per computer (`trilorah-messenger` in localStorage) and drop out of the starters. `since` marks the version a lesson arrived in; after an update the panel opens on "New since last time."
+- **Mid-service.** While listening is on, every step is point-only: no clicks, no typing. `consequential: true` marks tasks that put something on the wall; their publishing steps are always `choose`, and the never-click list in `guideWalkthroughs.ts` and the checker refuse them regardless.
+- **Site.** `web/src/app/guide` renders the same map: lessons grouped by area, the same search, the same rephrase button. Nothing is duplicated.
+- **Checks.** `node scripts/check-product-map.mjs --anchors` fails when a lesson names an anchor that is not in the code, when a click has no done signal or names a never-click control, or when the map's `packageVersion` disagrees with package.json. It lists controls that no lesson teaches yet, so a new feature cannot ship unnoticed. The full check still does the source-drift review.
+- **Dev hook.** In development, `window.__trilorahNotice({...})` raises a notice from the devtools console to see how the app and the Messenger answer it.
 
 ## Try the companion
 
@@ -51,7 +65,7 @@ No credential, sermon transcript or user media belongs in the source map. Genera
 - **Scripture publication is explicit.** Spoken catches can stage suggestions, but the runtime blocks automatic projection. Typing a reference and pressing Enter, or selecting a phrase-search result, can send scripture live immediately. A guide must identify these as publication actions.
 - **Audio is observable in stages.** Available input, selected input, phone connection, audio signal, listening state, and transcript arrival are different signals. A successful connection does not prove transcription works.
 - **Practice is not complete output isolation.** The practice sermon feeds simulated recognition text into the real downstream recognition flow. Do not advertise it as a separate safe sandbox for every action.
-- **Several current settings are incomplete.** Connected, Companion, and Giving use rows without persistence/action wiring. Pixabay/Pexels entry is wired; other generic credential controls remain presentational. Several Settings action buttons, including data maintenance and Identify, have no action handler. The Dashboard Outputs path is separately wired.
+- **Several current settings are incomplete.** Connected retains incomplete rows. Companion and Giving now hydrate and persist their fields; stream/audience and giving changes use the publishing queue. Authenticated cloud propagation remains a release check. Pixabay/Pexels entry is wired; other generic credential controls remain presentational. Several Settings action buttons, including data maintenance and Identify, have no action handler. The Dashboard Outputs path is separately wired.
 - **Recognition labels can be outdated.** Auto-mode thresholds and descriptive settings text do not override the engine's manual-only publication gate.
 - **Full notes are not currently an offline promise.** The experimental local provider delegates full note generation to cloud. The generic Hugging Face key control still has a provisioning gap.
 - **Some run shortcuts are unfinished.** The run-header Add media and Add note items have no matching action in their selection handler. The separately mapped segment note/queue paths have their own wiring.
@@ -262,3 +276,17 @@ The entry points below summarize the map. Read each full JSON record before impl
 | --- | --- | --- |
 | Explore the website product examples | unverified | /home > example workflow prompts; root / has account links |
 
+
+## Congregation companion update · October 17, 2026
+
+The public reader and paired operator remote now have separate website sections. The companion opens from a church's public link; the remote requires pairing and desktop approval to control presentation.
+
+- **Follow along:** live speech is shown with a five-second reading delay. One current word is highlighted, and already-received upcoming words are dimmed, including those in the same sentence. Hold reading freezes the reading view while the feed continues; Back to live returns to the delayed live position. There is no scrubber, text-playback speed, or media transport. Past services remain readable documents. If new speech arrives too late, the reader waits rather than predicting words.
+- **Scriptures:** choose from the service passage rail or Saved, or use the search icon to enter a reference. The reading page opens WEB text with verse numbers in the margin. Read the full chapter highlights the original passage, with a return control at the top and bottom. Save, Share and Download include the passage or full chapter currently shown. Saved records include the verse text on this device. The reader's translation may differ from the projector.
+- **Notes:** Church notes contains the church's published notes. My notes is a private notebook in this browser, with one editable note per service and access to notes from earlier services. Plain-text sharing/downloads include individual notes or the whole notebook.
+- **History:** loads all published transcript segments in pages, searches across them, and offers a complete text download. Past public services have stable service-specific links. The live word reader remains a bounded window for responsiveness.
+- **Storage:** notes and saved passage text use this browser's local storage, keyed by church, not by IP address. They are not account-synced. Clearing browser data removes them; download a copy to keep elsewhere. Published transcript history is fetched from the server and is not an offline cache. This is not a full offline installation.
+- **Setup:** Giving shows persisted destinations, without seeded examples, and queues edits for the connected account. Companion saves stream, audience-feedback and QR-caption fields. Stream settings reach the active service and new services. Publishing status remains the cloud-delivery check.
+- **Preview:** /live/preview delivers short sample phrases on a running clock, continuously exercising the live reading buffer. It is labelled as a live demo and uses isolated scriptures and notes. It does not subscribe to a service or send audience/correction records.
+
+Browser checks confirmed a note and saved passage survive reload, and VRC's real archive loads all 1,726 published segments and searches early-service text. Unit checks cover server pagination caps, partial failures, notebook persistence format, the 66-book WEB corpus, and queued publishing settings. Real phone, stream synchronization and authenticated settings propagation remain release checks.

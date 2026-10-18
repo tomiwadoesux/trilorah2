@@ -189,6 +189,7 @@ export function ArrangeList({
             <button
               type="button"
               role="checkbox"
+              data-guide={`arrange-${opt.id}`}
               aria-checked={isPicked}
               onClick={() => toggle(opt.id)}
               onKeyDown={(e) => {
@@ -305,6 +306,7 @@ export function ArrangeList({
       {commitLabel && (
         <button
           type="button"
+          data-guide="arrange-commit"
           /* aria-disabled, not disabled — the house rule: a refused control
              stays reachable and admits it heard you. See tokens.css. */
           aria-disabled={pickedIds.length === 0 || undefined}

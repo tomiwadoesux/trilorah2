@@ -52,6 +52,8 @@
 .ns-tile:not(.ns-tile-large) .nm-companion-cards{top:50%;left:50%;transform:translate(-50%,-50%) scale(.82)}
 .ns-tile:not(.ns-tile-large) .nm-editorial{top:50%;left:50%;transform:translate(-50%,-50%) scale(.78)}
 .ns-tile:not(.ns-tile-large) .nm-release-card{top:50%;left:50%;transform:translate(-50%,-50%) rotate(4deg) scale(.79)}
+.ns-panel-resources .ns-tile-guides .ns-media{left:50%}
+.ns-panel-resources .ns-tile-guides .nm-guide-cards{top:50%;left:50%;transform:translate(-50%,-50%) rotate(-5deg) scale(.6)}
 .ns-panel-resources .ns-tile-updates .ns-media{inset:0 0 96px;mask-image:linear-gradient(90deg,transparent,#000 18%,#000 86%,transparent)}
 .ns-panel-resources .ns-tile-updates .nm-release-card{top:53%;left:54%}
 .ns-panel-product :is(.ns-tile-scripture,.ns-tile-companion) .ns-media{inset:0 0 110px;mask-image:linear-gradient(90deg,transparent,#000 18%,#000 85%,transparent)}
@@ -69,3 +71,26 @@
 .nm-branding-swatches{display:flex;gap:5px}.nm-branding-swatches i{width:17px;height:17px;border-radius:50%;border:1px solid #ffffff22;background:#8fd3c0}.nm-branding-swatches i:nth-child(2){background:#bfb1e1}.nm-branding-swatches i:nth-child(3){background:#97cdde}.nm-branding-swatches i:nth-child(4){background:#e2b899}.nm-branding-swatches i:nth-child(5){background:#deadC7}
 .nm-branding-samples{display:flex;gap:5px;margin-top:13px}.nm-branding-samples span{width:40px;height:17px;border-radius:3px;background:linear-gradient(135deg,#99af91,#23473a)}.nm-branding-samples span:nth-child(2){background:linear-gradient(135deg,#9f93af,#29324c)}.nm-branding-samples span:nth-child(3){background:linear-gradient(135deg,#c9ae90,#51382c)}
 .nm-thumbnail-branding{background:conic-gradient(from 30deg,#8fd3c0,#bfb1e1,#e2b899,#8fd3c0)}
+
+/* The release stack stays inside its card, including on hover. */
+.ns-panel-resources .ns-tile-updates .ns-media{inset:8px 10px 83px;overflow:visible;mask-image:none;background:none}
+.ns-panel-resources .ns-tile-updates .ns-media::after{display:none}
+.ns-panel-resources .ns-tile-updates .nm-release-card,.nm-release-back{position:absolute;top:0;left:50%;width:198px;height:151px;transform-origin:50% 0;transition:transform 220ms var(--ns-ease)}
+.ns-panel-resources .ns-tile-updates .nm-release-card{z-index:3;transform:translate(-50%,5px) rotate(-3deg) scale(.56);box-shadow:0 12px 25px #0006}
+.nm-release-back{border:1px solid #a7c3ac45;border-radius:8px;box-shadow:0 8px 20px #0004;background:linear-gradient(145deg,#78927d,#283e32)}
+.nm-release-back::before{content:"";position:absolute;inset:18px 14px 53px;background:linear-gradient(130deg,#bdc4a495,#365d4a);border-radius:5px}
+.nm-release-back::after{content:"";position:absolute;left:16px;bottom:27px;width:105px;height:3px;border-radius:2px;background:#c4d6bb50;box-shadow:0 9px 0 #c4d6bb28}
+.nm-release-back-one{z-index:1;transform:translate(-57%,6px) rotate(-8deg) scale(.53)}
+.nm-release-back-two{z-index:2;transform:translate(-43%,6px) rotate(7deg) scale(.54);background:linear-gradient(140deg,#829686,#293c34)}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  .ns-header[data-keyboard=false] .ns-tile-updates:hover .nm-canvas{transform:none}
+  .ns-header[data-keyboard=false] .ns-tile-updates:hover .nm-release-card{transform:translate(-50%,1px) rotate(0deg) scale(.58)}
+  .ns-header[data-keyboard=false] .ns-tile-updates:hover .nm-release-back-one{transform:translate(-62%,6px) rotate(-12deg) scale(.53)}
+  .ns-header[data-keyboard=false] .ns-tile-updates:hover .nm-release-back-two{transform:translate(-36%,6px) rotate(11deg) scale(.54)}
+}
+
+/* Artwork blends down into the same bottom scrim as the blog cards. */
+.ns-bento-card .ns-tile .ns-media{mask-image:none}
+.ns-bento-card .ns-tile .ns-media::after{display:none}
+.ns-panel-product .ns-tile-branding .ns-media{inset:0 0 62px}
+.ns-panel-product :is(.ns-tile-scripture,.ns-tile-companion) .ns-media{inset:0 0 88px}
