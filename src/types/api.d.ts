@@ -553,7 +553,7 @@ interface WindowApi extends Partial<TriPackageApi> {
   /* Scripture ------------------------------------------------------ */
   getChapter(bookId: number, chapter: number, version?: string): Promise<ChapterResult>;
   getAvailableVersions(): Promise<string[]>;
-  /** Every Bible a picker lists: installed and online ones usable now, then NKJV/NIV greyed with why. Refreshes arrive on 'on-bible-versions-changed'. */
+  /** Installed and online Bible versions, with reasons for unavailable entries. Refreshes arrive on 'on-bible-versions-changed'. */
   getBibleVersions?(): Promise<{ versions: import('../../shared/bibleVersions').BibleVersionRow[]; online: { state: string; configured: boolean; text: string; versions: { code: string; title: string; attribution: string | null; chapters: number }[] } | null }>;
   /** The verses of book chapter:start-end this version has — a number it leaves out is skipped, not a stop. */
   getVerseRange?(book: string | number, chapter: number, start: number, end: number, version?: string): Promise<{ success: boolean; verses: { verse: number; text: string }[]; version?: string; error?: string }>;

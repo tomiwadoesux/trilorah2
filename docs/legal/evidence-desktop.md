@@ -84,6 +84,7 @@ These requests can reveal searches, selected content and ordinary request/IP met
 - LRCLIB lyric searches and retrieval: `electron/songs/lyricsSearch.ts:15`, `:153–198`. Requests include query and app User-Agent; no account is established by this path.
 - YouTube search query/API key and caption-page requests: `electron/songs/youtubeSearch.ts:12–30`; `electron/songs/youtubeCaptions.ts:316–346`.
 - YouVersion Bible API and local cache: `electron/data/bibleOnline/youversionClient.ts:26` and `electron/main.ts:1001–1018`. Selected Bible/chapter requests are external; no direct sermon-audio upload is established by that client.
+- NKJV/NLT through Biblika's SABDA upstream: `electron/data/bibleOnline/biblikaClient.ts` sends the passage and translation to `https://alkitab.sabda.org/api/passage.php`, without credentials or sermon audio. `biblikaBibles.ts` uses a separate bounded chapter cache and identifies NLT as the 1996 edition. Source reviewed on 25 October 2026; changes require a new app build.
 - OCR uses local Tesseract recognition; it may fetch traineddata when local assets are missing (`electron/media/ocrProcessor.ts:7–22`, `:32–45`). The audited path does not send the programme photograph to a cloud OCR service. Package/runtime verification is still needed before an unconditional offline claim.
 
 ## Statements to avoid and release checks

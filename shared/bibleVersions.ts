@@ -116,13 +116,12 @@ export function versionOptions(codes: readonly string[]): { value: string; label
 
 /**
  * One Bible as the pickers list it (main's get-bible-versions): what it is,
- * where it comes from, and — for NKJV/NIV before a YouVersion key unlocks
- * them — why it cannot be picked yet.
+ * where it comes from, and why an unavailable version cannot be picked yet.
  */
 export interface BibleVersionRow {
   code: string
   name: string
-  /** bible.db, or YouVersion through the local cache. */
+  /** bible.db, or an online provider through its local cache. */
   source: 'bundled' | 'online'
   available: boolean
   /** Why it is greyed: 'needs a YouVersion key'. */
@@ -163,7 +162,8 @@ export function versionRowOptions(rows: readonly BibleVersionRow[]): { value: st
   const usable = new Map(rows.filter((r) => r.available).map((r) => [r.code, r]))
   const options: { value: string; label: string; hint: string; disabled?: boolean }[] = sortVersions([...usable.keys()]).map((code) => {
     const row = usable.get(code)!
-    const name = versionInfo(code) ? versionHint(code) : row.name || code
+    // Provider titles can identify an edition, such as SABDA's NLT (1996).
+    const name = row.source === 'online' && row.name ? row.name : versionInfo(code) ? versionHint(code) : row.name || code
     return { value: code, label: code, hint: row.source === 'online' ? `${name} · online` : name }
   })
   /* Only the reason beside a greyed code: the list is 300px wide, and

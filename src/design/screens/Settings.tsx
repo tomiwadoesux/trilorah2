@@ -220,8 +220,8 @@ const PAGES: Page[] = [
       { kind: 'action', key: 'wipeProfiles', label: 'Pastor profiles', blurb: 'Delete every profile and everything it learned. Auto mode starts from nothing.', button: 'wipe profiles', tone: 'danger' },
       /* Filled from get-db-status: a count typed in here went stale the day a Bible was added. */
       { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: '', state: 'idle', text: 'bible.db', advanced: true },
-      /* NKJV and NIV through YouVersion. No key field: the key is built in (owner rule). */
-      { kind: 'status', key: 'onlineBibles', label: 'Online Bibles', blurb: 'NKJV and NIV from YouVersion, kept on this computer up to 30 days as they are used.', state: 'idle', text: 'checking…', advanced: true },
+      /* Online providers need no operator setup; YouVersion uses the build's key. */
+      { kind: 'status', key: 'onlineBibles', label: 'Online Bibles', blurb: 'NKJV and NLT (1996) from SABDA, plus available YouVersion Bibles. Chapters stay on this computer for up to 30 days after loading.', state: 'idle', text: 'checking…', advanced: true },
       { kind: 'action', key: 'rebuildIndex', label: 'Search index', blurb: 'Rebuild if verse search returns nothing for a reference you know exists.', button: 'rebuild', advanced: true },
       { kind: 'action', key: 'openLogs', label: 'Logs', blurb: '', button: 'open logs folder', advanced: true },
       { kind: 'status', key: 'version', label: 'Version', blurb: '', state: 'idle', text: 'trilorah 0.4.1 · up to date', advanced: true },
@@ -289,7 +289,7 @@ function PageBody({ page }: { page: Page }) {
      neither — pick one and every verse on the projector reads "not found". */
   const [versions, setVersions] = useState<string[] | null>(null);
   const [dbStatus, setDbStatus] = useState<{ connected: boolean; verses?: number; versions?: string[] } | null>(null);
-  /* The same list with names and the online ones (NKJV/NIV greyed with the reason until a key unlocks them). */
+  /* Detailed names and availability from the installed database and online providers. */
   const [bibleRows, setBibleRows] = useState<{ versions: BibleVersionRow[]; online: { state: string; text: string } | null } | null>(null);
   /* Same rule for the language pack: offering a language the app has no
      pack for means a church picks it and the resolver quietly keeps
@@ -328,13 +328,18 @@ function PageBody({ page }: { page: Page }) {
   const outputs = useOutputsStatus(page.rows.some((r) => r.kind === 'displays'));
   const withLiveOptions = (r: Row): Row => {
     if (r.key === 'displayVersion' && versions && r.kind === 'select') {
-      const installed: SelectOption[] = sortVersions(versions).map((v) => ({ value: v, label: versionLabel(v) }));
+      const installed: SelectOption[] = sortVersions(versions).map((v) => {
+        const row = bibleRows?.versions.find((entry) => entry.code === v && entry.available);
+        return row?.source === 'online'
+          ? { value: v, label: `${v} · ${row.name}`, hint: 'online' }
+          : { value: v, label: versionLabel(v) };
+      });
       /* A saved default this computer does not have (a .tri package can set
          one) used to read as a blank "select option". Catches quietly come
          in the fallback, so this is where the operator learns why: the
          saved one is listed for what it is, and cannot be picked again. */
       const saved = typeof values.displayVersion === 'string' ? values.displayVersion : '';
-      /* NKJV/NIV a key has not unlocked: listed for what they are, greyed with the reason. */
+      /* Unavailable online versions stay visible with the provider's reason. */
       for (const row of bibleRows?.versions ?? []) {
         if (!row.available && row.code !== saved.trim().toUpperCase()) {
           // The same short form as "· not on this computer" below: the code, and why.
@@ -354,7 +359,7 @@ function PageBody({ page }: { page: Page }) {
     if (r.key === 'onlineBibles' && r.kind === 'status' && bibleRows) {
       const state = bibleRows.online?.state ?? 'no-key';
       return { ...r, state: state === 'ready' ? 'ok' : state === 'key-rejected' ? 'danger' : state === 'checking' ? 'idle' : 'warn',
-        text: bibleRows.online?.text ?? 'no YouVersion key in this build' };
+        text: bibleRows.online?.text ?? 'online Bibles unavailable' };
     }
     if (r.key === 'engineLanguage' && languages && 'options' in r) return { ...r, options: languages };
     if (r.kind === 'displays' && window.api) return { ...r, displays: outputs ? displayMapFrom(outputs) : [] };

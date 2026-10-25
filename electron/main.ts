@@ -59,6 +59,9 @@ import { alreadyShowing, VerseDelivery, detectionKey, readVersePreview, readVers
 import { sortVersions, versionLabel, versionName, type BibleVersionRow } from '../shared/bibleVersions'
 import { chooseVersion } from './data/versionChoice'
 import { OnlineBibles, WANTED_ONLINE, failureText, type OnlineFailure } from './data/bibleOnline/onlineBibles'
+import { BiblikaBibles } from './data/bibleOnline/biblikaBibles'
+import { BiblikaClient } from './data/bibleOnline/biblikaClient'
+import { OnlineBibleLibrary, type OnlineBibleProvider } from './data/bibleOnline/onlineBibleLibrary'
 import { OnlineBibleCache } from './data/bibleOnline/onlineCache'
 import { YouVersionClient } from './data/bibleOnline/youversionClient'
 import { YOUVERSION_DEFAULTS } from './data/bibleOnline/youversionDefaults'
@@ -877,9 +880,8 @@ function reEmitCurrentVerseInVersion(version: string, replaces?: string): void {
 
 /* ---- Which Bible: the church's default, this service's, what is installed ---- */
 
-/** NKJV, NIV… read from YouVersion through userData/bibles/online-cache.db (see openOnlineBibles). */
-let onlineBibles: OnlineBibles | null = null
-let onlineDb: Database.Database | null = null
+/** Online translations, each read through its own provider cache. */
+let onlineBibles: OnlineBibleLibrary<Database.Database> | null = null
 
 /** The codes bible.db holds. The bundled file does not change while the app runs. */
 let installedVersionCache: string[] | null = null
@@ -895,7 +897,7 @@ function bundledVersions(): string[] {
     return ['KJV']
   }
 }
-/** Every Bible a verse can be read in: bible.db's, plus the online ones the build's key unlocks. */
+/** Every Bible a verse can be read in: bible.db's, SABDA and enabled YouVersion versions. */
 function installedVersions(): string[] {
   const online = onlineBibles?.codes() ?? []
   return online.length ? sortVersions([...bundledVersions(), ...online]) : bundledVersions()
@@ -986,7 +988,7 @@ function setSessionVersion(requested: string | null, restage = false): string {
   return version
 }
 
-/* ---- Online Bibles (YouVersion): cache-first, never a wait on the wall ---- */
+/* ---- Online Bibles: cache-first, never a wait on the wall ---- */
 
 /** How long an operator's press waits for a chapter not kept yet, before it goes out in the fallback. */
 const PRESS_FETCH_MS = 4000
@@ -994,19 +996,34 @@ const PRESS_FETCH_MS = 4000
 const READ_FETCH_MS = 8000
 
 /**
- * Open the cache and ask YouVersion (at most daily) what the build's key
- * unlocks. Nothing here blocks start-up: until the answer comes the online
- * Bibles are listed greyed ("checking YouVersion…").
+ * SABDA supplies NKJV/NLT without setup. YouVersion adds the translations
+ * enabled for the build's key. Separate caches preserve source and edition.
  */
 function openOnlineBibles(): void {
   if (onlineBibles) return
   try {
     const dir = path.join(app.getPath('userData'), 'bibles')
     fs.mkdirSync(dir, { recursive: true })
-    onlineDb = new Database(path.join(dir, 'online-cache.db'))
-    const cache = new OnlineBibleCache(onlineDb)
-    cache.init()
-    onlineBibles = new OnlineBibles({
+    const sources: { provider: OnlineBibleProvider; db: Database.Database }[] = []
+    const openSource = (filename: string, make: (cache: OnlineBibleCache) => OnlineBibleProvider) => {
+      let connection: Database.Database | undefined
+      try {
+        connection = new Database(path.join(dir, filename))
+        const cache = new OnlineBibleCache(connection)
+        cache.init()
+        sources.push({ provider: make(cache), db: connection })
+      } catch (error) {
+        connection?.close()
+        console.error(`❌ Online Bible cache ${filename} could not open:`, error)
+      }
+    }
+    // First provider wins for NKJV/NLT; a YouVersion refresh cannot erase these chapters.
+    openSource('biblika-cache.db', (cache) => new BiblikaBibles({
+      cache, bundled: bundledVersions,
+      client: new BiblikaClient({ userAgent: `Trilorah/${app.getVersion()} (+https://trilorah.com)` }),
+      onChange: onOnlineBiblesChanged,
+    }))
+    openSource('online-cache.db', (cache) => new OnlineBibles({
       cache,
       // A developer's .env.local first, then the key compiled into the build.
       appKey: () => process.env.YOUVERSION_APP_KEY?.trim() || YOUVERSION_DEFAULTS.appKey,
@@ -1019,14 +1036,16 @@ function openOnlineBibles(): void {
       }),
       onChange: onOnlineBiblesChanged,
       log: (line) => console.log(line),
-    })
+    }))
+    if (!sources.length) return
+    onlineBibles = new OnlineBibleLibrary(sources)
+    onOnlineBiblesChanged()
     void onlineBibles.refresh()
     // Hourly: drop chapters past their 30 days, and re-ask once the day's listing is old.
     setInterval(() => { onlineBibles?.purgeStale(); void onlineBibles?.refresh() }, 60 * 60_000).unref()
   } catch (error) {
-    console.error('❌ Online Bible cache could not open — NKJV/NIV unavailable:', error)
+    console.error('❌ Online Bible library could not open:', error)
     onlineBibles = null
-    onlineDb = null
   }
 }
 
@@ -1041,8 +1060,8 @@ function onOnlineBiblesChanged(): void {
   announceVersion()
 }
 
-/** Picker rows: what can be read now, then NKJV and NIV greyed with the reason when they cannot. */
-function bibleVersionRows(): { versions: BibleVersionRow[]; online: ReturnType<OnlineBibles['status']> | null } {
+/** Every provider uses the same picker rows; unavailable versions retain a reason. */
+function bibleVersionRows(): { versions: BibleVersionRow[]; online: ReturnType<OnlineBibleLibrary<Database.Database>['status']> | null } {
   const rows: BibleVersionRow[] = installedVersions().map((code) => {
     const online = onlineBibles?.version(code)
     return online
@@ -1052,14 +1071,14 @@ function bibleVersionRows(): { versions: BibleVersionRow[]; online: ReturnType<O
   for (const code of WANTED_ONLINE) {
     if (rows.some((r) => r.code === code)) continue
     rows.push({ code, name: versionName(code), source: 'online', available: false,
-      note: onlineBibles ? onlineBibles.unavailableNote(code) : 'needs a YouVersion key' })
+      note: onlineBibles ? onlineBibles.unavailableNote(code) : 'online Bibles unavailable' })
   }
   return { versions: rows, online: onlineBibles?.status() ?? null }
 }
 
 /** The database a version's verses are read from: bible.db, or the online cache. */
 function bibleFor(version: string): Database.Database | null {
-  return onlineDb && onlineBibles?.has(version) ? onlineDb : db
+  return onlineBibles?.databaseFor(version) ?? db
 }
 
 /** The one chapter a reference reads from (readVersePreview never crosses chapters). */
@@ -1089,8 +1108,9 @@ function sayOnlineFallback(version: string, fallback: string, reason: OnlineFail
   const key = `${version}:${reason}`
   if (Date.now() - (reportedOnlineMisses.get(key) ?? -Infinity) < 60_000) return
   reportedOnlineMisses.set(key, Date.now())
-  console.warn(`📖 ${version} chapter unavailable (${failureText(reason)}) — showing ${fallback}`)
-  setTimeout(() => emitEngineEvent('on-bible-notice', { text: `${version}: ${failureText(reason)} — using ${fallback}`, requested: version, using: fallback }), 0)
+  const detail = onlineBibles?.failureText(version, reason) ?? failureText(reason)
+  console.warn(`📖 ${version} chapter unavailable (${detail}) — showing ${fallback}`)
+  setTimeout(() => emitEngineEvent('on-bible-notice', { text: `${version}: ${detail} — using ${fallback}`, requested: version, using: fallback }), 0)
 }
 
 /**
@@ -1150,7 +1170,7 @@ function versionForCatch(reference: string, version: string, onReady?: () => voi
 async function ensureReadable(version: string, bookId: number, chapter: number): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!onlineBibles?.has(version)) return { ok: true }
   const result = await onlineBibles.ensureChapter(version, bookId, chapter, READ_FETCH_MS)
-  return result.ok ? result : { ok: false, error: `${version} couldn’t load — ${failureText(result.reason)}.` }
+  return result.ok ? result : { ok: false, error: `${version} couldn’t load — ${onlineBibles.failureText(version, result.reason)}.` }
 }
 
 const suggestionTracker = new SuggestionTracker()
@@ -3321,7 +3341,7 @@ ipcMain.handle('window-toggle-fullscreen', (event) => {
 })
 
 ipcMain.handle('get-available-versions', () => installedVersions())
-/* The pickers' rows: names, online or bundled, and NKJV/NIV greyed with the reason until a key unlocks them. */
+/* Picker names, sources and availability from the installed database and online providers. */
 ipcMain.handle('get-bible-versions', () => bibleVersionRows())
 
 let worshipTimeoutHandle: NodeJS.Timeout | null = null
@@ -4277,7 +4297,7 @@ app.whenReady().then(() => {
   } else {
     console.error('❌ bible.db not found! Please copy bible.db to the project root or run `npm run bible:build`')
   }
-  // NKJV, NIV… from YouVersion: a local cache, filled only as chapters are needed.
+  // Online translations: separate provider caches filled as chapters are needed.
   openOnlineBibles()
   console.log('🧠 Connecting to ML resolver...')
   connectML(handleMLVerseDetection)

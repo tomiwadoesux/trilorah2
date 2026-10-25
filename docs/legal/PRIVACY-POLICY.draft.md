@@ -62,7 +62,7 @@ Phone microphone pairing exchanges the phone/computer names, identifiers and con
 
 The separate phone presentation remote connects to the running desktop and uses pairing approval and a saved device token. An approved remote can receive meaningful service information, including preview/live content, lyrics, scripture suggestions and service order, and perform supported control actions. The desktop's remote controls allow paired access to be revoked.
 
-Online searches and downloads contact the relevant provider. Depending on the feature used, these can include Pixabay, Pexels, YouTube, LRCLIB and YouVersion, as well as model/runtime download hosts. Requests can include searches, selected content, a configured provider key and ordinary network/request information.
+Online searches and downloads contact the relevant provider. Depending on the feature used, these can include Pixabay, Pexels, YouTube, LRCLIB, YouVersion and SABDA, as well as model/runtime download hosts. Requests can include searches, selected content, a configured provider key and ordinary network/request information. NKJV and NLT chapter requests to SABDA contain the selected translation and passage; they do not include an API key or sermon audio.
 
 Opening an embedded church stream connects you to its video provider, such as YouTube or Facebook. Giving links can take you to a church's chosen payment provider. Those providers handle information under their own arrangements; opening a giving link is separate from processing a donation through Trilorah.
 

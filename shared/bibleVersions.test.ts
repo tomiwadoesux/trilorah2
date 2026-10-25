@@ -58,7 +58,7 @@ describe('the Bible version catalogue', () => {
     ])
     expect(options).toEqual([
       { value: 'KJV', label: 'KJV', hint: 'King James Version' },
-      { value: 'NIV', label: 'NIV', hint: 'New International Version · online' },
+      { value: 'NIV', label: 'NIV', hint: 'Invented NIV title · online' },
       { value: 'TPT', label: 'TPT', hint: 'Invented Passion title · online' },
       { value: 'NKJV', label: 'NKJV', hint: 'needs a YouVersion key', disabled: true },
     ])

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "product": "Trilorah",
   "reviewedOn": "2026-10-18",
-  "packageVersion": "0.4.8",
+  "packageVersion": "0.4.10",
   "baseCommit": "f91b813dc2fa6547d4455d96990baa9863fa3822",
   "includesWorkingTreeChanges": true,
   "scope": "Source-reviewed user task families across the current desktop, phone, and web surfaces. This is the first product map, not an exhaustive control registry or a runtime-certified walkthrough library.",
@@ -2259,7 +2259,8 @@
         "Text loads in selected version"
       ],
       "limitations": [
-        "Changes current service translation, not the church saved default. Online Bible loading can fail."
+        "Changes current service translation, not the church saved default. Online Bible loading can fail.",
+        "NKJV and NLT (1996) use SABDA without a key. First reads need internet; cached chapters remain for up to 30 days, at most 120 per version."
       ],
       "status": "wired",
       "sources": [
@@ -2270,6 +2271,14 @@
         {
           "path": "src/design/screens/Live.tsx",
           "symbol": "setVersion"
+        },
+        {
+          "path": "electron/data/bibleOnline/onlineBibleLibrary.ts",
+          "symbol": "OnlineBibleLibrary"
+        },
+        {
+          "path": "electron/data/bibleOnline/biblikaBibles.ts",
+          "symbol": "BiblikaBibles"
         }
       ],
       "runtimeTested": false,
@@ -2364,7 +2373,7 @@
             "Verses is the first tab.",
             "Open Verses.",
             "Left rail, Verses.",
-            "Scripture lives under Verses."
+            "NKJV and NLT (1996) load online. Start in Verses."
           ],
           "anchor": "library-scriptures",
           "do": "click",
@@ -3312,6 +3321,7 @@
         "Language choices must use getAvailableLanguages; do not infer support from hardcoded fallback list",
         "UI remains English-only",
         "Unavailable Bibles are disabled, not promised",
+        "NKJV and NLT (1996) are offered through SABDA without an API key; an uncached chapter needs internet",
         "Interface language is explicitly not implemented; UI remains English",
         "Speech language is a free-text provider code, not proof the provider supports it",
         "Provider-specific behavior requires runtime verification"

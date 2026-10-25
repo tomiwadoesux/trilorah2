@@ -63,9 +63,27 @@ Fetched through bible.helloao.org (eBible's own API) by
 `scripts/build-bible-db.mjs`. Licensed translations (NKJV, NIV, ESV, NLT, NASB,
 AMP) are not bundled.
 
+## NKJV and NLT through Biblika's SABDA source
+
+NKJV and NLT are fetched one chapter at a time from SABDA's passage API,
+the upstream used by [biblika/biblika-api](https://github.com/biblika/biblika-api/blob/main/api/passage.go).
+The old Biblika Heroku endpoint returned 404 when checked on 25 October 2026.
+Trilorah's adapter calls the upstream directly and does not run or bundle the Go server.
+Its separate cache, `userData/bibles/biblika-cache.db`, retains chapters for at
+most 30 days and 120 chapters per version. Full translation files are not bundled.
+
+- NKJV: New King James Version, copyright © 1982 Thomas Nelson.
+- NLT: New Living Translation, copyright © 1996 Tyndale Charitable Trust.
+  SABDA [identifies its NLT module as the 1996 edition](https://labs.sabda.org/Alkitab).
+
+All rights reserved by the respective translation owners. Biblika's MIT code
+license does not license the Bible text. Provider availability does not establish
+redistribution rights; publisher/provider terms for a public release remain an
+owner review item. The app retains translation initials and copyright attribution.
+
 ## Licensed translations through YouVersion
 
-NKJV, NIV and any other Bible the build's app key is licensed for are read
+NIV and other Bibles the build's app key is licensed for are read
 from the YouVersion Platform API (https://developers.youversion.com), free for
 non-commercial apps under the YouVersion Platform Terms of Use. Their text is
 never bundled: a chapter is fetched when it is first needed and kept on the
@@ -74,6 +92,8 @@ church's computer (`userData/bibles/online-cache.db`) for at most 30 days and
 version is no longer licensed. Each version's own copyright line, as YouVersion
 supplies it, is shown under its text in the scripture library, and its initials
 follow every quotation on the projector. Code: `electron/data/bibleOnline/`.
+SABDA takes precedence for NKJV/NLT when its cache is available, so those versions
+do not switch editions or share cached text with YouVersion.
 
 ## @lucasmarkes/hairline
 

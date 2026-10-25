@@ -23,8 +23,8 @@ import { VERSION_CODE_RE, versionName } from '../../../shared/bibleVersions'
 import { YouVersionClient, YouVersionError, type YouVersionBible } from './youversionClient'
 import type { CachedVersion, OnlineBibleCache } from './onlineCache'
 
-/** The two a church asks for by name. Every picker lists them, unlocked or not. */
-export const WANTED_ONLINE: readonly string[] = ['NKJV', 'NIV']
+/** Requested translations remain visible even when their provider is unavailable. */
+export const WANTED_ONLINE: readonly string[] = ['NKJV', 'NIV', 'NLT']
 
 /** YouVersion's own ids, so these are recognised whatever their abbreviation field says. */
 const KNOWN_IDS: Readonly<Record<number, string>> = { 111: 'NIV', 114: 'NKJV' }
@@ -54,15 +54,15 @@ export interface OnlineStatus {
 }
 
 /** Why a chapter could not come, in the words the service log uses. */
-export function failureText(reason: OnlineFailure): string {
+export function failureText(reason: OnlineFailure, provider = 'YouVersion'): string {
   switch (reason) {
     case 'no-key': return 'no YouVersion key in this build'
     case 'key-rejected': return 'YouVersion refused the key'
     case 'not-licensed': return 'not licensed for this app'
-    case 'not-found': return 'YouVersion has no such chapter'
-    case 'rate-limited': return 'YouVersion asked us to wait'
-    case 'timeout': return 'YouVersion was too slow'
-    case 'offline': return 'YouVersion is unreachable'
+    case 'not-found': return `${provider} has no such chapter`
+    case 'rate-limited': return `${provider} asked us to wait`
+    case 'timeout': return `${provider} was too slow`
+    case 'offline': return `${provider} is unreachable`
     default: return 'not an online Bible'
   }
 }
@@ -112,6 +112,7 @@ const OK: EnsureResult = { ok: true }
 const fail = (reason: OnlineFailure): EnsureResult => ({ ok: false, reason })
 
 export class OnlineBibles {
+  readonly providerName: string = 'YouVersion'
   private state: OnlineState = 'checking'
   private blockedUntil = 0
   private readonly inflight = new Map<string, Promise<EnsureResult>>()
