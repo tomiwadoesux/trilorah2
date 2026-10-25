@@ -46,6 +46,15 @@ import { replaceBibleVersion } from './lib/replace-bible-version.mjs'
 import { HELLOAO, HELLOAO_SOURCES, chapterRows, validateBibleRows, rowsSha256 } from './lib/helloao-bible.mjs'
 import { tsImport } from 'tsx/esm/api'
 
+if (process.env.GITHUB_ACTIONS === 'true') {
+  process.on('uncaughtException', (error) => {
+    // Put the useful failure in the job summary as well as its detailed log.
+    console.error(`::error::${String(error.message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`)
+    console.error(error)
+    process.exit(1)
+  })
+}
+
 const { downloadSabdaBible, SABDA_SOURCES } = await tsImport('./lib/sabda-bible.ts', import.meta.url)
 
 const ROOT = path.join(import.meta.dirname, '..')
