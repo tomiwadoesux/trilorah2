@@ -2,7 +2,7 @@
 export const DOWNLOADED_BIBLES = {
   NKJV: {
     name: 'New King James Version',
-    attribution: 'New King James Version © 1982 Thomas Nelson. All rights reserved. Text from SABDA.',
+    attribution: 'New King James Version © 1982 Thomas Nelson. All rights reserved.',
   },
   NLT: {
     name: 'New Living Translation (1996)',

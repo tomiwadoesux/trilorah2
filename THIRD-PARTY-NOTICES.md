@@ -63,9 +63,11 @@ Fetched through bible.helloao.org (eBible's own API) by
 `scripts/build-bible-db.mjs`. NKJV and NLT have the separate notices below;
 NIV, ESV, NASB and AMP are not downloaded into the bundled database by this builder.
 
-## NKJV and NLT through Biblika's SABDA source
+## Downloaded NKJV and NLT
 
-The Bible builder downloads complete NKJV and NLT translations from SABDA's passage API,
+The Bible builder downloads NKJV as a pinned, checksum-verified JSON file from
+[thiagobodruk/bible](https://github.com/thiagobodruk/bible/tree/98a52a5439c1cfe566676e8508795834424a5f3a).
+It downloads NLT (1996) from SABDA's passage API,
 the upstream used by [biblika/biblika-api](https://github.com/biblika/biblika-api/blob/main/api/passage.go).
 The old Biblika Heroku endpoint returned 404 when checked on 25 October 2026.
 Trilorah's adapter calls the upstream directly and does not run or bundle the Go server.

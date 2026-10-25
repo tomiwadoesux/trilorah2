@@ -67,6 +67,19 @@ describe('complete offline Bible downloads', () => {
     expect(rows).toContainEqual([65, 22, 21, 'Invented verse 21.'])
   })
 
+  it('recovers a stalled batch with individual chapter downloads', async () => {
+    const client = {
+      chapter: vi.fn(async () => verses()),
+      chapters: vi.fn(async (_code: string, book: number, first: number, last: number) => {
+        if (book === 0 && first === 1) throw new BiblikaError('timeout', 'Stalled range')
+        return Array.from({ length: last - first + 1 }, (_, i) => ({ chapter: first + i, verses: verses() }))
+      }),
+    }
+    const rows = await downloadSabdaBible('NKJV', { client })
+    expect(rows).toHaveLength(1189 * 26)
+    expect(client.chapter).toHaveBeenCalledTimes(10)
+  })
+
   it('refuses malformed verses and does not continue starting requests after failure', async () => {
     const client = { chapter: vi.fn(async () => [{ verse: 1, text: '<html>Unavailable</html>' }]) }
     await expect(downloadSabdaBible('NLT', { client, concurrency: 1 })).rejects.toThrow('Invalid SABDA verse')

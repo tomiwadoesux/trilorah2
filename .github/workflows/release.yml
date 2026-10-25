@@ -68,7 +68,7 @@ jobs:
           node scripts/verify-downloaded-bibles.mjs
 
       - name: Check offline translations and attribution
-        run: npm test -- electron/data/sabdaDownload.test.ts electron/data/bibleOnline shared/bibleVersions.test.ts src/lib/versionCredits.test.ts shared/verseDisplay.test.ts
+        run: npm test -- electron/data/nkjvDownload.test.ts electron/data/sabdaDownload.test.ts electron/data/bibleOnline shared/bibleVersions.test.ts src/lib/versionCredits.test.ts shared/verseDisplay.test.ts
 
       # Offline speech. whisper-node ships source, not a binary; without this
       # the Mac build has no local recogniser. Windows has no `make`, so there

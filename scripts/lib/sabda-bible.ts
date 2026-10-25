@@ -6,7 +6,7 @@ import { DOWNLOADED_BIBLES, type DownloadedBibleCode } from '../../shared/downlo
 import { CHAPTER_COUNTS, type BibleRow } from './usfm-bible.mjs'
 import { validateBibleRows } from './helloao-bible.mjs'
 
-export const SABDA_SOURCES = Object.fromEntries(Object.entries(DOWNLOADED_BIBLES).map(([code, source]) => [code, {
+export const SABDA_SOURCES = Object.fromEntries(Object.entries(DOWNLOADED_BIBLES).filter(([code]) => code === 'NLT').map(([code, source]) => [code, {
   ...source,
   id: `sabda-${code.toLowerCase()}`,
   sourceUrl: SABDA_PASSAGE_API,
@@ -62,20 +62,33 @@ export async function downloadSabdaBible(code: DownloadedBibleCode, options: {
         }
       }
       if (kept.size !== last - first + 1) {
+        const save = async (chapter: number, verses: ParsedVerse[]) => {
+          kept.set(chapter, chapterRows(verses, book, chapter))
+          const file = fileFor(chapter)
+          if (file) {
+            await fs.mkdir(path.dirname(file), { recursive: true })
+            await fs.writeFile(file, JSON.stringify({ code, book, chapter, verses }))
+          }
+        }
         for (let attempt = 0; ; attempt++) {
           if (failed) return
           while (Date.now() < blockedUntil) await sleep(blockedUntil - Date.now())
           try {
+            // A stalled range must not hold up an otherwise complete download.
+            // Retry its missing chapters individually and keep each successful one.
+            if (attempt > 0 && last > first) {
+              for (let chapter = first; chapter <= last; chapter++) {
+                if (failed) return
+                while (Date.now() < blockedUntil) await sleep(blockedUntil - Date.now())
+                if (!kept.has(chapter)) await save(chapter, await client.chapter(code, book, chapter))
+              }
+              break
+            }
             const loaded = client.chapters ? await client.chapters(code, book, first, last)
               : [{ chapter: first, verses: await client.chapter(code, book, first) }]
             if (loaded.length !== last - first + 1 || loaded.some((v, i) => v.chapter !== first + i)) throw new Error('Incomplete SABDA chapter range')
             for (const { chapter, verses } of loaded) {
-              kept.set(chapter, chapterRows(verses, book, chapter))
-              const file = fileFor(chapter)
-              if (file) {
-                await fs.mkdir(path.dirname(file), { recursive: true })
-                await fs.writeFile(file, JSON.stringify({ code, book, chapter, verses }))
-              }
+              await save(chapter, verses)
             }
             break
           } catch (error) {

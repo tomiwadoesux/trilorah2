@@ -7,7 +7,7 @@
       "sourceUrl": "https://bible.helloao.org/api/ENGWEBP/books.json",
       "licenseUrl": "https://ebible.org/Scriptures/details.php?id=engwebp",
       "rights": "Public domain (no copyright).",
-      "retrieved": "2026-10-07",
+      "retrieved": "2026-10-25",
       "rowsSha256": "b9fa71e9ddc445b195e20cae7f01ce0ceaec720035504e62f2129a7268d02bbd",
       "books": 66,
       "chapters": 1189,
@@ -20,7 +20,7 @@
       "licenseUrl": "https://berean.bible/terms.htm",
       "rights": "Dedicated to the public domain on 30 April 2023; all uses freely permitted. Only the verbatim text may carry the Berean name.",
       "attribution": "The Holy Bible, Berean Standard Bible, BSB is produced in cooperation with Bible Hub, Discovery Bible, OpenBible.com, and the Berean Bible Translation Committee. This text of God's Word has been dedicated to the public domain.",
-      "retrieved": "2026-10-07",
+      "retrieved": "2026-10-25",
       "rowsSha256": "4c823f035d8b13b6aa26227b742d4ff30d0bed5a6809949f845f8d41d86c3a97",
       "books": 66,
       "chapters": 1189,
@@ -32,11 +32,36 @@
       "sourceUrl": "https://bible.helloao.org/api/eng_asv/books.json",
       "licenseUrl": "https://ebible.org/Scriptures/details.php?id=eng-asv",
       "rights": "Public domain.",
-      "retrieved": "2026-10-07",
+      "retrieved": "2026-10-25",
       "rowsSha256": "612d01a352a944d9033e3a16690aed1cf4124a079a1828ba0a44ed8f462370fb",
       "books": 66,
       "chapters": 1189,
       "verses": 31086
+    },
+    "NLT": {
+      "translation": "New Living Translation (1996)",
+      "sourceId": "sabda-nlt",
+      "sourceUrl": "https://alkitab.sabda.org/api/passage.php",
+      "rights": "Copyright retained by the translation owner. All rights reserved; source availability does not grant redistribution rights.",
+      "attribution": "Holy Bible, New Living Translation © 1996 Tyndale Charitable Trust. All rights reserved. Text from SABDA.",
+      "retrieved": "2026-10-25",
+      "rowsSha256": "ce192150645f887fafd891a8c8a309fbb930b0edd84a203d757050e5e0a407c0",
+      "books": 66,
+      "chapters": 1189,
+      "verses": 31102
+    },
+    "NKJV": {
+      "translation": "New King James Version",
+      "sourceId": "thiagobodruk-en_nkjv-98a52a5439c1cfe566676e8508795834424a5f3a",
+      "sourceUrl": "https://raw.githubusercontent.com/thiagobodruk/bible/98a52a5439c1cfe566676e8508795834424a5f3a/json/en_nkjv.json",
+      "sourceSha256": "0ebf88a5b6b93b92d6402a252f1a7d2349278d3916e9a1e31374ddbf53085ac1",
+      "rights": "Copyright retained by Thomas Nelson. All rights reserved; source availability does not grant redistribution rights.",
+      "attribution": "New King James Version © 1982 Thomas Nelson. All rights reserved.",
+      "retrieved": "2026-10-25",
+      "rowsSha256": "d85efc08f9bdf5a217da928aa75425c6b47ff69cb90f983f122ed44d33c88428",
+      "books": 66,
+      "chapters": 1189,
+      "verses": 31102
     }
   }
 }

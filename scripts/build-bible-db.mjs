@@ -10,7 +10,8 @@
  *   thiagobodruk/bible (JSON) — BBE and the multilingual set
  *   bible.helloao.org (eBible's own API) — WEB, BSB and ASV
  *     (scripts/lib/helloao-bible.mjs; provenance in electron/data/bible-sources.json)
- * NKJV and NLT (1996) are downloaded in full from SABDA into the same file.
+ * NKJV comes from a pinned full JSON file; NLT (1996) comes from SABDA.
+ * Both are downloaded in full into the same database.
  * Their publisher copyrights and attribution remain separate from the code
  * licence. Downloading text does not establish permission to redistribute it.
  *
@@ -44,6 +45,7 @@ import { createHash } from 'node:crypto'
 import { KJV_USFM_URL, parseKjvArchive } from './lib/usfm-bible.mjs'
 import { replaceBibleVersion } from './lib/replace-bible-version.mjs'
 import { HELLOAO, HELLOAO_SOURCES, chapterRows, validateBibleRows, rowsSha256 } from './lib/helloao-bible.mjs'
+import { NKJV_SOURCE, downloadNkjvBible } from './lib/nkjv-bible.mjs'
 import { tsImport } from 'tsx/esm/api'
 
 if (process.env.GITHUB_ACTIONS === 'true') {
@@ -67,7 +69,7 @@ const valueOf = (flag) => {
 }
 const DB_PATH = path.resolve(valueOf('--database') ?? path.join(ROOT, 'bible.db'))
 const ONLY_VERSION = valueOf('--version')?.toUpperCase()
-if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB', 'BSB', 'ASV', ...Object.keys(SABDA_SOURCES)].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
+if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB', 'BSB', 'ASV', 'NKJV', ...Object.keys(SABDA_SOURCES)].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
 const CACHE_DIR = valueOf('--cache') ? path.resolve(valueOf('--cache')) : null
 const SOURCES_JSON = path.join(ROOT, 'electron', 'data', 'bible-sources.json')
 
@@ -154,6 +156,7 @@ function recordProvenance(version, rows, source = HELLOAO_SOURCES[version]) {
     translation: source.name,
     sourceId: source.id,
     sourceUrl: source.sourceUrl ?? `${HELLOAO}/${source.id}/books.json`,
+    ...(source.sourceSha256 ? { sourceSha256: source.sourceSha256 } : {}),
     ...(source.licenseUrl ? { licenseUrl: source.licenseUrl } : {}),
     rights: source.rights,
     ...(source.attribution ? { attribution: source.attribution } : {}),
@@ -238,6 +241,14 @@ for (const version of Object.keys(HELLOAO_SOURCES).filter(v => !ONLY_VERSION || 
   recordProvenance(version, rows)
   console.log(`\n✅ ${version}: ${rows.length} verses imported`)
   if (descriptive.length) console.log(`   kept descriptive text inside ${descriptive.length} verses: ${descriptive.slice(0, 12).join(', ')}${descriptive.length > 12 ? ' …' : ''}`)
+}
+
+if (!ONLY_VERSION || ONLY_VERSION === 'NKJV') {
+  console.log('⬇️  Downloading complete NKJV JSON…')
+  const rows = await downloadNkjvBible(CACHE_DIR)
+  replaceBibleVersion(db, 'NKJV', rows)
+  recordProvenance('NKJV', rows, NKJV_SOURCE)
+  console.log(`✅ NKJV: ${rows.length} verses downloaded and stored in bible.db`)
 }
 
 for (const version of Object.keys(SABDA_SOURCES).filter(v => !ONLY_VERSION || v === ONLY_VERSION)) {

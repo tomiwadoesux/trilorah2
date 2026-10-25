@@ -2279,6 +2279,10 @@
         {
           "path": "scripts/lib/sabda-bible.ts",
           "symbol": "downloadSabdaBible"
+        },
+        {
+          "path": "scripts/lib/nkjv-bible.mjs",
+          "symbol": "downloadNkjvBible"
         }
       ],
       "runtimeTested": false,

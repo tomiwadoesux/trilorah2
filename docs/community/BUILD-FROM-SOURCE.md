@@ -7,7 +7,7 @@ Original Trilorah source code is available under [PolyForm Perimeter 1.0.1](../.
 ## Prerequisites
 
 - Access to the source tree, Git if obtaining it by checkout, and npm.
-- A Node.js release compatible with the lockfile and the scripts' `node:sqlite` import. The locked Vite requires Node `^20.19.0 || >=22.12.0`, but the database builders also need `node:sqlite`. Check that module explicitly below; Node 20 alone is insufficient for these scripts. The project does not currently pin one verified contributor Node version.
+- Node.js 24, matching the installer build workflow. The database builders require `node:sqlite`; Node 20 alone is insufficient for these scripts. Check that module explicitly below.
 - Native build tools if npm cannot use a compatible prebuilt module. The app uses `better-sqlite3` and other native runtimes, so the toolchain depends on the target computer. On macOS, this may include Xcode Command Line Tools; on Windows, the C++ build tools and Python required by native dependency tooling.
 - Internet for the initial npm install, Bible-data builders and optional model downloads.
 
@@ -35,7 +35,7 @@ npm run rebuild
 
 `bible:build` downloads the configured Bible sources and creates `bible.db`. It makes many chapter requests and can take time. `bible:index` creates `electron/data/bible_index.json` for quote matching. `bible:fts` adds the keyword-search index; search has a slower fallback without it. Run the index commands after rebuilding Bible data.
 
-NKJV and NLT (1996) are downloaded in full from SABDA into `bible.db`, alongside the other translations. To add them to an existing database without rebuilding the others, run:
+NKJV and NLT (1996) are downloaded in full into `bible.db`, alongside the other translations. NKJV uses a pinned, checksum-verified JSON file from the same Bible repository as the other JSON translations; NLT (1996) uses SABDA. To add them to an existing database without rebuilding the others, run:
 
 ```sh
 npm run bible:build -- --version NKJV --cache .cache/bible-downloads
