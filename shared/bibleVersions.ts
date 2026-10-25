@@ -1,3 +1,5 @@
+import { DOWNLOADED_BIBLES } from './downloadedBibles'
+
 /**
  * Every Bible translation the app knows by name.
  *
@@ -34,8 +36,8 @@ export interface BibleVersionInfo {
 
 const pd = (code: string, name: string, language = 'English'): BibleVersionInfo =>
   ({ code, name, language, licence: 'public-domain', requiresInitials: false, bundled: true })
-const licensed = (code: string, name: string): BibleVersionInfo =>
-  ({ code, name, language: 'English', licence: 'licensed', requiresInitials: true, bundled: false })
+const licensed = (code: string, name: string, bundled = false): BibleVersionInfo =>
+  ({ code, name, language: 'English', licence: 'licensed', requiresInitials: true, bundled })
 
 /**
  * In picker order: the English Bibles a church asks for first, then the
@@ -43,14 +45,14 @@ const licensed = (code: string, name: string): BibleVersionInfo =>
  */
 const CATALOGUE: BibleVersionInfo[] = [
   pd('KJV', 'King James Version'),
-  licensed('NKJV', 'New King James Version'),
+  licensed('NKJV', DOWNLOADED_BIBLES.NKJV.name, true),
   licensed('NIV', 'New International Version'),
   pd('BSB', 'Berean Standard Bible'),
   pd('WEB', 'World English Bible'),
   pd('ASV', 'American Standard Version'),
   pd('BBE', 'Bible in Basic English'),
   licensed('ESV', 'English Standard Version'),
-  licensed('NLT', 'New Living Translation'),
+  licensed('NLT', DOWNLOADED_BIBLES.NLT.name, true),
   licensed('NASB', 'New American Standard Bible'),
   licensed('AMP', 'Amplified Bible'),
   licensed('MSG', 'The Message'),
@@ -126,7 +128,7 @@ export interface BibleVersionRow {
   available: boolean
   /** Why it is greyed: 'needs a YouVersion key'. */
   note?: string
-  /** An online Bible's copyright line, shown wherever its text is read. */
+  /** A translation's copyright line, shown wherever its text is read. */
   attribution?: string | null
 }
 
@@ -138,12 +140,12 @@ export interface BibleVersionRow {
  * row (get-bible-versions). Each window keeps the current lines here
  * (src/lib/versionCredits.ts follows main's list), and buildVerseSlides
  * reads them, so the operator's preview, the wall, the stage screen and the
- * phone carry the same line without every caller passing it along. Only
- * the online Bibles have one; the bundled ones are public domain.
+ * phone carry the same line without every caller passing it along.
+ * Downloaded licensed translations carry their publisher's line too.
  */
 const credits = new Map<string, string>()
 
-/** Replace the known copyright lines with those of `rows` (main's online Bibles). */
+/** Replace the known copyright lines with those of `rows` (main's translations). */
 export function setVersionCredits(rows: readonly Pick<BibleVersionRow, 'code' | 'attribution'>[]): void {
   credits.clear()
   for (const row of rows) {

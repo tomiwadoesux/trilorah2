@@ -219,9 +219,9 @@ const PAGES: Page[] = [
       { kind: 'action', key: 'wipeTranscripts', label: 'Transcripts', blurb: 'Delete every transcript on this computer. Profiles and settings stay.', button: 'wipe transcripts', tone: 'danger' },
       { kind: 'action', key: 'wipeProfiles', label: 'Pastor profiles', blurb: 'Delete every profile and everything it learned. Auto mode starts from nothing.', button: 'wipe profiles', tone: 'danger' },
       /* Filled from get-db-status: a count typed in here went stale the day a Bible was added. */
-      { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: '', state: 'idle', text: 'bible.db', advanced: true },
+      { kind: 'status', key: 'dbStatus', label: 'Bible database', blurb: 'Downloaded translations, including NKJV and NLT (1996), are read from this computer.', state: 'idle', text: 'bible.db', advanced: true },
       /* Online providers need no operator setup; YouVersion uses the build's key. */
-      { kind: 'status', key: 'onlineBibles', label: 'Online Bibles', blurb: 'NKJV and NLT (1996) from SABDA, plus available YouVersion Bibles. Chapters stay on this computer for up to 30 days after loading.', state: 'idle', text: 'checking…', advanced: true },
+      { kind: 'status', key: 'onlineBibles', label: 'Online Bibles', blurb: 'Additional YouVersion Bibles available in this build. Chapters stay on this computer for up to 30 days after loading.', state: 'idle', text: 'checking…', advanced: true },
       { kind: 'action', key: 'rebuildIndex', label: 'Search index', blurb: 'Rebuild if verse search returns nothing for a reference you know exists.', button: 'rebuild', advanced: true },
       { kind: 'action', key: 'openLogs', label: 'Logs', blurb: '', button: 'open logs folder', advanced: true },
       { kind: 'status', key: 'version', label: 'Version', blurb: '', state: 'idle', text: 'trilorah 0.4.1 · up to date', advanced: true },

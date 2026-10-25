@@ -50,6 +50,24 @@ describe('Biblika upstream client', () => {
     expect(fetcher).not.toHaveBeenCalled()
   })
 
+  it('downloads a complete chapter range with each chapter identity validated', async () => {
+    const body = '<bible><book><book_id>1</book_id><chapter><chap>1</chap><verses><verse><number>1</number><text>Invented first.</text></verse></verses></chapter><chapter><chap>2</chap><verses><verse><number>1</number><text>Invented second.</text></verse></verses></chapter></book></bible>'
+    const fetcher = vi.fn(async () => new Response(body))
+    const client = new BiblikaClient({ fetch: fetcher as typeof fetch })
+    expect(await client.chapters('NLT', 0, 1, 2)).toEqual([
+      { chapter: 1, verses: [{ verse: 1, text: 'Invented first.' }] },
+      { chapter: 2, verses: [{ verse: 1, text: 'Invented second.' }] },
+    ])
+    const [url] = fetcher.mock.calls[0] as unknown as [string]
+    expect(url).toBe(`${SABDA_PASSAGE_API}?passage=Gen+1-2&ver=nlt`)
+    // The live API repeats the book wrapper for each chapter in a range.
+    const repeatedBook = body.replace('</verses></chapter><chapter>', '</verses></chapter></book><book><book_id>1</book_id><chapter>')
+    await expect(new BiblikaClient({ fetch: vi.fn(async () => new Response(repeatedBook)) as typeof fetch }).chapters('NLT', 0, 1, 2)).resolves.toHaveLength(2)
+    for (const broken of [body.replace('<chap>2</chap>', '<chap>1</chap>'), body.replace('<book_id>1</book_id>', '<book_id>2</book_id>'), xml()]) {
+      await expect(new BiblikaClient({ fetch: vi.fn(async () => new Response(broken)) as typeof fetch }).chapters('NLT', 0, 1, 2)).rejects.toMatchObject({ kind: 'bad-response' })
+    }
+  })
+
   it.each([[429, 'rate-limited'], [404, 'not-found'], [503, 'offline']] as const)('handles HTTP %s before parsing a body', async (status, kind) => {
     const client = new BiblikaClient({ fetch: vi.fn(async () => new Response('Unavailable', { status, headers: { 'Retry-After': '120' } })) as typeof fetch })
     await expect(client.chapter('NKJV', 0, 1)).rejects.toMatchObject({ kind, ...(status === 429 ? { retryAfterMs: 120_000 } : {}) })

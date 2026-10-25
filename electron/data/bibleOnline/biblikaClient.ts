@@ -1,7 +1,7 @@
 /**
  * Biblika's passage source: https://github.com/biblika/biblika-api.
  * Its Heroku deployment is gone; api/passage.go reads this SABDA endpoint.
- * Fetch only the requested chapter, without credentials or a bundled corpus.
+ * Used by the Bible builder to download NKJV/NLT into bible.db.
  */
 import { CHAPTER_COUNTS } from '../../../shared/chapterCounts'
 import { retryAfterMs } from './youversionClient'
@@ -47,12 +47,17 @@ export class BiblikaClient {
   constructor(private readonly options: { fetch?: typeof fetch; timeoutMs?: number; userAgent?: string } = {}) {}
 
   async chapter(code: string, book: number, chapter: number): Promise<ParsedVerse[]> {
+    return (await this.chapters(code, book, chapter, chapter))[0].verses
+  }
+
+  /** The upstream supports chapter ranges, avoiding a request per chapter during builds. */
+  async chapters(code: string, book: number, first: number, last: number): Promise<{ chapter: number; verses: ParsedVerse[] }[]> {
     const version = code.toUpperCase()
     if (!['NKJV', 'NLT'].includes(version) || !Number.isSafeInteger(book) || book < 0 || book >= SABDA_BOOKS.length ||
-        !Number.isSafeInteger(chapter) || chapter < 1 || chapter > CHAPTER_COUNTS[book]) {
+        !Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first || last > CHAPTER_COUNTS[book]) {
       throw new BiblikaError('not-found', 'No such SABDA chapter')
     }
-    const query = new URLSearchParams({ passage: `${SABDA_BOOKS[book]} ${chapter}`, ver: version.toLowerCase() })
+    const query = new URLSearchParams({ passage: `${SABDA_BOOKS[book]} ${first}${last === first ? '' : `-${last}`}`, ver: version.toLowerCase() })
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.options.timeoutMs ?? 10_000)
     try {
@@ -63,7 +68,18 @@ export class BiblikaClient {
       if (response.status === 429) throw new BiblikaError('rate-limited', 'SABDA asked us to wait', retryAfterMs(response.headers.get('retry-after')))
       if (response.status === 404) throw new BiblikaError('not-found', 'SABDA has no such chapter')
       if (!response.ok) throw new BiblikaError('offline', `SABDA returned ${response.status}`)
-      return versesFromSabdaXml(await response.text(), book, chapter)
+      const xml = await response.text()
+      if (first === last) return [{ chapter: first, verses: versesFromSabdaXml(xml, book, first) }]
+      const bad = () => new BiblikaError('bad-response', 'SABDA returned an invalid chapter range')
+      const bookIds = [...xml.matchAll(/<book_id>\s*(\d+)\s*<\/book_id>/g)]
+      if (xml.length > 2_000_000 || /<!DOCTYPE|<!ENTITY/i.test(xml) || !/<bible[\s>]/.test(xml) || !/<\/bible>\s*$/.test(xml) ||
+          !bookIds.length || bookIds.some((match) => Number(match[1]) !== book + 1)) throw bad()
+      const chapters = [...xml.matchAll(/<chapter>([\s\S]*?)<\/chapter>/g)]
+      if (chapters.length !== last - first + 1 || chapters.length !== (xml.match(/<chapter>/g)?.length ?? 0)) throw bad()
+      return chapters.map((match, i) => {
+        const chapter = first + i
+        return { chapter, verses: versesFromSabdaXml(`<bible><book><book_id>${book + 1}</book_id><chapter>${match[1]}</chapter></book></bible>`, book, chapter) }
+      })
     } catch (error) {
       if (error instanceof BiblikaError) throw error
       throw new BiblikaError(controller.signal.aborted ? 'timeout' : 'offline', 'Could not read the SABDA chapter')

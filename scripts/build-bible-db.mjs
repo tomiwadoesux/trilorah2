@@ -1,19 +1,18 @@
 /**
- * Rebuild bible.db from public-domain translations.
+ * Rebuild bible.db from the configured translation sources.
  *
  * Schema matches what the engine queries (recovered from the bundle):
  *   bible(Book INTEGER, Chapter INTEGER, Versecount INTEGER, verse TEXT, Version TEXT)
  * Book ids are 0-based in canonical order (Genesis = 0 … Revelation = 65).
  *
- * Sources, all public domain and safe to redistribute:
+ * Public-domain sources:
  *   eBible / CrossWire explicitly numbered USFM — KJV (1769, 66 books)
  *   thiagobodruk/bible (JSON) — BBE and the multilingual set
  *   bible.helloao.org (eBible's own API) — WEB, BSB and ASV
  *     (scripts/lib/helloao-bible.mjs; provenance in electron/data/bible-sources.json)
- * Licensed translations (NIV, ESV, NLT, NKJV, NASB) are NOT here and cannot
- * be: displaying a chapter to a congregation is past every publisher's free
- * quotation limit, and building the text into software needs a negotiated
- * data licence per publisher. A church that holds one imports it itself.
+ * NKJV and NLT (1996) are downloaded in full from SABDA into the same file.
+ * Their publisher copyrights and attribution remain separate from the code
+ * licence. Downloading text does not establish permission to redistribute it.
  *
  * WEB is the modern-English answer to "the KJV is hard to follow". eBible
  * states it plainly: "The World English Bible (WEB) is a Public Domain (no
@@ -45,6 +44,9 @@ import { createHash } from 'node:crypto'
 import { KJV_USFM_URL, parseKjvArchive } from './lib/usfm-bible.mjs'
 import { replaceBibleVersion } from './lib/replace-bible-version.mjs'
 import { HELLOAO, HELLOAO_SOURCES, chapterRows, validateBibleRows, rowsSha256 } from './lib/helloao-bible.mjs'
+import { tsImport } from 'tsx/esm/api'
+
+const { downloadSabdaBible, SABDA_SOURCES } = await tsImport('./lib/sabda-bible.ts', import.meta.url)
 
 const ROOT = path.join(import.meta.dirname, '..')
 const args = process.argv.slice(2)
@@ -56,7 +58,7 @@ const valueOf = (flag) => {
 }
 const DB_PATH = path.resolve(valueOf('--database') ?? path.join(ROOT, 'bible.db'))
 const ONLY_VERSION = valueOf('--version')?.toUpperCase()
-if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB', 'BSB', 'ASV'].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
+if (ONLY_VERSION && !['KJV', 'BBE', 'RVR', 'APEE', 'AA', 'CUV', 'WEB', 'BSB', 'ASV', ...Object.keys(SABDA_SOURCES)].includes(ONLY_VERSION)) throw new Error(`Unknown version ${ONLY_VERSION}`)
 const CACHE_DIR = valueOf('--cache') ? path.resolve(valueOf('--cache')) : null
 const SOURCES_JSON = path.join(ROOT, 'electron', 'data', 'bible-sources.json')
 
@@ -135,16 +137,15 @@ async function fetchHelloao(version, onProgress) {
 }
 
 /** Record where a version came from, next to the KJV's kjv-source.json. */
-function recordProvenance(version, rows) {
-  const source = HELLOAO_SOURCES[version]
+function recordProvenance(version, rows, source = HELLOAO_SOURCES[version]) {
   let file = { note: 'Where each bundled translation in bible.db came from. Written by scripts/build-bible-db.mjs.', versions: {} }
   try { file = JSON.parse(fs.readFileSync(SOURCES_JSON, 'utf8')) } catch { /* first run */ }
   const chapters = new Set(rows.map((row) => `${row[0]}:${row[1]}`))
   file.versions[version] = {
     translation: source.name,
     sourceId: source.id,
-    sourceUrl: `${HELLOAO}/${source.id}/books.json`,
-    licenseUrl: source.licenseUrl,
+    sourceUrl: source.sourceUrl ?? `${HELLOAO}/${source.id}/books.json`,
+    ...(source.licenseUrl ? { licenseUrl: source.licenseUrl } : {}),
     rights: source.rights,
     ...(source.attribution ? { attribution: source.attribution } : {}),
     retrieved: new Date().toISOString().slice(0, 10),
@@ -228,6 +229,23 @@ for (const version of Object.keys(HELLOAO_SOURCES).filter(v => !ONLY_VERSION || 
   recordProvenance(version, rows)
   console.log(`\n✅ ${version}: ${rows.length} verses imported`)
   if (descriptive.length) console.log(`   kept descriptive text inside ${descriptive.length} verses: ${descriptive.slice(0, 12).join(', ')}${descriptive.length > 12 ? ' …' : ''}`)
+}
+
+for (const version of Object.keys(SABDA_SOURCES).filter(v => !ONLY_VERSION || v === ONLY_VERSION)) {
+  console.log(`⬇️  Downloading complete ${version} from SABDA…`)
+  let reported = 0
+  const rows = await downloadSabdaBible(version, {
+    cacheDir: CACHE_DIR,
+    onProgress: (done, all) => {
+      if (done - reported >= 120 || done === all) {
+        console.log(`   ${version}: ${done}/${all} chapters`)
+        reported = done
+      }
+    },
+  })
+  replaceBibleVersion(db, version, rows)
+  recordProvenance(version, rows, SABDA_SOURCES[version])
+  console.log(`✅ ${version}: ${rows.length} verses downloaded and stored in bible.db`)
 }
 
 const total = db.prepare('SELECT COUNT(*) AS n FROM bible').get()

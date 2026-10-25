@@ -85,7 +85,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Get available Bible versions
   getAvailableVersions: () => invokeObserved('get-available-versions'),
-  // The same list with names, online/bundled, and NKJV/NIV greyed with the reason until a YouVersion key unlocks them
+  // Names and local/online availability; missing versions include a reason.
   getBibleVersions: () => invokeObserved('get-bible-versions'),
   // A passage's verses in one read, gaps and all (the projector and its second line)
   getVerseRange: (book: string | number, chapter: number, start: number, end: number, version?: string) =>

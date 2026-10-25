@@ -57,10 +57,9 @@ import { buildCandidates, candidatesFromQuotes, type Candidate } from './engine/
 import { AutoModeController } from './engine/autoMode'
 import { alreadyShowing, VerseDelivery, detectionKey, readVersePreview, readVerseRange, type VersePushSource } from './engine/verseDelivery'
 import { sortVersions, versionLabel, versionName, type BibleVersionRow } from '../shared/bibleVersions'
+import { DOWNLOADED_BIBLES, type DownloadedBibleCode } from '../shared/downloadedBibles'
 import { chooseVersion } from './data/versionChoice'
 import { OnlineBibles, WANTED_ONLINE, failureText, type OnlineFailure } from './data/bibleOnline/onlineBibles'
-import { BiblikaBibles } from './data/bibleOnline/biblikaBibles'
-import { BiblikaClient } from './data/bibleOnline/biblikaClient'
 import { OnlineBibleLibrary, type OnlineBibleProvider } from './data/bibleOnline/onlineBibleLibrary'
 import { OnlineBibleCache } from './data/bibleOnline/onlineCache'
 import { YouVersionClient } from './data/bibleOnline/youversionClient'
@@ -897,7 +896,7 @@ function bundledVersions(): string[] {
     return ['KJV']
   }
 }
-/** Every Bible a verse can be read in: bible.db's, SABDA and enabled YouVersion versions. */
+/** Every Bible a verse can be read in: bible.db's and enabled YouVersion versions. */
 function installedVersions(): string[] {
   const online = onlineBibles?.codes() ?? []
   return online.length ? sortVersions([...bundledVersions(), ...online]) : bundledVersions()
@@ -996,8 +995,8 @@ const PRESS_FETCH_MS = 4000
 const READ_FETCH_MS = 8000
 
 /**
- * SABDA supplies NKJV/NLT without setup. YouVersion adds the translations
- * enabled for the build's key. Separate caches preserve source and edition.
+ * NKJV/NLT live in bible.db. Only additional translations enabled for the
+ * build's YouVersion key use a chapter cache.
  */
 function openOnlineBibles(): void {
   if (onlineBibles) return
@@ -1017,12 +1016,6 @@ function openOnlineBibles(): void {
         console.error(`❌ Online Bible cache ${filename} could not open:`, error)
       }
     }
-    // First provider wins for NKJV/NLT; a YouVersion refresh cannot erase these chapters.
-    openSource('biblika-cache.db', (cache) => new BiblikaBibles({
-      cache, bundled: bundledVersions,
-      client: new BiblikaClient({ userAgent: `Trilorah/${app.getVersion()} (+https://trilorah.com)` }),
-      onChange: onOnlineBiblesChanged,
-    }))
     openSource('online-cache.db', (cache) => new OnlineBibles({
       cache,
       // A developer's .env.local first, then the key compiled into the build.
@@ -1066,8 +1059,13 @@ function bibleVersionRows(): { versions: BibleVersionRow[]; online: ReturnType<O
     const online = onlineBibles?.version(code)
     return online
       ? { code, name: online.title || versionName(code), source: 'online', available: true, attribution: online.attribution }
-      : { code, name: versionName(code), source: 'bundled', available: true }
+      : { code, name: versionName(code), source: 'bundled', available: true,
+        attribution: DOWNLOADED_BIBLES[code as DownloadedBibleCode]?.attribution }
   })
+  for (const code of Object.keys(DOWNLOADED_BIBLES)) {
+    if (!rows.some((r) => r.code === code)) rows.push({ code, name: versionName(code), source: 'bundled', available: false,
+      note: 'not in this Bible database' })
+  }
   for (const code of WANTED_ONLINE) {
     if (rows.some((r) => r.code === code)) continue
     rows.push({ code, name: versionName(code), source: 'online', available: false,

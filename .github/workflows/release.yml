@@ -1,7 +1,8 @@
 # Builds the installers churches download.
 #
 # Runs when a version tag is pushed (git tag v0.3.0 && git push origin v0.3.0),
-# or by hand from the Actions tab. Windows and macOS each build on their own
+# by hand from the Actions tab, or to update the current release when a main
+# commit includes [release-update]. Windows and macOS each build on their own
 # machine because the app carries native code (better-sqlite3, whisper.cpp)
 # that has to be compiled on the platform it will run on — which is why the
 # .exe cannot be produced from a Mac.
@@ -15,6 +16,7 @@ name: release
 on:
   push:
     tags: ['v*']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -22,6 +24,9 @@ permissions:
 
 jobs:
   build:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[release-update]')
+    outputs:
+      release_tag: ${{ steps.release-meta.outputs.tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +41,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read the release version
+        id: release-meta
+        run: node -e "const fs = require('fs'); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'tag=v' + require('./package.json').version + '\n')"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -49,13 +58,17 @@ jobs:
           node scripts/fetch-ocr-model.mjs
 
       # bible.db and its index are far too large for git, so they are rebuilt
-      # here from the same public-domain sources the developer machine used.
+      # here from the configured sources, including full NKJV/NLT downloads.
       # Without this step the installer ships an app with no Bible in it.
       - name: Build the Bible database
         run: |
-          npm run bible:build
+          npm run bible:build -- --cache .cache/bible-downloads
           npm run bible:index
           npm run bible:fts
+          node scripts/verify-downloaded-bibles.mjs
+
+      - name: Check offline translations and attribution
+        run: npm test -- electron/data/sabdaDownload.test.ts electron/data/bibleOnline shared/bibleVersions.test.ts src/lib/versionCredits.test.ts shared/verseDisplay.test.ts
 
       # Offline speech. whisper-node ships source, not a binary; without this
       # the Mac build has no local recogniser. Windows has no `make`, so there
@@ -135,6 +148,8 @@ jobs:
           )
           $missing = $need | Where-Object { -not (Test-Path $_) }
           if ($missing) { $missing | ForEach-Object { Write-Host "MISSING: $_" }; throw "packaged app is incomplete" }
+          node scripts/verify-downloaded-bibles.mjs "$r/bible.db"
+          if ($LASTEXITCODE -ne 0) { throw "packaged Bible translations did not validate" }
           $need | ForEach-Object { "{0,8:N1} MB  {1}" -f ((Get-Item $_).Length / 1MB), $_ }
 
       - name: Verify the packaged app (macOS)
@@ -154,6 +169,7 @@ jobs:
             [ -e "$r/$f" ] || { echo "MISSING: $r/$f"; exit 1; }
             ls -lh "$r/$f" | awk '{print $5, $9}'
           done
+          node scripts/verify-downloaded-bibles.mjs "$r/bible.db"
 
       # Trilorah Sender: the small separate download for the computer the sound
       # desk is plugged into. It is staged in dist-sender/ with only its own
@@ -208,22 +224,30 @@ jobs:
 
   publish:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || contains(github.event.head_commit.message, '[release-update]')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: installers
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.build.outputs.release_tag }}
           files: |
             installers/*
             installers/sender/*
           generate_release_notes: true
           body: |
+            NKJV and NLT (1996) are included in full for offline reading, alongside the other downloaded translations. Reading them needs no internet or API key, and their chapters do not expire.
+
+            Both translations retain their edition labels, initials and copyright credits. Additional YouVersion Bibles keep their existing online access.
+
             **Windows:** download the `.exe`. Windows will say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
 
             **Mac (Apple Silicon):** download the `.dmg`. The first time, **right-click the app → Open**.
 
             **Trilorah Sender** (`Trilorah-Sender-…`): the small app for the computer your sound desk is plugged into. It sends that computer's sound to Trilorah over your network; in Trilorah, open **audio** and choose **sound from** that computer. Windows asks once for permission to install it, so it can let the sound through the firewall.
+
+            Installer build: ${{ github.sha }}. Both packaged Bible databases passed the complete-translation and fingerprint checks before publication.

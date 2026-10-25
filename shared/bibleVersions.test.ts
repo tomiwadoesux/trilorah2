@@ -6,7 +6,7 @@ import {
 
 describe('the Bible version catalogue', () => {
   it('names every version bible.db ships, and the two added with it', () => {
-    for (const code of ['KJV', 'WEB', 'BBE', 'RVR', 'AA', 'APEE', 'CUV', 'BSB', 'ASV']) {
+    for (const code of ['KJV', 'WEB', 'BBE', 'RVR', 'AA', 'APEE', 'CUV', 'BSB', 'ASV', 'NKJV', 'NLT']) {
       expect(BIBLE_VERSIONS[code]?.bundled, code).toBe(true)
       expect(versionName(code)).not.toBe(code)
     }
@@ -26,7 +26,7 @@ describe('the Bible version catalogue', () => {
     for (const code of ['NKJV', 'NIV', 'ESV', 'NLT', 'NASB', 'AMP', 'MSG', 'CSB']) {
       expect(BIBLE_VERSIONS[code].licence, code).toBe('licensed')
       expect(requiresInitials(code), code).toBe(true)
-      expect(BIBLE_VERSIONS[code].bundled, code).toBe(false)
+      expect(BIBLE_VERSIONS[code].bundled, code).toBe(['NKJV', 'NLT'].includes(code))
     }
     for (const code of ['KJV', 'WEB', 'BSB', 'ASV']) expect(requiresInitials(code), code).toBe(false)
     expect(requiresInitials('niv')).toBe(true)

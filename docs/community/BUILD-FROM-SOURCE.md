@@ -35,6 +35,15 @@ npm run rebuild
 
 `bible:build` downloads the configured Bible sources and creates `bible.db`. It makes many chapter requests and can take time. `bible:index` creates `electron/data/bible_index.json` for quote matching. `bible:fts` adds the keyword-search index; search has a slower fallback without it. Run the index commands after rebuilding Bible data.
 
+NKJV and NLT (1996) are downloaded in full from SABDA into `bible.db`, alongside the other translations. To add them to an existing database without rebuilding the others, run:
+
+```sh
+npm run bible:build -- --version NKJV --cache .cache/bible-downloads
+npm run bible:build -- --version NLT --cache .cache/bible-downloads
+```
+
+The cache lets interrupted downloads resume. Each translation must pass the complete 66-book, 1,189-chapter checks before replacing its database rows. Once installed, reading NKJV/NLT needs no internet, API key or expiring chapter cache. Existing full-text indexes are updated during the import. Publisher rights remain separate from Trilorah's source licence; see [third-party notices](../../THIRD-PARTY-NOTICES.md).
+
 `rebuild` rebuilds `better-sqlite3` for Electron. If you receive a `NODE_MODULE_VERSION` or native ABI error after changing Node, Electron or dependencies, rerun that command. The data builders use Node's own SQLite module so they do not depend on the Electron build of `better-sqlite3`.
 
 For local meaning-based allusion retrieval, also run:
@@ -80,7 +89,7 @@ The desktop development app reads an uncommitted `.env.local` at the repository 
 | Cloud speech | Select `deepgram` and configure its key in **Settings → Audio & speech** or `DEEPGRAM_API_KEY` for development. Without a key, provider selection falls back to local speech. |
 | Generated sermon notes / cloud language-model fallback | Requires the current Hugging Face setup (`HF_API_TOKEN` or supported settings). The experimental local notes provider currently delegates generation to cloud, including its fallback; it is not an offline notes implementation. |
 | Stock media / video search | Configure the relevant Pixabay, Pexels or YouTube key under **Settings → API keys**. Paste/import paths and individual content sources have their own requirements. |
-| Online Bible chapters | NKJV and NLT (1996) are selectable through SABDA, the upstream used by Biblika, without an API key. First reads need internet; loaded chapters are cached for up to 30 days, at most 120 per version. YouVersion supplies additional versions enabled for the build's key. |
+| Bible translations | NKJV and NLT (1996) are read locally from the prepared `bible.db`. YouVersion supplies additional online versions enabled for the build's key; those use a bounded chapter cache. |
 | Cloud accounts, shared live services and phone microphone discovery | The desktop contains a cloud client and default endpoint configuration. A source build is not automatically isolated from Trilorah-operated services. Inspect the intended configuration before connecting. Running the desktop does not establish a supported self-hosted backend. |
 | Local phone presentation remote | Served by the running desktop over the supported local network, with pairing and desktop approval. It is distinct from the cloud-assisted phone microphone. |
 

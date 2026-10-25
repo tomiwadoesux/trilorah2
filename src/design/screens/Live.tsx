@@ -1438,8 +1438,8 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
   /* Whatever translations the database actually holds — not a guessed list
      — each with its name beside the code, because "AA APEE BBE" means
      nothing to a volunteer. Opens on the version the service is using.
-     NKJV and NIV come from YouVersion: listed greyed, with the reason,
-     until the build's key unlocks them, and the list follows when it does. */
+     NKJV/NLT are local translations. Additional YouVersion Bibles are greyed
+     with a reason until the build's key unlocks them. */
   const [rowsByCode, setRowsByCode] = useState<Record<string, BibleVersionRow>>({});
   useEffect(() => {
     const api = window.api;
@@ -1949,12 +1949,10 @@ function ScripturesBrowser({ searchRef }: { searchRef: React.RefObject<Scripture
               </button>
             ))
           )}
-          {/* The licence's own words under an online Bible's text (YouVersion:
-              "always display a Bible Version's copyright attribution"). The
-              wall carries the initials (shared/verseDisplay). */}
-          {onlineVersion && rows.length > 0 && !journey && (
+          {/* Keep publisher credits visible for downloaded and online translations. */}
+          {(onlineVersion || versionRow?.attribution) && rows.length > 0 && !journey && (
             <p className="px-4 py-3 text-[length:var(--tri-size-xs)] leading-relaxed text-white/40">
-              {versionRow.attribution || `${versionRow.name} (${version})`} · via YouVersion
+              {versionRow.attribution || `${versionRow.name} (${version})`}{onlineVersion ? ' · via YouVersion' : ''}
             </p>
           )}
         </div>

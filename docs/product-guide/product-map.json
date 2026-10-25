@@ -2260,7 +2260,7 @@
       ],
       "limitations": [
         "Changes current service translation, not the church saved default. Online Bible loading can fail.",
-        "NKJV and NLT (1996) use SABDA without a key. First reads need internet; cached chapters remain for up to 30 days, at most 120 per version."
+        "NKJV and NLT (1996) are downloaded in full into bible.db during data preparation and read locally without chapter expiry. A missing translation is disabled with a database availability reason."
       ],
       "status": "wired",
       "sources": [
@@ -2277,8 +2277,8 @@
           "symbol": "OnlineBibleLibrary"
         },
         {
-          "path": "electron/data/bibleOnline/biblikaBibles.ts",
-          "symbol": "BiblikaBibles"
+          "path": "scripts/lib/sabda-bible.ts",
+          "symbol": "downloadSabdaBible"
         }
       ],
       "runtimeTested": false,
@@ -2373,7 +2373,7 @@
             "Verses is the first tab.",
             "Open Verses.",
             "Left rail, Verses.",
-            "NKJV and NLT (1996) load online. Start in Verses."
+            "Choose a downloaded translation, including NKJV or NLT (1996), in Verses."
           ],
           "anchor": "library-scriptures",
           "do": "click",
@@ -3321,7 +3321,7 @@
         "Language choices must use getAvailableLanguages; do not infer support from hardcoded fallback list",
         "UI remains English-only",
         "Unavailable Bibles are disabled, not promised",
-        "NKJV and NLT (1996) are offered through SABDA without an API key; an uncached chapter needs internet",
+        "NKJV and NLT (1996) are local translations when present in bible.db; missing copies stay disabled rather than loading chapters online",
         "Interface language is explicitly not implemented; UI remains English",
         "Speech language is a free-text provider code, not proof the provider supports it",
         "Provider-specific behavior requires runtime verification"

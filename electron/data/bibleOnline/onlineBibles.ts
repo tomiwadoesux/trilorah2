@@ -1,5 +1,5 @@
 /**
- * NKJV, NIV and whatever else the build's YouVersion key unlocks, read
+ * NIV and whatever else the build's YouVersion key unlocks, read
  * through a local cache so that a service never waits on the network twice
  * for the same chapter.
  *
@@ -12,7 +12,8 @@
  * The key is the church-free part of the Platform's terms: the app is
  * registered once by the owner, its key is compiled into the build
  * (scripts/write-service-defaults.mjs) and there is no field for it. With no
- * key, NKJV and NIV are still listed — greyed, with the reason.
+ * key, NIV is still listed — greyed, with the reason. NKJV and NLT are
+ * downloaded into bible.db and never fetched through this provider.
  *
  * Pure apart from the cache handle and an injectable client, so the rules
  * are tested with invented text (onlineBibles.test.ts).
@@ -20,11 +21,12 @@
 import { createHash } from 'node:crypto'
 import { CHAPTER_COUNTS } from '../../../shared/chapterCounts'
 import { VERSION_CODE_RE, versionName } from '../../../shared/bibleVersions'
+import { DOWNLOADED_BIBLES } from '../../../shared/downloadedBibles'
 import { YouVersionClient, YouVersionError, type YouVersionBible } from './youversionClient'
 import type { CachedVersion, OnlineBibleCache } from './onlineCache'
 
 /** Requested translations remain visible even when their provider is unavailable. */
-export const WANTED_ONLINE: readonly string[] = ['NKJV', 'NIV', 'NLT']
+export const WANTED_ONLINE: readonly string[] = ['NIV']
 
 /** YouVersion's own ids, so these are recognised whatever their abbreviation field says. */
 const KNOWN_IDS: Readonly<Record<number, string>> = { 111: 'NIV', 114: 'NKJV' }
@@ -87,7 +89,7 @@ export function onlineVersionsFrom(bibles: readonly YouVersionBible[], bundled: 
   for (const bible of ordered) {
     if (bible.languageTag && !/^en(\b|-|_)/i.test(bible.languageTag)) continue
     const code = codeForBible(bible)
-    if (!code || out.has(code) || bundled.some((b) => code.startsWith(b))) continue
+    if (!code || Object.hasOwn(DOWNLOADED_BIBLES, code) || out.has(code) || bundled.some((b) => code.startsWith(b))) continue
     out.set(code, { code, bibleId: bible.id, title: bible.title || versionName(code), attribution: bible.attribution })
   }
   return [...out.values()]
@@ -154,7 +156,7 @@ export class OnlineBibles {
     const listing = this.opts.cache.listing()
     if (listing.keyId !== this.keyId(key)) return []
     const bundled = this.opts.bundled()
-    return listing.versions.filter((v) => !bundled.includes(v.code))
+    return listing.versions.filter((v) => !Object.hasOwn(DOWNLOADED_BIBLES, v.code) && !bundled.includes(v.code))
   }
 
   codes(): string[] {

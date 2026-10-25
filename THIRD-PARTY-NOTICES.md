@@ -44,9 +44,9 @@ THE SOFTWARE.
 
 ## Bible translations in bible.db
 
-Every translation bundled in `bible.db` is public domain. Where each came from,
+Public-domain and downloaded licensed translations retain their own rights. Where each came from,
 when it was fetched and a SHA-256 of its rows are recorded in
-`electron/data/bible-sources.json` (WEB, BSB, ASV) and
+`electron/data/bible-sources.json` (WEB, BSB, ASV, NKJV, NLT) and
 `electron/data/kjv-source.json` (KJV).
 
 - **Berean Standard Bible (BSB)** — dedicated to the public domain on
@@ -60,17 +60,18 @@ when it was fetched and a SHA-256 of its rows are recorded in
 - **King James Version (1769)** — public domain outside the United Kingdom.
 
 Fetched through bible.helloao.org (eBible's own API) by
-`scripts/build-bible-db.mjs`. Licensed translations (NKJV, NIV, ESV, NLT, NASB,
-AMP) are not bundled.
+`scripts/build-bible-db.mjs`. NKJV and NLT have the separate notices below;
+NIV, ESV, NASB and AMP are not downloaded into the bundled database by this builder.
 
 ## NKJV and NLT through Biblika's SABDA source
 
-NKJV and NLT are fetched one chapter at a time from SABDA's passage API,
+The Bible builder downloads complete NKJV and NLT translations from SABDA's passage API,
 the upstream used by [biblika/biblika-api](https://github.com/biblika/biblika-api/blob/main/api/passage.go).
 The old Biblika Heroku endpoint returned 404 when checked on 25 October 2026.
 Trilorah's adapter calls the upstream directly and does not run or bundle the Go server.
-Its separate cache, `userData/bibles/biblika-cache.db`, retains chapters for at
-most 30 days and 120 chapters per version. Full translation files are not bundled.
+All 66 books and 1,189 chapters must validate before the builder installs a
+translation into `bible.db`. The desktop reads that file locally; it no longer
+uses `userData/bibles/biblika-cache.db`. Downloaded translations do not expire.
 
 - NKJV: New King James Version, copyright © 1982 Thomas Nelson.
 - NLT: New Living Translation, copyright © 1996 Tyndale Charitable Trust.
@@ -92,8 +93,8 @@ church's computer (`userData/bibles/online-cache.db`) for at most 30 days and
 version is no longer licensed. Each version's own copyright line, as YouVersion
 supplies it, is shown under its text in the scripture library, and its initials
 follow every quotation on the projector. Code: `electron/data/bibleOnline/`.
-SABDA takes precedence for NKJV/NLT when its cache is available, so those versions
-do not switch editions or share cached text with YouVersion.
+NKJV/NLT are excluded from the YouVersion catalogue so they do not switch
+editions or share cached text with YouVersion.
 
 ## @lucasmarkes/hairline
 

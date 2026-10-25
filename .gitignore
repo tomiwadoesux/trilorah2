@@ -20,6 +20,7 @@ web/.next/
 bible.db
 electron/data/bible_index.json
 data/models/
+.cache/bible-downloads/
 
 # machine noise
 .DS_Store

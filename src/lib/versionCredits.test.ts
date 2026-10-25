@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setVersionCredits, versionCredit } from '../../shared/bibleVersions'
 import { watchVersionCredits } from './versionCredits'
 
-describe("each window's copyright lines follow main's online Bibles", () => {
+describe("each window's copyright lines follow main's translations", () => {
   afterEach(() => setVersionCredits([]))
 
   it('reads them at start and again whenever main says the list changed', async () => {
@@ -12,6 +12,8 @@ describe("each window's copyright lines follow main's online Bibles", () => {
       getBibleVersions: vi.fn().mockResolvedValue({ versions: [
         { code: 'KJV', name: 'King James Version', source: 'bundled', available: true },
         { code: 'NIV', name: 'New International Version', source: 'online', available: true, attribution: 'Invented NIV line' },
+        { code: 'NKJV', name: 'New King James Version', source: 'bundled', available: true, attribution: 'Invented local NKJV line' },
+        { code: 'NLT', name: 'New Living Translation (1996)', source: 'bundled', available: true, attribution: 'Invented local NLT line' },
       ], online: null }),
       onEngineEvent: vi.fn((channel: string, fn: (rows: unknown) => void) => { if (channel === 'on-bible-versions-changed') changed = fn; return off }),
     } as unknown as Window['api']
@@ -19,6 +21,8 @@ describe("each window's copyright lines follow main's online Bibles", () => {
     await Promise.resolve()
     await Promise.resolve()
     expect(versionCredit('NIV')).toBe('Invented NIV line')
+    expect(versionCredit('NKJV')).toBe('Invented local NKJV line')
+    expect(versionCredit('NLT')).toBe('Invented local NLT line')
     changed?.({ versions: [{ code: 'NIV', name: 'New International Version', source: 'online', available: false, note: 'key refused' }] })
     expect(versionCredit('NIV')).toBeNull()
     stop()

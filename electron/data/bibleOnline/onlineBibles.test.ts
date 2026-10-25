@@ -11,7 +11,8 @@ const LISTED: YouVersionBible[] = [
   { id: 206, abbreviation: 'WEBUS', title: 'Invented WEB variant', languageTag: 'en', attribution: 'x' },
   { id: 111, abbreviation: 'NIV', title: 'Invented NIV title', languageTag: 'en', attribution: 'Invented NIV copyright' },
   { id: 114, abbreviation: 'NKJV', title: 'Invented NKJV title', languageTag: 'en', attribution: null },
-  { id: 1588, abbreviation: 'AMP', title: 'Invented AMP title', languageTag: 'en', attribution: 'Invented AMP copyright' },
+  { id: 1588, abbreviation: 'AMP', title: 'Invented AMP title', languageTag: 'en', attribution: null },
+  { id: 116, abbreviation: 'NLT', title: 'Invented NLT title', languageTag: 'en', attribution: null },
   { id: 9001, abbreviation: 'A VERY LONG CODE', title: 'Unpickable', languageTag: 'en', attribution: 'x' },
 ]
 const chapter = (n = 3) => Array.from({ length: n }, (_, i) => ({ verse: i + 1, text: `Invented online verse ${i + 1}.` }))
@@ -40,7 +41,7 @@ describe('which listed Bibles become versions', () => {
     expect(codeForBible({ id: 114, abbreviation: '' })).toBe('NKJV')
     expect(codeForBible({ id: 5, abbreviation: 'amp' })).toBe('AMP')
     expect(codeForBible({ id: 5, abbreviation: 'A VERY LONG CODE' })).toBeNull()
-    expect(onlineVersionsFrom(LISTED, BUNDLED).map((v) => v.code)).toEqual(['NIV', 'NKJV', 'AMP'])
+    expect(onlineVersionsFrom(LISTED, BUNDLED).map((v) => v.code)).toEqual(['NIV', 'AMP'])
     expect(onlineVersionsFrom([{ ...LISTED[2], languageTag: 'es' }], BUNDLED)).toEqual([])
   })
 })
@@ -59,9 +60,9 @@ describe('OnlineBibles', () => {
   it('lists what the key unlocks, fills a missing copyright from the version record, and asks again only after a day', async () => {
     const { online, client, advance, onChange } = setup()
     await online.refresh()
-    expect(online.codes()).toEqual(['AMP', 'NIV', 'NKJV'])
+    expect(online.codes()).toEqual(['AMP', 'NIV'])
     expect(online.attribution('NIV')).toBe('Invented NIV copyright')
-    expect(online.attribution('NKJV')).toBe('Invented record copyright 114')
+    expect(online.attribution('AMP')).toBe('Invented record copyright 1588')
     expect(online.status()).toMatchObject({ state: 'ready', configured: true })
     expect(onChange).toHaveBeenCalled()
     await online.refresh()
@@ -116,7 +117,7 @@ describe('OnlineBibles', () => {
     expect(await online.ensureChapter('NIV', 0, 2)).toEqual({ ok: false, reason: 'not-licensed' })
     expect(online.has('NIV')).toBe(false)
     expect(online.isCached('NIV', 0, 1)).toBe(false)
-    expect(online.codes()).toEqual(['AMP', 'NKJV'])
+    expect(online.codes()).toEqual(['AMP'])
     expect(onChange).toHaveBeenCalled()
   })
 
@@ -126,7 +127,7 @@ describe('OnlineBibles', () => {
     await online.refresh()
     await online.ensureChapter('NIV', 0, 1)
     refused = true
-    expect(await online.ensureChapter('NKJV', 0, 1)).toEqual({ ok: false, reason: 'key-rejected' })
+    expect(await online.ensureChapter('AMP', 0, 1)).toEqual({ ok: false, reason: 'key-rejected' })
     expect(online.codes()).toEqual([])
     expect(online.status().state).toBe('key-rejected')
     expect(online.unavailableNote('NIV')).toBe('YouVersion key refused')
@@ -144,10 +145,10 @@ describe('OnlineBibles', () => {
     offline = true
     advance(LISTING_TTL_MS)
     await online.refresh(true)
-    expect(online.codes()).toEqual(['AMP', 'NIV', 'NKJV'])
+    expect(online.codes()).toEqual(['AMP', 'NIV'])
     expect(online.isCached('NIV', 0, 1)).toBe(true)
     expect(await online.ensureChapter('NIV', 0, 2)).toEqual({ ok: false, reason: 'offline' })
-    expect(online.status()).toMatchObject({ state: 'offline', text: 'AMP, NIV, NKJV · offline — 1 chapter kept' })
+    expect(online.status()).toMatchObject({ state: 'offline', text: 'AMP, NIV · offline — 1 chapter kept' })
   })
 
   it('a different key does not inherit what the old one unlocked', async () => {
