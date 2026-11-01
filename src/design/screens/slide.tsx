@@ -5,7 +5,7 @@ import type { TextTransition } from '../../../shared/textTransitions';
 import { resolveTextPosition } from '../../../shared/textPosition';
 import { textWidthFrame } from '../../../shared/textWidth';
 import { formatDisplayText, resolveTextCase, type TextCase } from '../../../shared/textCase';
-import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
+import { LYRIC_TYPE, lyricLetterSpacing, resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
 import { displayFontFamily } from '../../../shared/displayFont';
 import { useFitText } from '../../lib/useFitText';
@@ -277,10 +277,10 @@ export function SlideCanvas({
   const textBoxRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   useFitText(textBoxRef, wordsRef, JSON.stringify([
-    words?.lines ?? null, words?.reference ?? null, transition?.play ?? null,
+    words?.lines ?? null, words?.reference ?? null, words?.lyric ?? null, transition?.play ?? null,
     theme.font, theme.size, theme.verseSize, theme.refGap, theme.layout, theme.safeMargin, theme.textWidth,
     theme.textCase, theme.textSpacing, screen,
-  ]), undefined, true);
+  ]), words?.lyric ? LYRIC_TYPE.floor : undefined, true);
 
   /*
    * Dragging a corner.
@@ -536,7 +536,25 @@ export function SlideCanvas({
                 ...ringFor('verse'),
               }}
             >
-              {slide.lines.map((line, i) => (
+              {/* A song, set as the wall's .output-song sets it: one block per
+                  written line, so a line too long to fit wraps on its own. */}
+              {slide.lyric && slide.lines.flatMap((line) => formatDisplayText(line.text, textTransform).split('\n')).map((line, i) => (
+                <p
+                  key={i}
+                  data-fit-line
+                  className="m-0"
+                  style={{
+                    fontSize: `calc(${LYRIC_TYPE.scale}em * var(--fit, 1))`,
+                    fontWeight: LYRIC_TYPE.weight,
+                    letterSpacing: lyricLetterSpacing(textTransform, resolveTextSpacing(theme.textSpacing)),
+                    lineHeight: LYRIC_TYPE.lineHeight + textSpacing.lineHeightDelta,
+                    textRendering: 'geometricPrecision',
+                  }}
+                >
+                  {line}
+                </p>
+              ))}
+              {!slide.lyric && slide.lines.map((line, i) => (
                 <p
                   key={`${line.version}-${i}`}
                   data-fit-body={i === 0 ? '' : undefined}
@@ -584,7 +602,7 @@ export function SlideCanvas({
               <p
                 className="m-0 line-clamp-2"
                 style={{
-                  marginTop: '1.4cqh',
+                  marginTop: slide.lyric ? '3cqh' : '1.4cqh',
                   maxWidth: '62cqw',
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   fontSize: 'max(6px, 0.9cqw)',

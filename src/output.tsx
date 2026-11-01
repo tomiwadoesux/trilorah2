@@ -16,7 +16,7 @@ import { clampTransitionMs, isTextTransition, type TextTransition } from '../sha
 import { resolveTextPosition } from '../shared/textPosition';
 import { clampTextWidth, textWidthFrame, TEXT_WIDTH } from '../shared/textWidth';
 import { formatDisplayText, resolveTextCase, type TextCase } from '../shared/textCase';
-import { resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
+import { LYRIC_TYPE, lyricLetterSpacing, resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
 import './output.css';
 import { DISPLAY_FONTS } from '../shared/displayFont';
 import { watchVersionCredits } from './lib/versionCredits';
@@ -239,6 +239,9 @@ function OutputSurface() {
   // clip is hundreds of megabytes and would not survive the trip over IPC.
   const [video, setVideo] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  // The operator's sound button for a clip on the wall. Kept here rather than
+  // on the element, so the next clip starts with the same choice.
+  const [soundOff, setSoundOff] = useState(false);
   // A song section. One of verse / media / song is up at a time: each arrival
   // takes the other two down, mirroring what main remembers as live.
   const [song, setSong] = useState<LiveContent | null>(null);
@@ -354,7 +357,16 @@ function OutputSurface() {
         setVisible(false);
         setSong(null);
         setMedia(null);
-        setVideo(fileToDisplayUrl(imagePath));
+        const url = fileToDisplayUrl(imagePath);
+        // The same clip sent again is a press of go live: play it from the
+        // start. Same state, so React would otherwise leave it where it was —
+        // on its last frame, if it had ended.
+        const v = videoRef.current;
+        if (v && v.getAttribute('src') === url) {
+          v.currentTime = 0;
+          void v.play().catch(() => undefined);
+        }
+        setVideo(url);
         return;
       }
       setVideo(null);
@@ -419,9 +431,17 @@ function OutputSurface() {
       // The operator's pager on the live panel: a long reading is pages.
       api.onLiveSlide?.((index) => setSlideIndex(index)),
       api.onMediaControl?.((action) => {
+        // Sound holds even with no clip up: it is for the next one too.
+        if (action.type === 'mute') {
+          setSoundOff(Boolean(action.value));
+          if (videoRef.current) videoRef.current.muted = outputId !== 'main' || Boolean(action.value);
+          return;
+        }
         const v = videoRef.current;
         if (!v) return;
-        if (action.type === 'play') void v.play().catch(() => undefined);
+        if (action.type === 'seek' && typeof action.value === 'number') {
+          v.currentTime = Math.min(Math.max(0, action.value), Number.isFinite(v.duration) ? v.duration : action.value);
+        } else if (action.type === 'play') void v.play().catch(() => undefined);
         else if (action.type === 'pause') v.pause();
         else if (action.type === 'toggle') v.paused ? void v.play().catch(() => undefined) : v.pause();
         else if (action.type === 'restart') {
@@ -494,7 +514,7 @@ function OutputSurface() {
   const wrapKey = JSON.stringify([theme.fontFamily, theme.scale, theme.weight, theme.safeMargin, theme.textWidth,
     theme.textCase, theme.textSpacing, theme.refScale, theme.refGap, theme.verseLayout, role, theme.streamLayout, screen]);
   useFitText(verseStage, verseWords, JSON.stringify([wrapKey, delivery, slideIndex, slide?.lines, slide?.reference, slide ? null : shown?.detection]), undefined, true);
-  useFitText(songStage, songWords, JSON.stringify([wrapKey, delivery, song?.title, song?.label, song?.lines]));
+  useFitText(songStage, songWords, JSON.stringify([wrapKey, delivery, song?.kind, song?.title, song?.label, song?.lines]), song?.kind === 'song' ? LYRIC_TYPE.floor : undefined, true);
 
   const themedStage = {
     '--verse-font': theme.fontFamily,
@@ -505,6 +525,10 @@ function OutputSurface() {
     '--text-width': `${textFrame.width}%`,
     '--text-letter-spacing': textSpacing.letterSpacing,
     '--text-line-spacing': String(textSpacing.lineHeightDelta),
+    '--lyric-scale': String(LYRIC_TYPE.scale),
+    '--lyric-weight': String(LYRIC_TYPE.weight),
+    '--lyric-line-height': String(LYRIC_TYPE.lineHeight),
+    '--lyric-letter-spacing': lyricLetterSpacing(theme.textCase, theme.textSpacing),
     '--text-left': `${textFrame.left}%`,
     '--ref-scale': String(theme.refScale),
     '--ref-gap': `${theme.refGap}em`,
@@ -719,24 +743,30 @@ function OutputSurface() {
             onPlaying={() => window.api?.reportOutputMediaFailure?.('video', false)}
             autoPlay
             playsInline
-            muted={outputId !== 'main'}
+            muted={outputId !== 'main' || soundOff}
           />
         </div>
       )}
       {song && (
-        <div ref={songStage} className={`output-stage ${screen === 'live' ? 'visible' : ''} output-song`}>
+        <div ref={songStage} className={`output-stage ${screen === 'live' ? 'visible' : ''} output-song ${song.kind === 'song' ? 'output-lyric' : ''}`}>
           {/* Keyed by what is showing, so each new section re-mounts and the
               entrance plays again, including when the same section is sent again. */}
           <div ref={songWords} className="output-enter" key={`${delivery}|${song.title}|${song.label}|${song.lines?.[0] ?? ''}`}>
           {formatDisplayText(song.lines?.join('\n') ?? '', theme.textCase).split('\n').map((line: string, i: number) => (
-            <div key={i} className="output-verse">
+            <div key={i} className="output-verse" data-fit-line={song.kind === 'song' ? '' : undefined}>
               {line}
             </div>
           ))}
-          <div className="output-ref">
-            {formatDisplayText(song.title, theme.textCase)}
-            {song.label && <span className="output-version">{formatDisplayText(song.label, theme.textCase)}</span>}
-          </div>
+          {/* A lyric screen has no citation: the song's name is a small credit
+              at the foot, and the section is the operator's business. */}
+          {song.kind === 'song' ? (
+            song.title && <div className="output-credit">{song.title}</div>
+          ) : (
+            <div className="output-ref">
+              {formatDisplayText(song.title, theme.textCase)}
+              {song.label && <span className="output-version">{formatDisplayText(song.label, theme.textCase)}</span>}
+            </div>
+          )}
           </div>
         </div>
       )}

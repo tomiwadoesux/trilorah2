@@ -1,0 +1,68 @@
+/*
+ * A clip's transport on the stage picture (StageVideo.tsx).
+ *
+ * It sits on the picture's foot over a fade to black, so it reads on a bright
+ * frame as well as a dark one. Only the operator sees it: the projector draws
+ * its own <video>, with no controls on it.
+ */
+.stage-video-bar {
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.4) 55%, transparent);
+}
+
+.stage-video-time {
+  font-size: 11px;
+  color: var(--tri-ink-muted);
+}
+
+/*
+ * The bar to drag through the clip: a thin line, filled up to where the clip
+ * is, with a small round handle. White in the preview; gold in the live box,
+ * which is the colour of what is on the projector.
+ */
+.stage-video-scrub {
+  --scrub-fill: var(--tri-ink);
+  appearance: none;
+  height: 20px;
+  margin: 0;
+  /* The app's fields carry a hairline; a bar to drag is not a field. */
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stage-video-bar[data-on-air] .stage-video-scrub {
+  --scrub-fill: rgb(255 214 90);
+}
+
+.stage-video-scrub:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.stage-video-scrub::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--scrub-fill) var(--played, 0%), rgb(255 255 255 / 0.24) var(--played, 0%));
+}
+
+.stage-video-scrub::-webkit-slider-thumb {
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4px;
+  border-radius: 999px;
+  background: var(--scrub-fill);
+  box-shadow: 0 0 0 3px rgb(0 0 0 / 0.35);
+  transition: transform 120ms ease-out;
+}
+
+.stage-video-scrub:hover::-webkit-slider-thumb,
+.stage-video-scrub:active::-webkit-slider-thumb {
+  transform: scale(1.25);
+}
+
+.stage-video-scrub:focus-visible {
+  outline: 2px solid rgb(229 243 242 / 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

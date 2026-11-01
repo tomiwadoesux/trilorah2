@@ -6,9 +6,12 @@ export function stageSlide(item: LiveItem | null, slideIndex = 0): VerseSlide | 
   if (item.slides?.length) return item.slides[Math.min(slideIndex, item.slides.length - 1)];
   const text = item.lines?.join('\n') || item.text;
   if (!text) return null;
+  /* A lyric screen has no citation: the song's name is a small credit at the
+     foot, as the wall draws it. */
+  if (item.source === 'song') return { reference: null, credit: item.title ?? item.label, lyric: true, lines: [{version:'',text}], verseStart:1,verseEnd:1,index:1,total:1 };
   return {
-    reference: item.source === 'song' ? item.title ?? item.label : item.reference ?? item.label,
-    lines: [{version:item.source === 'song' ? '' : item.version ?? 'KJV',text}],
+    reference: item.reference ?? item.label,
+    lines: [{version:item.version ?? 'KJV',text}],
     verseStart:1,verseEnd:1,index:1,total:1,
   };
 }

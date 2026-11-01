@@ -1,7 +1,8 @@
 import { useLibraryNavigation } from '../../stores/libraryNavigation';
 import { isEmptyPreview } from '../emptyPreviewMode';
 import { importAndSavePresentation, presentationImageSrc } from '../../lib/presentationImport';
-import { useProjector } from './projector';
+import { useProjector, type LiveItem } from './projector';
+import { SlidesPreview } from './SlidesPreview';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BACKDROP_BY_CONTENT, Button, ImportIcon, PencilIcon, PresentationIcon, SearchField, SegmentedControl, SlideThumb, SparkleIcon, TrashIcon, cx, surface, toneClass } from '../../ui';
 import { FlightPopup } from './songs/FlightPopup';
@@ -443,9 +444,13 @@ export function SlidesBrowser() {
      keyed by deck, exactly as the songs grid keeps its verses: filter the
      grid and come back, and the card is where it was left. */
   const [pageAt, setPageAt] = useState<Record<string, number>>({});
+  const [previewDeckId, setPreviewDeckId] = useState<string | null>(null);
   useEffect(() => {
     const item = projector.preview;
-    if (item?.deckId && item.deckIndex != null) setPageAt(current => ({ ...current, [item.deckId!]: item.deckIndex! }));
+    if (item?.deckId && item.deckIndex != null) {
+      setPreviewDeckId(item.deckId);
+      setPageAt(current => ({ ...current, [item.deckId!]: item.deckIndex! }));
+    }
   }, [projector.preview]);
   const request = useLibraryNavigation(state => state.request);
   useEffect(() => {
@@ -459,12 +464,23 @@ export function SlidesBrowser() {
     useLibraryNavigation.getState().consume();
   }, [request,allDecks]);
   const pageOf = (deck: LoadedDeck) => Math.min(pageAt[deck.id] ?? 0, Math.max(0, deck.rendered - 1));
-  const stepPage = (deck: LoadedDeck, delta: -1 | 1) =>
-    setPageAt((m) => {
-      const cur = m[deck.id] ?? 0;
-      const next = Math.min(deck.rendered - 1, Math.max(0, cur + delta));
-      return next === cur ? m : { ...m, [deck.id]: next };
-    });
+  const itemOf = (deck: LoadedDeck, at: number): LiveItem => {
+    const paths = deck.paths ?? Array.from({ length: deck.rendered }, (_, index) => deckPage(deck.seed, index, deck.spec));
+    return { source: 'presentation', id: `${deck.id}:${at}`, label: `${deck.title} — slide ${at + 1}`,
+      path: paths[at], deckPaths: paths, deckIndex: at, deckId: deck.id, title: deck.title, mediaKind: 'photo', origin: 'operator' };
+  };
+  const previewPage = (deck: LoadedDeck, at: number) => {
+    if (at < 0 || at >= deck.rendered) return;
+    setPreviewDeckId(deck.id);
+    setPageAt(current => ({ ...current, [deck.id]: at }));
+    projector.stage(itemOf(deck, at));
+  };
+  const stepPage = (deck: LoadedDeck, delta: -1 | 1) => {
+    const next = Math.min(deck.rendered - 1, Math.max(0, pageOf(deck) + delta));
+    if (next < 0 || next === pageOf(deck)) return;
+    if (deck.id === previewDeckId) previewPage(deck, next);
+    else setPageAt(current => ({ ...current, [deck.id]: next }));
+  };
 
   const searchRow = useRef<HTMLDivElement>(null);
   const importSlides = () => {
@@ -499,12 +515,17 @@ export function SlidesBrowser() {
     source: 'presentation',
     idOf: (d) => `${d.id}:${pageOf(d)}`,
     labelOf: (d) => `${d.title} — slide ${pageOf(d) + 1}`,
-    contentOf: d => {
-      const paths = d.paths ?? Array.from({ length: d.rendered }, (_, i) => deckPage(d.seed, i, d.spec));
-      return { path: paths[pageOf(d)], deckPaths: paths, deckIndex: pageOf(d), deckId: d.id, title: d.title, mediaKind: 'photo', origin: 'operator' };
-    },
+    contentOf: d => itemOf(d, pageOf(d)),
+    onPreviewChange: d => setPreviewDeckId(d.id),
     selectFirst: false,
   });
+  // Keep the inspected deck while search narrows the shelf. Looking for the
+  // next deck must not silently replace the slide already being previewed.
+  const previewDeck = allDecks.find(deck => deck.id === previewDeckId) ?? null;
+  const previewPageAt = previewDeck ? pageOf(previewDeck) : 0;
+  const previewSrc = previewDeck?.rendered ? (previewDeck.paths
+    ? presentationImageSrc(previewDeck.paths[previewPageAt])
+    : deckPage(previewDeck.seed, previewPageAt, previewDeck.spec)) : undefined;
 
   return (
     <>
@@ -547,6 +568,7 @@ export function SlidesBrowser() {
           />
         }
       >
+        <div className="slides-workspace"><div className="slides-workspace__panes">
         <LibraryPane header={false}>
           {matches.length === 0 ? (
             <EmptyMark w={220} h={220} plain art={<PresentationEmptyArt />}
@@ -562,13 +584,13 @@ export function SlidesBrowser() {
           ) : (
             <div ref={sel.listRef}>
               <div
-                className="grid auto-rows-min grid-cols-4 gap-4 px-4 pb-1"
+                className="slides-deck-grid"
               >
               {matches.map((deck, i) => {
                 const at = pageOf(deck);
                 const ready = deck.rendered > 0;
                 const live = sel.isLive(i);
-                const selected = sel.preview === i;
+                const selected = previewDeckId === deck.id;
                 const preview = ready ? (deck.paths ? presentationImageSrc(deck.paths[at]) : deckPage(deck.seed, at, deck.spec)) : undefined;
                 return (
                   <div
@@ -613,7 +635,7 @@ export function SlidesBrowser() {
                       selected={selected}
                       live={live}
                       onSelect={() => { if (ready) sel.setPreview(i); }}
-                      onSend={() => { if (ready) sel.send(i); }}
+                      onSend={() => { if (ready) { setPreviewDeckId(deck.id); sel.send(i); } }}
                     />
 
                     <div className="mt-2 flex items-center justify-between gap-2 px-0.5" title={deck.title}>
@@ -649,6 +671,8 @@ export function SlidesBrowser() {
           </div>
         )}
       </LibraryPane>
+      <SlidesPreview deck={previewDeck} src={previewSrc} page={previewPageAt} onPage={at => { if (previewDeck) previewPage(previewDeck, at); }} />
+      </div></div>
     </LibraryBrowser>
   </>
 );

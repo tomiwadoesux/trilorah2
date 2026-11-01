@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { RUN_COMPONENTS, runItemTarget, runSelectionRange, runTarget } from '../../../../shared/runCards';
 import { useLibraryNavigation } from '../../../stores/libraryNavigation';
 import { surface } from '../../../ui/lib/surface';
-import { ArrowLeftIcon, ArrowIcon, Button, CheckIcon, ClipboardIcon, CloseIcon, CopyIcon, GripIcon, ImportIcon, PencilIcon, PlusIcon, ScanIcon, SearchIcon, TrashIcon } from '../../../ui';
+import { ArrowLeftIcon, ArrowIcon, Button, CheckIcon, ChevronDownIcon, ClipboardIcon, CloseIcon, CopyIcon, GripIcon, ImportIcon, PencilIcon, PlayIcon, PlusIcon, ScanIcon, SearchIcon, StopIcon, TrashIcon } from '../../../ui';
 import { useDrag } from '../drag';
 import { useProjector } from '../projector';
 import { EmptyMark } from '../emptyArt';
@@ -48,15 +48,19 @@ function ComponentPicker({ onAdded }: { onAdded: () => void }) {
   </div>;
 }
 
-function SegmentCard({ seg, index, selectedKeys, onSelect, onToggle, onOpen }: {
-  seg: RunSegment; index: number; selectedKeys: string[];
-  onSelect: (event: MouseEvent<HTMLButtonElement>) => void; onToggle: () => void; onOpen: (origin: HTMLElement) => void;
+function SegmentCard({ seg, index, layout, selectedKeys, onSelect, onToggle, onOpen, onEditSong }: {
+  seg: RunSegment; index: number; layout: 'grid' | 'list'; selectedKeys: string[];
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void; onToggle: () => void; onOpen: (origin: HTMLElement, adding?: boolean) => void;
+  onEditSong: (item: QueueItem, origin: HTMLElement | null) => void;
 }) {
   const run = useRun();
   const drag = useDrag();
   const menu = useContextMenu();
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(seg.label);
+  const [expanded, setExpanded] = useState(true);
+  const contentId = useId();
+  const list = layout === 'list';
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (renaming) { input.current?.focus(); input.current?.select(); } }, [renaming]);
   const commit = () => { if (draft.trim()) run.renameSegment(seg.key, draft.trim()); setRenaming(false); };
@@ -84,21 +88,43 @@ function SegmentCard({ seg, index, selectedKeys, onSelect, onToggle, onOpen }: {
   return <li className="run-segment-tile" data-component={seg.type} data-run-section={seg.key} data-run-label={seg.label} data-selected={selected || undefined} {...drag.dropProps(seg.key)} data-drop-intent={intent} data-dragging={drag.active?.dragSegmentKey === seg.key || drag.active?.dragSegmentKeys?.includes(seg.key) || undefined} {...menu.pointer}
     onPointerEnter={followCardEdge} onPointerMoveCapture={followCardEdge}>
     <CardEdge />
+    <div className="run-segment-header" data-run-section-header>
     {renaming ? <div className="run-segment-rename">{segmentIcon(seg.type, 28)}<input ref={input} data-guide="run-section-name" aria-label="Section name" value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit}
       onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { e.stopPropagation(); setRenaming(false); } }} /></div>
-      : <button ref={button} type="button" data-guide={`run-section-${seg.type}`} className="run-segment-open" {...menu.keys}
+      : <button ref={button} type="button" data-guide={`run-section-${seg.type}`} className="run-segment-open"
+        onKeyDown={event => {
+          if (list && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+            event.preventDefault(); event.stopPropagation(); setExpanded(event.key === 'ArrowRight');
+          } else menu.keys.onKeyDown(event);
+        }}
         {...drag.bind(() => ({ source: 'note', label: group ? `${selectedKeys.length} sections` : seg.label, dragSegmentKey: seg.key, dragSegmentKeys: group ? selectedKeys : undefined, componentType: seg.type }))}
-        onClick={onSelect} onDoubleClick={e => { if (selected && !e.metaKey && !e.ctrlKey && !e.shiftKey) onOpen(e.currentTarget); }} aria-label={`Open ${seg.label}, ${seg.items.length} ${seg.items.length === 1 ? 'item' : 'items'}${selected ? ', selected' : ''}`} aria-haspopup="dialog" title={`${seg.label} · drag to reorder · Shift-click to select a range`}>
+        onClick={event => {
+          if (list && !event.metaKey && !event.ctrlKey && !event.shiftKey) { if (event.detail < 2) setExpanded(value => !value); }
+          else onSelect(event);
+        }} onDoubleClick={e => { if (!list && selected && !e.metaKey && !e.ctrlKey && !e.shiftKey) onOpen(e.currentTarget); }}
+        aria-label={`${list ? expanded ? 'Collapse' : 'Expand' : 'Open'} ${seg.label}, ${seg.items.length} ${seg.items.length === 1 ? 'item' : 'items'}${selected ? ', selected' : ''}`}
+        aria-expanded={list ? expanded : undefined} aria-controls={list ? contentId : undefined} aria-haspopup={list ? undefined : 'dialog'} title={`${seg.label} · ${list ? 'click to expand or collapse · ' : ''}drag to reorder · Shift-click to select a range`}>
         <span className="run-card-number">{String(index + 1).padStart(2, '0')}</span>
         <span className="run-card-grip"><GripIcon size={13} /></span>
         <span className="run-component-icon">{segmentIcon(seg.type, 28)}</span>
         <span className="run-segment-label">{seg.label}</span>
         <span className="run-card-meta">{seg.items.length} {seg.items.length === 1 ? 'item' : 'items'}</span>
+        {list && <ChevronDownIcon size={14} className="run-section-chevron" />}
       </button>}
     {!renaming && <>
       <button type="button" data-guide="run-section-select" className="run-section-select-toggle" role="checkbox" aria-checked={selected} aria-label={`Select ${seg.label}`} title={`Select ${seg.label}`} onClick={onToggle}>{selected && <CheckIcon size={11} />}</button>
       <button type="button" data-guide="run-section-remove" className="run-section-remove" aria-label={`Remove ${seg.label}`} title={`Remove ${seg.label}`} onClick={() => run.removeSegment(seg.key)}><TrashIcon size={12} /></button>
     </>}
+    </div>
+    {list && <div id={contentId} className="run-inline-content" data-run-section-contents hidden={!expanded}>
+      {seg.items.length ? <ul className="run-content-grid run-inline-grid" aria-label={`${seg.label} items`}>
+        {seg.items.map((item, itemIndex) => <QueuedItemCard key={item.key} compact seg={seg} item={item} index={itemIndex} onEditSong={onEditSong} onOpenLibrary={() => undefined} />)}
+      </ul> : <p className="run-inline-empty">No items yet. Drop content here.</p>}
+      <div className="run-inline-footer">
+        <button type="button" data-guide="run-inline-add" onClick={event => onOpen(event.currentTarget, true)}><PlusIcon size={12} />Add items</button>
+        <button type="button" data-guide="run-inline-open" onClick={event => onOpen(event.currentTarget)}>Open section<ArrowIcon size={12} /></button>
+      </div>
+    </div>}
     {intent && <span className="run-drop-marker" aria-hidden="true">{intent === 'swap' ? 'Swap' : intent === 'inside' ? 'Add here' : ''}</span>}
     <ContextMenu at={menu.at} items={items} label={`${seg.label} section actions`} onClose={menu.close} onSelect={picked => {
       if (picked.id === 'open' && button.current) onOpen(button.current);
@@ -119,8 +145,8 @@ function SegmentCard({ seg, index, selectedKeys, onSelect, onToggle, onOpen }: {
   </li>;
 }
 
-function QueuedItemCard({ seg, item, index, onEditSong, onOpenLibrary }: {
-  seg: RunSegment; item: QueueItem; index: number;
+function QueuedItemCard({ seg, item, index, compact = false, onEditSong, onOpenLibrary }: {
+  seg: RunSegment; item: QueueItem; index: number; compact?: boolean;
   onEditSong: (item: QueueItem, origin: HTMLElement | null) => void; onOpenLibrary: () => void;
 }) {
   const run = useRun();
@@ -149,17 +175,17 @@ function QueuedItemCard({ seg, item, index, onEditSong, onOpenLibrary }: {
     { id: 'move', label: 'move to section', items: run.segments.filter(s => s.key !== seg.key).map(s => ({ id: `move:${s.key}`, label: s.label, icon: segmentIcon(s.type) })) },
     { id: 'remove', label: 'remove item', danger: true, icon: <TrashIcon size={13} /> },
   ].filter(a => a.id !== 'move' || run.segments.length > 1);
-  return <li ref={row} className="run-content-card" {...drag.dropProps(target)} data-drop-item data-drop-label={item.title ?? item.label ?? 'item'} {...menu.pointer} data-over={drag.over === target || undefined} data-live={live || undefined}>
+  return <li ref={row} className="run-content-card" data-source={item.source} {...drag.dropProps(target)} data-drop-item data-drop-label={item.title ?? item.label ?? 'item'} {...menu.pointer} data-over={drag.over === target || undefined} data-live={live || undefined}>
     {item.source === 'note' ? <div className="run-note-card">
       <button type="button" className="run-note-handle" {...drag.bind(carry)} {...menu.keys} aria-label="Drag note" title="Drag note to reorder or move">{segmentIcon('notes', 22)}<GripIcon size={14} /></button>
       <textarea ref={note} data-guide="run-note-text" aria-label="Edit note" autoFocus={!item.label} value={item.label} onChange={e => run.updateItem(seg.key, item.key, e.target.value)} placeholder="Type a note…" />
-    </div> : <button type="button" data-guide="run-item-open" className="run-content-open" {...drag.bind(carry)} {...menu.keys} onClick={() => { useLibraryNavigation.getState().open(item); onOpenLibrary(); }} title={`Preview ${item.label}`}>
+    </div> : <button type="button" data-guide="run-item-open" className="run-content-open" {...drag.bind(carry)} {...menu.keys} onClick={() => { useLibraryNavigation.getState().open(item); onOpenLibrary(); }} aria-label={`Preview ${item.label}`} title={`Preview ${item.label}`}>
       <ContentPreview item={item} /><span className="run-content-label">{item.title ?? item.label}</span>
       {item.section && <span className="run-card-meta">{item.section}</span>}
     </button>}
     <div className="run-content-actions">
       <span className="run-card-meta">{index + 1}</span>
-      {canGoLive && <button type="button" data-guide="run-item-live" className="run-live-button" onClick={send}>{live ? 'Take down' : 'Go live'}</button>}
+      {canGoLive && <button type="button" data-guide="run-item-live" className="run-live-button" title={`${live ? 'Take down' : 'Go live'}: ${item.label}`} aria-label={`${live ? 'Take down' : 'Go live'}: ${item.label}`} onClick={send}>{compact ? live ? <StopIcon size={12} /> : <PlayIcon size={12} /> : live ? 'Take down' : 'Go live'}</button>}
       {item.source === 'song' && <button type="button" data-guide="run-item-edit" aria-label={`Edit ${item.label}`} onClick={() => onEditSong(item, row.current)}><PencilIcon size={13} /></button>}
       <button type="button" data-guide="run-item-remove" className="run-remove-action" aria-label={`Remove ${item.label || 'note'}`} onClick={() => run.remove(seg.key, item.key)}><CloseIcon size={13} /></button>
     </div>
@@ -220,13 +246,14 @@ const SECTION_EMPTY_COPY: Record<string, string> = {
   verse: 'Add the scripture references for this part of the service.',
 };
 
-function SectionDialog({ seg, onSelect, onClose, onEditSong, fallbackSongs }: {
+function SectionDialog({ seg, onSelect, onClose, onEditSong, fallbackSongs, initialAdding = false }: {
   seg: RunSegment; onSelect: (key: string) => void; onClose: () => void;
   onEditSong: (item: QueueItem, origin: HTMLElement | null) => void; fallbackSongs?: readonly LibrarySong[];
+  initialAdding?: boolean;
 }) {
   const run = useRun();
   const drag = useDrag();
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(initialAdding);
   const [addingSection, setAddingSection] = useState(false);
   const [query, setQuery] = useState('');
   const searchInput = useRef<HTMLInputElement>(null);
@@ -245,7 +272,7 @@ function SectionDialog({ seg, onSelect, onClose, onEditSong, fallbackSongs }: {
       previous?.focus({ preventScroll: true });
     };
   }, []);
-  useEffect(() => { setAdding(false); setQuery(''); }, [seg.key]);
+  useEffect(() => { setAdding(initialAdding); setQuery(''); }, [seg.key, initialAdding]);
   useEffect(() => {
     if (!addingSection) return;
     sectionPicker.current?.scrollIntoView({ block: 'nearest' });
@@ -328,8 +355,18 @@ function SectionDialog({ seg, onSelect, onClose, onEditSong, fallbackSongs }: {
 export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly LibrarySong[]; say?: (line: { text: string }) => void }) {
   const run = useRun();
   const drag = useDrag();
+  const [layout, setLayout] = useState<'grid' | 'list'>(() => {
+    try { return localStorage.getItem('trilorah_run_layout') === 'list' ? 'list' : 'grid'; }
+    catch { return 'grid'; }
+  });
+  const toggleLayout = () => {
+    const next = layout === 'grid' ? 'list' : 'grid';
+    setLayout(next);
+    try { localStorage.setItem('trilorah_run_layout', next); } catch { /* Keep the choice for this session. */ }
+  };
   const [picker, setPicker] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [addingItems, setAddingItems] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
   const selectionAnchor = useRef<string | null>(null);
   const rail = useRef<HTMLDivElement>(null);
@@ -342,7 +379,7 @@ export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly 
   const pickerPanel = useRef<HTMLDivElement>(null);
   const section = run.segments.find(s => s.key === selected) ?? (selected ? run.segments[0] : undefined);
   const selectedKeys = selection.filter(key => run.segments.some(segment => segment.key === key));
-  const openSection = (key: string, from: HTMLElement) => { origin.current = from; setSelected(key); };
+  const openSection = (key: string, from: HTMLElement, adding = false) => { origin.current = from; setAddingItems(adding); setSelected(key); };
   const range = (key: string) => runSelectionRange(run.segments.map(segment => segment.key), selectionAnchor.current, key);
   const toggle = (key: string) => {
     selectionAnchor.current = key;
@@ -413,7 +450,7 @@ export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly 
     <div ref={rail} className="run-cards-scroll" data-run-scroll data-drop-segment="" tabIndex={0} aria-label="Run of show controls" data-selecting={selectionBox ? true : undefined}
       onPointerDown={beginMarquee} onPointerMove={updateMarquee} onPointerUp={endMarquee} onPointerCancel={endMarquee} onLostPointerCapture={endMarquee}
       onKeyDown={event => {
-        if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="menu"]') || picker || drag.active) return;
+        if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="menu"], [data-run-section-contents]') || picker || drag.active) return;
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') {
           event.preventDefault(); event.stopPropagation(); setSelection(run.segments.map(segment => segment.key)); selectionAnchor.current ??= run.segments[0]?.key ?? null;
         } else if (event.key === 'Escape' && selectedKeys.length) {
@@ -426,7 +463,8 @@ export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly 
           const current = (event.target as HTMLElement).closest<HTMLElement>('[data-run-section]');
           if (!current) return;
           const index = run.segments.findIndex(segment => segment.key === current.dataset.runSection);
-          const delta = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' ? -3 : 3;
+          const columns = layout === 'list' ? 1 : 3;
+          const delta = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' ? -columns : columns;
           const next = run.segments[index + delta];
           if (!next) return;
           event.preventDefault(); event.stopPropagation();
@@ -443,11 +481,13 @@ export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly 
         <button type="button" data-guide="run-selected-remove" className="run-selection-remove" aria-label="Remove selected sections" title="Remove selected · Delete" onClick={removeSelected}><TrashIcon size={13} /></button>
         <button type="button" data-guide="run-selection-clear" aria-label="Clear selection" title="Clear selection · Esc" onClick={() => setSelection([])}><CloseIcon size={13} /></button>
         </>}
+        <button type="button" data-guide="run-layout" className="run-layout-toggle" aria-label={`Switch run of show to ${layout === 'grid' ? 'list' : 'grid'} view`} title={`Switch to ${layout === 'grid' ? 'list' : 'grid'} view`} onClick={toggleLayout}>{layout === 'grid' ? 'List' : 'Grid'}</button>
       </div>}
       {!run.segments.length && <div className="run-rail-empty"><EmptyMark art={<LayeredProgrammeArt />} plain w={180} h={180} line="nothing in the run yet" hint="Add a section to start your service." /></div>}
-      <ul className="run-component-grid" data-run-sections aria-label="Run of show" data-empty={!run.segments.length || undefined}>
-        {run.segments.map((seg, index) => <SegmentCard key={seg.key} seg={seg} index={index} selectedKeys={selectedKeys} onSelect={event => selectCard(seg.key, event)} onToggle={() => toggle(seg.key)} onOpen={from => openSection(seg.key, from)} />)}
-        <li className={!run.segments.length ? 'run-add-empty' : undefined}><button ref={addButton} type="button" data-guide="run-add-section" className="run-add-section-card" aria-label="Add a section" title="Add a section" aria-expanded={picker} onClick={() => setPicker(v => !v)}><PlusIcon size={22} />{!run.segments.length && <span>Add a section</span>}</button></li>
+      <ul className="run-component-grid" data-run-sections data-run-layout={layout} aria-label="Run of show" data-empty={!run.segments.length || undefined}>
+        {run.segments.map((seg, index) => <SegmentCard key={seg.key} seg={seg} index={index} layout={layout} selectedKeys={selectedKeys} onSelect={event => selectCard(seg.key, event)} onToggle={() => toggle(seg.key)} onOpen={(from, adding) => openSection(seg.key, from, adding)}
+          onEditSong={(item, from) => setEditing({ segKey: seg.key, item, origin: from })} />)}
+        <li className={!run.segments.length ? 'run-add-empty' : undefined}><button ref={addButton} type="button" data-guide="run-add-section" className="run-add-section-card" aria-label="Add a section" title="Add a section" aria-expanded={picker} onClick={() => setPicker(v => !v)}><PlusIcon size={22} />{(!run.segments.length || layout === 'list') && <span>Add a section</span>}</button></li>
       </ul>
       {selectionBox && <div className="run-selection-box" aria-hidden="true" style={selectionBox} />}
       {picker && <div ref={pickerPanel} data-run-picker onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); closePicker(); } }}>
@@ -456,7 +496,7 @@ export function RunOfService({ fallbackSongs, say }: { fallbackSongs?: readonly 
       </div>}
     </div>
     <RunHeaderActions say={say} onOverlayChange={setImporting} />
-    {section && !editing && !importing && <SectionDialog seg={section} onSelect={setSelected} onClose={close} fallbackSongs={fallbackSongs}
+    {section && !editing && !importing && <SectionDialog seg={section} initialAdding={addingItems} onSelect={key => { setAddingItems(false); setSelected(key); }} onClose={close} fallbackSongs={fallbackSongs}
       onEditSong={(item, from) => setEditing({ segKey: section.key, item, origin: from })} />}
     {editing && <RunSongEditor key={editing.item.key} item={editing.item} origin={editing.origin} fallbackSongs={fallbackSongs}
       onSaved={patch => run.patchItem(editing.segKey, editing.item.key, patch)} onClosed={() => setEditing(null)} />}

@@ -92,9 +92,13 @@ export interface VerseSlide {
   /**
    * The copyright line of an online Bible whose words are on this slide
    * (bibleVersions versionCredit) — every slide of it, small at the foot of
-   * the screen. Absent for the bundled Bibles.
+   * the screen. Absent for the bundled Bibles. A song's name sits here too,
+   * since a lyric screen has no reference line.
    */
   credit?: string
+  /** A song section: `lines` holds its words with their line breaks, and the
+   *  renderer sets them as lyrics (shared/textSpacing LYRIC_TYPE). */
+  lyric?: boolean
 }
 
 export interface VerseRef {

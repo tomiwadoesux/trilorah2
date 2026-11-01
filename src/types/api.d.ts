@@ -770,8 +770,8 @@ interface WindowApi extends Partial<TriPackageApi> {
   /** `url` is file:// (what the theme stores); `src` is local-media:// (what an <img> can load). */
   downloadStock?(payload: { item: StockItem; apply?: boolean }): Promise<{ success: boolean; url?: string; src?: string; error?: string }>;
   showMedia?(imagePath: string, kind?: 'photo' | 'video'): Promise<{ success: boolean }>;
-  /** Transport for a video on the wall. `volume` takes 0–1, `loop` a boolean. */
-  mediaControl?(action: { type: 'play' | 'pause' | 'toggle' | 'restart' | 'volume' | 'loop'; value?: number | boolean }): Promise<{ success: boolean }>;
+  /** Transport for a video on the wall. `seek` takes seconds, `mute` and `loop` a boolean, `volume` 0–1. */
+  mediaControl?(action: { type: 'play' | 'pause' | 'toggle' | 'restart' | 'seek' | 'mute' | 'volume' | 'loop'; value?: number | boolean }): Promise<{ success: boolean }>;
   onMediaControl?(callback: (action: { type: string; value?: number | boolean }) => void): Unsubscribe;
   clearMedia?(): Promise<{ success: boolean }>;
   /** Render the companion QR (publicWebUrl + accountSlug) on every open output. */

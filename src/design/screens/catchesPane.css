@@ -9,11 +9,15 @@
   min-height: 100%;
   container-type: inline-size;
 }
-.catches-pane.is-empty { height: 100%; padding: 0; }
+.catches-pane.is-empty { flex: 1; min-height: 180px; padding: 0; }
+.catches-pane.is-empty > .tri-empty-mark { display: flex; flex: 1; flex-direction: column; height: auto; }
+.catches-pane.is-empty .tri-empty-mark__frame { display: flex; flex: 1; flex-direction: column; height: auto; }
 /* Keep the quotation marks and their caption together in the panel's center. */
 .catches-pane.is-empty .tri-empty-mark__layout {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   justify-content: center;
   gap: 8px;
   height: auto;
