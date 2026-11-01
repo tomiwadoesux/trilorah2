@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "product": "Trilorah",
   "reviewedOn": "2026-10-18",
-  "packageVersion": "0.4.10",
+  "packageVersion": "0.4.11",
   "baseCommit": "f91b813dc2fa6547d4455d96990baa9863fa3822",
   "includesWorkingTreeChanges": true,
   "scope": "Source-reviewed user task families across the current desktop, phone, and web surfaces. This is the first product map, not an exhaustive control registry or a runtime-certified walkthrough library.",

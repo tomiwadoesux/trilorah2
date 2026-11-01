@@ -240,9 +240,15 @@ jobs:
             installers/sender/*
           generate_release_notes: true
           body: |
-            NKJV and NLT (1996) are included in full for offline reading, alongside the other downloaded translations. Reading them needs no internet or API key, and their chapters do not expire.
+            Songs now look like lyrics on your screens: larger, bolder, closer lines and tighter letters. Each line you wrote stays on one line when it can, and the song's name becomes a small credit. Labels such as Verse 2 and Chorus stay with you.
 
-            Both translations retain their edition labels, initials and copyright credits. Additional YouVersion Bibles keep their existing online access.
+            **Also new**
+
+            - **Slides:** a preview panel pages through a deck and stages a page without sending it live.
+            - **Media:** cards keep names, types and actions visible, thumbnails stay in proportion, and you can switch between pictures and videos.
+            - **Video:** play, pause, drag to seek and sound controls on the preview and live screens, and the projector follows.
+            - **Songs:** the song list stays beside an open song, with an On device / Scheduled switch fed by your Run of Show.
+            - **Run of Show:** a list layout with collapsible sections.
 
             **Windows:** download the `.exe`. Windows will say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
 
