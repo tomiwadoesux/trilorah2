@@ -181,6 +181,7 @@
   .pd-assistant-body { padding-left: 25px; padding-right: 25px; }
 }
 @media (max-width: 800px) {
+  .pd-stage-corner { display: none; }
   .pd-workspace-grid { grid-template-columns: 145px minmax(0, 1fr); }
   .pd-workspace-inspector { display: none; }
   .pd-workspace-center { padding: 16px; }

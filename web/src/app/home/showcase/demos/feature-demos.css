@@ -4,10 +4,25 @@
 @media(prefers-reduced-motion:reduce){.fd-native,.fd-pointer{transition:none}.fd-pointer{display:none}}
 /* Clip at the native crop before scaling; prevent wheel/focus from scrolling it. */
 .fd-pane,.fd-canvas{overflow:clip!important}.fd-pane{isolation:isolate}
-.sc-row-service .sc-stage{--sc-stage-ratio:1200 / 790;--sc-m-stage-ratio:1 / 1.18}
 .fd-service .sc-front{top:12%}
 .fd-songs .sc-front{background:#101411}
 @media(max-width:760px){.fd-service .sc-front{top:22%}.fd-songs .sc-front{top:51%}}
 .feature-demo.fd-companion .fd-native .sc-front{border:7px solid #252927;border-radius:28px;overflow:clip;background:#070d0f;box-shadow:0 20px 50px #0005}
 .fd-controls button:hover{border-color:var(--home-line)}
 @media(hover:hover) and (pointer:fine){.fd-controls button:hover{border-color:var(--home-muted)}}
+/* A box with an aspect ratio won't shrink below its content by default, and the canvas inside is
+   laid out at its full native size before it is scaled. Without this the pane keeps that height,
+   blank under the picture and running over whatever comes next. */
+.fd-pane{min-height:0}
+/* The caption and buttons sit under the stage, clear of the panes. */
+.fd-controls{top:calc(100% + 16px);bottom:auto}
+/* Each demo's stage fits its panes. :has() outranks the rows' own CSS, which is imported after this file. */
+.sc-row-service:has(.feature-demo) .sc-stage{--sc-stage-ratio:1200 / 820;--sc-m-stage-ratio:1 / 1.05}
+.sc-row-songs:has(.feature-demo) .sc-stage{--sc-m-stage-ratio:1 / 1.31}
+.sc-row-screens:has(.feature-demo) .sc-stage{--sc-m-stage-ratio:1 / 1.28}
+@media(max-width:760px){.fd-screens .sc-front{top:29.5%}}
+/* Small tablets keep the desktop composition (rows/phone-row.css), so the phone keeps its share of it. */
+@media(min-width:621px) and (max-width:760px){.fd-companion .sc-front{width:36%;top:0}.fd-companion .sc-back{left:40%;width:58%;top:12%}}
+/* The hero capture declares no color scheme. Under the page's dark one, Chrome gives its frame an
+   opaque white canvas, which showed as bright bars in the gaps between the panels. */
+.fd-scripture .fd-canvas iframe,.fd-songs .fd-canvas iframe{color-scheme:normal}

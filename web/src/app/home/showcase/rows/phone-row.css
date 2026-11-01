@@ -18,7 +18,7 @@
   /* Phone (620px and below; 621–760px restates these further down): the menu across the top,
      cropped and zoomed so it reads, and the phone below it on the left, over the verse the menu
      doesn't cover. */
-  --sc-m-stage-ratio:350 / 628;
+  --sc-m-stage-ratio:350 / 665;
   --sc-m-back-left:0%;--sc-m-back-top:0%;--sc-m-back-bottom:auto;--sc-m-back-width:122.2%;
   --sc-m-fade-x:57%;--sc-m-fade-x-end:88%;--sc-m-fade-y:56%;--sc-m-fade-y-end:100%;
   --sc-m-front-left:0%;--sc-m-front-top:31.8%;--sc-m-front-width:56%;
