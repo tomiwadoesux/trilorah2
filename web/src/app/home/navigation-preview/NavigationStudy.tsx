@@ -92,7 +92,7 @@ export default function NavigationStudy() {
         </nav>
         <div className="ns-account"><Link href="/app" className="ns-signin" onPointerEnter={close}>Sign in</Link><Link href="/app/signup" className="ns-primary" onPointerEnter={close}>Get started</Link><button id="ns-mobile-toggle" type="button" className="ns-mobile-toggle" aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileOpen} aria-controls="ns-mobile-menu" onClick={() => { close(); setMobileOpen(!mobileOpen); }}>{mobileOpen ? <X size={17} /> : <span><i /><i /></span>}</button></div>
       </div>
-      <NavigationDropdown active={active} layoutMenu={layoutMenu} onOpen={preview} onPanelKey={panelKey} demoHref="/home#scripture" />
+      <NavigationDropdown active={active} layoutMenu={layoutMenu} onOpen={preview} onPanelKey={panelKey} />
       {mobileOpen && <nav className="ns-mobile-menu" id="ns-mobile-menu" aria-label="Mobile navigation">
         <button type="button" onClick={() => preview(walkthrough)}>How it works<ArrowRight size={13} /></button>
         <span>Product</span>

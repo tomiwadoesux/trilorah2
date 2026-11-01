@@ -115,7 +115,7 @@ export function HomeNavigation({ sectionBase = '', brandLogo, showMenuIndicators
           </nav>
           <div className="home-nav-actions">{themeControl}{!downloadHref && <Link href="/app" className="home-nav-login" onPointerEnter={close}>Sign in</Link>}<Link className="home-button home-button-primary" href={downloadHref ?? '/app/signup'} onPointerEnter={close}>{downloadHref ? 'Download' : 'Start your service'}</Link><button type="button" id="home-menu-button" className="home-menu-toggle" aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileOpen} aria-controls="home-mobile-navigation" onClick={() => { close(); setMobileOpen(!mobileOpen); }}>{mobileOpen ? <X size={16} /> : <><span /><span /></>}</button></div>
         </div>
-        <NavigationDropdown active={active} layoutMenu={layoutMenu} onOpen={go} onPanelKey={panelKey} demoHref={`${sectionBase}#scripture`} onDemo={followLink} />
+        <NavigationDropdown active={active} layoutMenu={layoutMenu} onOpen={go} onPanelKey={panelKey} />
         <nav className="home-mobile-nav home-mobile-disclosure" data-open={mobileOpen} id="home-mobile-navigation" aria-label="Mobile navigation" aria-hidden={!mobileOpen}>
           <div>{mobileLinks.map(([label, href]) => <a key={label} href={`${sectionBase}${href}`} tabIndex={mobileOpen ? 0 : -1} onClick={followLink}>{label}<ArrowRight size={14} /></a>)}<button type="button" tabIndex={mobileOpen ? 0 : -1} onClick={() => go(about)}>About<ArrowRight size={14} /></button>{showSupport && <button type="button" tabIndex={mobileOpen ? 0 : -1}><SupportLabel /></button>}{!downloadHref && <Link href="/app" tabIndex={mobileOpen ? 0 : -1}>Sign in</Link>}</div>
         </nav>

@@ -1,6 +1,7 @@
 /* The bar keeps the home look. Its dropdown is the shared Product / Resources bento from the
    navigation study (navigation-preview/NavigationMenu), floated just under the bar. */
-.home-nav-with-menu { --menu-ease: cubic-bezier(.22, 1, .36, 1); z-index: 50; }
+/* Keep the dropdown above its blur backdrop even when the base home styles load last. */
+.home-nav.home-nav-with-menu { --menu-ease: cubic-bezier(.22, 1, .36, 1); z-index: 50; }
 .home-nav-with-menu .home-nav-links { gap: 22px; }
 .home-nav-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 22px 0; background: none; border: 0; color: #a0a8a3; font-size: 12px !important; cursor: pointer; transition: color 150ms ease; }
 .home-nav-trigger > svg { opacity: .4; transform: translateY(1px); transition: transform 180ms ease, opacity 150ms ease; }
