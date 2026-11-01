@@ -6,7 +6,7 @@ question: "How do I organize segments, content, and notes for a service?"
 proposed_publication_date: "2026-03-27"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; release walkthrough and visuals pending"
-reviewed_on: "2026-10-11"
+reviewed_on: "2026-10-26"
 task_ids: [run.build-edit, run.queue-content-note, files.save-open-transfer]
 ---
 
@@ -22,6 +22,8 @@ Use the plus beside **run of show** to open **Add a section**. Choose from the s
 
 Create a small order first. For example, use Slides for a welcome, Music for worship, Sermon for the message, and another Slides section for the closing announcement. Right-click a section and choose **rename** so its label matches your service.
 
+Choose **List** above the sections to see their contents inline, or **Grid** to return to section cards. In List view, click a section heading to collapse or expand it. Each section opens independently. Trilorah remembers your view on this computer. Both views keep the same sections, selection controls, and drag ordering.
+
 Drag sections into order, or use **move earlier** and **move later**. The menu also offers a planned length, duplication, and a type change.
 
 The default order is another starting point. Loading it replaces the current run after confirmation. Use it before investing time in a custom arrangement, or save your existing work first.
@@ -29,6 +31,8 @@ The default order is another starting point. Loading it replaces the current run
 ## 2. Put content inside each section
 
 Open a section and choose **Add items**. Choose a content type, then select the prepared material. Saved song sections appear under **Music**. Images, videos, and slides can be selected from the available files; those categories also offer **Import files**.
+
+In List view, images, song sections, and presentation slides appear as cards, two per row. Click a card to preview it. **Add items** opens the content picker, and **Open section** gives you the larger editing view. The play button on a card sends that item live.
 
 Use **Verse** to add a scripture reference. You can also drag supported content into a section and arrange items in the order you need them.
 

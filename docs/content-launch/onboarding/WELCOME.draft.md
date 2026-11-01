@@ -2,7 +2,8 @@
 title: "Welcome and first-use copy"
 status: "draft — proposed messages; no delivery or first-run triggers implemented by this document"
 reviewed_on: "2026-10-17"
-audience: "A volunteer opening Trilorah for the first time"
+audience_updated_on: "2026-10-30"
+audience: "People opening Trilorah for the first time, including experienced operators, team leads and heads of department"
 ---
 
 # Welcome and first-use messages
@@ -19,7 +20,7 @@ audience: "A volunteer opening Trilorah for the first time"
 
 ## Rehearsal introduction
 
-**Title:** Get the basics under your fingers.
+**Title:** Get familiar with Trilorah.
 
 **Body:** Prepare a short run, check the screen and practise the transitions. Then save the service so you can open it again.
 

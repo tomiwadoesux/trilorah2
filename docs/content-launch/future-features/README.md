@@ -2,6 +2,8 @@
 
 **Status:** six complete introductions, ready for draft review. Implementation rechecked October 11, 2026. The user authorized drafting in the agreed voice direction; individual lines still require normal editorial review. No article has been published, scheduled, or assigned a release date. Source review does not certify a released build.
 
+Article 19 was expanded and source-reviewed again on **October 30, 2026** to explain how and why Trilorah uses progressive onboarding. Its [fact record and visual plan](progressive-onboarding-notes.md) describe the current behaviour and publication checks; the other article review dates remain unchanged.
+
 These six ideas complement the existing [16 beginner articles](../README.md). They explain a product decision through a recognizable service moment, then link to the relevant instructions. They are not six more button-by-button tutorials. Their order is provisional and follows release readiness, not a fixed publishing quota.
 
 The voice follows the latest [calibration](../voice-calibration.md): straightforward explanations with occasional dry observations and short asides. The mobile opening develops the user's preferred “phone has been promoted” premise; its parenthetical line is a draft choice, not a claim of individual approval. The rejected calendar and preacher-detour personification is excluded. Controls retain literal labels.
@@ -12,7 +14,7 @@ The voice follows the latest [calibration](../voice-calibration.md): straightfor
 | --- | --- | --- |
 | 17 | [Your phone has been promoted.](17-mobile-remote.md) | Introduce the remote, show a rehearsal use case, and give the four pairing actions. |
 | 18 | [The verse wasn't on the service plan.](18-scripture-catches.md) | Explain the value of catches while making operator control explicit. |
-| 19 | [Show me where.](19-in-app-guide.md) | Introduce the supported guide interactions through one setup-dependent task. |
+| 19 | [Why Trilorah teaches one task at a time](19-in-app-guide.md) | Explain progressive onboarding, user control, local progress and a supported setup detour. |
 | 20 | [You already typed the programme once.](20-programme-import.md) | Show how the existing programme starts preparation, including a reusable example. |
 | 21 | [Tell Trilorah what it got wrong.](21-preacher-corrections.md) | Explain verified feedback and the three teaching controls. |
 | 22 | [The next volunteer needs more than a file name.](22-service-handoff.md) | Connect service packages to a complete, checked handoff. |

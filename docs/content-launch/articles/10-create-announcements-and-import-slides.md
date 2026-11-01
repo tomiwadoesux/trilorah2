@@ -6,7 +6,7 @@ question: "When should I use Quick slide, and how do I import an existing deck?"
 proposed_publication_date: "2026-05-12"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; import-conversion walkthrough and visuals pending"
-reviewed_on: "2026-10-11"
+reviewed_on: "2026-10-26"
 task_ids: [slides.create-quick-slide, slides.import-deck, output.publish-preview, run.queue-content-note]
 ---
 
@@ -46,7 +46,9 @@ If conversion fails, follow the error message. Presentation import needs LibreOf
 
 ## Check every slide
 
-Move through all the rendered pages. The first thumbnail is not a review of the other nineteen.
+Select a deck to open its side **Preview** panel. Use the previous and next arrows or choose a page number to inspect the rendered slides. These controls stage the selected page; **Go live** sends it to the display. Searching for another deck keeps the inspected deck in the side preview.
+
+Move through all the rendered pages. The first thumbnail is not a review of the other nineteen. If a deck is still being prepared, the panel shows how many pages are ready and only offers those pages.
 
 For imported or multipage presentations, Trilorah's edit control changes the library name. To change slide content, update the original presentation and import the revised file.
 

@@ -2,7 +2,8 @@
 title: "About Trilorah"
 status: "draft — founder framing and release review required before publication"
 reviewed_on: "2026-10-17"
-audience: "Church volunteers and leaders deciding who Trilorah is for"
+audience_updated_on: "2026-10-30"
+audience: "Church production teams, operators, media and technical leads, and heads of department"
 ---
 
 # Built for the person running the screen
@@ -21,11 +22,11 @@ The operator already had plenty to follow. We wanted to build technology that co
 
 ## What we care about
 
-Useful intelligence needs a clear job. In Trilorah, that might mean finding a passage from spoken words or helping a new volunteer locate a control. The result needs to be understandable, and the person using it needs to know what happens next.
+Useful intelligence needs a clear job. In Trilorah, that might mean finding a passage from spoken words or helping someone new to the app locate a control. The result needs to be understandable, and the person using it needs to know what happens next.
 
 That is why preparation, review and rehearsal belong alongside the features. A scripture suggestion needs checking. A saved service needs opening on the receiving computer. The projector needs checking from the room.
 
-We’re building Trilorah around that kind of real use, with church volunteers at the centre of the decisions.
+We’re building Trilorah around that kind of real use, with the people running and overseeing church production at the centre of the decisions.
 
 [Meet Trilorah](../articles/01-meet-trilorah.md) · [Try a first-service rehearsal](../../community/GETTING-STARTED.md)
 

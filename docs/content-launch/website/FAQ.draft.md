@@ -2,11 +2,12 @@
 title: "Trilorah FAQ"
 status: "draft — source-reviewed; release and publication checks remain"
 reviewed_on: "2026-10-17"
-audience: "Church volunteers preparing and running services"
+audience_updated_on: "2026-10-30"
+audience: "People preparing, running or overseeing church production, including operators and team leads"
 editorial_record: "FAQ-evidence.md"
 ---
 
-# Before your first service
+# Choosing and using Trilorah
 
 <!-- F01 -->
 ## Can we use our existing computer, sound system and screens?
@@ -49,7 +50,7 @@ Newly caught spoken references and quotations are suggestions; recognising one d
 Yes. Type the reference or search using the words you remember, then check the passage you find. A single click on a verse row previews it; double-clicking or pressing Enter on the row sends it live, and selecting a phrase-search result also sends it live. Use the [manual scripture search guide](../articles/09-find-scripture-from-a-phrase.md) to practise that fallback before you need it.
 
 <!-- F09 -->
-## Can one volunteer prepare at home and another run the service?
+## Can we prepare at home and hand the service to another operator?
 
 Yes—save a **.tri** service package, review what it includes, and open it on the service computer with **.tri → open service**. Selected local resources can travel in the package, while remote web addresses remain links. The receiving computer still needs its own screen assignments, audio devices and provider setup. Open the file there, check any warnings and play important media before the service; see the [save and transfer guide](../../community/GETTING-STARTED.md#6-save-the-service-and-check-the-handoff).
 

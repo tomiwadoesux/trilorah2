@@ -33,6 +33,8 @@ Reviewed and critical claims rechecked October 11, 2026 against the current work
 
 ## 3. In-app guide
 
+**October 30 follow-up:** article 19 now explains progressive onboarding. See the [current claim trace, terminology and publication checks](progressive-onboarding-notes.md). Progress is stored under one local key, not a per-church account; completed guides are deprioritised rather than permanently hidden. Real listening suppresses spoken guide prompts as well as demonstrated clicks/typing. Build indexing does not author new lessons.
+
 - [ProductGuide.tsx](../../../src/components/ProductGuide.tsx): `ProductGuide`, guide choices, step actions, prerequisite setup state, retained field answers, and source-revision update listener. The listener pauses an active walk when the app source index changes.
 - [guideWalkthroughs.ts](../../../src/lib/guideWalkthroughs.ts): `walkthroughFor`, `guideClickTargets`, `guideWriteTargets`, `canGuideClick`, `canGuideWrite` define the permitted workflows and action targets.
 - [guidePrerequisites.ts](../../../src/lib/guidePrerequisites.ts): `guideReadiness` checks stock-provider/Bible readiness and distinguishes unavailable or unknown state. A saved provider key does not prove provider acceptance until a search succeeds.
@@ -55,7 +57,7 @@ Reviewed and critical claims rechecked October 11, 2026 against the current work
 ## 5. Preacher-specific corrections
 
 - [ProfileView.tsx](../../../src/design/screens/dashboard/ProfileView.tsx): choosing today's preacher and entering sound check/review.
-- [LearningActions.tsx](../../../src/design/screens/dashboard/LearningActions.tsx): sound-check actions; `Correct`, `Wrong reference`, uncertain answers, saved corrections, and missed examples. UI states that only verified answers affect readiness, with missed references kept separately from detected-verse precision.
+- Historical October 11 audit: `src/design/screens/dashboard/LearningActions.tsx` held sound-check actions; `Correct`, `Wrong reference`, uncertain answers, saved corrections, and missed examples. That file is absent in the October 30 checkout. Recheck the current profile/training implementation before using this earlier evidence for a release claim.
 - [Teaching.tsx](../../../src/design/screens/dashboard/Teaching.tsx): the visible controls are **sounds like** (`soundsLike`), **their words** (`vocabulary`), and **ignored after a verse** (`ignoreTails`). Use the visible labels in reader instructions; property names are implementation evidence. Book-name aliases are applied in reference-like contexts; these are distinct controls, not interchangeable training data.
 - [main.ts](../../../electron/main.ts): `teachingFor`, `teachTranscript`, `SoundCheck` construction with `startWhisperLocal`/`stopWhisperLocal`, and Deepgram vocabulary setup. Corrections and vocabulary behavior depend on active profile/settings and the relevant recognition path.
 - [preacherLearning.ts](../../../shared/preacherLearning.ts): shared teaching/review records.

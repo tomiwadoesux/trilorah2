@@ -2,6 +2,8 @@
 
 Use these briefs to write website copy while implementing each page. Load [product context](../../.agents/product-marketing.md) and the [voice guide](TONE.md) first. A brief supplies the page's purpose, required facts and next action; the coding agent can choose the wording and suitable existing components as the page takes shape.
 
+Address the reader as **you** or **your team**. General pages serve people leading and running church production, including heads of department; do not assume the reader is a volunteer or new to production. Explain unfamiliarity with Trilorah separately from someone's existing experience or role. Use specific audience labels only when a page genuinely targets that role.
+
 ## A brief for each page
 
 Keep this information beside the implementation task, or add a focused brief here when it is needed:
@@ -49,7 +51,7 @@ Treat documentation as a maintained part of the product. Start with this reading
 
 Desktop translation evidence: the Bible builder downloads complete NKJV and NLT (1996) into `bible.db`. Installed copies are read locally without chapter expiry; additional YouVersion translations still use online chapter loading. Confirm the release database contains both before claiming they are included in an installer. Sources: `scripts/lib/nkjv-bible.mjs`, `scripts/lib/sabda-bible.ts`, `scripts/build-bible-db.mjs`, `shared/downloadedBibles.ts`, `electron/main.ts`.
 
-The founder's latest instruction returns to PolyForm Perimeter 1.0.1 for current covered original Trilorah source code, replacing the intervening Apache-2.0 choice without revoking valid earlier grants. Describe the current licence as source-available. It permits church use and internal customisation, while restricting providing competing products, including free offerings. Do not promise unrestricted public competing forks. An optional Trilorah-operated paid service remains undecided. Include a community installation/configuration route, and self-hosting instructions only for services actually supported for self-management. Add contributor setup and contribution instructions when the source is ready for public participation. Ordinary volunteers should still have clear installation help without having to become contributors.
+The founder's latest instruction returns to PolyForm Perimeter 1.0.1 for current covered original Trilorah source code, replacing the intervening Apache-2.0 choice without revoking valid earlier grants. Describe the current licence as source-available. It permits church use and internal customisation, while restricting providing competing products, including free offerings. Do not promise unrestricted public competing forks. An optional Trilorah-operated paid service remains undecided. Include a community installation/configuration route, and self-hosting instructions only for services actually supported for self-management. Add contributor setup and contribution instructions when the source is ready for public participation. People installing the app should have clear help without having to become contributors.
 
 The current website guide reads short lessons from [the product map](../product-guide/product-map.json) through [lessons.ts](../../web/src/app/guide/lessons.ts). Those lessons also serve the in-app Messenger. Keep short instructions there. Longer explanations and troubleshooting can reuse the existing [article drafts](README.md); connecting Markdown articles to public website routes is separate implementation work.
 
@@ -96,3 +98,21 @@ Explain the distinction between catching a new passage and following an already-
 Theme exploration remains in preview until its Go live action; ordinary scripture sends retain the current live theme. Short ranges stay together, longer ranges page through whole verses. Clear and Restore retain the current page. Focus and Settle are the exposed text transitions. Surrounding panel gradients sample image colors and drift with CSS; do not claim measured low-power performance until tested on release hardware.
 
 Evidence: local desktop checks for ranges, page controls, clear/restore and theme isolation; resolver, navigation, loading and duplicate-suppression tests. Microphone-to-projector rehearsal and release availability remain unverified. These are working-tree updates, not a release announcement.
+
+## Run and song navigation · October 25, 2026
+
+The current working tree adds **List** / **Grid** to Run of Show and remembers the view on the computer. As of October 26, List view lets each section expand and collapse independently from its heading. Images, song sections, and presentation slides appear inline as cards, two per row. **Add items** opens the picker; **Open section** opens the larger editing view. Selection and reordering use the same service contents in either view.
+
+An open song now keeps a searchable song column on the left. Choosing another song stages its lyrics; **Go live** remains the action that changes projected content. Finish or cancel an inline lyric edit before switching. Use the song preparation and order-of-service articles for the steps. Three original songs marked **Sample** were added to the local rehearsal library; these are demonstration content, not a promise of songs bundled with a release.
+
+The column uses the shared surface and segmented controls. **On device** shows saved songs; **Scheduled** shows unique songs queued in the current run, in first-use order. Missing device songs remain visible with an unavailable label.
+
+Evidence: `RunRail.tsx`, `run.css`, `drag.tsx`, `Live.tsx`, and `songs.css`; desktop navigation and sample-save checks. Release availability remains unverified.
+
+## Slides preview and Media cards · October 26, 2026
+
+The current working tree adds a side **Preview** panel to Slides. Selecting a deck shows its current page; arrows and numbered buttons stage another rendered page. Search retains the inspected deck. These controls do not send it live. Existing Slides toolbar actions and search remain in place.
+
+The local Media shelf now uses a scrolling grid of picture and video cards with visible names, type labels, preview/live states, and background/remove actions below each image. Thumbnails preserve the source aspect ratio; a missing video poster has an explicit fallback. Songs and theme cards retain their existing designs.
+
+Evidence: `presentations.tsx`, `SlidesPreview.tsx`, `MediaLibraryCards.tsx`, and `Live.tsx`; browser checks with sample content cover selection, page limits, search persistence, keyboard activation and compact layouts. Native file conversion, real video playback and release availability remain separate checks. See the updated media and presentation articles and product-map lessons.

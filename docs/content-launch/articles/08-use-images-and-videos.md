@@ -6,7 +6,7 @@ question: "How do I import media, find online visuals, and decide how they shoul
 proposed_publication_date: "2026-04-17"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; online-provider and media playback walkthrough pending"
-reviewed_on: "2026-10-11"
+reviewed_on: "2026-10-26"
 task_ids: [media.import-preview-local, media.find-online, themes.change-background, output.publish-preview]
 ---
 
@@ -20,7 +20,7 @@ Trilorah supports both, but the controls have different effects. Use the media p
 
 Open **Media** and choose **add from laptop**, or drop the file into the media library. Select the intended picture or video and wait for the import result.
 
-Find the imported item and preview it. If you selected several files, check which ones actually arrived. A canceled picker or failed import does not add usable content.
+Find the imported item by its thumbnail and name. Picture and video cards keep their names and type labels visible beneath the image. Select a card to stage it; a **preview** badge marks your choice. If you selected several files, check which ones actually arrived. A canceled picker or failed import does not add usable content.
 
 For video, rehearse the opening, playback, and ending on the equipment you will use. The thumbnail only shows one frame. (An extremely short rehearsal.)
 
@@ -40,7 +40,7 @@ The separate **Online** tab also stages its selected material as standalone medi
 
 ## Put an image behind the words
 
-Use the **themes** shelf inside Media, or drag suitable media onto preview to prepare it as a background. Check it with the actual scripture or lyrics.
+Use **Use as a background** beneath a Media card to move it to the **themes** shelf and prepare it in preview. You can also choose a theme from that shelf or drag suitable media onto preview. Check it with the actual scripture or lyrics.
 
 Keep these actions distinct:
 

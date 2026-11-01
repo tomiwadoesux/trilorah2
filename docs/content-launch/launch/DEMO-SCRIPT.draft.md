@@ -2,8 +2,9 @@
 title: "Trilorah first look — short demonstration"
 status: "draft — recording plan; all results must be captured from the intended release"
 reviewed_on: "2026-10-17"
+audience_updated_on: "2026-10-30"
 target_length: "About 90 seconds; adjust after an honest rehearsal"
-audience: "A church volunteer seeing Trilorah for the first time"
+audience: "People evaluating Trilorah, including operators, media and technical leads, and heads of department"
 ---
 
 # Trilorah first look
