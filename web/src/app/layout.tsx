@@ -5,9 +5,11 @@ import 'lenis/dist/lenis.css';
 import "./globals.css";
 
 const headingFont = localFont({
-  src: "./fonts/tt-hoves-pro-variable.woff2",
+  /* Geist, not TT Hoves Pro: the copy we hold is TypeType's trial, and its
+     licence (fonts/TypeType-Trial-License.pdf, clause 2b) bars public webpages. */
+  src: "../../public/brand/fonts/geist-variable.woff2",
   variable: "--font-heading",
-  weight: "50 900",
+  weight: "100 900",
   style: "normal",
   display: "swap",
 });

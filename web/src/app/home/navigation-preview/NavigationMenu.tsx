@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, type KeyboardEvent } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight } from '@/components/icons';
 import { NavigationMedia, type NavigationMediaKind } from './NavigationMedia';
@@ -57,12 +56,10 @@ type DropdownProps = {
   layoutMenu: Menu;
   onOpen: (page: Destination) => void;
   onPanelKey: (event: KeyboardEvent<HTMLDivElement>, menu: Menu) => void;
-  demoHref: string;
-  onDemo?: () => void;
 };
 
 /** One bento whose cards morph between the Product and Resources layouts. */
-export function NavigationDropdown({ active, layoutMenu, onOpen, onPanelKey, demoHref, onDemo }: DropdownProps) {
+export function NavigationDropdown({ active, layoutMenu, onOpen, onPanelKey }: DropdownProps) {
   const visible = active !== null;
   // Opening from closed shows the hovered menu at once; only switching while open morphs the cards.
   const [fresh, setFresh] = useState(true);
@@ -88,9 +85,6 @@ export function NavigationDropdown({ active, layoutMenu, onOpen, onPanelKey, dem
           })}
         </div>)}
       </div>
-      <div className="ns-utility-slot"><div className="ns-utility">
-        <Link href={demoHref} className="ns-demo-link" tabIndex={visible ? 0 : -1} onClick={onDemo}><span>Watch Trilorah run through a service</span><ArrowRight size={14} aria-hidden="true" /></Link>
-      </div></div>
     </div></div>
   </div>;
 }

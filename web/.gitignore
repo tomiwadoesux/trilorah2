@@ -1,3 +1,5 @@
 .vercel
 .env*
 .next-companion/
+# TT Hoves Pro trial: its licence bars public webpages, and this repo is public.
+src/app/fonts/tt-hoves-pro-variable.*

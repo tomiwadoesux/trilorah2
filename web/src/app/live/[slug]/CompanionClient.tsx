@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/browser";
 import {
   Headphones,
@@ -180,7 +181,7 @@ export function CompanionView({ account, service, isLive, transcript, verses, no
     // scrolls, so the page itself must be exactly one viewport or the tab bar
     // ends up below the fold on a phone with a browser chrome bar.
     <main data-aurora={appearance.aurora} className={`companion-shell flex flex-col overflow-hidden ${appearance.image ? 'companion-photo' : ''}`} style={{'--reading-size':`${appearance.size}px`,...(appearance.image?{backgroundImage:`linear-gradient(rgba(9,11,12,.64),rgba(9,11,12,.78)),url("${appearance.image}")`}:{})} as CSSProperties}>
-      {preview && <div className="companion-preview-banner"><span>Live demo · sample service</span><a href="/live/vrc">Open real service</a></div>}
+      {preview && <div className="companion-preview-banner"><span>Live demo · sample service</span><Link href="/live/vrc">Open real service</Link></div>}
       {/* Header */}
       <header className="companion-header">
         <span className="companion-brand-symbol" aria-label="Trilorah"><BrandMark className="companion-mark" /></span>
