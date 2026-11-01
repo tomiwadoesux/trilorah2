@@ -3,6 +3,7 @@ import { AutoAdvance } from './AutoAdvance';
 import { BookClarification, ScriptureTools } from './ScriptureTools';
 import { useLibraryNavigation } from '../../stores/libraryNavigation';
 import { mediaPreview } from '../../lib/mediaPreview';
+import { MediaLibraryCard, MediaLibraryGrid } from './MediaLibraryCards';
 import { useOperatorTyping } from '../../lib/useOperatorTyping';
 import { QrProjectionConfirm } from './QrProjectionConfirm';
 import type { ScriptureReferenceInputHandle } from '../../ui/primitives/ScriptureReferenceInput';
@@ -32,6 +33,8 @@ import { resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, type TextSpacing } from '../../../shared/textSpacing';
 import { forgetTriMedia, normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
 import { arrangeSongCards, editSongCard, songCards } from '../../../shared/songCards';
+import { scheduledSongs } from '../../../shared/scheduledSongs';
+import { SegmentedControl } from '../../ui';
 import { createVerseHintSession, visitVerseHint } from '../../lib/verseHints';
 import { useSongListeningStore } from '../../stores/songListeningStore';
 import { recentSongWords } from '../../lib/songMatch';
@@ -76,7 +79,6 @@ import {
   PlusIcon,
   ImportIcon,
   PlayIcon,
-  PauseIcon,
   Slider,
   TextPositionPicker,
   ResetIcon,
@@ -103,6 +105,7 @@ import { AppShell } from './AppShell';
 import { useArtboard } from './artboard';
 import { DashboardBento } from './dashboard';
 import { useOutputsStatus, saveDisplay } from './dashboard/outputs/fromEngine';
+import { StageVideo } from './StageVideo';
 import { ProfileView } from './dashboard/ProfileView';
 import { SettingsSurface } from './Settings';
 import { ViewEnter } from './viewEnter';
@@ -980,8 +983,17 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
         setNotice('');
         return;
       }
+      /* Show what came in. The shelf shows pictures or videos, never both:
+         clips added while it showed pictures used to land out of sight, with
+         only this line saying they had arrived. A mix shows the larger half
+         and says where the rest went. */
+      const videos = cards.filter((c) => c.kind === 'video').length;
+      const pictures = cards.length - videos;
+      const showing = videos > pictures ? 'video' : pictures ? 'photo' : kind;
+      setKind(showing);
+      const elsewhere = showing === 'video' ? pictures : videos;
+      const rest = elsewhere ? ` · ${elsewhere === 1 ? 'one is' : `${elsewhere} are`} under ${showing === 'video' ? 'pictures' : 'videos'}` : '';
       const one = cards.length === 1 ? cards[0] : undefined;
-      if (one) setKind(one.kind ?? 'photo');
       if (wanted === 'themes' && one && canBeBackground(one)) {
         setNotice(`${said} · ${await onChoose(one.id, 'preview', 'click')}`);
         return;
@@ -990,7 +1002,7 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
         const item = mediaPreview(one);
         if (item) projector.stage(item);
       }
-      setNotice(said);
+      setNotice(`${said}${rest}`);
     } finally {
       setAdding(false);
     }
@@ -1068,7 +1080,17 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
         ? 'drop on themes, the preview or the live screen to use it as a background'
         : finder.active ? finderPaneHint(view, finder.kinds, finderHere)
         : notice || (view === 'themes' ? 'click to preview a background · double-click to put it on the wall now' : 'select to preview · drag to themes or into the service')}</div>
-      {shown.length ? <MediaGrid key={`${view}-${kind}-${query}`}>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
+      {shown.length ? view === 'media' ? <MediaLibraryGrid key={`${view}-${kind}`}>
+        {shown.map(media => <MediaLibraryCard key={media.id} src={mediaSrc(media)} label={media.label} detail={media.detail}
+          kind={media.kind ?? 'photo'} hasPoster={!!media.poster}
+          selected={projector.preview?.source === 'media' && projector.preview.id === media.id}
+          live={live === media.id || (projector.screen === 'live' && projector.live?.source === 'media' && projector.live.id === media.id)}
+          dragProps={media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : undefined}
+          onSelect={() => press(media)}
+          onBackground={canBeBackground(media) ? () => { addMedia({ ...media, collection: 'themes' }); void onChoose(media.id, 'preview', 'pick').then(said => setNotice(`added to themes · ${said}`)); } : undefined}
+          onRemove={media.url ? () => remove(media) : undefined}
+        />)}
+      </MediaLibraryGrid> : <MediaGrid key={`${view}-${kind}-${query}`}>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
         onClick={() => press(media)} onDoubleClick={() => pressTwice(media)}>
         <MediaCard src={mediaSrc(media)} label={media.label} detail={media.detail} selected={view === 'themes' && selected === media.id} badge={media.kind === 'video' ? 'video' : null}
           live={live === media.id} />
@@ -1082,9 +1104,6 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
           {view === 'themes' && canBeBackground(media) ? <button type="button" data-guide="media-wall" title="on the wall now — the background only, the words stay" aria-label={`put ${media.label} on the wall now`}
             className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), toneClass('gold'), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); void onChoose(media.id, 'live').then(setNotice); }}><MediaIcon size={12} /></button> : null}
-          {view === 'media' && canBeBackground(media) ? <button type="button" data-guide="media-to-themes" title="use as a background for text" aria-label={`use ${media.label} as a background`}
-            className={cx(surface({ shape: 'control', interactive: true }), toneClass(), 'grid size-7 place-items-center')}
-            onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'themes' }); void onChoose(media.id, 'preview', 'pick').then((said) => setNotice(`added to themes · ${said}`)); }}><PaletteIcon size={12} /></button> : null}
           {media.url ? <button type="button" data-guide="media-delete" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
             className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); remove(media); }}><TrashIcon size={12} /></button> : null}
@@ -1985,6 +2004,7 @@ interface Song {
   verses: SongVerse[];
   originalSections?: SongBase["sections"];
 }
+type SongLibrarySource = 'device' | 'scheduled';
 
 /*
  * Placeholder library. There is no songs table yet — bible.db holds exactly
@@ -2085,16 +2105,9 @@ const SONGS: Song[] = SONG_SEED.map(([title, author, verses], s) => ({
 /*
  * S-04 — songs, in two views.
  *
- * The library is a grid of songs and opening one replaces it with that
- * song's words. That is the shape the tab always described — search, pick a
- * container, pick an item inside it — and the grid had been doing the first
- * two and then asking the operator to find a chorus on a 117px thumbnail.
- *
- * The search field belongs to whichever view is up. In the grid it finds
- * songs; on the sheet it finds a line inside the one that is open. Same
- * field, same place, and the thing being searched is always the thing on
- * the screen — which is the only rule that makes one field mean two things
- * without confusing anybody.
+ * Open songs keep their lyrics alongside a searchable library on the left.
+ * Switching songs stages the chosen song's first (or live) card; sending it
+ * live still requires the operator's explicit action.
  */
 /*
  * The songs tab's state: the library, the editor, the add dialog, drafts.
@@ -2143,6 +2156,7 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
      Forgotten when the search closes: next time is a different list. */
   const [addedFromSearch, setAddedFromSearch] = useState<ReadonlySet<string>>(() => new Set());
   const [songSource, setSongSource] = useState<SongSource>('search');
+  const [librarySource, setLibrarySource] = useState<SongLibrarySource>('device');
   const [query, setQuery] = useState('');
   const [deleted, setDeleted] = useState<ReadonlySet<string>>(() => new Set());
   const { drafts, save: saveDraft, clear: clearDraft } = useSongDrafts();
@@ -2257,6 +2271,16 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
     return true;
   };
 
+  const openSong = (id: string, cardId?: string) => {
+    const song = songs.find(s => s.id === id);
+    if (!song) return;
+    if (isNewId(id)) { edit(song, null); return; }
+    setOpenId(id);
+    const cards = songCards({ id: song.id, sections: song.verses });
+    const card = cards.find(card => card.id === (cardId ?? projector.live?.id)) ?? cards[0];
+    if (card) projector.stage({ source: 'song', id: card.id, label: `${song.title} — ${card.label}`, title: song.title, section: card.label, lines: card.lines, origin: 'operator' });
+  };
+
   return (
     <>
       <AddSongDialog
@@ -2313,24 +2337,14 @@ function SongsBrowser({ addRequest = 0 }: { addRequest?: number }) {
         </details>
       ) : null}
       {loading ? <div className="song-library-loading" role="status" aria-label="Loading songs"><span/><span/><span/><span/></div> : loadProblem ? <div className="p-5"><p role="alert">{loadProblem}</p><Button guideId="songs-retry" label="retry" onClick={refresh}/></div> : open ? (
-        <SongSheet key={open.id} song={open} onBack={() => setOpenId(null)} onSave={(base) => saveSong(open.id, false, base)} />
+        <SongSheet song={open} songs={songs} libraryQuery={query} onLibraryQuery={setQuery} librarySource={librarySource} onLibrarySource={setLibrarySource} onOpen={openSong}
+          onBack={() => setOpenId(null)} onSave={(base) => saveSong(open.id, false, base)} />
       ) : (
         <SongGrid
           songs={songs}
           query={query}
           onQuery={setQuery}
-          onOpen={(id, cardId) => {
-            /* A song that is only a draft has nothing to put on the wall
-               yet; opening it means carrying on editing it. */
-            const song = songs.find((s) => s.id === id);
-            if (song && isNewId(id)) edit(song, null);
-            else {
-              setQuery(''); setOpenId(id);
-              const cards = song && songCards({id:song.id,sections:song.verses});
-              const card = cards && (cards.find(card => card.id === (cardId ?? projector.live?.id)) ?? cards[0]);
-              if (song && card) projector.stage({source:'song',id:card.id,label:`${song.title} — ${card.label}`,title:song.title,section:card.label,lines:card.lines,origin:'operator'});
-            }
-          }}
+          onOpen={openSong}
           onEdit={edit}
           onAdd={() => setEditor({
             session: {
@@ -2486,7 +2500,11 @@ function SongGrid({
 }
 
 /** Open songs are lyric cards, with preview, live and editing on each card. */
-function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; onSave: (base: SongBase) => Promise<boolean> }) {
+function SongSheet({ song, songs, libraryQuery, onLibraryQuery, librarySource, onLibrarySource, onOpen, onBack, onSave }: {
+  song: Song; songs: readonly Song[]; libraryQuery: string; onLibraryQuery: (query: string) => void;
+  librarySource: SongLibrarySource; onLibrarySource: (source: SongLibrarySource) => void;
+  onOpen: (id: string) => void; onBack: () => void; onSave: (base: SongBase) => Promise<boolean>;
+}) {
   const drag = useDrag();
   const projector = useProjector();
   const [query, setQuery] = useState('');
@@ -2496,6 +2514,10 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
   const [problem, setProblem] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  useEffect(() => {
+    setQuery(''); setEditing(null); setWords(''); setProblem(null);
+    setDragFrom(null); setDragOver(null);
+  }, [song.id]);
   const sections = song.verses.map(v => ({label:v.label,lines:v.lines}));
   const original = song.originalSections ?? sections;
   const changed = JSON.stringify(original) !== JSON.stringify(sections);
@@ -2548,10 +2570,11 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
   const next = cards.length ? cards[(at + 1) % cards.length] : null;
   const visibleCards = cards.map((card, index) => ({ card, index })).filter(({ card }) => card.id === editing || !query.trim() || `${card.label} ${card.lines.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase()));
   return <LibraryBrowser framed guideArea="songs" gap={8} searchInset="var(--tri-card-gap)" search={<div className="song-detail-header">
-    <button type="button" data-guide="song-back" className="song-detail-back" onClick={onBack} title="Back to the song library"><ChevronLeftIcon size={16}/><span>All songs</span></button>
+    <button type="button" data-guide="song-back" className="song-detail-back" disabled={saving || editing !== null} onClick={onBack} title="Back to the song library"><ChevronLeftIcon size={16}/><span>All songs</span></button>
     <div className="song-detail-title"><strong title={song.title}>{song.title}</strong><span>{song.author || `${cards.length} lyric slides`}</span></div>
     <div className="song-detail-search"><SearchField guideId="song-lyrics-search" operatorSearch value={query} onChange={setQuery} ariaLabel={`Search lyrics in ${song.title}`} placeholder="Start typing to search…"/></div>
   </div>}>
+    <SongLibraryRail songs={songs} selectedId={song.id} query={libraryQuery} onQuery={onLibraryQuery} source={librarySource} onSource={onLibrarySource} onOpen={onOpen} busy={saving} editing={editing !== null} />
     <LibraryPane scroll={false} header={false} footer={<div className="flex flex-wrap items-center gap-3 px-3 pb-2">
       <span className="min-w-0 flex-1 text-xs text-white/45">{at < 0 ? `${cards.length} lyric cards` : `${cards[at].label} · live`}</span>
       {changed && <Button guideId="song-restore" label="back to default" disabled={saving} title="Restore the original imported lyrics and slide order" onClick={() => void changeSlides(original)} />}
@@ -2590,6 +2613,44 @@ function SongSheet({ song, onBack, onSave }: { song: Song; onBack: () => void; o
       </div>
     </LibraryPane>
   </LibraryBrowser>;
+}
+
+function SongLibraryRail({ songs, selectedId, query, onQuery, source, onSource, onOpen, busy, editing }: {
+  songs: readonly Song[]; selectedId: string; query: string; onQuery: (query: string) => void;
+  source: SongLibrarySource; onSource: (source: SongLibrarySource) => void;
+  onOpen: (id: string) => void; busy: boolean; editing: boolean;
+}) {
+  const projector = useProjector();
+  const run = useRun();
+  const current = useRef<HTMLButtonElement>(null);
+  const needle = query.trim().toLocaleLowerCase();
+  const entries = source === 'scheduled' ? scheduledSongs(songs, run.segments)
+    : songs.map(song => ({ key: song.id, title: song.title, section: '', song }));
+  const visible = entries.filter(entry => !needle || `${entry.title} ${entry.section} ${entry.song?.author ?? ''} ${entry.song?.verses.map(verse => verse.lines.join(' ')).join(' ') ?? ''}`.toLocaleLowerCase().includes(needle));
+  useEffect(() => { current.current?.scrollIntoView({ block: 'nearest' }); }, [selectedId, source]);
+  return <aside className="song-library-rail" aria-label="Song library">
+    <div className="song-library-rail-heading"><span><MusicIcon size={15} /><strong>Songs</strong></span><small>{entries.length}</small></div>
+    <SegmentedControl guideId="song-list-source" className="song-library-source" label="Song source" size="md" options={[{ id: 'device', label: 'On device' }, { id: 'scheduled', label: 'Scheduled' }]} value={source} onChange={onSource} />
+    <SearchField guideId="song-list-search" value={query} onChange={onQuery} ariaLabel="Find another song" placeholder="Find a song…" />
+    {(editing || busy) && <p className="song-library-rail-note" role="status">{busy ? 'Saving lyrics…' : 'Save or cancel your lyric edit to switch songs.'}</p>}
+    <nav className="song-library-rail-list" aria-label="Choose a song">
+      {visible.map(entry => {
+        const { song } = entry;
+        const selected = song?.id === selectedId;
+        const live = song && projector.screen === 'live' && projector.live?.source === 'song' && (projector.live.id.startsWith(`${song.id}/`) || projector.live.title === song.title);
+        return <button key={entry.key} ref={selected ? current : undefined} type="button" data-guide="song-list-open"
+          className={cx(surface({ tone: selected ? 'default' : 'ash', interactive: true }), toneClass(), 'song-library-rail-song')}
+          data-active={selected || undefined} aria-current={selected ? 'true' : undefined} disabled={busy || editing || !song} title={entry.title} onClick={() => { if (song && !selected) onOpen(song.id); }}>
+          <MusicIcon size={15} />
+          <span><strong>{entry.title}</strong><small>{!song ? 'Unavailable on device' : source === 'scheduled' ? entry.section : song.author || `${song.verses.length} sections`}</small></span>
+          {live && <small className="song-library-rail-live">live</small>}
+        </button>;
+      })}
+      {!visible.length && <div className="song-library-rail-empty">
+        {entries.length === 0 && source === 'scheduled' ? <><p>No songs scheduled yet.</p><small>Add songs to your Run of Show to see them here.</small></> : <><p>No songs match “{query}”.</p><Button label="clear search" tone="ash" onClick={() => onQuery('')} /></>}
+      </div>}
+    </nav>
+  </aside>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -4254,11 +4315,12 @@ function Stage({
   }, [overPreview, canStep]);
 
   /*
-   * Whether the clip on the wall is paused, as far as this window knows.
+   * A clip on the wall: whether the room hears it — kept from one clip to the
+   * next, on until the operator turns it off — and whether the projector's
+   * window is open to carry that sound (StageVideo).
    */
-  const [videoPaused, setVideoPaused] = useState(false);
-  const liveId = projector.live ? `${projector.live.source}:${projector.live.id}` : '';
-  useEffect(() => setVideoPaused(false), [liveId]);
+  const [liveSound, setLiveSound] = useState(true);
+  const projectorOpen = !!useOutputsStatus()?.outputs.find((output) => output.id === 'main')?.open;
 
   /*
    * Is the room reading something the phone code would cover?
@@ -4325,7 +4387,7 @@ function Stage({
             {/* Pictures have no words for the canvas to draw — the phone code
                 and media-library photos showed as "nothing" here. */}
             {(preview?.source === 'presentation' || (preview?.source === 'media' && preview.mediaKind !== 'video')) && preview.path && <img src={presentationImageSrc(preview.path)} alt={preview.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
-            {preview?.source === 'media' && preview.mediaKind === 'video' && preview.path && <video key={preview.path} src={toDisplayUrl(preview.path)} aria-label={preview.label} autoPlay muted playsInline className="absolute inset-0 h-full w-full object-contain bg-black" />}
+            {preview?.source === 'media' && preview.mediaKind === 'video' && preview.path && <StageVideo key={preview.path} src={toDisplayUrl(preview.path)} label={preview.label} hush={live?.mediaKind === 'video' && screen === 'live' ? live.path : undefined} />}
             {/*
               The verse before and the verse after, with nothing drawn.
 
@@ -4443,45 +4505,17 @@ function Stage({
             empty={live?.source === 'background' ? null : "nothing on the projector"}
           />
           {(live?.source === 'presentation' || (live?.source === 'media' && live.mediaKind !== 'video')) && live.path && screen === 'live' && <img src={presentationImageSrc(live.path)} alt={live.label} className="absolute inset-0 h-full w-full object-contain bg-black" />}
-          {live?.source === 'media' && live.mediaKind === 'video' && live.path && screen === 'live' && <video key={live.path} src={toDisplayUrl(live.path)} aria-label={live.label} autoPlay muted playsInline className="absolute inset-0 h-full w-full object-contain bg-black" />}
+          {/* Keyed by the delivery too: the same clip sent again starts over
+              here, as it does on the projector. */}
+          {live?.source === 'media' && live.mediaKind === 'video' && live.path && screen === 'live' && <StageVideo key={`${live.path}#${projector.delivery}`} src={toDisplayUrl(live.path)} label={live.label} onAir projectorOpen={projectorOpen} sound={liveSound} onSound={setLiveSound} />}
           </>
         }
         controls={
           <>
             <Button guideId="live-clear" label="clear" tone="ash" icon={<CloseIcon size={13} />} disabled={!live || screen === 'clear'} title="Hide the words; keep the background" onClick={() => setWall('clear')} />
             <Button guideId="live-restore" label="restore" tone="ash" icon={<ResetIcon size={13} />} disabled={!live || screen === 'live'} title="Bring the live content back" onClick={() => setWall('live')} />
-            {/* A clip on the wall gets a transport. Only then: a pause button
-                beside a verse is a button that does nothing. The projector
-                window owns the <video>, so these are messages to it — the
-                paused flag here is this window's own best guess, flipped on
-                press and reset whenever a different thing goes live. */}
-            {live?.mediaKind === 'video' ? (
-              /* One piece, so beside the picture the pair stays a pair. */
-              <div className="stage-pair flex shrink-0 items-center gap-[var(--tri-gap)]">
-                <Button
-                  guideId="live-video-pause"
-                  label=""
-                  tone="ash"
-                  icon={videoPaused ? <PlayIcon size={12} /> : <PauseIcon size={12} />}
-                  title={videoPaused ? 'play the video' : 'pause the video'}
-                  onClick={() => {
-                    void window.api?.mediaControl?.({ type: videoPaused ? 'play' : 'pause' });
-                    setVideoPaused((p) => !p);
-                  }}
-                />
-                <Button
-                  guideId="live-video-restart"
-                  label=""
-                  tone="ash"
-                  icon={<ResetIcon size={13} />}
-                  title="play the video again from the start"
-                  onClick={() => {
-                    void window.api?.mediaControl?.({ type: 'restart' });
-                    setVideoPaused(false);
-                  }}
-                />
-              </div>
-            ) : null}
+            {/* A clip on the wall has its transport on the picture itself
+                (StageVideo): play, pause, the bar to drag, sound. */}
             {/*
               The companion code, on the wall.
 

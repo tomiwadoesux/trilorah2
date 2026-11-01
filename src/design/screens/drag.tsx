@@ -165,8 +165,8 @@ function dropAt(x: number, y: number, item: DragItem) {
   if (structural && card) {
     const key = card.dataset.runSection!;
     if (key === item.dragSegmentKey || item.dragSegmentKeys?.includes(key)) return { destination: null, hint: 'Choose another position', solo: false };
-    const r = card.getBoundingClientRect();
-    const fraction = grid?.dataset.runLayout === 'timeline' ? (y - r.top) / r.height
+    const r = (card.querySelector('[data-run-section-header]') ?? card).getBoundingClientRect();
+    const fraction = grid?.dataset.runLayout === 'timeline' || grid?.dataset.runLayout === 'list' ? (y - r.top) / r.height
       : y < r.top ? 0 : y > r.bottom ? 1 : (x - r.left) / r.width;
     const position = sectionDropPosition(fraction, !!item.dragSegmentKey && !item.dragSegmentKeys?.length);
     return { destination: runSectionTarget(key, position), hint: `${position === 'swap' ? 'Swap with' : position === 'before' ? 'Insert before' : 'Insert after'} ${card.dataset.runLabel}`, solo: false };

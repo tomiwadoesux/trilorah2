@@ -24,7 +24,8 @@ export interface LiveSong {
   id?: string
   kind: 'song'
   title: string
-  /** The section — "Verse 2", "Chorus". Drawn small, under the words. */
+  /** The section — "Verse 2", "Chorus". For the operator; the wall draws only
+   *  the words and the song's name. */
   label: string
   /** One slide's worth of lines. The app decides the split; the projector
    *  draws what it is handed and breaks nothing further. */

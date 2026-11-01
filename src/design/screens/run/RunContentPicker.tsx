@@ -20,8 +20,9 @@ const slideItems = (deck: ImportedPresentation): Content[] => deck.slides.flatMa
 const LIBRARY_LABELS: Record<string, string> = { music: 'Song library', slides: 'Slide library', image: 'Image library', video: 'Video library' };
 
 export function ContentPreview({ item }: { item: Content }) {
+  const thumbnail = item.preview || (item.path && (item.source === 'presentation' || (item.source === 'media' && item.mediaKind !== 'video')) ? presentationImageSrc(item.path) : undefined);
   return <span className="run-content-preview">
-    {item.preview ? <img src={item.preview} alt="" draggable={false} />
+    {thumbnail ? <img src={thumbnail} alt="" draggable={false} />
       : item.lines?.length || item.quote ? <span className="run-content-words">{item.lines?.join('\n') || item.quote}</span>
       : segmentIcon(componentForItem(item), 30)}
     {item.mediaKind === 'video' && <span className="run-video-mark">{segmentIcon('video', 20)}</span>}

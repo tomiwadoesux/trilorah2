@@ -28,6 +28,11 @@ export const FIT_FLOOR = 0.75;
  * element marked `data-fit-body` inside it: the primary words, never the
  * reference. Everything here is written straight to the elements, outside
  * React's styles, so a re-render does not undo it.
+ *
+ * Elements marked `data-fit-line` are lyric lines, and a lyric line stays one
+ * line: the words shrink together until the longest fits across, as far as
+ * the floor. A line too long even there wraps, and the words are drawn as
+ * large as they can be without any further line wrapping.
  */
 export function useFitText(
   box: RefObject<HTMLElement | null>,
@@ -48,9 +53,33 @@ export function useFitText(
       const room = frame.clientHeight;
       if (room <= 0) return;
       const fits = () => words.scrollHeight <= room + 1;
+      const lyricLines = Array.from(words.querySelectorAll<HTMLElement>('[data-fit-line]:not(:empty)'));
+      /* offsetHeight, not the bounding box: an entrance's scale must not read
+         as a line that wrapped. */
+      const rows = () => lyricLines.reduce((n, line) => n + Math.round(line.offsetHeight / parseFloat(getComputedStyle(line).lineHeight)), 0);
+      const largest = (from: number, holds: () => boolean) => {
+        let lo = from;
+        let hi = 1;
+        for (let i = 0; i < 7; i++) {
+          const mid = (lo + hi) / 2;
+          words.style.setProperty('--fit', String(mid));
+          if (holds()) lo = mid;
+          else hi = mid;
+        }
+        words.style.setProperty('--fit', String(lo));
+      };
 
       words.style.setProperty('--fit', '1');
-      if (fits()) return;
+      if (fits() && rows() === lyricLines.length) return;
+
+      if (lyricLines.length) {
+        words.style.setProperty('--fit', String(floor));
+        if (fits()) {
+          const fewest = rows();
+          largest(floor, () => fits() && rows() <= fewest);
+          return;
+        }
+      }
 
       // Scripture must never lose its ending to an ellipsis. Pagination
       // handles long ranges; an unusually large theme can shrink further.
@@ -71,15 +100,7 @@ export function useFitText(
         return;
       }
 
-      let lo = minimum;
-      let hi = 1;
-      for (let i = 0; i < 7; i++) {
-        const mid = (lo + hi) / 2;
-        words.style.setProperty('--fit', String(mid));
-        if (fits()) lo = mid;
-        else hi = mid;
-      }
-      words.style.setProperty('--fit', String(lo));
+      largest(minimum, fits);
     };
 
     fit();

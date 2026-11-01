@@ -135,16 +135,31 @@ body {
   margin-bottom: var(--ref-gap, 0.9em);
 }
 
-/* A song section. Same face, weight and colour as a verse so the wall does
-   not change character between a reading and a chorus; the lines sit a
-   little tighter because lyric lines are short and read as one breath. The
-   stage's own fade applies — the block is always `visible`, and it comes and
-   goes by being mounted, so a song never has to wait for a verse to fade. */
+/* Words that are not a verse: a song section, or a slide sent as text. Same
+   face and colour as a verse so the wall does not change character between a
+   reading and a chorus. The stage's own fade applies — the block is always
+   `visible`, and it comes and goes by being mounted, so a song never has to
+   wait for a verse to fade. */
 .output-song .output-verse {
   line-height: calc(1.25 + var(--text-line-spacing, 0));
   margin: 0.15em 0;
 }
 .output-song .output-ref {
+  margin-top: 3vh;
+}
+
+/* A song, set as lyrics rather than as a reading: larger and heavier, lines
+   stacked close, letters closed up. The numbers are shared with the stage
+   boxes (LYRIC_TYPE, set inline by output.tsx). */
+.output-lyric .output-verse {
+  font-size: calc(clamp(2rem, 4.5vw, 6vw) * var(--lyric-scale, 1) * var(--verse-scale, 1) * var(--fit, 1));
+  font-weight: var(--lyric-weight, 700);
+  line-height: calc(var(--lyric-line-height, 1.16) + var(--text-line-spacing, 0));
+  letter-spacing: var(--lyric-letter-spacing, 0em);
+  margin: 0;
+  text-rendering: geometricPrecision;
+}
+.output-lyric .output-credit {
   margin-top: 3vh;
 }
 
