@@ -2,7 +2,8 @@
 title: "Meet Trilorah"
 status: "draft — hold until release availability, destination links and demonstration are verified"
 reviewed_on: "2026-10-17"
-audience: "Church volunteers preparing and running services"
+audience_updated_on: "2026-10-30"
+audience: "Church production teams, operators, media and technical leads, and heads of department"
 ---
 
 # Meet Trilorah
@@ -44,7 +45,7 @@ The [first-service guide](../../community/GETTING-STARTED.md) is the place to st
 - This is launch-announcement copy, not evidence that a launch has happened. Keep the public date unset until there is an actual publication date. Earlier March–July planning dates are not publication history.
 - Publish only after exercising the intended installer, the matching demonstration and its prerequisites. [Download configuration](../../../web/src/app/download/release.ts) currently points to v0.4.8, with Apple silicon Mac and Windows x64 installers; neither installer was installed or exercised for this draft. Do not add “available now”, download/platform promises or a release-version heading before verification.
 - If new working-tree behaviour is absent from the release being announced, remove it from this announcement or wait for the relevant release. Do not advertise a development screenshot as a released feature.
-- The broad first release announcement deliberately has one beginner action. Mobile controls, Messenger, programme import and congregation features have separate existing feature drafts; they do not all need to be squeezed into this post.
+- The broad first release announcement deliberately has one starting action. Mobile controls, Messenger, programme import and congregation features have separate existing feature drafts; they do not all need to be squeezed into this post.
 - Required visuals: one real rehearsal workspace image; the [short demo](DEMO-SCRIPT.draft.md); a legible crop of a scripture suggestion with its reference, text and **live** control. Caption test content as rehearsal material. No fabricated recognition result, customer quotation, percentage or time-saving claim.
 - Founder evidence: [source notes](../stories/editorial-notes.md). Run evidence: [RunRail.tsx](../../../src/design/screens/run/RunRail.tsx), [RunContentPicker.tsx](../../../src/design/screens/run/RunContentPicker.tsx). Catch evidence: [CatchesPane.tsx](../../../src/design/screens/CatchesPane.tsx), [verseDelivery.ts](../../../electron/engine/verseDelivery.ts). Automatic reading evidence: [AutoAdvance.tsx](../../../src/design/screens/AutoAdvance.tsx), [autoAdvanceStore.ts](../../../src/stores/autoAdvanceStore.ts). These were source-reviewed on October 17, 2026, not demonstrated in a release.
 - Recognition requires a prepared speech engine and usable audio; choosing local speech is not a promise that every other feature or cloud setup stays local. The announcement makes no whole-product offline/privacy claim. Link the final data-handling explanation from setup documentation.

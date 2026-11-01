@@ -4,7 +4,9 @@ Read this when writing or changing Trilorah's website, interface, guides, emails
 
 ## Audience and purpose
 
-Trilorah builds technology for churches. The current product helps church volunteers prepare and run services, with songs, scripture, slides, media and the service order in one workspace. Team leaders also need to evaluate setup requirements, train volunteers and hand preparation to the next operator.
+Trilorah builds technology for churches. The current product helps church production teams prepare and run services, with songs, scripture, slides, media and the service order in one workspace. Readers include heads of media or technical departments, team leads, operators and people learning Trilorah. Leaders evaluate setup requirements, introduce the product to their teams and organise handoffs as well as operate it themselves.
+
+The founder clarified this audience on October 30, 2026. Address the reader as **you** and **your team** by default. Use a specific role when the task requires it. Do not assume the reader is a volunteer, a junior team member or inexperienced in church production. Being new to Trilorah describes familiarity with the software, not seniority or employment status. Preserve the founder's actual volunteering history and specifically scoped volunteer-training material where relevant.
 
 Explain intelligent behaviour through an actual task and its conditions. The founder wants the ambition of a technology brand; keep the founder's chosen positioning when supplied. Headlines proposed in conversations are not automatically approved brand slogans. Distinguish a future ambition from a current capability.
 
@@ -18,7 +20,7 @@ Changing the current licence does not revoke valid licences already granted for 
 
 The exact paid deliverables, prices, billing model and usage limits remain undecided. The founder explicitly deferred that commercial-planning decision until later; do not block unrelated writing on it or repeatedly ask for a plan choice. Revisit when the founder resumes commercial planning or the task requires actual billing or paid-service terms.
 
-Describe paid value through concrete work handled for the church: possible examples are setup, managed cloud or AI services, provider billing and support. Confirm the chosen services before promising them. Technical knowledge is not the price boundary: do not market the paid option as a fee for churches that do not understand open source. Keep the community path understandable for volunteers, too.
+Describe paid value through concrete work handled for the church: possible examples are setup, managed cloud or AI services, provider billing and support. Confirm the chosen services before promising them. Technical knowledge is not the price boundary: do not market the paid option as a fee for churches that do not understand open source. Keep the community path understandable for people without development experience, too.
 
 Use the actual source licence when explaining rights. It does not establish that provider usage, hosting or support is free. Distinguish the source licence, desktop distribution, any self-managed services and the services Trilorah operates. Do not call this an open-core product or promise a hosted offering merely from the Supabase analogy.
 

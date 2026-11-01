@@ -1,16 +1,18 @@
 # Trilorah publishing plan for the first year
 
-Trilorah needs to introduce itself, help a volunteer get through a first service, and keep giving the team a reason to return. The writing should follow what happens in the product and in the churches using it. A month passing is not, by itself, a story.
+Trilorah needs to introduce itself, help people prepare and run a first service in the app, and keep giving their teams a reason to return. The writing should follow what happens in the product and in the churches using it. A month passing is not, by itself, a story.
+
+Audience wording updated October 30, 2026. This copy correction does not refresh the underlying product or release checks.
 
 This plan uses **launch-relative phases and publication triggers**. The March–July 2026 dates in the original article files remain requested planning dates, not publication history. No launch date, customer result, release date or external publishing schedule is being invented here.
 
 ## What we want readers to understand
 
-Trilorah brings service preparation and presentation into one workspace. Volunteers can prepare songs, scripture, slides and media, and decide what reaches the audience. Sermon listening can suggest scripture. Paired phone controls and supported guided walkthroughs provide additional ways to operate and learn the app when those workflows are ready for release.
+Trilorah brings service preparation and presentation into one workspace. You can prepare songs, scripture, slides and media, and decide what reaches the audience. Sermon listening can suggest scripture. Paired phone controls and supported guided walkthroughs provide additional ways to operate and learn the app when those workflows are ready for release.
 
 The reader should be able to answer three questions after meeting the brand: Is this for a team like ours? What would I use it for this Sunday? Where do I start?
 
-The current audience is church volunteers setting up and running services. Team leaders are important when the story concerns training, handoffs or choosing software. Technical details earn space when they help those people make a decision.
+The audience includes the people preparing, operating and overseeing church production: operators, media and technical teams, team leads, heads of department, paid staff and people learning Trilorah. Address the reader as you or your team unless a specific role matters to the topic. Someone new to Trilorah may already have years of production experience. Technical details earn space when they help the reader make a decision.
 
 ## Give each kind of writing a job
 
@@ -36,10 +38,10 @@ The first three subjects are supported by the existing drafts and implementation
 
 | Phase | Publish or make available | Why now | What must exist first |
 | --- | --- | --- | --- |
-| Before inviting first users | Product introduction; first-service checklist; audio and display setup; service preparation guide | A new volunteer needs a usable starting route | Release walkthroughs, current UI captures, a working next action |
+| Before inviting first users | Product introduction; first-service checklist; audio and display setup; service preparation guide | People evaluating or starting with Trilorah need a usable route | Release walkthroughs, current UI captures, a working next action |
 | Launch | The product introduction as the main announcement; a short demonstration; a clear start page linking to the essential guides | Explain the product through one complete service task | Confirmed availability and a demonstrated workflow |
 | First two weeks | Recognition explanation and one concise product story; relevant support fixes as questions arrive | Show a meaningful capability while helping first users succeed | Real reference/quotation examples and the projection boundary checked |
-| Weeks three and four | A second practical story, chosen from actual questions; publish more ready guides | Find the parts people struggle to understand | Volunteer observations or support questions; no invented demand counts |
+| Weeks three and four | A second practical story, chosen from actual questions; publish more ready guides | Find the parts people struggle to understand | Observations from church teams or support questions; no invented demand counts |
 | After launch | Two substantial blog pieces per month as a working budget; guides and release notes follow need | Keep the brand present without manufacturing news | A real question, release, lesson or documented experience for each piece |
 
 The founder has supplied the real starting point: joining the operators as a first-time volunteer and seeing one person under pressure doing several things at once. They named queuing verses, identifying quoted scripture without a reference, and making songs on the spot. [The founder story draft](stories/23-why-i-started-trilorah.md) uses that account. No church, fourth task or measured outcome has been invented. Publish after the founder reviews the first-person framing.
@@ -53,13 +55,13 @@ Alongside the introduction, prepare a short evaluation page once the release fac
 | Mobile controls are verified for release | Feature introduction: a phone joining the media team | Pairing walkthrough, real phone-to-screen clip, brief release note | Confirm same-network requirements, desktop approval, direct-send controls and disconnection behaviour |
 | A major recognition improvement ships | What changed, with a reproduced example | Updated recognition guide and short clip | State the specific improvement; no general accuracy percentage without a suitable measured evaluation |
 | The companion gains useful supported workflows | One complete guided task and its choices | Captioned cursor demo, supported-task list, setup guide | Test the pictured workflow, takeover and any missing-key detour |
-| Several volunteers ask the same question | A short answer or improvement to the existing guide first | One annotated screenshot or diagnostic tree | Check whether a page already answers it; avoid a second article competing with the first |
+| Several people ask the same question | A short answer or improvement to the existing guide first | One annotated screenshot or diagnostic tree | Check whether a page already answers it; avoid a second article competing with the first |
 | A church completes a useful trial or recurring workflow | A real customer story | An approved quote, setup diagram or recorded demonstration | Consent, named context where permitted, and evidence for any result claimed |
 | A mistake or bug reveals a common failure | A clear fix note and corrected help | A brief explanation if it teaches something reusable | Reproduce and verify the fix; prioritise the remedy over a witty opening |
-| A new volunteer joins a team | A training or handoff article | Rehearsal checklist and prepared example run | Use an observed training need or clearly labelled demonstration |
+| Someone joins a team or takes on a different role | A training or handoff article | Rehearsal checklist and prepared example run | Use an observed training need or clearly labelled demonstration |
 | A seasonal service is approaching | A practical checklist for that service | Original example run and rehearsal clip | Confirm the audience's calendar and the features needed; publish early enough to prepare |
 | A small control or shortcut changes | Release note and the affected help paragraph | Optional small screenshot | Do not inflate it into a launch essay |
-| There is no meaningful release that month | A useful volunteer task, an honest product decision or a refreshed guide | One excerpt or clip if it adds value | Skip filler; it is acceptable to publish less |
+| There is no meaningful release that month | A useful production task, an honest product decision or a refreshed guide | One excerpt or clip if it adds value | Skip filler; it is acceptable to publish less |
 
 Each substantive piece can supply two smaller drafts: a captioned demonstration and a short screenshot-led post. An email is useful when there is a meaningful update for that list. These are distribution options, not authorization to send, publish or create accounts.
 
@@ -68,21 +70,21 @@ Each substantive piece can supply two smaller drafts: a captioned demonstration 
 | Period after launch | Editorial focus | Candidate story | Companion guide or asset | Move it when |
 | --- | --- | --- | --- | --- |
 | Month 1 | Understand Trilorah and complete a rehearsal | Product introduction; how recognition helps during a sermon | Articles 01–06; one complete rehearsal clip | Basic workflows still need fixes or first users reveal a different starting problem |
-| Month 2 | Prepare the content volunteers actually use | A readable lyric slide; receiving a guest speaker's deck | Articles 07, 08, 10 and 12 | Questions show another workflow is more urgent |
+| Month 2 | Prepare the content teams actually use | A readable lyric slide; receiving a guest speaker's deck | Articles 07, 08, 10 and 12 | Questions show another workflow is more urgent |
 | Month 3 | Introduce mobile control if ready | Phone control from a seat in the room | Feature story 17; pairing steps and real device clip | Release verification is incomplete; use a preparation story instead |
-| Month 4 | Train the next person | Supported companion guidance; a complete volunteer rehearsal | Story 19 and article 14 | The guide's advertised task cannot be completed reliably |
+| Month 4 | Train the next person | Supported companion guidance; a complete service rehearsal | Story 19 and article 14 | The guide's advertised task cannot be completed reliably |
 | Month 5 | Make preparation easier to hand over | Starting from a programme; taking a prepared service to another computer | Stories 20 and 22; articles 16 and 11 | Import or transfer checks uncover limitations that need fixing first |
-| Month 6 | Learn from actual use | The first six months of volunteer questions; one genuine church story if available | Updated start page; permissioned example | There is too little evidence for a broad claim—publish a narrower lesson |
+| Month 6 | Learn from actual use | The first six months of questions from church teams; one genuine church story if available | Updated start page; permissioned example | There is too little evidence for a broad claim—publish a narrower lesson |
 | Months 7–9 | Explain improvements and recurring needs | A verified preacher-correction workflow; release-led stories; a seasonal preparation guide | Story 21, article 15, relevant release notes | Product priorities or the audience's calendar change |
-| Months 10–12 | Show the product and community maturing | A second documented church story; a factual year of changes; a refreshed beginner path | Before/after behaviour from actual releases, updated demonstrations | Results or interviews are unavailable—report only what can be shown |
+| Months 10–12 | Show the product and community maturing | A second documented church story; a factual year of changes; a refreshed getting-started path | Before/after behaviour from actual releases, updated demonstrations | Results or interviews are unavailable—report only what can be shown |
 
 These periods express a likely order, not promised ship dates. Mobile controls can lead month one if they are ready. A customer story belongs whenever a customer has something real to share. Seasonal content follows the audience's service calendar rather than a universal assumed date. Reassess the two-piece monthly budget after four weeks: real demo production, release testing and editing determine what the team can sustain.
 
 ## Choose the next piece
 
-At each editorial review, check three inputs: what shipped, where volunteers got stuck, and what useful evidence we collected. First correct stale instructions. Then choose the strongest remaining story for the reader.
+At each editorial review, check three inputs: what shipped, where people got stuck, and what useful evidence we collected. First correct stale instructions. Then choose the strongest remaining story for the reader.
 
-Use this order when capacity is limited: essential help for an available feature; a significant release; a repeated volunteer question; a genuine customer experience; a broader opinion supported by real examples. Search queries and website behaviour can refine the choice once there is data. No keyword volumes or conversion results have been inferred for this plan.
+Use this order when capacity is limited: essential help for an available feature; a significant release; a repeated question from church teams; a genuine customer experience; a broader opinion supported by real examples. Search queries and website behaviour can refine the choice once there is data. No keyword volumes or conversion results have been inferred for this plan.
 
 Before starting, write a one-sentence brief: **This is for [reader], who needs [outcome], and we can show [specific evidence].** If the evidence is only a future intention, keep it as an internal brief. Label a publicly announced preview as a preview and say who can actually use it.
 
@@ -100,9 +102,9 @@ Keep one owner for the editorial decision and one named product reviewer for beh
 
 ## How we will know the writing is useful
 
-For guides, observe whether a new volunteer completes the task and where they hesitate. For product stories, look for readers taking the relevant next action and asking informed follow-up questions. For releases, watch whether users understand availability and setup. For customer stories, keep a record of approved evidence and the questions the story answers.
+For guides, observe whether someone new to that Trilorah workflow completes the task and where they hesitate. Include experienced operators and team leads as well as people learning production. For product stories, look for readers taking the relevant next action and asking informed follow-up questions. For releases, watch whether users understand availability and setup. For customer stories, keep a record of approved evidence and the questions the story answers.
 
-Traffic and reactions are useful context when available, but a large audience does not by itself prove that setup became easier. Set numeric targets after collecting a baseline and deciding which events are measured. A small set of real volunteer sessions will improve early drafts more than invented performance forecasts.
+Traffic and reactions are useful context when available, but a large audience does not by itself prove that setup became easier. Set numeric targets after collecting a baseline and deciding which events are measured. A small set of real task sessions with church teams will improve early drafts more than invented performance forecasts.
 
 ## Supporting material
 

@@ -1,6 +1,14 @@
 # Trilorah voice for product writing
 
-Use this guide for Trilorah articles, feature introductions and proposed interface copy. The primary reader is a church volunteer preparing or running a service. The founder has asked us to proceed with the rebuild using bold, cheeky humour delivered with a serious face, including short ad-libs. Individual new jokes remain editorial choices, not separately approved quotations.
+Use this guide for Trilorah articles, feature introductions and proposed interface copy. Write for people preparing, running and leading church production, including heads of department and experienced team leads. The founder has asked us to use bold, cheeky humour delivered with a serious face, including short ad-libs. Individual new jokes remain editorial choices, not separately approved quotations.
+
+The voice is **confident, clear and opinionated, with dry humour delivered straight**. Treat the reader as capable. Use ordinary language and explain unfamiliar controls without talking down to someone who may already lead a production team.
+
+## Address the person reading
+
+Use **you** and **your team** in general copy. Say operator, team lead or head of department when that role matters to the task. Do not default to volunteer or beginner as a label for the audience. Someone can be new to Trilorah and highly experienced in church production. This audience clarification, supplied October 30, 2026, supersedes the earlier volunteer-first framing.
+
+Use volunteer when it is a relevant fact, such as the founder's supplied history or a guide specifically about training volunteers. The general onboarding article speaks to anyone learning the product or introducing it to a team.
 
 ## The person behind the words
 
@@ -32,7 +40,7 @@ These show a pattern, not mandatory lines or permission to repeat the same joke 
 
 ## How to write a line with personality
 
-Start from something the reader recognises: using a phone in church, receiving slides late, preparing work for another volunteer, or checking what the back row can read. Give the sentence a clear useful meaning. Then see whether an admission, a small boast or a second interpretation adds anything.
+Start from something the reader recognises: using a phone in church, receiving slides late, handing a service to another operator, or checking what the back row can read. Give the sentence a clear useful meaning. Then see whether an admission, a small boast or a second interpretation adds anything.
 
 A parenthetical aside should change the beat. “You're welcome” attached to every benefit becomes a habit, not a voice. “Literally” belongs only where a real second meaning supports it. Keep the aside short enough to say in one breath. Do not add a laugh, explain the punchline or follow it with three more jokes.
 

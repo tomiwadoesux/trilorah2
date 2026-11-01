@@ -6,7 +6,7 @@ question: "How do I add a song, organize its sections, and preview the words?"
 proposed_publication_date: "2026-04-07"
 schedule_note: "Planning date requested for March–July 2026; not a publication record"
 status: "draft — source reviewed; save-and-present walkthrough and visuals pending"
-reviewed_on: "2026-10-11"
+reviewed_on: "2026-10-25"
 task_ids: [songs.create-edit-slides, songs.find-local, songs.preview-display-section, songs.discover-online]
 ---
 
@@ -19,6 +19,12 @@ A different verse, a repeated chorus, or an extra line can change what the opera
 ## 1. Find the saved version
 
 Open **Songs** and search by title or a distinctive line. Open a likely match and read its sections. Check the words against the planned arrangement before adding a duplicate song.
+
+The song library stays in a column on the left while a song is open. Use **Find a song…** to filter it by title, artist, or lyrics, then choose another song without returning to the grid. The selected song is highlighted; a separate **live** label identifies a song currently on screen. Switching songs changes the preview. Use **Go live** when you want to change the projected words.
+
+If you are editing a lyric card, save or cancel that edit before switching songs. The search above the lyrics finds words within the open song.
+
+Use **On device** for your saved library or **Scheduled** for songs queued in the current Run of Show. Scheduled lists each song once, in service order, with its first section underneath. A queued song missing from the device is marked **Unavailable on device**.
 
 Text search is useful during quiet preparation. The microphone search is a separate route and can start listening.
 
@@ -36,7 +42,9 @@ Check every line, especially repeated material. If you use an online source, com
 
 Use the editor's section controls to split, merge, duplicate, and move slides. Put a break where it helps people follow a phrase.
 
-Preview the longest section. If the words need to become much smaller to fit, split that section at a sensible point. Review the slides on the screen you intend to use; the laptop is closer to your eyes than the projector will be.
+Preview the longest section. Trilorah keeps each line you wrote on one line by shrinking the whole slide to fit the longest one, so one long line makes every line on that slide smaller. If the words need to become much smaller to fit, split that section at a sensible point. Review the slides on the screen you intend to use; the laptop is closer to your eyes than the projector will be.
+
+The room sees the words and a small credit with the song's name. Labels such as Verse 2 and Chorus stay with you.
 
 Arrange repeated sections to suit the planned version, then check the sequence with someone from the worship team.
 

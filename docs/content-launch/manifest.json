@@ -1,7 +1,7 @@
 {
   "product": "Trilorah",
   "created_on": "2026-10-10",
-  "audience": "Church volunteers setting up and running services",
+  "audience": "Church production teams, operators, team leads and heads of department",
   "schedule_status": "Launch-relative phases and verified-event triggers govern the new plan. Original March–July 2026 requested planning dates are retained on articles 01–16 only; none represent publication history.",
   "articles": [
     {
@@ -783,19 +783,22 @@
     },
     {
       "id": "19",
-      "title": "Show me where.",
+      "title": "Why Trilorah teaches one task at a time",
       "slug": "introducing-the-in-app-guide",
-      "subtitle": "A guide that can point, demonstrate, and wait for your next move.",
-      "audience": "First-time volunteers and the people training them",
+      "subtitle": "The thinking behind our progressive onboarding and the Messenger that guides it.",
+      "audience": "People learning Trilorah and leaders introducing it to their teams",
       "status": "draft — ready for copy review; release verification pending",
-      "reviewed_on": "2026-10-11",
+      "reviewed_on": "2026-10-30",
       "publication_date": null,
       "publish_trigger": "Supported guide walkthroughs and setup recovery pass the release review.",
       "source_paths": [
+        "src/App.tsx",
         "src/components/ProductGuide.tsx",
         "src/components/useGuideCursor.ts",
+        "src/lib/productGuide.ts",
         "src/lib/guideWalkthroughs.ts",
         "src/lib/guidePrerequisites.ts",
+        "src/lib/messengerProgress.ts",
         "scripts/guideIndex.ts"
       ],
       "release_gate": "Verify supported walkthroughs, user takeover, reduced motion, and a real missing-key setup/search/recovery path.",

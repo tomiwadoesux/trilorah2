@@ -1066,7 +1066,10 @@
         "addHere",
         "photo/video choice",
         "media shelf",
-        "media card"
+        "media card",
+        "picture/video thumbnail cards with visible names and type labels",
+        "use as a background",
+        "remove from library"
       ],
       "preconditions": [
         "Desktop file picker bridge for import",
@@ -1075,11 +1078,13 @@
       "completion": [
         "Imported cards appear",
         "Import progress resolves with result notice",
-        "Single imported or selected media item is staged"
+        "Single imported or selected media item is staged",
+        "The shelf switches to pictures or videos to match what was added",
+        "Selected standalone media has a preview badge; selecting it does not send it live"
       ],
       "limitations": [
         "Cancellation is not success.",
-        "Multiple imports need result inspection.",
+        "A mixed import shows whichever kind came in more; the status line says how many of the others are under pictures or videos.",
         "Theme-shelf clicks stage backgrounds instead of standalone content."
       ],
       "status": "wired",
@@ -1087,6 +1092,10 @@
         {
           "path": "src/design/screens/Live.tsx",
           "symbol": "MediaBrowser"
+        },
+        {
+          "path": "src/design/screens/MediaLibraryCards.tsx",
+          "symbol": "MediaLibraryCard"
         },
         {
           "path": "src/design/screens/mediaLibrary.ts",
@@ -1156,6 +1165,15 @@
             "Add from laptop. Then click the card to preview."
           ],
           "anchor": "media-import",
+          "do": "choose"
+        },
+        {
+          "id": "media-preview",
+          "say": [
+            "Choose a thumbnail to preview it. The name stays beneath the picture.",
+            "Picture and video cards show their type. Select one to preview."
+          ],
+          "anchor": "media-card",
           "do": "choose"
         }
       ],
@@ -1356,7 +1374,8 @@
       "limitations": [
         "× clears projected words only when the staged item matches the currently live item; otherwise it only unstages the preview",
         "Clearing matching live words changes congregation output immediately; the background remains",
-        "Video transport state is partly a local estimate and needs actual playback verification"
+        "A clip on LIVE has its transport on the picture (play/pause, restart, a bar to drag, sound). Each press goes to the projector window and the LIVE copy together; the projector does not report back, so the time shown is the LIVE copy’s. Sound comes from the projector window when it is open, otherwise from the operator’s computer",
+        "A projector window opened after a picture or video went live stays blank until it is sent again"
       ],
       "status": "wired",
       "sources": [
@@ -2010,14 +2029,18 @@
         "duration",
         "duplicate",
         "remove",
-        "default order of service"
+        "default order of service",
+        "List / Grid view",
+        "expand / collapse section in List view"
       ],
       "preconditions": [
         "Operator surface",
         "Existing segment for edit actions"
       ],
       "completion": [
-        "operatorRunStore segments reflect requested ordering, labels, and duration"
+        "operatorRunStore segments reflect requested ordering, labels, and duration",
+        "List / Grid changes the section layout and remembers it on this computer without changing the service contents",
+        "List headings independently expand or collapse inline content; image, song, and presentation cards use two columns"
       ],
       "limitations": [
         "Loading default order replaces existing run after confirmation.",
@@ -2054,7 +2077,8 @@
         "run-text",
         "run-read",
         "run-programme",
-        "run-apply"
+        "run-apply",
+        "run-layout"
       ],
       "execution": "Opens programme paste, types operator-approved draft, and parses to review. User applies reviewed rows.",
       "since": "0.4.5",
@@ -2112,7 +2136,7 @@
         {
           "id": "run-review",
           "say": [
-            "Check the order. Then Add to run.",
+            "Add to run. List headings expand or collapse their cards.",
             "Right times? Right types? Add to run.",
             "Add to run changes your schedule. Your press.",
             "Look it over. Add to run when it’s right."
@@ -2203,20 +2227,24 @@
       "id": "run.queue-content-note",
       "title": "Queue content or notes in a segment",
       "area": "run",
-      "entry": "Drag supported library content onto a run segment; segment plus → note",
+      "entry": "Run section → Add items; List view shows queued content inline, with Open section for the larger editing view",
       "controls": [
         "segment drop target",
         "SegmentAdd",
         "note input",
         "remove queued item",
-        "queued item live"
+        "queued item live",
+        "List section heading",
+        "Add items",
+        "Open section"
       ],
       "preconditions": [
         "Existing or automatically created matching segment",
         "Resolved content data for publishable queued items"
       ],
       "completion": [
-        "run.segments[].items contains queued content or edited note"
+        "run.segments[].items contains queued content or edited note",
+        "Expanded List sections show image, song, and presentation cards two per row, with preview and available live controls"
       ],
       "limitations": [
         "A song label alone is insufficient to publish: queued song needs lines. Media/presentation needs a valid path.",
@@ -2234,12 +2262,17 @@
         },
         {
           "path": "src/design/screens/run/RunRail.tsx",
-          "symbol": "QueuedItemRow"
+          "symbol": "QueuedItemCard"
         }
       ],
       "runtimeTested": false,
       "guideReady": false,
-      "guideAnchors": [],
+      "guideAnchors": [
+        "run-inline-add",
+        "run-inline-open",
+        "run-item-open",
+        "run-item-live"
+      ],
       "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
     },
     {
@@ -2967,7 +3000,10 @@
       "area": "slides",
       "entry": "Slides → Import slides → choose PPTX/PPT/ODP",
       "controls": [
-        "import slides"
+        "import slides",
+        "slide preview panel",
+        "previous and next preview page",
+        "numbered preview pages"
       ],
       "preconditions": [
         "Desktop importPresentation API",
@@ -2977,11 +3013,15 @@
       ],
       "completion": [
         "Import notice gives slide count",
-        "Deck appears with rendered pages"
+        "Deck appears with rendered pages",
+        "Selecting a deck shows its current page in the side preview",
+        "Preview page controls stage that page without sending it live",
+        "Search keeps the inspected deck visible in the side preview"
       ],
       "limitations": [
         "Failure is surfaced through importNote.",
-        "Rendered slide images do not preserve all original presentation animations or interactivity."
+        "Rendered slide images do not preserve all original presentation animations or interactivity.",
+        "Only rendered pages can be previewed; partially rendered decks show their ready count."
       ],
       "status": "wired",
       "sources": [
@@ -2990,14 +3030,67 @@
           "symbol": "SlidesBrowser"
         },
         {
+          "path": "src/design/screens/SlidesPreview.tsx",
+          "symbol": "SlidesPreview"
+        },
+        {
           "path": "electron/media/pptxConverter.ts",
           "symbol": "convertPptxToImages"
         }
       ],
       "runtimeTested": false,
       "guideReady": false,
-      "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "guideAnchors": [
+        "library-slides",
+        "toolbar-presentations-import",
+        "slides-preview",
+        "slides-preview-previous",
+        "slides-preview-next",
+        "slides-preview-page"
+      ],
+      "execution": "Opens Slides, points to Import slides for user file choice, then explains deck selection and preview-only page controls.",
+      "since": "0.4.10",
+      "asks": [
+        "import slides",
+        "import a presentation",
+        "preview a slide deck",
+        "browse presentation pages"
+      ],
+      "lesson": [
+        {
+          "id": "tab-slides",
+          "say": [
+            "Open Slides."
+          ],
+          "anchor": "library-slides",
+          "do": "click",
+          "done": "[data-guide=\"library-slides\"][aria-selected=\"true\"]"
+        },
+        {
+          "id": "slides-import",
+          "say": [
+            "Choose Import slides, then select your presentation in the desktop file picker."
+          ],
+          "anchor": "toolbar-presentations-import",
+          "do": "choose"
+        },
+        {
+          "id": "slides-select",
+          "say": [
+            "Select the imported deck. Its current page appears in the side preview."
+          ],
+          "anchor": "[data-guide^=\"slides-deck-\"]",
+          "do": "choose"
+        },
+        {
+          "id": "slides-preview",
+          "say": [
+            "Use arrows or page numbers to preview. Go live sends the prepared page."
+          ],
+          "anchor": "slides-preview",
+          "do": "point"
+        }
+      ]
     },
     {
       "id": "songs.create-edit-slides",
@@ -3180,11 +3273,14 @@
       "id": "songs.find-local",
       "title": "Find a saved song",
       "area": "songs",
-      "entry": "Songs → search by song name or lyrics",
+      "entry": "Songs → search by song name or lyrics; open song → left-hand song library",
       "controls": [
         "SearchField",
         "search songs with microphone",
-        "song card"
+        "song card",
+        "Find another song",
+        "left-hand song list",
+        "On device / Scheduled"
       ],
       "preconditions": [
         "Saved song library",
@@ -3192,10 +3288,13 @@
       ],
       "completion": [
         "Matching song cards shown",
-        "Selected song opens"
+        "Selected song opens",
+        "Choosing a song in the left-hand list opens and stages it without returning to the grid"
       ],
       "limitations": [
-        "Text search and microphone search are distinct workflows; microphone search can start listening."
+        "Text search and microphone search are distinct workflows; microphone search can start listening.",
+        "Save or cancel an inline lyric edit before switching songs. Switching songs only changes the preview.",
+        "Scheduled follows first-use order in the current run, with one row per song. Missing library songs are labelled unavailable on device."
       ],
       "status": "wired",
       "sources": [
@@ -3206,12 +3305,69 @@
         {
           "path": "src/design/screens/Live.tsx",
           "symbol": "SongsBrowser"
+        },
+        {
+          "path": "src/design/screens/Live.tsx",
+          "symbol": "SongLibraryRail"
+        },
+        {
+          "path": "shared/scheduledSongs.ts",
+          "symbol": "scheduledSongs"
         }
       ],
       "runtimeTested": false,
       "guideReady": false,
-      "guideAnchors": [],
-      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text."
+      "guideAnchors": [
+        "library-songs",
+        "songs-search",
+        "song-list-search",
+        "song-list-open",
+        "song-list-source-device",
+        "song-list-source-scheduled"
+      ],
+      "execution": "Companion quick help and supported navigation. Registered library topics offer tab/control orientation; no arbitrary actions are inferred from text.",
+      "since": "0.4.10",
+      "asks": [
+        "find a saved song",
+        "switch songs",
+        "where is the song list",
+        "search my songs"
+      ],
+      "lesson": [
+        {
+          "id": "songs-open-library",
+          "say": [
+            "Open Songs to find your saved songs."
+          ],
+          "anchor": "library-songs",
+          "do": "click",
+          "done": "[data-guide=\"songs-search\"], [data-guide=\"song-list-search\"]"
+        },
+        {
+          "id": "songs-open-one",
+          "say": [
+            "Choose a song. Its lyrics open with your library on the left."
+          ],
+          "anchor": "[data-guide=\"songs-search\"], [data-guide=\"song-list-open\"]",
+          "do": "point"
+        },
+        {
+          "id": "songs-source",
+          "say": [
+            "Choose On device for your library, or Scheduled for this service."
+          ],
+          "anchor": "song-list-source-scheduled",
+          "do": "point"
+        },
+        {
+          "id": "songs-switch",
+          "say": [
+            "Find another song here, then choose it. Go live sends its lyrics."
+          ],
+          "anchor": "song-list-search",
+          "do": "point"
+        }
+      ]
     },
     {
       "id": "songs.preview-display-section",
@@ -3221,7 +3377,9 @@
       "controls": [
         "Preview section",
         "section send",
-        "preview Go live"
+        "preview Go live",
+        "left-hand song list",
+        "song lyric search"
       ],
       "preconditions": [
         "Saved song with lyric cards"
@@ -3231,13 +3389,24 @@
         "For explicit send, confirmed live state matches section"
       ],
       "limitations": [
-        "Preview and send are different actions."
+        "Preview and send are different actions.",
+        "The left-hand list switches the preview and leaves live output unchanged; save or cancel an inline edit before switching.",
+        "Screens set a song as lyrics, with the song's name as a small credit. Section names such as Verse 2 stay with the operator.",
+        "A written line stays on one line when it can: every line on the slide shrinks together to fit the longest, down to the smallest size a reading may use. A line too long even then wraps."
       ],
       "status": "wired",
       "sources": [
         {
           "path": "src/design/screens/Live.tsx",
           "symbol": "SongSheet"
+        },
+        {
+          "path": "src/design/screens/slide.tsx",
+          "symbol": "data-fit-line"
+        },
+        {
+          "path": "src/output.tsx",
+          "symbol": "output-lyric"
         }
       ],
       "runtimeTested": false,

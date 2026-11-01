@@ -47,7 +47,7 @@ Make essential help available when its verified feature is available. The order 
 | --- | --- | --- |
 | 17 | [Your phone has been promoted.](future-features/17-mobile-remote.md) | Mobile remote passes paired-phone and desktop release checks. |
 | 18 | [The verse wasn't on the service plan.](future-features/18-scripture-catches.md) | Recorded reference and quotation demonstrations pass the release review. |
-| 19 | [Show me where.](future-features/19-in-app-guide.md) | Supported guide walkthroughs and setup recovery pass the release review. |
+| 19 | [Why Trilorah teaches one task at a time](future-features/19-in-app-guide.md) | Progressive-onboarding rationale reviewed; supported walkthroughs and setup recovery pass the release review. |
 | 20 | [You already typed the programme once.](future-features/20-programme-import.md) | The pictured text and scan examples pass review in the release build. |
 | 21 | [Tell Trilorah what it got wrong.](future-features/21-preacher-corrections.md) | A verified correction, replay, and local sound check pass release review. |
 | 22 | [The next volunteer needs more than a file name.](future-features/22-service-handoff.md) | The demonstrated package passes save, transfer, open, and import checks. |
