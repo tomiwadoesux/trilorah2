@@ -20,6 +20,7 @@
  *   trilorah-inspect type <app> <selector…> --text "…" [--submit]
  *   trilorah-inspect menu <app> "File>New Note"
  *   trilorah-inspect focus <app>
+ *   trilorah-inspect watch <app> [--count N] [--seconds N]   record which element the operator clicks
  *
  * Selectors: name:<text> (title/description/value/identifier contains, case-
  * insensitive), role:AXButton, id:<AXIdentifier>, path:0/3/2 (index path from
@@ -392,6 +393,71 @@ func postReturn() {
     CGEvent(keyboardEventSource: source, virtualKey: 36, keyDown: false)!.post(tap: .cghidEventTap)
 }
 
+// MARK: - Watching clicks (teach-by-showing)
+
+var watchPid: pid_t = 0
+var watchWant = 1
+var watchApp: AXUIElement?
+var watchRecorded: [[String: Any]] = []
+
+/** The index path from the app (or its menu bar) down to this element, by climbing parents. */
+func pathOf(_ element: AXUIElement, app: AXUIElement) -> String? {
+    var indices: [String] = []
+    var current = element
+    for _ in 0..<40 {
+        if CFEqual(current, app) { return indices.reversed().joined(separator: "/") }
+        guard let parentRef = attribute(current, kAXParentAttribute) else { return nil }
+        let parent = parentRef as! AXUIElement
+        let siblings = children(of: parent)
+        guard let i = siblings.firstIndex(where: { CFEqual($0, current) }) else {
+            // A menu bar's parent is the app, but the bar is not among the app's children.
+            if text(current, kAXRoleAttribute) == "AXMenuBar" { return (["menu"] + indices.reversed()).joined(separator: "/") }
+            return nil
+        }
+        indices.append(String(i))
+        current = parent
+    }
+    return nil
+}
+
+/** The control a recipe should press: the clicked element or its nearest pressable ancestor. */
+func pressableAncestor(_ element: AXUIElement) -> AXUIElement {
+    var current = element
+    for _ in 0..<4 {
+        let acts = actionNames(current)
+        if acts.contains("AXPress") || acts.contains("AXConfirm") || acts.contains("AXOpen") { return current }
+        guard let parentRef = attribute(current, kAXParentAttribute) else { break }
+        current = parentRef as! AXUIElement
+    }
+    return element
+}
+
+let watchCallback: CGEventTapCallBack = { _, type, event, _ in
+    guard type == .leftMouseDown, let app = watchApp else { return Unmanaged.passUnretained(event) }
+    let point = event.location
+    var hit: AXUIElement?
+    let systemWide = AXUIElementCreateSystemWide()
+    guard AXUIElementCopyElementAtPosition(systemWide, Float(point.x), Float(point.y), &hit) == .success, let element = hit else {
+        return Unmanaged.passUnretained(event)
+    }
+    var pid: pid_t = 0
+    AXUIElementGetPid(element, &pid)
+    // Clicks in other apps are not lessons about this one.
+    guard pid == watchPid else { return Unmanaged.passUnretained(event) }
+    let control = pressableAncestor(element)
+    let path = pathOf(control, app: app)
+    let node = describe(control, path: path ?? "?", depth: path?.split(separator: "/").count ?? 0)
+    var record = node.json(withFrame: true)
+    record["clickedAt"] = ["x": point.x, "y": point.y]
+    if !CFEqual(control, element) {
+        let exact = describe(element, path: pathOf(element, app: app) ?? "?", depth: 0)
+        record["clickedExactly"] = exact.json(withFrame: false)
+    }
+    watchRecorded.append(record)
+    FileHandle.standardError.write("  recorded: \(node.role) \"\(node.name ?? "")\" at \(path ?? "?")\n".data(using: .utf8)!)
+    return Unmanaged.passUnretained(event)
+}
+
 // MARK: - Commands
 
 let args = Args(Array(CommandLine.arguments.dropFirst()))
@@ -519,6 +585,39 @@ case "focus":
     guard args.positional.count >= 2 else { fail("focus <app>", code: 2) }
     let app = findApp(args.positional[1])
     emit(["ok": app.activate(), "app": app.localizedName ?? ""])
+
+/*
+ * watch: teach-by-showing. "Show me how you put something on the screen" —
+ * the operator clicks, and this records WHICH element they clicked (its path
+ * and cues), not where the mouse was. A listen-only event tap sees the click;
+ * the element under it comes from the accessibility tree; the nearest
+ * pressable ancestor is what a recipe will press. Nothing is pressed here.
+ */
+case "watch":
+    requireTrust()
+    guard args.positional.count >= 2 else { fail("watch <app> [--count N] [--seconds N]", code: 2) }
+    let app = findApp(args.positional[1])
+    let want = args.int("count", 1)
+    let seconds = args.int("seconds", 60)
+    watchPid = app.processIdentifier
+    watchWant = want
+    watchApp = AXUIElementCreateApplication(app.processIdentifier)
+    FileHandle.standardError.write("watching \(app.localizedName ?? "the app") — click the control you want to teach (\(want) click\(want == 1 ? "" : "s"), up to \(seconds)s)\n".data(using: .utf8)!)
+    let mask = CGEventMask(1 << CGEventType.leftMouseDown.rawValue)
+    guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
+                                      eventsOfInterest: mask, callback: watchCallback, userInfo: nil) else {
+        fail("could not listen for clicks — macOS may also want Input Monitoring for this process", code: 3)
+    }
+    let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+    CGEvent.tapEnable(tap: tap, enable: true)
+    let deadline = Date().addingTimeInterval(TimeInterval(seconds))
+    while watchRecorded.count < want && Date() < deadline {
+        CFRunLoopRunInMode(.defaultMode, 0.25, true)
+    }
+    CGEvent.tapEnable(tap: tap, enable: false)
+    emit(["ok": watchRecorded.count >= want, "wanted": want, "recorded": watchRecorded,
+          "note": watchRecorded.count >= want ? "recorded" : "time ran out before \(want) click\(want == 1 ? "" : "s") landed in \(app.localizedName ?? "the app")"])
 
 default:
     fail("unknown command \"\(command)\" — check|apps|see|find|press|type|menu|focus", code: 2)
