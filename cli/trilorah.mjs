@@ -137,7 +137,9 @@ async function connect(onReady, onEvent) {
   return socket;
 }
 
-const verseText = (v) => (v ? `${v.book} ${v.chapter}:${v.verse}${v.endVerse && v.endVerse !== v.verse ? `-${v.endVerse}` : ""} · ${v.version}` : "—");
+// A verse on an app's screen comes back as the reference asked for, with the app as its "version".
+const verseText = (v) =>
+  v ? `${v.book}${v.chapter ? ` ${v.chapter}:${v.verse}${v.endVerse && v.endVerse !== v.verse ? `-${v.endVerse}` : ""}` : ""} · ${v.version}` : "—";
 
 function printSnapshot(s, json) {
   if (json) return process.stdout.write(`${JSON.stringify(s)}\n`);
