@@ -587,6 +587,48 @@ case "focus":
     emit(["ok": app.activate(), "app": app.localizedName ?? ""])
 
 /*
+ * key: a keyboard shortcut to the app, brought to the front first — for the
+ * apps whose "go live" is F5 or ⌘⏎ and nothing in the tree. "cmd+enter",
+ * "f5", "escape", "shift+right".
+ */
+case "key":
+    requireTrust()
+    guard args.positional.count >= 3 else { fail("key <app> <keys>  e.g. cmd+enter, f5, escape", code: 2) }
+    let app = findApp(args.positional[1])
+    let parts = args.positional[2].lowercased().split(separator: "+").map(String.init)
+    var flags: CGEventFlags = []
+    var keyName = ""
+    for p in parts {
+        switch p {
+        case "cmd", "command", "meta": flags.insert(.maskCommand)
+        case "shift": flags.insert(.maskShift)
+        case "alt", "option": flags.insert(.maskAlternate)
+        case "ctrl", "control": flags.insert(.maskControl)
+        default: keyName = p
+        }
+    }
+    let codes: [String: CGKeyCode] = [
+        "enter": 36, "return": 36, "tab": 48, "space": 49, "delete": 51, "backspace": 51, "escape": 53, "esc": 53,
+        "left": 123, "right": 124, "down": 125, "up": 126, "home": 115, "end": 119, "pageup": 116, "pagedown": 121,
+        "f1": 122, "f2": 120, "f3": 99, "f4": 118, "f5": 96, "f6": 97, "f7": 98, "f8": 100, "f9": 101, "f10": 109, "f11": 103, "f12": 111,
+        "a": 0, "s": 1, "d": 2, "f": 3, "h": 4, "g": 5, "z": 6, "x": 7, "c": 8, "v": 9, "b": 11, "q": 12, "w": 13, "e": 14, "r": 15,
+        "y": 16, "t": 17, "1": 18, "2": 19, "3": 20, "4": 21, "6": 22, "5": 23, "9": 25, "7": 26, "8": 28, "0": 29, "o": 31, "u": 32,
+        "i": 34, "p": 35, "l": 37, "j": 38, "k": 40, "n": 45, "m": 46, ".": 47, ",": 43, "/": 44, ";": 41, "'": 39, "[": 33, "]": 30,
+        "-": 27, "=": 24, "`": 50,
+    ]
+    guard let code = codes[keyName] else { fail("no key called \"\(keyName)\"") }
+    app.activate()
+    usleep(120_000)
+    let source = CGEventSource(stateID: .combinedSessionState)
+    let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true)!
+    down.flags = flags
+    down.post(tap: .cghidEventTap)
+    let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)!
+    up.flags = flags
+    up.post(tap: .cghidEventTap)
+    emit(["ok": true, "keys": args.positional[2], "app": app.localizedName ?? ""])
+
+/*
  * watch: teach-by-showing. "Show me how you put something on the screen" —
  * the operator clicks, and this records WHICH element they clicked (its path
  * and cues), not where the mouse was. A listen-only event tap sees the click;

@@ -20,5 +20,5 @@
     "strict": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["electron", "shared", "controller/recipes"]
+  "include": ["electron", "shared", "controller"]
 }
