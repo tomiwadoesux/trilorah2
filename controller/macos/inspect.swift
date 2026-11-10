@@ -134,11 +134,13 @@ struct Node {
     let enabled: Bool?
     let focused: Bool?
     let actions: [String]
-    let frame: [String: Double]?
     let element: AXUIElement
 
     /** The one name a person would call it. */
     var name: String? { title ?? description ?? identifier ?? help }
+    /** Two more round trips per element, so only when asked for. */
+    var frame: [String: Double]? { main.frame(of: element) }
+    var pressable: Bool { actions.contains("AXPress") || actions.contains("AXConfirm") || actions.contains("AXOpen") }
 
     /** Worth showing in the compact view: it is named, pressable, or a container that matters. */
     var interesting: Bool {
@@ -165,22 +167,72 @@ struct Node {
     }
 }
 
+/* One round trip for every attribute of an element, instead of nine. The
+   walk over a big app is thousands of elements; this is what makes a lookup
+   seconds instead of a quarter of a minute. */
+let describedAttributes: [String] = [kAXRoleAttribute, kAXSubroleAttribute, kAXTitleAttribute, kAXDescriptionAttribute,
+                                     kAXValueAttribute, kAXIdentifierAttribute, kAXHelpAttribute, kAXEnabledAttribute, kAXFocusedAttribute]
+
+func asText(_ value: AnyObject?) -> String? {
+    guard let value = value else { return nil }
+    if CFGetTypeID(value) == AXValueGetTypeID() { return nil }
+    if let s = value as? String { return s.isEmpty ? nil : s }
+    if CFGetTypeID(value) == CFBooleanGetTypeID() { return nil }
+    if let n = value as? NSNumber { return n.stringValue }
+    if let u = value as? URL { return u.absoluteString }
+    if let a = value as? NSAttributedString { return a.string.isEmpty ? nil : a.string }
+    return nil
+}
+
+func asFlag(_ value: AnyObject?) -> Bool? {
+    guard let v = value else { return nil }
+    if CFGetTypeID(v) == CFBooleanGetTypeID() { return CFBooleanGetValue((v as! CFBoolean)) }
+    return (v as? NSNumber)?.boolValue
+}
+
 func describe(_ element: AXUIElement, path: String, depth: Int) -> Node {
-    Node(
+    var values: CFArray?
+    var got: [AnyObject?] = Array(repeating: nil, count: describedAttributes.count)
+    if AXUIElementCopyMultipleAttributeValues(element, describedAttributes as CFArray, AXCopyMultipleAttributeOptions(rawValue: 0), &values) == .success,
+       let list = values as? [AnyObject] {
+        for (i, v) in list.enumerated() where i < got.count {
+            // A missing attribute comes back as an AXValue of type error.
+            if CFGetTypeID(v) == AXValueGetTypeID(), AXValueGetType(v as! AXValue) == .axError { continue }
+            got[i] = v
+        }
+    }
+    return Node(
         path: path, depth: depth,
-        role: text(element, kAXRoleAttribute) ?? "?",
-        subrole: text(element, kAXSubroleAttribute),
-        title: text(element, kAXTitleAttribute),
-        description: text(element, kAXDescriptionAttribute),
-        value: text(element, kAXValueAttribute),
-        identifier: text(element, kAXIdentifierAttribute),
-        help: text(element, kAXHelpAttribute),
-        enabled: flag(element, kAXEnabledAttribute),
-        focused: flag(element, kAXFocusedAttribute),
+        role: asText(got[0]) ?? "?",
+        subrole: asText(got[1]),
+        title: asText(got[2]),
+        description: asText(got[3]),
+        value: asText(got[4]),
+        identifier: asText(got[5]),
+        help: asText(got[6]),
+        enabled: asFlag(got[7]),
+        focused: asFlag(got[8]),
         actions: actionNames(element),
-        frame: frame(of: element),
         element: element
     )
+}
+
+/** Follow a saved path straight to its element — a handful of calls, no walk. Sunday's path. */
+func resolve(app: AXUIElement, path: String) -> AXUIElement? {
+    var parts = path.split(separator: "/").map(String.init)
+    var current = app
+    if parts.first == "menu" {
+        guard let bar = attribute(app, kAXMenuBarAttribute) else { return nil }
+        current = bar as! AXUIElement
+        parts.removeFirst()
+    }
+    for part in parts {
+        guard let i = Int(part) else { return nil }
+        let kids = children(of: current)
+        guard i < kids.count else { return nil }
+        current = kids[i]
+    }
+    return current
 }
 
 struct WalkLimits {
@@ -188,7 +240,11 @@ struct WalkLimits {
     var maxNodes = 6000
     /** Per parent, in compact mode: a song list with 3,000 rows is not 3,000 lines of output. */
     var maxChildren = 200
+    /** Rows of a table, outline or list: the controls a recipe wants are never row #400. */
+    var maxRows = 25
 }
+
+let rowContainers: Set<String> = ["AXTable", "AXOutline", "AXList", "AXBrowser", "AXGrid"]
 
 /** Depth-first over the app's windows, then its menu bar (paths "menu/…"). */
 func walk(app: AXUIElement, limits: WalkLimits, compactChildren: Bool, visit: (Node) -> Void) -> Bool {
@@ -202,7 +258,7 @@ func walk(app: AXUIElement, limits: WalkLimits, compactChildren: Bool, visit: (N
         if depth >= limits.maxDepth { return }
         // A closed menu's items are still there; a menu bar item's menu is its one child.
         let kids = children(of: element)
-        let cap = compactChildren ? limits.maxChildren : Int.max
+        let cap = compactChildren ? (rowContainers.contains(node.role) ? limits.maxRows : limits.maxChildren) : Int.max
         for (i, kid) in kids.enumerated() {
             if i >= cap { truncated = true; break }
             go(kid, path.isEmpty ? "\(i)" : "\(path)/\(i)", depth + 1)
@@ -273,23 +329,33 @@ struct Selector {
         if let r = role, n.role.lowercased() != r.lowercased() { return false }
         if let i = identifier, (n.identifier ?? "") != i { return false }
         if let v = value, !(n.value ?? "").lowercased().contains(v.lowercased()) { return false }
+        // name: is what the control is CALLED, never its contents — a note whose
+        // text says "new note" is not the New Note button. value: is for contents.
         if let q = name?.lowercased() {
-            let hay = [n.title, n.description, n.identifier, n.help, n.value].compactMap { $0?.lowercased() }
+            let hay = [n.title, n.description, n.identifier, n.help].compactMap { $0?.lowercased() }
             if !hay.contains(where: { $0.contains(q) }) { return false }
         }
         return true
     }
 }
 
-func collect(app: AXUIElement, selector: Selector, limits: WalkLimits) -> [Node] {
+/** Recipes target controls, not row #436 of a list, so the list cap applies unless --all. */
+func collect(app: AXUIElement, selector: Selector, limits: WalkLimits, all: Bool) -> [Node] {
+    // A saved path goes straight there; the other cues then confirm it is still the same control.
+    if let path = selector.path {
+        guard let element = resolve(app: app, path: path) else { return [] }
+        let node = describe(element, path: path, depth: path.split(separator: "/").count - 1)
+        return selector.matches(node) ? [node] : []
+    }
     var found: [Node] = []
-    _ = walk(app: app, limits: limits, compactChildren: false) { n in if selector.matches(n) { found.append(n) } }
-    // Exact name matches first, so "Done" finds Done before "Not done".
-    if let q = selector.name?.lowercased() {
-        found.sort { a, b in
-            let ae = (a.name ?? "").lowercased() == q, be = (b.name ?? "").lowercased() == q
-            return ae && !be
-        }
+    _ = walk(app: app, limits: limits, compactChildren: !all) { n in if selector.matches(n) { found.append(n) } }
+    // Pressable and exactly-named first, so "Done" finds the Done button before a label that mentions it.
+    let q = selector.name?.lowercased()
+    found.sort { a, b in
+        let ae = q != nil && (a.name ?? "").lowercased() == q!, be = q != nil && (b.name ?? "").lowercased() == q!
+        if ae != be { return ae }
+        if a.pressable != b.pressable { return a.pressable }
+        return false
     }
     return found
 }
@@ -381,7 +447,7 @@ case "find":
     let app = findApp(args.positional[1])
     let root = AXUIElementCreateApplication(app.processIdentifier)
     let selector = Selector(Array(args.positional.dropFirst(2)))
-    let matches = collect(app: root, selector: selector, limits: WalkLimits())
+    let matches = collect(app: root, selector: selector, limits: WalkLimits(), all: args.switches.contains("all"))
     emit(["ok": true, "count": matches.count, "matches": matches.prefix(50).map { $0.json(withFrame: true) }])
 
 case "press":
@@ -391,7 +457,7 @@ case "press":
     let root = AXUIElementCreateApplication(app.processIdentifier)
     let selector = Selector(Array(args.positional.dropFirst(2)))
     let what = args.positional.dropFirst(2).joined(separator: " ")
-    let matches = collect(app: root, selector: selector, limits: WalkLimits())
+    let matches = collect(app: root, selector: selector, limits: WalkLimits(), all: args.switches.contains("all"))
     let target = pick(matches, first: args.switches.contains("first"), what: what)
     if target.enabled == false { fail("\"\(target.name ?? target.role)\" is disabled right now", ["element": target.json(withFrame: false)]) }
     let action = args.flags["action"] ?? (target.actions.contains("AXPress") ? "AXPress" : target.actions.first ?? "AXPress")
@@ -406,7 +472,7 @@ case "type":
     let root = AXUIElementCreateApplication(app.processIdentifier)
     let selector = Selector(Array(args.positional.dropFirst(2)))
     let what = args.positional.dropFirst(2).joined(separator: " ")
-    let target = pick(collect(app: root, selector: selector, limits: WalkLimits()), first: args.switches.contains("first"), what: what)
+    let target = pick(collect(app: root, selector: selector, limits: WalkLimits(), all: args.switches.contains("all")), first: args.switches.contains("first"), what: what)
     AXUIElementSetAttributeValue(target.element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     var how = "value"
     if AXUIElementSetAttributeValue(target.element, kAXValueAttribute as CFString, value as CFTypeRef) != .success {
