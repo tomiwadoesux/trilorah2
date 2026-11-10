@@ -99,6 +99,18 @@ ipcMain.on('mobile-reply', (event, reply) => {
  * holds the call. See shared/phoneMic.ts.
  */
 let phoneMic: PhoneMicLink | null = null
+const PHONE_MIC_NOTICE = 'phone-mic'
+/** The phone was the microphone and stopped being it: a notice that says why. */
+function phoneMicLost(reason: string): void {
+  publishServiceNotice({
+    id: PHONE_MIC_NOTICE,
+    title: 'Phone microphone lost',
+    detail: `The phone stopped being the microphone — ${reason}. Trilorah is not hearing anything until it reconnects or another input is chosen.`,
+    severity: 'warning',
+    target: 'audio',
+    actions: [{ kind: 'navigate', target: 'audio', label: 'Choose audio input' }],
+  })
+}
 function getPhoneMic(): PhoneMicLink {
   if (phoneMic) return phoneMic
   const supa = getSupabase()
@@ -108,7 +120,14 @@ function getPhoneMic(): PhoneMicLink {
     qr: async (url) => (await import('qrcode')).toDataURL(url, { width: 320, margin: 1, color: { dark: '#e5f3f2', light: '#0e1413' } }),
     laptopName: hostname().replace(/\.local$/i, '').replace(/-/g, ' ') || 'the laptop',
     onStatus: (status) => broadcastToWindows('on-phone-mic-status', status),
-    onSignal: (message) => mainWindow?.webContents.send('on-phone-mic-signal', message),
+    onSignal: (message) => {
+      // The phone's goodbye carries its reason ("a call took the microphone",
+      // "the page was closed") — said to the operator before the link forgets it.
+      if (message.kind === 'bye' && message.from === 'phone' && phoneMic?.status().state === 'connected') {
+        phoneMicLost(message.reason ?? 'it hung up')
+      }
+      mainWindow?.webContents.send('on-phone-mic-signal', message)
+    },
   })
   return phoneMic
 }
@@ -127,7 +146,42 @@ ipcMain.on('phone-mic-signal', (event, message) => {
 })
 ipcMain.on('phone-mic-peer-state', (event, state, detail) => {
   if (event.sender !== mainWindow?.webContents) return
-  if (state === 'connected' || state === 'failed') phoneMic?.peerState(state, typeof detail === 'string' ? detail : undefined)
+  const reason = typeof detail === 'string' ? detail : undefined
+  if (state === 'connected') {
+    publishServiceNotice({ id: PHONE_MIC_NOTICE, title: 'Phone microphone connected', detail: `${phoneMic?.status().phoneName ?? 'The phone'} is the microphone.`, severity: 'info', target: 'audio', status: 'resolved' })
+  } else if (state === 'failed' && phoneMic?.status().state === 'connected') {
+    phoneMicLost(reason ?? 'the call dropped')
+  }
+  if (state === 'connected' || state === 'failed') phoneMic?.peerState(state, reason)
+})
+
+/* What the phone says about itself mid-call: its screen went off, a call is
+   taking the microphone, or it came back. Operator-facing words live here. */
+ipcMain.on('phone-mic-phone-state', (event, state) => {
+  if (event.sender !== mainWindow?.webContents) return
+  if (phoneMic?.status().state !== 'connected') return
+  const phone = phoneMic.status().phoneName ?? 'The phone'
+  if (state === 'hidden') {
+    publishServiceNotice({
+      id: PHONE_MIC_NOTICE,
+      title: `${phone} left the mic page`,
+      detail: 'Its screen turned off or another app was opened. The sound may stop until someone brings the page back and keeps the screen on.',
+      severity: 'warning',
+      target: 'audio',
+      actions: [{ kind: 'navigate', target: 'audio', label: 'Choose audio input' }],
+    })
+  } else if (state === 'interrupted') {
+    publishServiceNotice({
+      id: PHONE_MIC_NOTICE,
+      title: `${phone} went quiet`,
+      detail: 'A call may be coming in on it, or another app took its microphone. The sound is paused until the phone is free again.',
+      severity: 'warning',
+      target: 'audio',
+      actions: [{ kind: 'navigate', target: 'audio', label: 'Choose audio input' }],
+    })
+  } else if (state === 'visible' || state === 'resumed') {
+    publishServiceNotice({ id: PHONE_MIC_NOTICE, title: 'Phone microphone is back', detail: `${phone} is sending sound again.`, severity: 'info', target: 'audio', status: 'resolved' })
+  }
 })
 
 ipcMain.handle('mobile-status', () => mobileServer?.status() ?? {running:false,urls:[],pending:[],devices:[],error:null})
@@ -4485,6 +4539,8 @@ app.whenReady().then(() => {
     }
     startWebSocketServer(remoteHandlers, pairing, 8081)
   }
+
+
   initCloudSync()
   console.log('🚀 AI Preacher Assistant ready')
   console.log("💡 Click 'Start' to begin voice recognition")

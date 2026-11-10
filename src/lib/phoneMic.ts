@@ -25,6 +25,11 @@ let queued: RTCIceCandidateInit[] = [];
    it hears and what it caught down it — no cloud, so it lands as it is said. */
 let words: RTCDataChannel | null = null;
 let offWords: (() => void)[] = [];
+/* What the phone says about itself, up the same channel: a heartbeat every
+   few seconds, and why it went quiet (hidden, interrupted). When the call
+   then drops, the failure message can say what actually happened. */
+let phoneBeat = 0;
+let phoneState = '';
 
 const refOf = (d: { book: string; chapter: number; verse: number | null; endVerse?: number | null }) =>
   `${d.book} ${d.chapter}${d.verse ? `:${d.verse}${d.endVerse && d.endVerse !== d.verse ? `–${d.endVerse}` : ''}` : ''}`;
@@ -38,6 +43,17 @@ function sendWords(message: unknown): void {
 function watchWords(channel: RTCDataChannel): void {
   const api = window.api;
   words = channel;
+  channel.onmessage = (e) => {
+    try {
+      const m = JSON.parse(String(e.data)) as { kind?: string; state?: string };
+      if (m.kind === 'hb') phoneBeat = Date.now();
+      else if (m.kind === 'state' && typeof m.state === 'string') {
+        phoneBeat = Date.now();
+        phoneState = m.state;
+        api?.phoneMicPhoneState?.(m.state);
+      }
+    } catch { /* not ours */ }
+  };
   offWords.forEach((off) => off());
   offWords = [
     api?.onTranscriptLine?.((line) => sendWords({ kind: 'line', text: line.text, final: line.isFinal })) ?? (() => undefined),
@@ -63,8 +79,20 @@ function closePeer(): void {
   offWords.forEach((off) => off());
   offWords = [];
   words = null;
+  phoneBeat = 0;
+  phoneState = '';
   if (pc) { pc.onicecandidate = null; pc.ontrack = null; pc.ondatachannel = null; pc.onconnectionstatechange = null; pc.close(); pc = null; }
   usePhoneMicStore.setState({ level: 0 });
+}
+
+/** Why the call died, as well as this end can tell, with how long ago the phone was last heard. */
+function dropDetail(): string {
+  const why =
+    phoneState === 'hidden' ? "the phone's screen turned off or another app was opened"
+    : phoneState === 'interrupted' ? "a call or another app took the phone's microphone"
+    : 'the call to the phone dropped — is it still on the church Wi-Fi?';
+  const ago = phoneBeat ? Math.round((Date.now() - phoneBeat) / 1000) : null;
+  return ago === null ? why : `${why} (last heard ${ago}s ago)`;
 }
 
 function startMeter(s: MediaStream): void {
@@ -112,7 +140,7 @@ async function answer(offer: Extract<PhoneMicMessage, { kind: 'offer' }>): Promi
     if (pc !== peer) return;
     if (peer.connectionState === 'connected') api.phoneMicPeerState('connected');
     else if (peer.connectionState === 'failed' || peer.connectionState === 'closed') {
-      api.phoneMicPeerState('failed', 'the call to the phone dropped — is it still on the church Wi-Fi?');
+      api.phoneMicPeerState('failed', dropDetail());
       closePeer();
     }
   };

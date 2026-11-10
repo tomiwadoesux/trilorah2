@@ -65,6 +65,12 @@ export default function MicClient() {
   const pc = useRef<RTCPeerConnection | null>(null);
   const local = useRef<MediaStream | null>(null);
   const queued = useRef<RTCIceCandidateInit[]>([]);
+  /* The words channel carries the laptop's transcript down and, going up, a
+     heartbeat and "why I went quiet" notes (hidden, interrupted) — p2p, so
+     they arrive even when the internet has gone. src/lib/phoneMic.ts reads
+     them on the laptop. */
+  const words = useRef<RTCDataChannel | null>(null);
+  const beat = useRef<number | undefined>(undefined);
   const wake = useRef<{ release: () => Promise<void> } | null>(null);
   const meter = useRef<{ ctx: AudioContext; timer: number } | null>(null);
   const expiry = useRef<number | undefined>(undefined);
@@ -81,6 +87,13 @@ export default function MicClient() {
     await channel.current?.send({ type: "broadcast", event: "mic", payload: m });
   }, []);
 
+  /** Tell the laptop why the sound changed, over the call itself. */
+  const sendState = useCallback((state: "hidden" | "visible" | "interrupted" | "resumed") => {
+    try {
+      if (words.current?.readyState === "open") words.current.send(JSON.stringify({ kind: "state", state }));
+    } catch { /* the channel is closing */ }
+  }, []);
+
   const stopMeter = () => {
     if (meter.current) {
       window.clearInterval(meter.current.timer);
@@ -92,8 +105,10 @@ export default function MicClient() {
 
   const hangUp = useCallback(async (next: Stage, say = "") => {
     window.clearTimeout(expiry.current);
+    window.clearInterval(beat.current);
+    words.current = null;
     stopMeter();
-    local.current?.getTracks().forEach((t) => t.stop());
+    local.current?.getTracks().forEach((t) => { t.onended = null; t.onmute = null; t.onunmute = null; t.stop(); });
     local.current = null;
     setLines([]);
     setPartial("");
@@ -140,12 +155,32 @@ export default function MicClient() {
       return;
     }
     local.current = stream;
+    // The phone saying why it fell silent beats the laptop guessing: a call
+    // or Siri takes the track (ended/muted); the laptop hears the reason.
+    stream.getAudioTracks().forEach((t) => {
+      t.onended = () => {
+        if (local.current !== stream) return;
+        void send({ kind: "bye", from: "phone", reason: "a call or another app took this phone's microphone" }).catch(() => undefined);
+        void hangUp("failed", "A call or another app took the microphone. When it's over, tap try again.");
+      };
+      t.onmute = () => { if (local.current === stream) sendState("interrupted"); };
+      t.onunmute = () => { if (local.current === stream) sendState("resumed"); };
+    });
     const peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
     pc.current = peer;
     stream.getTracks().forEach((t) => peer.addTrack(t, stream));
     // The words come back down the same call. Opened here so the offer
     // carries it; the laptop only has to listen.
     const channel = peer.createDataChannel("words", { ordered: true });
+    words.current = channel;
+    // A small heartbeat up the call, so the laptop can say how long ago it
+    // last heard this phone when something goes wrong.
+    channel.onopen = () => {
+      window.clearInterval(beat.current);
+      beat.current = window.setInterval(() => {
+        try { if (channel.readyState === "open") channel.send(JSON.stringify({ kind: "hb" })); } catch { /* closing */ }
+      }, 2500);
+    };
     channel.onmessage = (e) => {
       try {
         const m = JSON.parse(String(e.data)) as { kind: string; text?: string; final?: boolean; ref?: string | null; live?: boolean };
@@ -179,7 +214,7 @@ export default function MicClient() {
     } catch (e) {
       void hangUp("failed", e instanceof Error ? e.message : "Could not start the call.");
     }
-  }, [send, hangUp]);
+  }, [send, hangUp, sendState]);
 
   const receive = useCallback((raw: unknown) => {
     const m = parsePhoneMicMessage(raw);
@@ -252,6 +287,20 @@ export default function MicClient() {
     window.addEventListener("pagehide", leave);
     return () => window.removeEventListener("pagehide", leave);
   }, [send]);
+
+  // The screen turning off or an app switch is the commonest way the sound
+  // dies; say so while the message can still get out.
+  useEffect(() => {
+    const look = () => { if (stageRef.current === "live") sendState(document.visibilityState === "hidden" ? "hidden" : "visible"); };
+    document.addEventListener("visibilitychange", look);
+    return () => document.removeEventListener("visibilitychange", look);
+  }, [sendState]);
+
+  // Once a phone has opened this page, it opens again without internet —
+  // pairing still needs the cloud, but a flaky signal is no blank screen.
+  useEffect(() => {
+    try { void navigator.serviceWorker?.register("/mic-sw.js", { scope: "/mic" }).catch(() => undefined); } catch { /* offline loading is a bonus */ }
+  }, []);
 
   const live = stage === "live";
   const title =

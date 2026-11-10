@@ -420,6 +420,9 @@ contextBridge.exposeInMainWorld('api', {
   phoneMicStatus: () => invokeObserved('phone-mic-status'),
   phoneMicSignal: (message: unknown) => ipcRenderer.send('phone-mic-signal', message),
   phoneMicPeerState: (state: 'connected' | 'failed', detail?: string) => ipcRenderer.send('phone-mic-peer-state', state, detail),
+  // What the phone says about itself while connected (hidden, interrupted…),
+  // so main can tell the operator why the sound changed.
+  phoneMicPhoneState: (state: string) => ipcRenderer.send('phone-mic-phone-state', state),
   onPhoneMicSignal: (callback: (message: any) => void) => {
     const subscription = (_event: IpcRendererEvent, message: any) => callback(message)
     ipcRenderer.on('on-phone-mic-signal', subscription)
