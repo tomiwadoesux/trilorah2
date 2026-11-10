@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trilorah Console</title>
+    <!-- The pop-up console (electron/main.ts createConsoleWindow): the same
+         command layer the CLI speaks, as buttons for people who don't type
+         commands. Opened by `trilorah console` or the app's pop out button. -->
+    <style>html, body { margin: 0; background: #010806; }</style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/console.main.tsx"></script>
+  </body>
+</html>

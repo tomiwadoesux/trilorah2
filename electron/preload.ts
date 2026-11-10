@@ -423,6 +423,10 @@ contextBridge.exposeInMainWorld('api', {
   // What the phone says about itself while connected (hidden, interrupted…),
   // so main can tell the operator why the sound changed.
   phoneMicPhoneState: (state: string) => ipcRenderer.send('phone-mic-phone-state', state),
+
+  // The control surface (shared/control/schema.ts): the console view sends
+  // typed commands and gets honest results, same contract as the CLI.
+  controlCommand: (command: unknown) => invokeObserved('control-command', command),
   onPhoneMicSignal: (callback: (message: any) => void) => {
     const subscription = (_event: IpcRendererEvent, message: any) => callback(message)
     ipcRenderer.on('on-phone-mic-signal', subscription)

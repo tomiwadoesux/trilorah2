@@ -6,6 +6,16 @@ let lastRef = ''
 let lastTime = 0
 export const DEBOUNCE_MS = 5000
 
+/* The control dispatcher listens here too, so the CLI and console hear the
+   same things the windows do. One tap, set by main; never throws upward. */
+let controlTap: ((channel: string, payload: unknown) => void) | null = null
+export function setEmitterTap(tap: ((channel: string, payload: unknown) => void) | null): void {
+  controlTap = tap
+}
+function tap(channel: string, payload: unknown): void {
+  try { controlTap?.(channel, payload) } catch { /* a broken listener is not the engine's problem */ }
+}
+
 export function shouldEmit(ref: string): boolean {
   const now = Date.now()
   if (ref === lastRef && now - lastTime < DEBOUNCE_MS) {
@@ -25,12 +35,14 @@ export function emitVerseDetected(
       : `${detection.book} ${detection.chapter}:${detection.verse || 1}`
   if (detection.isPreview) {
     console.log(`👁️ Preview: ${refStr}`)
+    tap('on-verse-preview', detection)
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed())
         win.webContents.send('on-verse-preview', detection)
     })
   } else {
     console.log(`📤 Live: ${refStr}`)
+    tap('on-verse-detected', detection)
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed())
         win.webContents.send('on-verse-detected', detection)
@@ -52,12 +64,14 @@ export function emitTranscript(text: string): void {
  */
 export function emitTranscriptLine(text: string, isFinal: boolean): void {
   const displayText = capitalizeScriptureNames(text)
+  tap('on-transcript-line', { text: displayText, isFinal })
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-transcript-line', { text: displayText, isFinal })
   })
 }
 
 export function emitASRStatus(status: string): void {
+  tap('on-asr-status', status)
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-asr-status', status)
   })
@@ -85,6 +99,7 @@ export function emitMediaSuggestion(data: {
 }
 
 export function emitVerseAutoDismiss(): void {
+  tap('on-verse-auto-dismiss', null)
   BrowserWindow.getAllWindows().forEach((win) => {
     if (!win.isDestroyed()) win.webContents.send('on-verse-auto-dismiss')
   })

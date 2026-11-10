@@ -745,6 +745,7 @@ interface WindowApi extends Partial<TriPackageApi> {
   phoneMicSignal(message: import('../../shared/phoneMic').PhoneMicMessage): void;
   phoneMicPeerState(state: 'connected' | 'failed', detail?: string): void;
   phoneMicPhoneState(state: string): void;
+  controlCommand(command: import('../../shared/control/schema').ControlCommand): Promise<import('../../shared/control/schema').ControlResult>;
   onPhoneMicSignal(callback: (message: import('../../shared/phoneMic').PhoneMicMessage) => void): Unsubscribe;
   onPhoneMicStatus(callback: (status: import('../../shared/phoneMic').PhoneMicStatus) => void): Unsubscribe;
   // Media on outputs + themes

@@ -70,6 +70,8 @@ export default defineConfig({
         signal: resolve(__dirname, 'signal.html'),
         // Sender mode's small window (electron/main.ts createSenderWindow).
         sender: resolve(__dirname, 'sender.html'),
+        // The pop-up console (electron/main.ts createConsoleWindow).
+        console: resolve(__dirname, 'console.html'),
       },
     },
   },

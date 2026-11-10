@@ -1,4 +1,5 @@
 import { StageGradient } from './StageGradient';
+import ConsoleView from './Console';
 import { AutoAdvance } from './AutoAdvance';
 import { BookClarification, ScriptureTools } from './ScriptureTools';
 import { useLibraryNavigation } from '../../stores/libraryNavigation';
@@ -558,13 +559,15 @@ function useTextTransition() {
  * It sits last because it is the one you reach for least during a service,
  * and the order of these pills is how often you press them.
  */
-const VIEWS = ['operator', 'dashboard', 'profile', 'settings'] as const;
+const VIEWS = ['operator', 'dashboard', 'profile', 'settings', 'console'] as const;
 type ViewMode = (typeof VIEWS)[number];
 const VIEW_ICONS = {
   operator: OperatorIcon,
   dashboard: DashboardIcon,
   profile: ProfileIcon,
   settings: SettingsIcon,
+  // The console is a prompt; the chevron is its glyph until Nubo grows a terminal.
+  console: ChevronRightIcon,
 } as const;
 
 /* SEGMENT_TYPES, the "+" menu and the rail's drawing live in ./run/ — see
@@ -5425,7 +5428,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
           <ProductGuide onNavigate={navigateGuide} />
         </div>
 
-        {view === 'dashboard' || view === 'profile' || view === 'settings' ? (
+        {view === 'dashboard' || view === 'profile' || view === 'settings' || view === 'console' ? (
           /* The bento is the whole dashboard — the log is a card in it.
               Profile borrows this same frame: it is read rather than
               worked, like the dashboard, so it wants the header and the
@@ -5440,6 +5443,11 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               </div>
             ) : view === 'profile' ? (
               <ProfileView />
+            ) : view === 'console' ? (
+              /* The command layer made visible: same dispatcher as the CLI. */
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <ConsoleView />
+              </div>
             ) : (
               <DashboardBento log={log.entries} onLogAction={goManual} onViewProfile={() => setView('profile')}
                 onOpenSettings={page => { setSettingsPage(page === 'appearance' ? 'S-10g' : 'S-10c'); setView('settings'); }} />

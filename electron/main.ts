@@ -23,8 +23,12 @@ import {
   emitQueueUpdated,
   emitPrayerMode,
   emitIntentState,
-  emitAudioLevel
+  emitAudioLevel,
+  setEmitterTap
 } from './emitters'
+import { ControlDispatcher, type ControlHost } from './control/dispatcher'
+import { startControlServer, type ControlServer } from './control/socketServer'
+import type { ControlVerse } from '../shared/control/schema'
 import { feedAudioChunk } from './asr/audioBus'
 import { queueHealth } from './cloud/offlineQueue'
 import { retryPublishing, checkTranscriptDelivery } from './cloud/cloudSync'
@@ -465,11 +469,44 @@ function broadcastToWindows(channel: string, payload: unknown): void {
     if (!win.isDestroyed()) win.webContents.send(channel, payload)
   })
 }
+/* The control surface (shared/control/schema.ts): the console view and the
+   CLI command the same engine through this one dispatcher. Built in
+   whenReady, once the functions it wraps exist. */
+let controlDispatcher: ControlDispatcher | null = null
+let controlServer: ControlServer | null = null
+let consoleWindow: BrowserWindow | null = null
+
+/** The pop-up console: the command layer as buttons, in its own small window. */
+function createConsoleWindow(): void {
+  if (consoleWindow && !consoleWindow.isDestroyed()) {
+    consoleWindow.show()
+    consoleWindow.focus()
+    return
+  }
+  consoleWindow = new BrowserWindow({
+    width: 440,
+    height: 720,
+    minWidth: 380,
+    minHeight: 560,
+    title: 'Trilorah Console',
+    backgroundColor: '#010806',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+  if (isDev) consoleWindow.loadURL('http://localhost:5173/console.html')
+  else consoleWindow.loadFile(path.join(__dirname, '../dist/console.html'))
+  consoleWindow.on('closed', () => { consoleWindow = null })
+}
+
 /** Every clear, black, logo or restore: half of what a waiting press checks (wallMark). */
 let screenChanges = 0
 const screen = new ScreenStateMachine((state) => {
   console.log(`🖥️ Screen → ${state}`)
   screenChanges++
+  controlDispatcher?.event('screen', state)
   broadcastToWindows('on-screen-state', state)
   broadcastState()
 })
@@ -4540,6 +4577,76 @@ app.whenReady().then(() => {
     startWebSocketServer(remoteHandlers, pairing, 8081)
   }
 
+  /*
+   * The control surface: the console view and the `trilorah` CLI speak to
+   * the engine through one typed dispatcher (step 1 of the app-control
+   * plan). It wraps the same functions the app's own buttons call, and its
+   * results say what actually happened — a take with nothing staged fails
+   * instead of pretending.
+   */
+  {
+    const toExternal = (command: string) =>
+      mainWindow?.webContents.send('on-external-command', { command })
+    const asVerse = (v: any): ControlVerse | null =>
+      v && typeof v === 'object' && v.book
+        ? {
+            book: String(v.book),
+            chapter: Number(v.chapter) || 0,
+            verse: Number(v.verse) || 0,
+            ...(v.endVerse && v.endVerse !== v.verse ? { endVerse: Number(v.endVerse) } : {}),
+            version: String(v.version ?? ''),
+            text: String(v.text ?? ''),
+          }
+        : null
+    const controlHost: ControlHost = {
+      listening: () => isListening,
+      startListening: (device) => {
+        if (training.active) return 'finish voice training before starting a service'
+        startASR(device)
+        return null
+      },
+      stopListening: () => stopASR(),
+      stageScripture: (reference, requested) => {
+        // Staged like a typed reference: it shows as a catch, it does not go live.
+        if (!stageVerseReference(reference, requested)) return null
+        return asVerse(currentPreviewData) ?? { book: reference, chapter: 0, verse: 0, version: requested ?? '', text: '' }
+      },
+      take: (via) => {
+        const before = verseDelivery.acts
+        pushPreviewToLive(via)
+        return verseDelivery.acts > before ? asVerse(verseDelivery.live) : null
+      },
+      clearLive: () => {
+        screen.set('clear')
+        toExternal('clear-screen')
+      },
+      next: () => { session.exitReadingMode(); session.advance() },
+      previous: () => { session.exitReadingMode(); session.goBack() },
+      setScreen: (state) => screen.set(state as any),
+      screen: () => screen.get(),
+      preview: () => (currentPreviewData?.isPreview ? asVerse(currentPreviewData) : null),
+      live: () => asVerse(verseDelivery.live),
+      openConsole: () => createConsoleWindow(),
+    }
+    const dispatcher = new ControlDispatcher(controlHost)
+    controlDispatcher = dispatcher
+    // The engine's own announcements, in the control stream too.
+    setEmitterTap((channel, payload) => {
+      if (channel === 'on-transcript-line') dispatcher.event('transcript', payload)
+      else if (channel === 'on-verse-preview') dispatcher.event('preview', asVerse(payload))
+      else if (channel === 'on-verse-detected') dispatcher.event('live', asVerse(payload))
+      else if (channel === 'on-verse-auto-dismiss') dispatcher.event('cleared', null)
+      else if (channel === 'on-asr-status') dispatcher.event('asr', payload)
+    })
+    ipcMain.handle('control-command', (event, command) => {
+      const allowed = event.sender === mainWindow?.webContents || event.sender === consoleWindow?.webContents
+      if (!allowed) return { ok: false, op: 'op_denied', error: 'only the operator window may command', snapshot: dispatcher.snapshot() }
+      return dispatcher.execute(command, 'console')
+    })
+    startControlServer({ dir: app.getPath('userData'), dispatcher, log: (line) => console.log(line) })
+      .then((server) => { controlServer = server })
+      .catch((e) => console.warn('control socket not started:', e?.message ?? e))
+  }
 
   initCloudSync()
   console.log('🚀 AI Preacher Assistant ready')
@@ -4578,6 +4685,8 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   closeNetworkSound()
   mobileServer?.stop()
+  void controlServer?.close().catch(() => undefined)
+  controlServer = null
   alerts.dispose()
   timers.dispose()
   if (process.env.DESIGN_MODE === '1') return
