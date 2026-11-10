@@ -41,8 +41,15 @@ pressing anything, and re-taught one step at a time when an update moves things.
   the operating layer on macOS. `check`, `apps`, `see`, `find`, `press`, `type`,
   `menu`, `focus`. JSON out; `--pretty` for people. A press refuses to guess:
   an ambiguous selector is an error, not a coin toss.
-- The Windows twin (UI Automation — same idea, different plumbing) is the next
-  piece, because EasyWorship is Windows-only.
+- `windows/trilorah-inspect.ps1`: the Windows twin, same commands and JSON over
+  UI Automation. A PowerShell script on purpose — UI Automation and PowerShell
+  5.1 ship inside every Windows 10/11, so a church installs nothing. Untested
+  until it meets a real Windows machine (EasyWorship is Windows-only; that
+  session happens at the owner's Windows laptop).
+- `recipes/`: the recipe format, the runner (verify without acting; perform and
+  stop at the first failure), the four-question teacher, and the spawn-based
+  inspector that picks the right tool per platform. `cli/teach.ts` runs the
+  teacher from a terminal: `npx tsx controller/cli/teach.ts <App> --seconds 240`.
 
 macOS asks once, per controlling app, under System Settings › Privacy & Security ›
 Accessibility. Until granted, `see` and friends exit 3 and say so.
