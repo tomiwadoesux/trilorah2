@@ -117,6 +117,13 @@ jobs:
 
       - run: npm run build
 
+      # The Mac inspector (controller/macos/inspect.swift): Trilorah's door onto
+      # other apps' controls. Compiled here so it ships beside the app; the
+      # Windows twin is a PowerShell script and needs no build.
+      - name: Build the app inspector (macOS)
+        if: runner.os == 'macOS'
+        run: ./scripts/build-inspect.sh
+
       - name: Package
         run: npx electron-builder ${{ matrix.flag }} --publish never
 

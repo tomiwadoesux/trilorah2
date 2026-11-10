@@ -57,6 +57,14 @@ extraResources:
 mac:
   category: public.app-category.productivity
   icon: build/icon.icns
+  # Trilorah's door onto other apps' controls (controller/): the compiled Mac
+  # inspector and the recipes we ship, beside the app as resources/controller.
+  extraResources:
+    - from: controller/bin/trilorah-inspect
+      to: controller/trilorah-inspect
+    - from: controller/recipes/shipped
+      to: controller/shipped
+      filter: ['*.json']
   # Unsigned for now (church pilot: right-click → Open). electron-builder
   # falls back to ad-hoc signing, which arm64 macOS requires to launch.
   identity: null
@@ -80,6 +88,14 @@ dmg:
 # win32; building on a Windows machine or CI is the reliable path).
 win:
   icon: build/icon-1024.png
+  # The Windows inspector is a PowerShell script over UI Automation: nothing to
+  # compile, nothing for the church to install.
+  extraResources:
+    - from: controller/windows/trilorah-inspect.ps1
+      to: controller/trilorah-inspect.ps1
+    - from: controller/recipes/shipped
+      to: controller/shipped
+      filter: ['*.json']
   target:
     - target: nsis
       arch: [x64]
