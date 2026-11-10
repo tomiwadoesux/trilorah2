@@ -30,6 +30,8 @@ export interface ControlHost {
   previous(): void
   /** False when the state was refused (unknown or unchanged is fine = true). */
   setScreen(state: string): boolean
+  /** Black/logo as one-button remotes press them: again restores the screen. */
+  toggleScreen(state: 'black' | 'logo'): void
   /** Show the pop-up console window. */
   openConsole(): void
   screen(): string
@@ -120,6 +122,9 @@ export class ControlDispatcher {
         return this.done(op)
       case 'screen.set':
         return this.host.setScreen(command.state) ? this.done(op) : this.fail(op, `the wall cannot show "${command.state}" right now`)
+      case 'screen.toggle':
+        this.host.toggleScreen(command.state)
+        return this.done(op)
       case 'console.open':
         this.host.openConsole()
         return this.done(op)

@@ -28,7 +28,7 @@ import {
 } from './emitters'
 import { ControlDispatcher, type ControlHost } from './control/dispatcher'
 import { startControlServer, type ControlServer } from './control/socketServer'
-import type { ControlVerse } from '../shared/control/schema'
+import type { ControlCommand, ControlVerse } from '../shared/control/schema'
 import { feedAudioChunk } from './asr/audioBus'
 import { queueHealth } from './cloud/offlineQueue'
 import { retryPublishing, checkTranscriptDelivery } from './cloud/cloudSync'
@@ -4565,55 +4565,6 @@ app.whenReady().then(() => {
   // hot-reload in the sheet and on the real screen at the same time.
   // (DESIGN_MODE=1 above is the other mode: gallery only, engine skipped.)
   if (process.env.SANDBOX === '1') createDesignWindow()
-  if (getSetting('remoteControlEnabled') && pairing) {
-    const toRenderer = (command: string, value?: unknown) =>
-      mainWindow?.webContents.send('on-external-command', value === undefined ? { command } : { command, value })
-    const remoteHandlers: RemoteHandlers = {
-      startListening: () => startASR(),
-      stopListening: () => stopASR(),
-      clearScreen: () => {
-        screen.set('clear')
-        toRenderer('clear-screen')
-      },
-      // One-button remotes: pressing BLACK / LOGO again restores the screen.
-      blackScreen: () => screen.toggle('black'),
-      showLogo: () => screen.toggle('logo'),
-      showAlert: (text, opts) => {
-        const target = opts.target as AlertTarget | undefined
-        const seconds = opts.durationSec === null ? null : opts.durationSec ?? getSetting('alertDefaultSeconds')
-        // A Stream Deck button carries a template too, so fill it the same way.
-        alerts.show(fillTokens(text, tokenContext()), { target, durationSec: seconds })
-      },
-      dismissAlert: () => alerts.dismiss(),
-      pushPreview: () => pushPreviewToLive('remote'),
-      approvePending: () => pushPreviewToLive('remote'),
-      dismissPending: () => {
-        dismissLiveVerse()
-        intentEngine.onDisplayCleared()
-        toRenderer('dismiss-pending')
-      },
-      nextVerse: () => {
-        session.exitReadingMode()
-        session.advance()
-      },
-      previousVerse: () => {
-        session.exitReadingMode()
-        session.goBack()
-      },
-      setAutoMode: (enabled) => {
-        const pid = activePreacherId()
-        if (!enabled && pid && ledger) ledger.setAutoModeEnabled(pid, false)
-        broadcastState()
-      },
-      typeReference: (ref) => {
-        stageVerseReference(ref)
-        emitTranscript(ref)
-      },
-      setMode: (mode) => toRenderer('set-mode', mode),
-      getState: () => remoteState()
-    }
-    startWebSocketServer(remoteHandlers, pairing, 8081)
-  }
 
   /*
    * The control surface: the console view and the `trilorah` CLI speak to
@@ -4661,6 +4612,7 @@ app.whenReady().then(() => {
       next: () => { session.exitReadingMode(); session.advance() },
       previous: () => { session.exitReadingMode(); session.goBack() },
       setScreen: (state) => screen.set(state as any),
+      toggleScreen: (state) => { screen.toggle(state) },
       screen: () => screen.get(),
       preview: () => (currentPreviewData?.isPreview ? asVerse(currentPreviewData) : null),
       live: () => asVerse(verseDelivery.live),
@@ -4685,6 +4637,60 @@ app.whenReady().then(() => {
       .then((server) => { controlServer = server })
       .catch((e) => console.warn('control socket not started:', e?.message ?? e))
   }
+
+  if (getSetting('remoteControlEnabled') && pairing) {
+    const toRenderer = (command: string, value?: unknown) =>
+      mainWindow?.webContents.send('on-external-command', value === undefined ? { command } : { command, value })
+    /*
+     * The paired remote (phone page, Stream Deck, Companion) speaks the same
+     * dispatcher as the CLI and the console; a press that did nothing comes
+     * back as a 'failed' ack with the reason instead of a polite lie. Only
+     * alerts, modes and dismissPending keep their own paths — the command
+     * set does not carry them yet.
+     */
+    const viaControl = (command: ControlCommand) => () => {
+      const result = controlDispatcher!.execute(command, 'remote')
+      return result.ok ? { ok: true } : { ok: false, error: result.error }
+    }
+    const remoteHandlers: RemoteHandlers = {
+      startListening: viaControl({ kind: 'listen.start' }),
+      stopListening: viaControl({ kind: 'listen.stop' }),
+      clearScreen: viaControl({ kind: 'live.clear' }),
+      // One-button remotes: pressing BLACK / LOGO again restores the screen.
+      blackScreen: viaControl({ kind: 'screen.toggle', state: 'black' }),
+      showLogo: viaControl({ kind: 'screen.toggle', state: 'logo' }),
+      showAlert: (text, opts) => {
+        const target = opts.target as AlertTarget | undefined
+        const seconds = opts.durationSec === null ? null : opts.durationSec ?? getSetting('alertDefaultSeconds')
+        // A Stream Deck button carries a template too, so fill it the same way.
+        alerts.show(fillTokens(text, tokenContext()), { target, durationSec: seconds })
+      },
+      dismissAlert: () => alerts.dismiss(),
+      pushPreview: viaControl({ kind: 'live.take' }),
+      approvePending: viaControl({ kind: 'live.take' }),
+      dismissPending: () => {
+        dismissLiveVerse()
+        intentEngine.onDisplayCleared()
+        toRenderer('dismiss-pending')
+      },
+      nextVerse: viaControl({ kind: 'live.next' }),
+      previousVerse: viaControl({ kind: 'live.previous' }),
+      setAutoMode: (enabled) => {
+        const pid = activePreacherId()
+        if (!enabled && pid && ledger) ledger.setAutoModeEnabled(pid, false)
+        broadcastState()
+      },
+      typeReference: (ref) => {
+        const result = controlDispatcher!.execute({ kind: 'scripture.stage', reference: ref }, 'remote')
+        if (result.ok) emitTranscript(ref)
+        return result.ok ? { ok: true } : { ok: false, error: result.error }
+      },
+      setMode: (mode) => toRenderer('set-mode', mode),
+      getState: () => remoteState()
+    }
+    startWebSocketServer(remoteHandlers, pairing, 8081)
+  }
+
 
   initCloudSync()
   console.log('🚀 AI Preacher Assistant ready')

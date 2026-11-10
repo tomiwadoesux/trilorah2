@@ -30,6 +30,7 @@ function fakeHost() {
     next: () => undefined,
     previous: () => undefined,
     setScreen: (s) => (s === 'broken' ? false : ((state.screen = s), true)),
+    toggleScreen: (s) => { state.screen = state.screen === s ? 'live' : s },
     screen: () => state.screen,
     preview: () => state.preview,
     live: () => state.live,
@@ -80,6 +81,15 @@ describe('ControlDispatcher', () => {
     expect(d.execute({ kind: 'reboot.universe' }, 'socket').ok).toBe(false)
     expect(d.execute('rm -rf', 'socket').ok).toBe(false)
     expect(d.execute(null, 'socket').ok).toBe(false)
+  })
+
+  it('screen.toggle flips black on and off, the way a one-button remote presses it', () => {
+    const { host, state } = fakeHost()
+    const d = new ControlDispatcher(host)
+    expect(d.execute({ kind: 'screen.toggle', state: 'black' }, 'remote').ok).toBe(true)
+    expect(state.screen).toBe('black')
+    d.execute({ kind: 'screen.toggle', state: 'black' }, 'remote')
+    expect(state.screen).toBe('live')
   })
 
   it('a refused listen start carries the reason', () => {

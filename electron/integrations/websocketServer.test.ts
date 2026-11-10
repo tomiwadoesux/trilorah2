@@ -107,6 +107,18 @@ describe('websocket auth handshake', () => {
     expect(await closed(ws)).toBe(4401)
   })
 
+  it('a handler that says it did nothing comes back as a failed ack, not success', async () => {
+    handlers.pushPreview = vi.fn(() => ({ ok: false, error: 'nothing is staged to take live' }))
+    const code = store.generateCode()
+    const { ws, box } = await connect()
+    await box.next()
+    ws.send(JSON.stringify({ type: 'pair', code, deviceName: 'Deck' }))
+    await box.next()
+    ws.send(JSON.stringify({ action: 'PUSH_PREVIEW' }))
+    expect(await box.next()).toEqual({ action: 'PUSH_PREVIEW', status: 'failed', message: 'nothing is staged to take live' })
+    ws.close()
+  })
+
   it('pairs with a code, returns a token, then accepts legacy and typed commands', async () => {
     const code = store.generateCode()
     const { ws, box } = await connect()

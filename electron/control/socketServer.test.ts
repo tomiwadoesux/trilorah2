@@ -17,6 +17,7 @@ const quietHost: ControlHost = {
   next: () => undefined,
   previous: () => undefined,
   setScreen: () => true,
+  toggleScreen: () => undefined,
   screen: () => 'live',
   preview: () => null,
   live: () => null,

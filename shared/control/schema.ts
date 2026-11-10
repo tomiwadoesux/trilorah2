@@ -39,6 +39,8 @@ export type ControlCommand =
   | { kind: 'live.next' }
   | { kind: 'live.previous' }
   | { kind: 'screen.set'; state: ControlScreenState }
+  /** One-button remotes: pressing BLACK or LOGO again restores the screen. */
+  | { kind: 'screen.toggle'; state: 'black' | 'logo' }
   /** Open the pop-up console window on the laptop (buttons, for people who don't type commands). */
   | { kind: 'console.open' }
 
@@ -96,6 +98,8 @@ export function parseControlCommand(raw: unknown): ControlCommand | null {
       return (SCREEN_STATES as readonly string[]).includes(m.state as string)
         ? { kind: 'screen.set', state: m.state as ControlScreenState }
         : null
+    case 'screen.toggle':
+      return m.state === 'black' || m.state === 'logo' ? { kind: 'screen.toggle', state: m.state } : null
     default:
       return null
   }

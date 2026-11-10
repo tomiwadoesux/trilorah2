@@ -26,19 +26,29 @@ export interface RemoteState {
   alert?: { id: string; text: string } | null
 }
 
+/**
+ * What a handler can say back. Void still acks success (the old contract);
+ * a returned { ok: false } becomes a 'failed' ack with the reason, so a
+ * press that did nothing stops being reported as if it worked.
+ */
+export interface RemoteActionResult {
+  ok: boolean
+  error?: string
+}
+
 export interface RemoteHandlers {
-  startListening: () => void
-  stopListening: () => void
-  clearScreen: () => void
-  blackScreen: () => void
-  showLogo: () => void
-  pushPreview: () => void
-  approvePending: () => void
-  dismissPending: () => void
-  nextVerse: () => void
-  previousVerse: () => void
+  startListening: () => void | RemoteActionResult
+  stopListening: () => void | RemoteActionResult
+  clearScreen: () => void | RemoteActionResult
+  blackScreen: () => void | RemoteActionResult
+  showLogo: () => void | RemoteActionResult
+  pushPreview: () => void | RemoteActionResult
+  approvePending: () => void | RemoteActionResult
+  dismissPending: () => void | RemoteActionResult
+  nextVerse: () => void | RemoteActionResult
+  previousVerse: () => void | RemoteActionResult
   setAutoMode: (enabled: boolean) => void
-  typeReference: (ref: string) => void
+  typeReference: (ref: string) => void | RemoteActionResult
   setMode: (mode: RemoteMode) => void
   getState: () => RemoteState
   /** Optional: message alerts (EasyWorship-style "real-time alerts"). */
@@ -229,8 +239,11 @@ function handleCommand(ws: WebSocket, data: any) {
   }
   const legacy = typeof data.action === 'string'
   const command: string | undefined = legacy ? LEGACY_ACTIONS[data.action] : data.type
-  const ack = (status: 'success' | 'unknown' | 'invalid', extra: Record<string, unknown> = {}) =>
+  const ack = (status: 'success' | 'unknown' | 'invalid' | 'failed', extra: Record<string, unknown> = {}) =>
     send(ws, legacy ? { action: data.action, status, ...extra } : { type: 'ack', command: data.type, status, ...extra })
+  /** Success only when the handler did not say otherwise. */
+  const ackResult = (result: void | RemoteActionResult) =>
+    result && result.ok === false ? ack('failed', result.error ? { message: result.error } : {}) : ack('success')
 
   console.log('⚡ Received command via WS:', command ?? data)
   switch (command) {
@@ -244,8 +257,7 @@ function handleCommand(ws: WebSocket, data: any) {
     case 'dismissPending':
     case 'nextVerse':
     case 'previousVerse':
-      handlers[command]()
-      ack('success')
+      ackResult(handlers[command]())
       break
     case 'setAutoMode': {
       const enabled = data.enabled ?? data.value
@@ -257,8 +269,7 @@ function handleCommand(ws: WebSocket, data: any) {
     case 'typeReference': {
       const ref = data.ref ?? data.reference ?? data.value
       if (typeof ref !== 'string' || !ref.trim()) return ack('invalid')
-      handlers.typeReference(ref.trim())
-      ack('success')
+      ackResult(handlers.typeReference(ref.trim()))
       break
     }
     case 'setMode': {
