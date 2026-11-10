@@ -33,3 +33,6 @@ eng.traineddata
 *.traineddata
 .vercel
 .env*
+
+# Built controller tools (scripts/build-inspect.sh)
+controller/bin/
