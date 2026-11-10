@@ -63,7 +63,7 @@ struct Args {
             let a = argv[i]
             if a.hasPrefix("--") {
                 let key = String(a.dropFirst(2))
-                let valued = ["depth", "action", "text", "limit", "children"]
+                let valued = ["depth", "action", "text", "limit", "children", "seconds", "count"]
                 if valued.contains(key), i + 1 < argv.count {
                     flags[key] = argv[i + 1]
                     i += 2
@@ -618,6 +618,7 @@ case "watch":
     CGEvent.tapEnable(tap: tap, enable: false)
     emit(["ok": watchRecorded.count >= want, "wanted": want, "recorded": watchRecorded,
           "note": watchRecorded.count >= want ? "recorded" : "time ran out before \(want) click\(want == 1 ? "" : "s") landed in \(app.localizedName ?? "the app")"])
+    exit(watchRecorded.count >= want ? 0 : 1)
 
 default:
     fail("unknown command \"\(command)\" — check|apps|see|find|press|type|menu|focus", code: 2)
