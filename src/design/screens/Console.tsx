@@ -102,14 +102,16 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
   // StrictMode mounts twice in dev: the flag comes back on at every mount, not just the first.
   useEffect(() => { alive.current = true; return () => { alive.current = false; api?.controllerWatchCancel?.(); }; }, [api]);
 
-  useEffect(() => {
+  /* The system's own windows are never something to drive. */
+  const NOT_TARGETS = /^(finder|system settings|system preferences|iphone mirroring|code|terminal|trilorah( console)?)$/i;
+  const lookAtApps = useCallback(() => {
     if (!api?.controllerApps) { setS((x) => ({ ...x, note: 'the engine is not attached (sandbox?)' })); return; }
-    void api.controllerCheck?.();
     void api.controllerApps().then((r) => {
       if (!alive.current) return;
-      setS((x) => ({ ...x, apps: r.apps ?? [], platform: r.platform ?? 'macos', note: r.ok ? undefined : (r.error ?? 'could not see the open apps') }));
+      setS((x) => ({ ...x, apps: (r.apps ?? []).filter((a) => !NOT_TARGETS.test(a.name)), platform: r.platform ?? 'macos', note: r.ok ? undefined : (r.error ?? 'could not see the open apps') }));
     });
   }, [api]);
+  useEffect(() => { void api?.controllerCheck?.(); lookAtApps(); }, [api, lookAtApps]);
 
   const ask = useCallback(async (state: TeachState, q: number) => {
     const question = QUESTIONS[q];
@@ -177,7 +179,8 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
             ))}
             {s.apps.length === 0 && !s.note && <span style={{ color: FAINT, fontSize: 12 }}>looking at what's open…</span>}
           </div>
-          <div style={{ marginTop: 'auto' }}>{btn('cancel', onClose)}</div>
+          <p style={{ margin: 0, fontSize: 12, color: FAINT, lineHeight: 1.5 }}>Don't see it? Open the app first — EasyWorship, ProPresenter, whatever runs your screens — then refresh. Apps Trilorah already knows appear under "screen" on their own.</p>
+          <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>{btn('refresh', lookAtApps)}{btn('cancel', onClose)}</div>
         </>
       )}
 
@@ -196,7 +199,7 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
             <p style={{ margin: 0, fontSize: 13, color: '#F0A8A0', lineHeight: 1.5 }}>Trilorah needs this one — without it, it cannot put anything on {s.app.name}'s screen.</p>
           )}
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            {s.needed ? btn('try again', retry, 'go') : s.waiting ? btn(question.required ? 'cancel' : `skip — ${s.app.name} has no ${question.ability === 'find' ? 'search' : question.ability}`, skip) : null}
+            {s.needed ? btn('try again', retry, 'go') : s.waiting ? btn(question.required ? 'cancel' : `skip — no ${question.ability === 'find' ? 'search' : question.ability} here`, skip) : null}
             {btn('stop teaching', onClose)}
           </div>
         </>
