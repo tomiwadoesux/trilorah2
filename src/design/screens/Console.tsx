@@ -85,11 +85,13 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
     setLog((rows) => [...rows.slice(-120), { id: ++rowId.current, kind, text }]);
   }, []);
 
-  const run = useCallback(async (command: ControlCommand): Promise<ControlResult | null> => {
+  const run = useCallback(async (command: ControlCommand, opts: { quiet?: boolean } = {}): Promise<ControlResult | null> => {
     if (!api?.controlCommand) { say('err', 'the engine is not attached (sandbox?)'); return null; }
     try {
       const result = await api.controlCommand(command);
       setSnap(result.snapshot);
+      // Background refreshes keep the panes true without writing to the log.
+      if (opts.quiet && result.ok) return result;
       if (!result.ok) say('err', `no: ${result.error}`);
       else if (result.live) say('ok', `live · ${refOf(result.live)} (${result.live.version})`);
       else if (result.staged) say('ok', `staged · ${refOf(result.staged)} (${result.staged.version})`);
@@ -105,15 +107,15 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   // What the engine is hearing and showing, live.
   useEffect(() => {
     if (!api) return;
-    void run({ kind: 'status' });
+    void run({ kind: 'status' }, { quiet: true });
     const offs = [
       api.onTranscriptLine?.((line) => {
         if (line.isFinal) { setHeard((h) => [...h.slice(-7), line.text]); setPartial(''); }
         else setPartial(line.text);
       }),
-      api.onVersePreview?.(() => void run({ kind: 'status' })),
-      api.onVerseDetected?.(() => void run({ kind: 'status' })),
-      api.onAsrStatus?.(() => void run({ kind: 'status' })),
+      api.onVersePreview?.(() => void run({ kind: 'status' }, { quiet: true })),
+      api.onVerseDetected?.(() => void run({ kind: 'status' }, { quiet: true })),
+      api.onAsrStatus?.(() => void run({ kind: 'status' }, { quiet: true })),
     ].filter(Boolean) as Array<() => void>;
     return () => offs.forEach((off) => off());
     // run is stable enough for a mount effect; re-subscribing on every render would double events.
@@ -161,7 +163,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   );
 
   const pane = (title: string, verse: ControlVerse | null, live: boolean) => (
-    <section style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 6, padding: '10px 12px', minHeight: 86, flex: 1, minWidth: 0 }}>
+    <section style={{ background: PANEL, border: `1px solid ${LINE}`, borderLeft: live && verse ? `2px solid ${ACCENT}` : `1px solid ${LINE}`, borderRadius: 6, padding: '10px 12px', minHeight: 86, flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 10, letterSpacing: '0.14em', color: live && verse ? ACCENT : FAINT, textTransform: 'uppercase' }}>
         {title}{live && verse ? ' ●' : ''}
       </div>
