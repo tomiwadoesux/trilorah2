@@ -210,6 +210,13 @@ jobs:
           [ ! -e "$r/bible.db" ] || { echo "Trilorah Sender picked up the main app's Bible"; exit 1; }
           /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$r/../Info.plist"
 
+      # The trilorah CLI: a remote control for the installed app, one
+      # dependency-free Node script — so a single zip serves every platform,
+      # built once on the Mac runner.
+      - name: Package the Trilorah CLI
+        if: runner.os == 'macOS'
+        run: node scripts/build-cli.mjs
+
       - uses: actions/upload-artifact@v4
         with:
           name: trilorah-${{ runner.os }}
