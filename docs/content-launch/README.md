@@ -53,6 +53,19 @@ Make essential help available when its verified feature is available. The order 
 | 22 | [The next volunteer needs more than a file name.](future-features/22-service-handoff.md) | The demonstrated package passes save, transfer, open, and import checks. |
 | 23 | [Why I started Trilorah](stories/23-why-i-started-trilorah.md) | Launch introduction is ready and the founder has reviewed this first-person draft |
 
+### Series: The church that wouldn't switch
+
+Six pieces on Trilorah operating the presentation software a church already runs, written November 10, 2026 from the founder's premise that some churches would not switch and something had to be done. Read in order. All six are held until the Windows control tool is verified on a real machine and the first EasyWorship recipe is recorded and sound-checked; piece 29 is a status report and must be updated with that result before any of them publish.
+
+| No. | Draft | Reader's question |
+| --- | --- | --- |
+| 24 | [Some churches won't switch. Fair enough.](future-features/24-some-churches-wont-switch.md) | Why work with the software a church already has instead of replacing it? |
+| 25 | [Three ways software can control other software. We picked the boring one.](future-features/25-three-ways-to-control-another-app.md) | How does Trilorah press buttons in another program, and why the accessibility tree? |
+| 26 | [Teach Trilorah your app in five clicks](future-features/26-teach-trilorah-your-app-in-five-clicks.md) | How does Trilorah learn where our app's buttons are, and how long does it take? |
+| 27 | [Nothing goes on the wall without a press. Even on someone else's software.](future-features/27-nothing-goes-on-the-wall-without-a-press.md) | What stops it putting something on the screen we didn't choose? |
+| 28 | [Why there's no AI in the Sunday loop](future-features/28-no-ai-in-the-sunday-loop.md) | Does operating our app need the internet or a model during the service? |
+| 29 | [EasyWorship first. Here's exactly where that stands.](future-features/29-easyworship-first-where-it-stands.md) | Can Trilorah operate EasyWorship right now, and when will we see it? |
+
 ## What happens after launch
 
 Use two substantial blog pieces a month as an initial production budget, then review it after four weeks. Release notes follow actual releases. Help follows actual need. A recurring volunteer question can justify improving an existing page instead of commissioning a duplicate article.
