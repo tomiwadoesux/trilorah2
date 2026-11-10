@@ -194,6 +194,7 @@ const HELP = `trilorah — remote control for the running Trilorah app
   trilorah clear | black | logo       the wall: background, black, or the logo
   trilorah wall                       bring the wall back to live
   trilorah console                    open the pop-up console (buttons, no typing)
+  trilorah target [name]              whose screen the commands move: Trilorah, or a taught app
   trilorah events                     follow what happens, line by line
 
   --version <name>   Bible translation for scripture/take
@@ -234,6 +235,19 @@ function main() {
       return runCommand({ kind: "screen.set", state: "live" }, { json });
     case "console":
       return runCommand({ kind: "console.open" }, { json });
+    case "target":
+      if (rest.length) return runCommand({ kind: "target.set", id: rest.join(" ") }, { json });
+      return connect(async ({ request, socket }) => {
+        const result = await request("command", { command: { kind: "target.list" } });
+        if (json) process.stdout.write(`${JSON.stringify(result)}\n`);
+        else for (const t of result.targets ?? []) {
+          const mark = t.id === result.snapshot.target ? "›" : " ";
+          const state = t.verified === undefined ? "" : t.verified ? "  ✓ ready" : "  ✗ changed since taught";
+          process.stdout.write(`${mark} ${t.name}  (${t.id})${state}\n`);
+        }
+        socket.end();
+        process.exit(result.ok ? 0 : 1);
+      });
     case "events":
       return followEvents({ json });
     case "help":

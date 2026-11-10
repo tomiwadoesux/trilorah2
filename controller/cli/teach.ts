@@ -13,6 +13,7 @@ import process from 'node:process'
 import { findInspectorBinary, spawnInspector } from '../recipes/inspect'
 import { verify } from '../recipes/runner'
 import { QUESTIONS, teach, type WatchRecord } from '../recipes/teach'
+import { taughtRecipesDir } from '../recipes/store'
 import type { Ability } from '../recipes/schema'
 
 const args = process.argv.slice(2)
@@ -54,7 +55,8 @@ async function main() {
   for (const b of report.broken) console.error(`  ✗ ${b.ability}: ${b.label ?? 'step ' + b.index} — ${b.problem}`)
   console.error(report.ok ? `  ✓ all ${report.checked} controls found again` : `  ${report.broken.length} of ${report.checked} did not resolve cleanly`)
 
-  const out = flag('out') ?? path.join('controller', 'recipes', 'taught', `${app.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`)
+  // Into Trilorah's own data folder by default, where the running app looks for taught recipes.
+  const out = flag('out') ?? path.join(taughtRecipesDir(), `${app.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`)
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, JSON.stringify(result.recipe, null, 2))
   console.error(`\nwrote ${out}`)

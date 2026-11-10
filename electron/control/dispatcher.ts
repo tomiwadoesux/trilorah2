@@ -4,6 +4,7 @@ import {
   type ControlEvent,
   type ControlResult,
   type ControlSnapshot,
+  type ControlTarget,
   type ControlVerse,
 } from '../../shared/control/schema'
 
@@ -37,6 +38,11 @@ export interface ControlHost {
   screen(): string
   preview(): ControlVerse | null
   live(): ControlVerse | null
+  /** Whose screen the commands move. Optional: a host with only its own wall has one target. */
+  targets?(): ControlTarget[]
+  target?(): string
+  /** Null when switched; otherwise why not ("no app called that", "not verified"). */
+  setTarget?(id: string): string | null
 }
 
 export type ControlVia = 'console' | 'socket' | 'remote'
@@ -55,6 +61,7 @@ export class ControlDispatcher {
     return {
       epoch: this.epoch,
       seq: this.seq,
+      target: this.host.target?.() ?? 'trilorah',
       listening: this.host.listening(),
       asrStatus: this.asrStatus,
       preview: this.host.preview(),
@@ -128,10 +135,17 @@ export class ControlDispatcher {
       case 'console.open':
         this.host.openConsole()
         return this.done(op)
+      case 'target.list':
+        return this.done(op, { targets: this.host.targets?.() ?? [{ id: 'trilorah', name: 'Trilorah' }] })
+      case 'target.set': {
+        if (!this.host.setTarget) return command.id === 'trilorah' ? this.done(op) : this.fail(op, 'this Trilorah can only move its own wall')
+        const refused = this.host.setTarget(command.id)
+        return refused ? this.fail(op, refused) : this.done(op)
+      }
     }
   }
 
-  private done(op: string, extra: { staged?: ControlVerse; live?: ControlVerse } = {}): ControlResult {
+  private done(op: string, extra: { staged?: ControlVerse; live?: ControlVerse; targets?: ControlTarget[] } = {}): ControlResult {
     return { ok: true, op, snapshot: this.snapshot(), ...extra }
   }
 

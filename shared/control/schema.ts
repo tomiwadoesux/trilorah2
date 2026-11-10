@@ -43,10 +43,23 @@ export type ControlCommand =
   | { kind: 'screen.toggle'; state: 'black' | 'logo' }
   /** Open the pop-up console window on the laptop (buttons, for people who don't type commands). */
   | { kind: 'console.open' }
+  /** Whose screen the commands move: Trilorah's own wall, or a taught app. */
+  | { kind: 'target.list' }
+  | { kind: 'target.set'; id: string }
+
+/** One place the commands can land. 'trilorah' is always there. */
+export interface ControlTarget {
+  id: string
+  name: string
+  /** For a taught app: whether every taught control was found at the last check. */
+  verified?: boolean
+}
 
 export interface ControlSnapshot {
   epoch: number
   seq: number
+  /** Whose screen the commands move right now. */
+  target: string
   listening: boolean
   /** The engine's last status line ("Listening…", an error), if any. */
   asrStatus: string | null
@@ -56,7 +69,7 @@ export interface ControlSnapshot {
 }
 
 export type ControlResult =
-  | { ok: true; op: string; snapshot: ControlSnapshot; staged?: ControlVerse; live?: ControlVerse }
+  | { ok: true; op: string; snapshot: ControlSnapshot; staged?: ControlVerse; live?: ControlVerse; targets?: ControlTarget[] }
   | { ok: false; op: string; error: string; snapshot: ControlSnapshot }
 
 /** One thing that happened, in order. `channel` names what, `payload` carries it. */
@@ -81,7 +94,10 @@ export function parseControlCommand(raw: unknown): ControlCommand | null {
     case 'live.next':
     case 'live.previous':
     case 'console.open':
+    case 'target.list':
       return { kind: m.kind }
+    case 'target.set':
+      return str(m.id, 200) ? { kind: 'target.set', id: m.id } : null
     case 'listen.start':
       return m.device === undefined || str(m.device, 200) ? { kind: 'listen.start', ...(str(m.device, 200) ? { device: m.device } : {}) } : null
     case 'scripture.stage':

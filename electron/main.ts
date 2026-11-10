@@ -28,6 +28,9 @@ import {
 } from './emitters'
 import { ControlDispatcher, type ControlHost } from './control/dispatcher'
 import { startControlServer, type ControlServer } from './control/socketServer'
+import { switchableHost } from '../controller/recipes/targets'
+import { loadRecipes, taughtRecipesDir } from '../controller/recipes/store'
+import { findInspectorBinary, spawnInspector } from '../controller/recipes/inspect'
 import type { ControlCommand, ControlVerse } from '../shared/control/schema'
 import { feedAudioChunk } from './asr/audioBus'
 import { queueHealth } from './cloud/offlineQueue'
@@ -4618,7 +4621,34 @@ app.whenReady().then(() => {
       live: () => asVerse(verseDelivery.live),
       openConsole: () => createConsoleWindow(),
     }
-    const dispatcher = new ControlDispatcher(controlHost)
+    /*
+     * Whose screen the commands move: Trilorah's own wall, or an app a church
+     * was taught at sound check (controller/). Listening always stays here.
+     * The inspector is the platform tool beside the app; without it, taught
+     * apps are listed but cannot be chosen, and the refusal says so.
+     */
+    const inspectorBinary = findInspectorBinary([
+      ...(isDev ? [path.join(__dirname, '..', 'controller', 'bin', 'trilorah-inspect'), path.join(__dirname, '..', 'controller', 'windows', 'trilorah-inspect.ps1')] : []),
+      path.join(process.resourcesPath ?? '', 'controller', process.platform === 'win32' ? 'trilorah-inspect.ps1' : 'trilorah-inspect'),
+    ])
+    const shippedDir = isDev ? path.join(__dirname, '..', 'controller', 'recipes', 'shipped') : path.join(process.resourcesPath ?? '', 'controller', 'shipped')
+    const taughtDir = taughtRecipesDir(app.getPath('userData'))
+    const targetHost = switchableHost({
+      own: controlHost,
+      inspector: inspectorBinary ? spawnInspector(inspectorBinary) : null,
+      recipes: () => loadRecipes({ shippedDir, taughtDir }),
+      onProblem: (target, ability, problem) => publishServiceNotice({
+        id: 'app-target', severity: 'warning', target: 'audio',
+        title: `${target.replace(/^app:/, '')} did not ${ability === 'show' ? 'go live' : ability}`,
+        detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
+      }),
+      onVerified: (target, ok, broken) => publishServiceNotice({
+        id: 'app-target', severity: ok ? 'info' : 'warning', target: 'audio', ...(ok ? { status: 'resolved' as const } : {}),
+        title: ok ? `${target.replace(/^app:/, '')} is ready` : `${target.replace(/^app:/, '')} has changed since it was taught`,
+        detail: ok ? 'Every control it was taught is where it was left.' : `${broken.join('; ')}. Teach that step again at sound check.`,
+      }),
+    })
+    const dispatcher = new ControlDispatcher(targetHost)
     controlDispatcher = dispatcher
     // The engine's own announcements, in the control stream too.
     setEmitterTap((channel, payload) => {
