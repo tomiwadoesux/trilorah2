@@ -4,7 +4,7 @@ import { formatNoteText } from '../shared/noteDisplay'
 
 // `session` is already the ScriptureSession instance in this file, so Electron's
 // comes in aliased rather than renaming an engine object used throughout.
-import { app, BrowserWindow, desktopCapturer, dialog, ipcMain, protocol, screen as electronScreen, session as electronSession, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, Menu, Tray, desktopCapturer, dialog, ipcMain, nativeImage, protocol, screen as electronScreen, session as electronSession, shell, systemPreferences } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
@@ -499,6 +499,36 @@ function createConsoleWindow(): void {
   if (isDev) consoleWindow.loadURL('http://localhost:5173/console.html')
   else consoleWindow.loadFile(path.join(__dirname, '../dist/console.html'))
   consoleWindow.on('closed', () => { consoleWindow = null })
+}
+
+/*
+ * Invisible mode: `--hidden` (what the CLI passes when it wakes the app)
+ * starts Trilorah with the operator window made but not shown — the engine,
+ * the mic capture and the control socket all live, nothing on screen but a
+ * menu-bar icon. "Open Trilorah" brings the window whenever wanted.
+ */
+const startHidden = process.argv.includes('--hidden') || process.env.TRILORAH_HIDDEN === '1'
+let tray: Tray | null = null
+function createTray(): void {
+  if (tray) return
+  const icon = nativeImage
+    .createFromPath(path.join(__dirname, isDev ? '../public/tray-icon.png' : '../dist/tray-icon.png'))
+    .resize({ width: 18, height: 18 })
+  tray = new Tray(icon)
+  tray.setToolTip('Trilorah')
+  tray.setContextMenu(Menu.buildFromTemplate([
+    {
+      label: 'Open Trilorah',
+      click: () => {
+        if (process.platform === 'darwin') void app.dock?.show()
+        if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.focus() }
+        else createWindow()
+      },
+    },
+    { label: 'Open console', click: () => createConsoleWindow() },
+    { type: 'separator' },
+    { label: 'Quit Trilorah', click: () => app.quit() },
+  ]))
 }
 
 /** Every clear, black, logo or restore: half of what a waiting press checks (wallMark). */
@@ -2051,7 +2081,7 @@ function createOutputWindow(id: string, title: string) {
   notifyOutputsChanged()
 }
 
-function createWindow() {
+function createWindow(opts: { hidden?: boolean } = {}) {
   const { workArea } = electronScreen.getDisplayNearestPoint(electronScreen.getCursorScreenPoint())
   const width = Math.min(1400, workArea.width)
   const height = Math.min(900, workArea.height)
@@ -2060,6 +2090,9 @@ function createWindow() {
     height,
     x: workArea.x + Math.round((workArea.width - width) / 2),
     y: workArea.y + Math.round((workArea.height - height) / 2),
+    // Invisible mode: the window exists (the engine and mic capture live in
+    // its renderer) but never shows until asked for from the tray.
+    show: !opts.hidden,
     backgroundColor: '#050505',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -4521,7 +4554,12 @@ app.whenReady().then(() => {
     console.log('🧠 Slow-path reasoning loop initialized')
   }
   if (getSetting('senderMode')) createSenderWindow()
-  else createWindow()
+  else {
+    createWindow({ hidden: startHidden })
+    createTray()
+    // A hidden start keeps the Dock clean too; opening from the tray restores it.
+    if (startHidden && process.platform === 'darwin') app.dock?.hide()
+  }
   // SANDBOX=1 opens the component gallery *beside* the running app, both
   // served by the same Vite instance — edit a component once and watch it
   // hot-reload in the sheet and on the real screen at the same time.
@@ -4664,7 +4702,7 @@ app.on('window-all-closed', () => {
     disconnectML()
     stopWebSocketServer()
   }
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && !tray) {
     app.quit()
   }
 })

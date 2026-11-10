@@ -24,6 +24,7 @@ import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { spawn } from "node:child_process";
 
 const PROTOCOL = "0.1.0"; // mirror of shared/control/schema.ts CONTROL_PROTOCOL
 const APP_DIR = "ai-preacher-assistant";
@@ -40,20 +41,59 @@ function die(message, code = 2) {
   process.exit(code);
 }
 
-function discover() {
-  const file = path.join(userDataDir(), "control.json");
+function readDiscovery() {
   try {
-    const found = JSON.parse(fs.readFileSync(file, "utf8"));
+    const found = JSON.parse(fs.readFileSync(path.join(userDataDir(), "control.json"), "utf8"));
     if (typeof found?.socket === "string") return found;
   } catch {
-    /* fall through to the explanation */
+    /* not running */
   }
-  die("Could not find a running Trilorah. Open the Trilorah app first — the CLI is a remote control for it, not a second copy of it.");
+  return null;
+}
+
+/** Start the installed app invisibly (--hidden: engine on, nothing on screen). */
+function launchApp(onGaveUp) {
+  try {
+    if (process.platform === "darwin") {
+      const child = spawn("open", ["-g", "-b", "com.trilorah.app", "--args", "--hidden"], { stdio: "ignore" });
+      child.on("exit", (code) => { if (code !== 0) onGaveUp(); });
+      return true;
+    }
+    if (process.platform === "win32") {
+      const exe = [
+        path.join(process.env.LOCALAPPDATA || "", "Programs", "Trilorah", "Trilorah.exe"),
+        path.join(process.env.ProgramFiles || "C:\\Program Files", "Trilorah", "Trilorah.exe"),
+      ].find((p) => { try { return fs.existsSync(p); } catch { return false; } });
+      if (!exe) return false;
+      spawn(exe, ["--hidden"], { stdio: "ignore", detached: true }).unref();
+      return true;
+    }
+  } catch {
+    /* no launcher on this platform */
+  }
+  return false;
+}
+
+const NOT_RUNNING = "Could not find a running Trilorah. Open the Trilorah app first — the CLI is a remote control for it, not a second copy of it.";
+
+async function discover() {
+  const found = readDiscovery();
+  if (found) return found;
+  // The app is the brain; wake it quietly and wait for its socket.
+  let gaveUp = false;
+  if (!launchApp(() => { gaveUp = true; })) die(NOT_RUNNING);
+  process.stderr.write("Waking Trilorah…\n");
+  for (let waited = 0; waited < 20000 && !gaveUp; waited += 500) {
+    await new Promise((r) => setTimeout(r, 500));
+    const woke = readDiscovery();
+    if (woke) return woke;
+  }
+  die(gaveUp ? "Trilorah does not seem to be installed on this computer. Install the app first — the CLI is only a remote control for it." : NOT_RUNNING);
 }
 
 /** One connection: hello, then whatever the command needs. */
-function connect(onReady, onEvent) {
-  const { socket: socketPath } = discover();
+async function connect(onReady, onEvent) {
+  const { socket: socketPath } = await discover();
   const socket = net.createConnection(socketPath);
   let buffered = "";
   let nextId = 1;
