@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ControlCommand, ControlResult, ControlSnapshot, ControlVerse } from '../../../shared/control/schema';
+import type { ControlCommand, ControlResult, ControlSnapshot, ControlTarget, ControlVerse } from '../../../shared/control/schema';
+import { RECIPE_FORMAT, type Ability, type Recipe, type RecipeStep } from '../../../controller/recipes/schema';
+import { QUESTIONS, stepFromRecord, type WatchRecord } from '../../../controller/recipes/teach';
 
 /*
  * The console: the terminal-looking workspace from the app-control plan.
@@ -55,6 +57,195 @@ function parsePrompt(raw: string, listening: boolean): ControlCommand | { help: 
   return { kind: 'scripture.stage', reference: raw.trim() };
 }
 
+/* ------------------------------------------------------------------------ */
+/* Teaching Trilorah another app: the four questions as a guided flow.       */
+/* Each question is one instruction; the app waits for the click; a skip is  */
+/* a button. Nothing here presses anything — it only watches and remembers.  */
+/* ------------------------------------------------------------------------ */
+
+type RunningApp = { name: string; id: string; pid: number };
+type TeachStage = 'pick' | 'ask' | 'checking' | 'done';
+interface TeachState {
+  stage: TeachStage;
+  apps: RunningApp[];
+  platform: 'macos' | 'windows';
+  app?: RunningApp;
+  q: number;
+  answers: Partial<Record<Ability, WatchRecord[]>>;
+  skipped: Ability[];
+  waiting: boolean;
+  got?: string;
+  needed?: boolean;
+  note?: string;
+  result?: { verified: boolean; broken: Array<{ ability: string; label?: string; problem: string }>; file?: string };
+}
+
+const QUESTION_TITLE: Record<Ability, string> = {
+  find: 'How do you search?',
+  show: 'How do you put it on the screen?',
+  clear: 'How do you take it off?',
+  next: 'Next',
+  previous: 'Previous',
+};
+
+/** What a recorded click gets called in the flow: "the Go Live button". */
+function nameOf(record: WatchRecord): string {
+  const name = [record.title, record.description, record.help].find((v) => typeof v === 'string' && v) as string | undefined;
+  const role = String(record.role ?? '').replace(/^AX/, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return name ? `the ${role || 'control'} "${name}"` : `that ${role || 'control'}`;
+}
+
+function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught: (recipe: Recipe) => void; say: (kind: LogRow['kind'], text: string) => void }) {
+  const api = window.api;
+  const [s, setS] = useState<TeachState>({ stage: 'pick', apps: [], platform: 'macos', q: 0, answers: {}, skipped: [], waiting: false });
+  const alive = useRef(true);
+  // StrictMode mounts twice in dev: the flag comes back on at every mount, not just the first.
+  useEffect(() => { alive.current = true; return () => { alive.current = false; api?.controllerWatchCancel?.(); }; }, [api]);
+
+  useEffect(() => {
+    if (!api?.controllerApps) { setS((x) => ({ ...x, note: 'the engine is not attached (sandbox?)' })); return; }
+    void api.controllerCheck?.();
+    void api.controllerApps().then((r) => {
+      if (!alive.current) return;
+      setS((x) => ({ ...x, apps: r.apps ?? [], platform: r.platform ?? 'macos', note: r.ok ? undefined : (r.error ?? 'could not see the open apps') }));
+    });
+  }, [api]);
+
+  const ask = useCallback(async (state: TeachState, q: number) => {
+    const question = QUESTIONS[q];
+    if (!question || !state.app) return;
+    setS({ ...state, stage: 'ask', q, waiting: true, got: undefined, needed: false });
+    const r = await api!.controllerWatch(state.app.pid, question.clicks, 120);
+    if (!alive.current) return;
+    if (r.recorded.length >= question.clicks) {
+      const got = nameOf(r.recorded[0] as WatchRecord);
+      const next = { ...state, stage: 'ask' as const, q, waiting: false, got, answers: { ...state.answers, [question.ability]: r.recorded as WatchRecord[] } };
+      setS(next);
+      say('ok', `${state.app.name}: ${question.ability} → ${got}`);
+      setTimeout(() => { if (alive.current) void advance(next, q + 1); }, 900);
+    } else if (question.required) {
+      setS({ ...state, stage: 'ask', q, waiting: false, needed: true });
+    } else {
+      const next = { ...state, stage: 'ask' as const, q, waiting: false, skipped: [...state.skipped, question.ability] };
+      void advance(next, q + 1);
+    }
+  }, [api, say]);
+
+  const advance = useCallback(async (state: TeachState, q: number) => {
+    if (q < QUESTIONS.length) return ask(state, q);
+    if (!state.app) return;
+    setS({ ...state, stage: 'checking', waiting: false });
+    const abilities: Recipe['abilities'] = {};
+    for (const [ability, records] of Object.entries(state.answers) as [Ability, WatchRecord[]][]) {
+      abilities[ability] = records.map((r): RecipeStep => stepFromRecord(ability, r));
+    }
+    const recipe: Recipe = { format: RECIPE_FORMAT, platform: state.platform, app: { id: state.app.id, name: state.app.name }, abilities, taught: { by: 'operator', at: new Date().toISOString() } };
+    const saved = await api!.controllerSaveRecipe(recipe);
+    if (!alive.current) return;
+    if (!saved.ok) { setS({ ...state, stage: 'done', waiting: false, note: saved.error ?? 'could not save' }); return; }
+    setS({ ...state, stage: 'done', waiting: false, result: { verified: !!saved.verified, broken: saved.broken ?? [], file: saved.file } });
+    onTaught(recipe);
+  }, [api, ask, onTaught]);
+
+  const skip = () => { api?.controllerWatchCancel?.(); };
+  const retry = () => { if (s.app) void ask(s, s.q); };
+  const question = QUESTIONS[s.q];
+  const dots = QUESTIONS.map((qq, i) => {
+    const done = s.answers[qq.ability] ? ACCENT : s.skipped.includes(qq.ability) ? FAINT : i === s.q && s.stage === 'ask' ? INK : 'rgba(229,243,242,0.18)';
+    return <span key={qq.ability} style={{ width: 8, height: 8, borderRadius: 4, background: done, display: 'inline-block' }} />;
+  });
+  const btn = (label: string, onClick: () => void, tone: 'go' | 'ash' = 'ash') => (
+    <button type="button" onClick={onClick} style={{ font: 'inherit', fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', padding: '10px 16px', borderRadius: 8, color: tone === 'go' ? CANVAS : INK, background: tone === 'go' ? ACCENT : 'rgba(229,243,242,0.07)', border: `1px solid ${tone === 'go' ? ACCENT : LINE}` }}>{label}</button>
+  );
+
+  return (
+    <section style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, padding: 18, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <header style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <span style={{ fontSize: 10, letterSpacing: '0.14em', color: ACCENT, textTransform: 'uppercase' }}>teach Trilorah an app</span>
+        {s.app && <span style={{ color: DIM, fontSize: 12 }}>{s.app.name}</span>}
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>{s.stage !== 'pick' && dots}</span>
+      </header>
+
+      {s.stage === 'pick' && (
+        <>
+          <p style={{ margin: 0, fontSize: 15, color: INK, lineHeight: 1.45 }}>Which app should Trilorah learn to drive?</p>
+          <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>Five quick questions. For each one you click the real button in that app — once — and Trilorah remembers which button it was. Do this at sound check, not during a service.</p>
+          {s.note && <p style={{ margin: 0, fontSize: 12, color: '#F0A8A0' }}>{s.note}</p>}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {s.apps.map((a) => (
+              <button key={a.pid} type="button" onClick={() => void ask({ ...s, app: a }, 0)} style={{ font: 'inherit', fontSize: 13, cursor: 'pointer', padding: '12px 16px', borderRadius: 8, color: INK, background: 'rgba(229,243,242,0.07)', border: `1px solid ${LINE}` }}>{a.name}</button>
+            ))}
+            {s.apps.length === 0 && !s.note && <span style={{ color: FAINT, fontSize: 12 }}>looking at what's open…</span>}
+          </div>
+          <div style={{ marginTop: 'auto' }}>{btn('cancel', onClose)}</div>
+        </>
+      )}
+
+      {s.stage === 'ask' && question && s.app && (
+        <>
+          <p style={{ margin: 0, fontSize: 11, letterSpacing: '0.12em', color: FAINT, textTransform: 'uppercase' }}>{s.q + 1} of {QUESTIONS.length} · {QUESTION_TITLE[question.ability]}</p>
+          <p style={{ margin: 0, fontSize: 17, color: INK, lineHeight: 1.45 }}>{question.ask.replace(' here', ` in ${s.app.name}`)}</p>
+          {s.waiting && (
+            <p style={{ margin: 0, fontSize: 13, color: ACCENT, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: ACCENT, display: 'inline-block', animation: 'tri-console-pulse 1.2s ease-in-out infinite' }} />
+              watching {s.app.name} — click it now
+            </p>
+          )}
+          {s.got && <p style={{ margin: 0, fontSize: 13, color: INK }}>✓ got it — {s.got}</p>}
+          {s.needed && (
+            <p style={{ margin: 0, fontSize: 13, color: '#F0A8A0', lineHeight: 1.5 }}>Trilorah needs this one — without it, it cannot put anything on {s.app.name}'s screen.</p>
+          )}
+          <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
+            {s.needed ? btn('try again', retry, 'go') : s.waiting ? btn(question.required ? 'cancel' : `skip — ${s.app.name} has no ${question.ability === 'find' ? 'search' : question.ability}`, skip) : null}
+            {btn('stop teaching', onClose)}
+          </div>
+        </>
+      )}
+
+      {s.stage === 'checking' && <p style={{ margin: 0, fontSize: 14, color: DIM }}>Checking every control again, without pressing anything…</p>}
+
+      {s.stage === 'done' && s.app && (
+        <>
+          {s.result?.verified ? (
+            <p style={{ margin: 0, fontSize: 17, color: INK }}>{s.app.name} is ready ✓</p>
+          ) : (
+            <p style={{ margin: 0, fontSize: 15, color: '#F0A8A0' }}>{s.note ?? `${s.app.name} was saved, but ${s.result?.broken.length ?? 0} control${s.result?.broken.length === 1 ? '' : 's'} could not be found again.`}</p>
+          )}
+          {s.result?.broken.map((b, i) => <p key={i} style={{ margin: 0, fontSize: 12, color: DIM }}>✗ {b.label ?? b.ability} — {b.problem}</p>)}
+          <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
+            Taught: {(Object.keys(s.answers) as Ability[]).join(', ') || 'nothing'}{s.skipped.length ? ` · skipped: ${s.skipped.join(', ')}` : ''}. Trilorah will check these again before every service.
+          </p>
+          <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
+            {btn('done', onClose, 'go')}
+          </div>
+        </>
+      )}
+      <style>{'@keyframes tri-console-pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.25 } }'}</style>
+    </section>
+  );
+}
+
+/** Whose screen the buttons move: Trilorah's own wall or a taught app, with "ready" when checked. */
+function ScreenPicker({ targets, current, onPick, onTeach }: { targets: ControlTarget[]; current: string; onPick: (id: string) => void; onTeach: () => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 10, letterSpacing: '0.14em', color: FAINT, textTransform: 'uppercase' }}>screen</span>
+      <div style={{ display: 'inline-flex', border: `1px solid ${LINE}`, borderRadius: 8, overflow: 'hidden' }}>
+        {targets.map((t) => {
+          const on = t.id === current;
+          return (
+            <button key={t.id} type="button" onClick={() => onPick(t.id)} aria-pressed={on} title={t.verified === false ? 'has changed since it was taught' : undefined}
+              style={{ font: 'inherit', fontSize: 12, cursor: 'pointer', padding: '7px 12px', border: 'none', borderRight: `1px solid ${LINE}`, color: on ? CANVAS : INK, background: on ? ACCENT : 'transparent' }}>
+              {t.name}{t.verified === true ? ' ✓' : t.verified === false ? ' !' : ''}
+            </button>
+          );
+        })}
+        <button type="button" onClick={onTeach} style={{ font: 'inherit', fontSize: 12, cursor: 'pointer', padding: '7px 12px', border: 'none', color: DIM, background: 'transparent' }}>+ teach an app</button>
+      </div>
+    </div>
+  );
+}
+
 const HELP_LINES = [
   'type a reference to stage it — John 3:16, Psalm 23, Romans 8:28-30',
   'take [reference]   put the preview (or this verse) on the wall',
@@ -71,6 +262,8 @@ const HELP_LINES = [
 export default function ConsoleView({ variant = 'workspace' }: { variant?: 'workspace' | 'popup' } = {}) {
   const api = window.api;
   const [snap, setSnap] = useState<ControlSnapshot | null>(null);
+  const [targets, setTargets] = useState<ControlTarget[]>([{ id: 'trilorah', name: 'Trilorah' }]);
+  const [teaching, setTeaching] = useState(false);
   const [heard, setHeard] = useState<string[]>([]);
   const [partial, setPartial] = useState('');
   const [log, setLog] = useState<LogRow[]>([]);
@@ -123,6 +316,25 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   }, []);
 
   useEffect(() => { logEnd.current?.scrollIntoView({ block: 'end' }); }, [log]);
+
+  /** Whose screen the buttons move. Choosing an app verifies it; the list shows the answer once it lands. */
+  const refreshTargets = useCallback(async () => {
+    const r = await run({ kind: 'target.list' }, { quiet: true });
+    if (r?.ok && r.targets) setTargets(r.targets);
+  }, [run]);
+  useEffect(() => { void refreshTargets(); }, [refreshTargets]);
+  const pickTarget = useCallback(async (id: string) => {
+    const r = await run({ kind: 'target.set', id });
+    if (r?.ok) say('note', id === 'trilorah' ? 'the buttons move Trilorah\'s own wall' : `checking ${targets.find((t) => t.id === id)?.name ?? id} — every taught control, nothing pressed`);
+    setTimeout(() => void refreshTargets(), 3000);
+    void refreshTargets();
+  }, [run, say, refreshTargets, targets]);
+  const screenPicker = (
+    <ScreenPicker targets={targets} current={snap?.target ?? 'trilorah'} onPick={(id) => void pickTarget(id)} onTeach={() => setTeaching(true)} />
+  );
+  const teachPanel = teaching ? (
+    <TeachPanel onClose={() => { setTeaching(false); void refreshTargets(); }} onTaught={() => void refreshTargets()} say={say} />
+  ) : null;
 
   const submit = useCallback((take: boolean) => {
     const text = prompt;
@@ -199,7 +411,10 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
           <span style={{ color: snap?.listening ? ACCENT : FAINT }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
           <span style={{ marginLeft: 'auto', color: DIM }}>wall · {snap?.screen ?? '—'}</span>
         </header>
+        {screenPicker}
 
+        {teachPanel ?? (
+          <>
         {pane('live', snap?.live ?? null, true)}
         {pane('preview', snap?.preview ?? null, false)}
 
@@ -241,6 +456,8 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
             <div key={row.id} style={{ fontSize: 11, color: row.kind === 'err' ? '#F0A8A0' : row.kind === 'in' ? DIM : FAINT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.text}</div>
           ))}
         </div>
+          </>
+        )}
       </div>
     );
   }
@@ -269,7 +486,9 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
           {button('pop out', { kind: 'console.open' })}
         </span>
       </header>
+      {screenPicker}
 
+      {teachPanel ?? (
       <div style={{ display: 'flex', gap: 10, minHeight: 0, flex: 1 }}>
         {/* HEARD: the transcript roll, as the laptop hears it. */}
         <section style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 6, padding: '10px 12px', flex: 1.1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -296,6 +515,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
           </section>
         </div>
       </div>
+      )}
 
       {/* The prompt. Enter stages; ⌘Enter takes. */}
       <footer style={{ display: 'flex', alignItems: 'center', gap: 8, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 6, padding: '8px 12px' }}>

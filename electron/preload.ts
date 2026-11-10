@@ -427,6 +427,12 @@ contextBridge.exposeInMainWorld('api', {
   // The control surface (shared/control/schema.ts): the console view sends
   // typed commands and gets honest results, same contract as the CLI.
   controlCommand: (command: unknown) => invokeObserved('control-command', command),
+  // Teaching Trilorah another app (controller/): the console's guided flow.
+  controllerApps: () => invokeObserved('controller-apps'),
+  controllerCheck: () => invokeObserved('controller-check'),
+  controllerWatch: (pid: number, clicks: number, seconds: number) => invokeObserved('controller-watch', pid, clicks, seconds),
+  controllerWatchCancel: () => ipcRenderer.send('controller-watch-cancel'),
+  controllerSaveRecipe: (recipe: unknown) => invokeObserved('controller-save-recipe', recipe),
   onPhoneMicSignal: (callback: (message: any) => void) => {
     const subscription = (_event: IpcRendererEvent, message: any) => callback(message)
     ipcRenderer.on('on-phone-mic-signal', subscription)

@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { Inspector, InspectResult } from './runner'
@@ -30,6 +30,27 @@ function commandFor(binary: string, args: string[]): { file: string; args: strin
     return { file: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', binary, ...args] }
   }
   return { file: binary, args }
+}
+
+/**
+ * A `watch` that can be called off: the teaching flow's skip button. Resolves
+ * with the records so far (none when skipped before a click landed).
+ */
+export function watchClicks(binary: string, pid: number, clicks: number, seconds: number): { done: Promise<Record<string, unknown>[]>; cancel: () => void } {
+  const cmd = commandFor(binary, ['watch', String(pid), '--count', String(clicks), '--seconds', String(seconds)])
+  const child = spawn(cmd.file, cmd.args, { stdio: ['ignore', 'pipe', 'ignore'] })
+  let out = ''
+  child.stdout.on('data', (chunk) => { out += String(chunk) })
+  const done = new Promise<Record<string, unknown>[]>((resolve) => {
+    child.on('close', () => {
+      try {
+        const parsed = JSON.parse(out.slice(out.indexOf('{'))) as { recorded?: Record<string, unknown>[] }
+        resolve(parsed.recorded ?? [])
+      } catch { resolve([]) }
+    })
+    child.on('error', () => resolve([]))
+  })
+  return { done, cancel: () => { try { child.kill('SIGTERM') } catch { /* already gone */ } } }
 }
 
 export function spawnInspector(binary: string, timeoutMs = 15_000): Inspector {

@@ -746,6 +746,11 @@ interface WindowApi extends Partial<TriPackageApi> {
   phoneMicPeerState(state: 'connected' | 'failed', detail?: string): void;
   phoneMicPhoneState(state: string): void;
   controlCommand(command: import('../../shared/control/schema').ControlCommand): Promise<import('../../shared/control/schema').ControlResult>;
+  controllerApps(): Promise<{ ok: boolean; apps?: Array<{ name: string; id: string; pid: number }>; platform?: 'macos' | 'windows'; error?: string }>;
+  controllerCheck(): Promise<{ ok: boolean; trusted?: boolean; note?: string }>;
+  controllerWatch(pid: number, clicks: number, seconds: number): Promise<{ ok: boolean; recorded: Array<Record<string, unknown>> }>;
+  controllerWatchCancel(): void;
+  controllerSaveRecipe(recipe: unknown): Promise<{ ok: boolean; file?: string; verified?: boolean; broken?: Array<{ ability: string; label?: string; problem: string }>; error?: string }>;
   onPhoneMicSignal(callback: (message: import('../../shared/phoneMic').PhoneMicMessage) => void): Unsubscribe;
   onPhoneMicStatus(callback: (status: import('../../shared/phoneMic').PhoneMicStatus) => void): Unsubscribe;
   // Media on outputs + themes

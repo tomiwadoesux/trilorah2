@@ -30,7 +30,9 @@ import { ControlDispatcher, type ControlHost } from './control/dispatcher'
 import { startControlServer, type ControlServer } from './control/socketServer'
 import { switchableHost } from '../controller/recipes/targets'
 import { loadRecipes, taughtRecipesDir } from '../controller/recipes/store'
-import { findInspectorBinary, spawnInspector } from '../controller/recipes/inspect'
+import { findInspectorBinary, spawnInspector, watchClicks } from '../controller/recipes/inspect'
+import { parseRecipe } from '../controller/recipes/schema'
+import { verify as verifyRecipe } from '../controller/recipes/runner'
 import type { ControlCommand, ControlVerse } from '../shared/control/schema'
 import { feedAudioChunk } from './asr/audioBus'
 import { queueHealth } from './cloud/offlineQueue'
@@ -4650,6 +4652,55 @@ app.whenReady().then(() => {
     })
     const dispatcher = new ControlDispatcher(targetHost)
     controlDispatcher = dispatcher
+
+    /*
+     * Teaching, for the console's guided flow: which apps are open, watch for
+     * the operator's click (skippable), save and verify the recipe. Only the
+     * operator and console windows may ask; the inspector does the seeing.
+     */
+    const inspector = inspectorBinary ? spawnInspector(inspectorBinary) : null
+    const fromOurWindows = (event: Electron.IpcMainInvokeEvent) =>
+      event.sender === mainWindow?.webContents || event.sender === consoleWindow?.webContents
+    let teachingWatch: { cancel: () => void } | null = null
+    ipcMain.handle('controller-apps', async (event) => {
+      if (!fromOurWindows(event)) return { ok: false, error: 'not from a Trilorah window' }
+      if (!inspector) return { ok: false, error: process.platform === 'darwin' ? 'the app inspector is not built on this computer' : 'this computer has no app inspector' }
+      const r = await inspector.run(['apps'])
+      const ours = new Set([app.getName().toLowerCase(), 'electron', 'trilorah'])
+      const apps = ((r.apps as Array<{ name: string; bundle?: string; exe?: string; pid: number }> | undefined) ?? [])
+        .filter((a) => !ours.has(String(a.name).toLowerCase()))
+        .map((a) => ({ name: a.name, id: a.bundle || a.exe || String(a.pid), pid: a.pid }))
+      return { ok: r.ok, apps, platform: process.platform === 'win32' ? 'windows' : 'macos', error: r.error }
+    })
+    ipcMain.handle('controller-check', async (event) => {
+      if (!fromOurWindows(event) || !inspector) return { ok: false, trusted: false }
+      // Asks macOS once, the first time; after that it just answers.
+      return inspector.run(['check', '--prompt'])
+    })
+    ipcMain.handle('controller-watch', async (event, pid: number, clicks: number, seconds: number) => {
+      if (!fromOurWindows(event) || !inspectorBinary) return { ok: false, recorded: [] }
+      teachingWatch?.cancel()
+      const w = watchClicks(inspectorBinary, Number(pid), Math.max(1, Number(clicks) || 1), Math.min(600, Math.max(5, Number(seconds) || 120)))
+      teachingWatch = w
+      const recorded = await w.done
+      if (teachingWatch === w) teachingWatch = null
+      return { ok: recorded.length > 0, recorded }
+    })
+    ipcMain.on('controller-watch-cancel', (event) => {
+      if (event.sender !== mainWindow?.webContents && event.sender !== consoleWindow?.webContents) return
+      teachingWatch?.cancel()
+      teachingWatch = null
+    })
+    ipcMain.handle('controller-save-recipe', async (event, raw: unknown) => {
+      if (!fromOurWindows(event)) return { ok: false, error: 'not from a Trilorah window' }
+      const recipe = parseRecipe(raw)
+      if (!recipe) return { ok: false, error: 'that is not a complete recipe' }
+      fs.mkdirSync(taughtDir, { recursive: true })
+      const file = path.join(taughtDir, `${recipe.app.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`)
+      fs.writeFileSync(file, JSON.stringify(recipe, null, 2))
+      const report = inspector ? await verifyRecipe(recipe, inspector) : { ok: false, checked: 0, broken: [] }
+      return { ok: true, file, verified: report.ok, broken: report.broken.map((b) => ({ ability: b.ability, label: b.label, problem: b.problem })) }
+    })
     // The engine's own announcements, in the control stream too.
     setEmitterTap((channel, payload) => {
       if (channel === 'on-transcript-line') dispatcher.event('transcript', payload)
