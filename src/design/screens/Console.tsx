@@ -15,13 +15,13 @@ import { QUESTIONS, stepFromRecord, type WatchRecord } from '../../../controller
  * Its look is deliberately its own: the one allowed exception (like the
  * stage backdrop and the phone pages) to the plain-ground rule — a green
  * black canvas, mono type, panels in Trilorah's deep green. Typing here can
- * never put a verse on the wall: Enter stages, only ⌘Enter or the go-live
+ * never put a verse on the wall: Enter stages, only Ctrl/⌘Enter or the go-live
  * key takes.
  */
 
 const INK = '#E5F3F2';
-const DIM = 'rgba(229,243,242,0.55)';
-const FAINT = 'rgba(229,243,242,0.28)';
+const DIM = 'rgba(229,243,242,0.72)';
+const FAINT = 'rgba(229,243,242,0.52)';
 const ACCENT = '#E4D87A';
 const PANEL = '#07271C';
 const CANVAS = '#010806';
@@ -189,7 +189,7 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
           <p style={{ margin: 0, fontSize: 11, letterSpacing: '0.12em', color: FAINT, textTransform: 'uppercase' }}>{s.q + 1} of {QUESTIONS.length} · {QUESTION_TITLE[question.ability]}</p>
           <p style={{ margin: 0, fontSize: 17, color: INK, lineHeight: 1.45 }}>{question.ask.replace(' here', ` in ${s.app.name}`)}</p>
           {s.waiting && (
-            <p style={{ margin: 0, fontSize: 13, color: ACCENT, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p role="status" aria-live="polite" style={{ margin: 0, fontSize: 13, color: ACCENT, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: ACCENT, display: 'inline-block', animation: 'tri-console-pulse 1.2s ease-in-out infinite' }} />
               watching {s.app.name} — click it now
             </p>
@@ -254,7 +254,7 @@ const HELP_LINES = [
   'take [reference]   put the preview (or this verse) on the wall',
   'clear · black · logo · wall    what the wall shows',
   'listen [start|stop] · next · prev · status',
-  'Enter stages — only ⌘Enter (or "take") goes live',
+  'Enter stages — Ctrl/⌘Enter (or "take") goes live',
 ];
 
 /**
@@ -347,7 +347,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
     historyAt.current = -1;
     setPrompt('');
     if ('help' in parsed) { HELP_LINES.forEach((l) => say('note', l)); return; }
-    // ⌘Enter on a typed reference means take it, not just stage it.
+    // Ctrl/⌘Enter on a typed reference means take it, not just stage it.
     const command: ControlCommand = take && parsed.kind === 'scripture.stage' ? { kind: 'live.take', reference: parsed.reference, version: parsed.version } : parsed;
     void run(command);
   }, [prompt, snap, run, say]);
@@ -411,7 +411,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100vh', padding: 14, background: CANVAS, color: INK, fontFamily: 'var(--font-mono)', fontSize: 12, boxSizing: 'border-box', overflow: 'hidden' }}>
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
           <span style={{ letterSpacing: '0.18em', fontSize: 11, color: ACCENT }}>TRILORAH</span>
-          <span style={{ color: snap?.listening ? ACCENT : FAINT }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
+          <span role="status" aria-live="polite" style={{ color: snap?.listening ? ACCENT : FAINT }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
           <span style={{ marginLeft: 'auto', color: DIM }}>wall · {snap?.screen ?? '—'}</span>
         </header>
         {screenPicker}
@@ -425,12 +425,14 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
         <div style={{ display: 'flex', gap: 8 }}>
           <input
             ref={input}
+            className="trilorah-console-prompt"
+            aria-label="Scripture reference to stage"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (prompt.trim()) void run({ kind: 'scripture.stage', reference: prompt.trim() }).then(() => setPrompt('')); } }}
             placeholder="type a verse — John 3:16"
             spellCheck={false}
-            style={{ flex: 1, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, outline: 'none', color: INK, font: 'inherit', fontSize: 13, padding: '10px 12px' }}
+            style={{ flex: 1, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, color: INK, font: 'inherit', fontSize: 13, padding: '10px 12px' }}
           />
           <button
             type="button"
@@ -453,7 +455,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
         </div>
 
         {/* What just happened, and the last thing heard. */}
-        <div style={{ marginTop: 'auto', minHeight: 44, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2 }}>
+        <div role="log" aria-label="Recent console activity" aria-live="polite" style={{ marginTop: 'auto', minHeight: 44, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2 }}>
           {(partial || heard.length > 0) && <div style={{ color: FAINT, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>heard · {partial || heard[heard.length - 1]}</div>}
           {log.slice(-2).map((row) => (
             <div key={row.id} style={{ fontSize: 11, color: row.kind === 'err' ? '#F0A8A0' : row.kind === 'in' ? DIM : FAINT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.text}</div>
@@ -477,7 +479,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
       {/* Status line: the whole state of the service in one row. */}
       <header style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
         <span style={{ letterSpacing: '0.18em', fontSize: 11, color: ACCENT }}>TRILORAH CONSOLE</span>
-        <span style={{ color: snap?.listening ? ACCENT : FAINT }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
+        <span role="status" aria-live="polite" style={{ color: snap?.listening ? ACCENT : FAINT }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
         <span style={{ color: DIM }}>wall · {snap?.screen ?? '—'}</span>
         {snap?.asrStatus && <span style={{ color: FAINT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 260 }}>{snap.asrStatus}</span>}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
@@ -509,7 +511,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
           {pane('preview', snap?.preview ?? null, false)}
           {pane('live', snap?.live ?? null, true)}
           {/* The command log: what was asked and what actually happened. */}
-          <section style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 6, padding: '10px 12px', flex: 1, minHeight: 72, overflowY: 'auto' }}>
+          <section role="log" aria-label="Command log" aria-live="polite" style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 6, padding: '10px 12px', flex: 1, minHeight: 72, overflowY: 'auto' }}>
             {log.length === 0 && <div style={{ color: FAINT, fontSize: 11 }}>type help for the few words this prompt knows</div>}
             {log.map((row) => (
               <div key={row.id} style={{ fontSize: 11, lineHeight: 1.6, color: row.kind === 'err' ? '#F0A8A0' : row.kind === 'in' ? DIM : row.kind === 'note' ? FAINT : INK }}>{row.text}</div>
@@ -520,19 +522,21 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
       </div>
       )}
 
-      {/* The prompt. Enter stages; ⌘Enter takes. */}
+      {/* The prompt. Enter stages; Ctrl/⌘Enter takes. */}
       <footer style={{ display: 'flex', alignItems: 'center', gap: 8, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 6, padding: '8px 12px' }}>
         <span style={{ color: ACCENT }}>›</span>
         <input
           ref={input}
+          className="trilorah-console-prompt"
+          aria-label="Command or scripture reference"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           onKeyDown={onKey}
           placeholder='a reference stages it — "take" puts it on the wall'
           spellCheck={false}
-          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: INK, font: 'inherit', fontSize: 13 }}
+          style={{ flex: 1, background: 'transparent', border: 'none', color: INK, font: 'inherit', fontSize: 13 }}
         />
-        <span style={{ color: FAINT, fontSize: 10 }}>⌘⏎ go live</span>
+        <span style={{ color: FAINT, fontSize: 10 }}>Ctrl/⌘⏎ go live</span>
       </footer>
     </div>
   );

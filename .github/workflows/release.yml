@@ -254,17 +254,16 @@ jobs:
             installers/sender/*
           generate_release_notes: true
           body: |
-            Songs now look like lyrics on your screens: larger, bolder, closer lines and tighter letters. Each line you wrote stays on one line when it can, and the song's name becomes a small credit. Labels such as Verse 2 and Chorus stay with you.
+            The console and the `trilorah` CLI now use the same command layer. Choose Trilorah's own wall or an app you have taught it to control.
 
             **Also new**
 
-            - **Slides:** a preview panel pages through a deck and stages a page without sending it live.
-            - **Media:** cards keep names, types and actions visible, thumbnails stay in proportion, and you can switch between pictures and videos.
-            - **Video:** play, pause, drag to seek and sound controls on the preview and live screens, and the projector follows.
-            - **Songs:** the song list stays beside an open song, with an On device / Scheduled switch fed by your Run of Show.
-            - **Run of Show:** a list layout with collapsible sections.
+            - **Teach an app:** choose an open app and show Trilorah how to search, put content on screen, clear it and move between items. Trilorah records the controls and checks them again before using the recipe.
+            - **Console:** choose which screen the commands control. The guided app picker explains what to do when your app is missing.
+            - **CLI:** download `Trilorah-CLI-0.4.12.zip` to send the same commands from a terminal.
+            - **App inspector:** Mac and Windows installers include the platform tools. No app recipes are pre-installed yet; teach an app during setup. Mac control needs Accessibility permission. Windows app control has not yet been verified with a real Windows presentation app.
 
-            **Windows:** download the `.exe`. Windows will say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
+            **Windows:** download the `.exe`. Windows may say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
 
             **Mac (Apple Silicon):** download the `.dmg`. The first time, **right-click the app → Open**.
 

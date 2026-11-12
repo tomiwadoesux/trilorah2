@@ -180,3 +180,13 @@
     animation: pulse-quiet 2s ease-in-out infinite;
   }
 }
+
+.trilorah-console-prompt:focus-visible {
+  outline: 2px solid #e4d87a;
+  outline-offset: 2px;
+}
+
+.trilorah-console-prompt::placeholder {
+  color: rgb(229 243 242 / 0.56);
+  opacity: 1;
+}
