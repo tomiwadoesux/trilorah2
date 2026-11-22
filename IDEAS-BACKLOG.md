@@ -98,3 +98,11 @@ Related brainstorms: [QR-COMPANION-BRAINSTORM.md](QR-COMPANION-BRAINSTORM.md), [
 - [ ] Item 18: confirm with the friend which meaning of "pastor suffix" was intended (name auto-correct vs. reference tail phrases)
 - [ ] **Timers on the dashboard** (2026-09-17, owner asked for a placeholder "so I remember later"). `TimersTile.tsx` is in the bento's right stack, between Companion and Giving. It is REAL — it reads the live store over `onTimers`/`listTimers` and ticks locally between mutations — but it is **read-only**: no making, editing, reordering or start/pause on the board. Still owed: the timer surface itself (BUILD-MAP 2.16 lists a Live `TimersPanel`, which is where creating one has to live). Open question for the owner: does the dashboard tile stay read-only — the board is "read, not worked" everywhere else — or does the pre-service clock earn a start/pause on it?
 - [ ] **Online services / virtual camera** (2026-09-17, item 26). Owner was "just thinking"; parked for later. Decide verse-layer vs whole-studio before any output code is touched.
+
+## Auto-update (2026-11-22)
+The app never learns a new version exists; the church PC gets updates only when a
+human runs the next installer. Wire the real update check behind the already
+designed "update ready" state (S-01d in AppShell): check the GitHub release feed,
+download quietly, swap on restart — never mid-service. electron-updater + the
+existing release.yml publish can carry it; needs latest.yml in the published
+assets. Owner asked for it on the list, not built yet.
