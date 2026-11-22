@@ -74,14 +74,35 @@ async function lookUp(step: RecipeStep, recipe: Recipe, inspect: Inspector): Pro
   return null
 }
 
+/**
+ * Verification with a trail is two honest looks, not one: the target may
+ * legitimately be hidden behind the panel the enroute clicks open, so the
+ * ability is sound when EITHER the target resolves now OR the first enroute
+ * step does (the door to it is still there). Only when both are gone is it
+ * broken. Enroute steps past the first cannot be checked without pressing,
+ * which verify never does.
+ */
 export async function verify(recipe: Recipe, inspect: Inspector): Promise<VerifyReport> {
   const broken: StepOutcome[] = []
   let checked = 0
   for (const [ability, steps] of Object.entries(recipe.abilities) as [Ability, RecipeStep[]][]) {
-    for (const [index, step] of steps.entries()) {
-      checked++
-      const problem = await lookUp(step, recipe, inspect)
-      if (problem) broken.push({ ability, index, ok: false, label: step.label, problem })
+    const enroute = steps.filter((s) => s.enroute)
+    if (enroute.length === 0) {
+      for (const [index, step] of steps.entries()) {
+        checked++
+        const problem = await lookUp(step, recipe, inspect)
+        if (problem) broken.push({ ability, index, ok: false, label: step.label, problem })
+      }
+      continue
+    }
+    const target = steps[steps.length - 1]
+    checked++
+    const targetProblem = await lookUp(target, recipe, inspect)
+    if (!targetProblem) continue
+    checked++
+    const doorProblem = await lookUp(enroute[0], recipe, inspect)
+    if (doorProblem) {
+      broken.push({ ability, index: steps.length - 1, ok: false, label: target.label, problem: `${targetProblem}; and the way there is gone too (${enroute[0].label ?? 'its first click'}: ${doorProblem})` })
     }
   }
   return { ok: broken.length === 0, checked, broken }
@@ -124,9 +145,19 @@ export async function perform(
 ): Promise<PerformResult> {
   const steps = recipe.abilities[ability]
   if (!steps) return { ok: false, ability, done: 0, failed: { ability, index: -1, ok: false, problem: `${recipe.app.name} was never taught how to ${ability}` } }
-  for (const [index, step] of steps.entries()) {
-    const problem = await act(step, recipe, inspect, vars)
-    if (problem) return { ok: false, ability, done: index, failed: { ability, index, ok: false, label: step.label, problem } }
+  // A trail's enroute clicks exist to reach the target. When the target is
+  // already reachable, pressing them again would toggle panels for nothing
+  // (or shut); so look first, and walk the trail only when the look fails.
+  let run = steps
+  if (steps.some((s) => s.enroute)) {
+    const target = steps[steps.length - 1]
+    const reachable = await lookUp(target, recipe, inspect)
+    if (reachable === null) run = steps.filter((s) => !s.enroute)
   }
-  return { ok: true, ability, done: steps.length }
+  for (const step of run) {
+    const index = steps.indexOf(step)
+    const problem = await act(step, recipe, inspect, vars)
+    if (problem) return { ok: false, ability, done: run.indexOf(step), failed: { ability, index, ok: false, label: step.label, problem } }
+  }
+  return { ok: true, ability, done: run.length }
 }

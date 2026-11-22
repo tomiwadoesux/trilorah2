@@ -67,6 +67,6 @@ describe('a recipe as a control host', () => {
     const noFind = parseRecipe({ ...recipe, abilities: { show: recipe.abilities.show } })!
     const host = recipeHost({ recipe: noFind, inspector: { async run() { return { ok: true } } }, own, onProblem })
     expect(host.stageScripture('John 3:16')).toBeNull()
-    expect(onProblem).toHaveBeenCalledWith('find', 'EasyWorship was never taught how to search')
+    expect(onProblem).toHaveBeenCalledWith('findVerse', 'EasyWorship was never taught where verses are searched — re-teach it')
   })
 })

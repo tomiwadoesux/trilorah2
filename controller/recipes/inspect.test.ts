@@ -55,3 +55,26 @@ describe('readWatchOutput: a crash is never a skip', () => {
     expect(r.error).toHaveLength(200)
   })
 })
+
+describe('streamed click lines', () => {
+  const click1 = { role: 'RadioButton', title: 'Scriptures', path: '0/1/2' }
+  const click2 = { role: 'Edit', title: 'Search', path: '0/3' }
+
+  it('the summary wins when the watch ran to its end', () => {
+    const out = `{"click":${JSON.stringify(click1)}}\n{"click":${JSON.stringify(click2)}}\n` +
+      JSON.stringify({ ok: true, wanted: 8, recorded: [click1, click2], note: 'recorded' })
+    expect(readWatchOutput(out, '', 0, false)).toEqual({ recorded: [click1, click2] })
+  })
+
+  it('ending the watch early ("that\'s it") keeps the clicks streamed so far', () => {
+    const out = `{"click":${JSON.stringify(click1)}}\n{"click":${JSON.stringify(click2)}}\n`
+    expect(readWatchOutput(out, 'watching…', null, true)).toEqual({ recorded: [click1, click2], cancelled: true })
+  })
+
+  it('a crash after clicks still reports the failure, with the clicks alongside', () => {
+    const out = `{"click":${JSON.stringify(click1)}}\n`
+    const r = readWatchOutput(out, 'something broke', 1, false)
+    expect(r.recorded).toEqual([click1])
+    expect(r.error).toBe('something broke')
+  })
+})

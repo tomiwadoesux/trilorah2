@@ -35,3 +35,18 @@ describe('recipes', () => {
     expect(selectorWords(cues)).toEqual(['path:0/1/0', 'role:AXCheckBox', 'name:bold'])
   })
 })
+
+describe('old recipes', () => {
+  it("the four-question days' one 'find' serves as both finds until re-taught", () => {
+    const r = parseRecipe(good)
+    expect(r?.abilities.findVerse?.[0]).toMatchObject({ path: '0/6' })
+    expect(r?.abilities.findSong?.[0]).toMatchObject({ path: '0/6' })
+    expect((r?.abilities as Record<string, unknown>)?.find).toBeUndefined()
+  })
+
+  it('an explicit findVerse wins over a lingering find key', () => {
+    const both = { ...good, abilities: { ...good.abilities, findVerse: [{ path: '0/7', role: 'AXTextField', name: 'verses', action: { do: 'type', text: '$query' } }] } }
+    expect(parseRecipe(both)?.abilities.findVerse?.[0]).toMatchObject({ path: '0/7' })
+    expect(parseRecipe(both)?.abilities.findSong?.[0]).toMatchObject({ path: '0/6' })
+  })
+})

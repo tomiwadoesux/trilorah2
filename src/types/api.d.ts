@@ -750,6 +750,10 @@ interface WindowApi extends Partial<TriPackageApi> {
   controllerCheck(): Promise<{ ok: boolean; trusted?: boolean; note?: string }>;
   controllerWatch(pid: number, clicks: number, seconds: number): Promise<{ ok: boolean; recorded: Array<Record<string, unknown>>; error?: string; cancelled?: boolean }>;
   controllerWatchCancel(): void;
+  /** Each click as it lands during a controllerWatch, so the panel shows the trail growing. */
+  onControllerWatchClick(callback: (click: { record: Record<string, unknown>; count: number }) => void): Unsubscribe;
+  /** Every recipe this platform can use — the revisit panel's list. */
+  controllerRecipes(): Promise<{ recipes: Array<{ id: string; name: string; source: 'shipped' | 'taught'; abilities: string[]; taughtAt: string; recipe: import('../../controller/recipes/schema').Recipe }> }>;
   controllerSaveRecipe(recipe: unknown): Promise<{ ok: boolean; file?: string; verified?: boolean; broken?: Array<{ ability: string; label?: string; problem: string }>; error?: string }>;
   onPhoneMicSignal(callback: (message: import('../../shared/phoneMic').PhoneMicMessage) => void): Unsubscribe;
   onPhoneMicStatus(callback: (status: import('../../shared/phoneMic').PhoneMicStatus) => void): Unsubscribe;

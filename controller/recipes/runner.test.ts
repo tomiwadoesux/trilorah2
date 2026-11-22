@@ -32,7 +32,8 @@ describe('recipe runner', () => {
   it('verify is green when every control resolves to exactly one element, and never presses', async () => {
     const { inspector, calls } = fake({})
     const report = await verify(recipe, inspector)
-    expect(report).toEqual({ ok: true, checked: 3, broken: [] })
+    // the legacy 'find' ability parses into findVerse AND findSong, so four lookups
+    expect(report).toEqual({ ok: true, checked: 4, broken: [] })
     expect(calls.every((c) => c[0] === 'find')).toBe(true)
   })
 
@@ -45,7 +46,7 @@ describe('recipe runner', () => {
 
   it('perform runs the steps with the moment\'s words filled in', async () => {
     const { inspector, calls } = fake({})
-    const result = await perform(recipe, 'find', inspector, { query: 'John 3:16' })
+    const result = await perform(recipe, 'findVerse', inspector, { query: 'John 3:16' })
     expect(result.ok).toBe(true)
     expect(calls[0]).toEqual(['type', 'com.example.slides', 'path:0/3', 'role:AXTextField', 'name:search', '--text', 'John 3:16', '--submit'])
   })
@@ -66,5 +67,43 @@ describe('recipe runner', () => {
   it('fills the two placeholders and leaves other text alone', () => {
     expect(fillText('$reference in $query', { reference: 'Psalm 23', query: 'shepherd' })).toBe('Psalm 23 in shepherd')
     expect(fillText('plain', {})).toBe('plain')
+  })
+})
+
+describe('a trail with enroute steps', () => {
+  const trailed = parseRecipe({
+    format: 1, platform: 'macos', app: { id: 'com.example.slides', name: 'Slides' },
+    abilities: {
+      show: [{ path: '0/9', role: 'AXButton', name: 'Go Live', action: { do: 'press' } }],
+      findVerse: [
+        { path: '0/1/2', role: 'AXRadioButton', name: 'Scriptures', label: 'on the way: Scriptures', enroute: true, action: { do: 'press' } },
+        { path: '0/3', role: 'AXTextField', name: 'search', label: 'the verse search box', action: { do: 'type', text: '$query', submit: true } },
+      ],
+    },
+    taught: { by: 'operator', at: '2026-11-10T12:00:00Z' },
+  })!
+
+  it('perform goes straight to a reachable target, never re-pressing the way there', async () => {
+    const { inspector, calls } = fake({})
+    const result = await perform(trailed, 'findVerse', inspector, { query: 'John 3:16' })
+    expect(result.ok).toBe(true)
+    // one look, then the type — the Scriptures tab was not pressed again
+    expect(calls.map((c) => c[0])).toEqual(['find', 'type'])
+  })
+
+  it('perform walks the trail when the target is hidden', async () => {
+    const { inspector, calls } = fake({ 'find path:0/3': { ok: true, count: 0 } })
+    // the look fails, so every step runs: press the tab, then type into the box
+    const result = await perform(trailed, 'findVerse', inspector, { query: 'John 3:16' })
+    expect(result.ok).toBe(true)
+    expect(calls.map((c) => c[0])).toEqual(['find', 'press', 'type'])
+  })
+
+  it('verify passes a hidden target while its door is still there, and names it when both are gone', async () => {
+    const hidden = await verify(trailed, fake({ 'find path:0/3': { ok: true, count: 0 } }).inspector)
+    expect(hidden.ok).toBe(true)
+    const gone = await verify(trailed, fake({ 'find path:0/3': { ok: true, count: 0 }, 'find path:0/1/2': { ok: true, count: 0 } }).inspector)
+    expect(gone.ok).toBe(false)
+    expect(gone.broken[0].problem).toContain('the way there is gone too')
   })
 })

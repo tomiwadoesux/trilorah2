@@ -3,7 +3,7 @@
  *
  *   npx tsx controller/cli/teach.ts <app> [--out recipes/<name>.json] [--only show,clear]
  *
- * Asks the four questions, runs the inspector's `watch` for each, and writes
+ * Asks the six questions, runs the inspector's `watch` for each, and writes
  * the recipe. Then verifies it — every taught control looked up again without
  * pressing — so the file on disk is known good before anyone relies on it.
  */
@@ -20,7 +20,8 @@ const args = process.argv.slice(2)
 const appQuery = args.find((a) => !a.startsWith('--'))
 if (!appQuery) { console.error('which app? e.g. npx tsx controller/cli/teach.ts TextEdit'); process.exit(2) }
 const flag = (name: string) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : undefined }
-const only = flag('only')?.split(',').map((s) => s.trim()) as Ability[] | undefined
+// 'find' still works from the old four-question days: it means both finds now.
+const only = flag('only')?.split(',').flatMap((s) => (s.trim() === 'find' ? ['findVerse', 'findSong'] : [s.trim()])) as Ability[] | undefined
 /** How long each question waits for its click before it is skipped. */
 const seconds = Math.max(10, Number(flag('seconds') ?? 90) || 90)
 
@@ -34,7 +35,7 @@ async function main() {
   const app = apps.apps?.find((a) => a.name.toLowerCase() === q || a.bundle.toLowerCase() === q) ?? apps.apps?.find((a) => a.name.toLowerCase().includes(q))
   if (!app) { console.error(`"${appQuery}" is not running — open it first`); process.exit(2) }
 
-  console.error(`Teaching Trilorah about ${app.name}. Each question: click the control in ${app.name}; wait ${seconds} s to skip.\n`)
+  console.error(`Teaching Trilorah about ${app.name}. Each question: do the real thing in ${app.name} — every click counts; wait ${seconds} s after the last click (or to skip).\n`)
   const result = await teach(
     async (_ability, clicks) => {
       const r = await inspect.run(['watch', String(app.pid), '--count', String(clicks), '--seconds', String(seconds)])

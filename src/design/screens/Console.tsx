@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ControlCommand, ControlResult, ControlSnapshot, ControlTarget, ControlVerse } from '../../../shared/control/schema';
-import { RECIPE_FORMAT, type Ability, type Recipe, type RecipeStep } from '../../../controller/recipes/schema';
-import { QUESTIONS, stepFromRecord, type WatchRecord } from '../../../controller/recipes/teach';
+import { RECIPE_FORMAT, type Ability, type Recipe } from '../../../controller/recipes/schema';
+import { QUESTIONS, stepsFromTrail, type WatchRecord } from '../../../controller/recipes/teach';
 
 /*
  * The console: the terminal-looking workspace from the app-control plan.
@@ -66,38 +66,60 @@ function parsePrompt(raw: string, listening: boolean): ControlCommand | { help: 
 }
 
 /* ------------------------------------------------------------------------ */
-/* Teaching Trilorah another app: the four questions as a guided flow.       */
-/* Each question is one instruction; the app waits for the click; a skip is  */
-/* a button. Nothing here presses anything — it only watches and remembers.  */
+/* Teaching Trilorah another app: six small rehearsals of Sunday.            */
+/* Each answer is the whole trail of clicks it takes — opening Collections,  */
+/* the Scripture tab, then the search box — ended by "that's it". The last   */
+/* click is the target; the rest are the way there. Nothing here presses     */
+/* anything — it only watches and remembers. A taught app can be revisited:  */
+/* one ability alone (a missed question, a moved button), or started over.   */
 /* ------------------------------------------------------------------------ */
 
 type RunningApp = { name: string; id: string; pid: number };
-type TeachStage = 'pick' | 'ask' | 'checking' | 'done';
+type TaughtApp = { id: string; name: string; source: 'shipped' | 'taught'; abilities: string[]; taughtAt: string; recipe: Recipe };
+type TeachStage = 'pick' | 'revisit' | 'ask' | 'checking' | 'done';
 interface TeachState {
   stage: TeachStage;
   apps: RunningApp[];
+  taught: TaughtApp[];
   platform: 'macos' | 'windows';
   app?: RunningApp;
+  /** Re-teaching one ability of an already taught app: everything else is kept as it was. */
+  only?: Ability;
+  /** The recipe being revisited; answered abilities replace its, the rest stay. */
+  base?: Recipe;
   q: number;
   answers: Partial<Record<Ability, WatchRecord[]>>;
   skipped: Ability[];
   waiting: boolean;
+  /** The confirmed trail, as words: "the tab "Collections" → the text field "Search"". */
   got?: string;
   needed?: boolean;
   /** The watcher itself failed (not a timeout, not a skip): the reason, shown on the question. */
   trouble?: string;
   note?: string;
+  /** What was written, for the done screen: its abilities decide the test button. */
+  saved?: Recipe;
   result?: { verified: boolean; broken: Array<{ ability: string; label?: string; problem: string }>; file?: string };
   testing?: boolean;
   tested?: boolean;
 }
 
 const QUESTION_TITLE: Record<Ability, string> = {
-  find: 'How do you search?',
+  findVerse: 'How do you pull up a verse?',
+  findSong: 'How do you pull up a song?',
   show: 'How do you put it on the screen?',
   clear: 'How do you take it off?',
   next: 'Next',
   previous: 'Previous',
+};
+
+const SKIP_WORDS: Record<Ability, string> = {
+  findVerse: 'skip — verses are not searched here',
+  findSong: 'skip — songs are not searched here',
+  show: 'cancel',
+  clear: 'skip — no clear here',
+  next: 'skip — no next here',
+  previous: 'skip — no previous here',
 };
 
 /** What a recorded click gets called in the flow: "the Go Live button". */
@@ -109,10 +131,18 @@ function nameOf(record: WatchRecord): string {
 
 function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught: (recipe: Recipe) => void; say: (kind: LogRow['kind'], text: string) => void }) {
   const api = window.api;
-  const [s, setS] = useState<TeachState>({ stage: 'pick', apps: [], platform: 'macos', q: 0, answers: {}, skipped: [], waiting: false });
+  const [s, setS] = useState<TeachState>({ stage: 'pick', apps: [], taught: [], platform: 'macos', q: 0, answers: {}, skipped: [], waiting: false });
+  /** Why the running watch is being ended: the operator's last word, read when it resolves. */
+  const ended = useRef<'done' | 'skip' | null>(null);
+  /** The trail so far, as words, while the watcher runs — from the streamed click events. */
+  const [trail, setTrail] = useState<string[]>([]);
   const alive = useRef(true);
   // StrictMode mounts twice in dev: the flag comes back on at every mount, not just the first.
   useEffect(() => { alive.current = true; return () => { alive.current = false; api?.controllerWatchCancel?.(); }; }, [api]);
+  useEffect(() => {
+    if (!api?.onControllerWatchClick) return;
+    return api.onControllerWatchClick(({ record }) => { if (alive.current) setTrail((t) => [...t, nameOf(record as WatchRecord)]); });
+  }, [api]);
 
   /* The system's own windows are never something to drive. */
   const NOT_TARGETS = /^(finder|system settings|system preferences|iphone mirroring|code|terminal|trilorah( console)?)$/i;
@@ -122,56 +152,82 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
       if (!alive.current) return;
       setS((x) => ({ ...x, apps: (r.apps ?? []).filter((a) => !NOT_TARGETS.test(a.name)), platform: r.platform ?? 'macos', note: r.ok ? undefined : (r.error ?? 'could not see the open apps') }));
     });
+    void api.controllerRecipes?.().then((r) => {
+      if (alive.current) setS((x) => ({ ...x, taught: (r.recipes ?? []) as TaughtApp[] }));
+    });
   }, [api]);
   useEffect(() => { void api?.controllerCheck?.(); lookAtApps(); }, [api, lookAtApps]);
 
   const ask = useCallback(async (state: TeachState, q: number) => {
     const question = QUESTIONS[q];
     if (!question || !state.app) return;
-    setS({ ...state, stage: 'ask', q, waiting: true, got: undefined, needed: false, trouble: undefined });
-    const r = await api!.controllerWatch(state.app.pid, question.clicks, 120);
+    ended.current = null;
+    setTrail([]);
+    setS({ ...state, stage: 'ask', q, waiting: true, got: undefined, needed: false, trouble: undefined, note: undefined });
+    const r = await api!.controllerWatch(state.app.pid, question.maxClicks, 240);
     if (!alive.current) return;
+    const word = ended.current; ended.current = null;
     if (r.error) {
       // The watcher failed. That is not the operator skipping, so the question stays put and says why.
       setS({ ...state, stage: 'ask', q, waiting: false, trouble: r.error });
       say('err', `${state.app.name}: could not watch for the click — ${r.error}`);
       return;
     }
-    if (r.recorded.length >= question.clicks) {
-      const got = nameOf(r.recorded[0] as WatchRecord);
-      const next = { ...state, stage: 'ask' as const, q, waiting: false, got, answers: { ...state.answers, [question.ability]: r.recorded as WatchRecord[] } };
-      setS(next);
-      say('ok', `${state.app.name}: ${question.ability} → ${got}`);
-      // No auto-advance: the operator reads what was recorded and confirms or redoes it.
-    } else if (question.required) {
-      setS({ ...state, stage: 'ask', q, waiting: false, needed: true });
-    } else {
-      // A skip after a redo must also drop the first (wrong) click, or it would ship anyway.
+    const skippedNow = word === 'skip' || (r.recorded.length === 0 && word !== 'done' && !question.required && !state.only);
+    if (skippedNow) {
+      // A skip after a redo must also drop the first (wrong) trail, or it would ship anyway.
       const answers = { ...state.answers };
       delete answers[question.ability];
       const next = { ...state, stage: 'ask' as const, q, waiting: false, answers, skipped: [...state.skipped.filter((a) => a !== question.ability), question.ability] };
       void advance(next, q + 1);
+      return;
     }
+    if (r.recorded.length === 0) {
+      if (state.only) { setS({ ...state, stage: 'revisit', waiting: false, note: 'no click landed — nothing was changed' }); return; }
+      setS({ ...state, stage: 'ask', q, waiting: false, needed: true });
+      return;
+    }
+    const records = r.recorded as WatchRecord[];
+    const got = records.map((rec) => nameOf(rec)).join(' → ');
+    const next = { ...state, stage: 'ask' as const, q, waiting: false, got, answers: { ...state.answers, [question.ability]: records } };
+    setS(next);
+    say('ok', `${state.app.name}: ${question.ability} → ${got}`);
+    // No auto-advance: the operator reads the trail that was recorded and confirms or redoes it.
   }, [api, say]);
 
   const advance = useCallback(async (state: TeachState, q: number) => {
-    if (q < QUESTIONS.length) return ask(state, q);
+    if (!state.only && q < QUESTIONS.length) return ask(state, q);
     if (!state.app) return;
     setS({ ...state, stage: 'checking', waiting: false });
-    const abilities: Recipe['abilities'] = {};
+    // Revisiting one ability starts from the recipe as it was; a fresh teach (or start over) from nothing.
+    const abilities: Recipe['abilities'] = { ...(state.base?.abilities ?? {}) };
     for (const [ability, records] of Object.entries(state.answers) as [Ability, WatchRecord[]][]) {
-      abilities[ability] = records.map((r): RecipeStep => stepFromRecord(ability, r));
+      abilities[ability] = stepsFromTrail(ability, records);
     }
-    const recipe: Recipe = { format: RECIPE_FORMAT, platform: state.platform, app: { id: state.app.id, name: state.app.name }, abilities, taught: { by: 'operator', at: new Date().toISOString() } };
+    const app = state.base ? state.base.app : { id: state.app.id, name: state.app.name };
+    const recipe: Recipe = { format: RECIPE_FORMAT, platform: state.platform, app, abilities, taught: { by: 'operator', at: new Date().toISOString() } };
     const saved = await api!.controllerSaveRecipe(recipe);
     if (!alive.current) return;
-    if (!saved.ok) { setS({ ...state, stage: 'done', waiting: false, note: saved.error ?? 'could not save' }); return; }
-    setS({ ...state, stage: 'done', waiting: false, result: { verified: !!saved.verified, broken: saved.broken ?? [], file: saved.file } });
+    if (!saved.ok) { setS({ ...state, stage: 'done', waiting: false, saved: recipe, note: saved.error ?? 'could not save' }); return; }
+    setS({ ...state, stage: 'done', waiting: false, saved: recipe, result: { verified: !!saved.verified, broken: saved.broken ?? [], file: saved.file } });
     onTaught(recipe);
   }, [api, ask, onTaught]);
 
-  const skip = () => { api?.controllerWatchCancel?.(); };
+  const skip = (word: 'done' | 'skip') => { ended.current = word; api?.controllerWatchCancel?.(); };
   const retry = () => { if (s.app) void ask(s, s.q); };
+  /** Skipping when no watch is running (the watcher failed): the same bookkeeping a timed-out skip does. */
+  const passOver = () => {
+    const question = QUESTIONS[s.q];
+    if (!question) return;
+    const answers = { ...s.answers };
+    delete answers[question.ability];
+    void advance({ ...s, waiting: false, trouble: undefined, answers, skipped: [...s.skipped.filter((a) => a !== question.ability), question.ability] }, s.q + 1);
+  };
+  /** Opens the revisit screen for a taught app, matched against what is running. */
+  const revisit = (t: TaughtApp) => {
+    const running = s.apps.find((a) => a.id === t.recipe.app.id || a.name.toLowerCase() === t.name.toLowerCase());
+    setS({ ...s, stage: 'revisit', base: t.recipe, app: running, only: undefined, answers: {}, skipped: [], note: undefined });
+  };
 
   /* The sound-check test: point the commands at the app just taught, stage a
      verse through its taught search box and press its taught go-live — the
@@ -197,15 +253,9 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
     say('ok', 'test cleared');
     if (alive.current) setS((x) => ({ ...x, tested: false }));
   }, [api, say]);
+
   const question = QUESTIONS[s.q];
-  const skipLabel = question ? `skip — no ${question.ability === 'find' ? 'search' : question.ability} here` : 'skip';
-  /* Skipping when no watch is running (the watcher failed): the same bookkeeping a timed-out skip does. */
-  const passOver = () => {
-    if (!question) return;
-    const answers = { ...s.answers };
-    delete answers[question.ability];
-    void advance({ ...s, waiting: false, trouble: undefined, answers, skipped: [...s.skipped.filter((a) => a !== question.ability), question.ability] }, s.q + 1);
-  };
+  const canTest = !!s.saved?.abilities.findVerse;
   const dots = QUESTIONS.map((qq, i) => {
     const done = s.answers[qq.ability] ? ACCENT : s.skipped.includes(qq.ability) ? FAINT : i === s.q && s.stage === 'ask' ? INK : 'rgba(229,243,242,0.18)';
     return <span key={qq.ability} style={{ width: 8, height: 8, borderRadius: 4, background: done, display: 'inline-block' }} />;
@@ -218,40 +268,85 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
     <section style={{ background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, padding: 18, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0, overflowY: 'auto' }}>
       <header style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
         <span style={{ fontSize: 10, letterSpacing: '0.14em', color: ACCENT, textTransform: 'uppercase' }}>teach Trilorah an app</span>
-        {s.app && <span style={{ color: DIM, fontSize: 12 }}>{s.app.name}</span>}
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>{s.stage !== 'pick' && dots}</span>
+        {(s.app || s.base) && <span style={{ color: DIM, fontSize: 12 }}>{s.app?.name ?? s.base?.app.name}{s.only ? ` · just "${QUESTION_TITLE[s.only]}"` : ''}</span>}
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 5, alignItems: 'center' }}>{s.stage !== 'pick' && s.stage !== 'revisit' && dots}</span>
       </header>
 
       {s.stage === 'pick' && (
         <>
           <p style={{ margin: 0, fontSize: 15, color: INK, lineHeight: 1.45 }}>Which app should Trilorah learn to drive?</p>
-          <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>Five quick questions. For each one you click the real button in that app — once — and Trilorah remembers which button it was. Do this at sound check, not during a service.</p>
+          <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>Six quick questions. Each one is a little rehearsal — you do the real thing in that app, every click on the way counts, and you press "that's it" after the last one. Do this at sound check, not during a service.</p>
           {s.note && <p style={{ margin: 0, fontSize: 12, color: '#F0A8A0' }}>{s.note}</p>}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {s.apps.map((a) => (
-              <button key={a.pid} type="button" onClick={() => void ask({ ...s, app: a }, 0)} style={{ font: 'inherit', fontSize: 13, cursor: 'pointer', padding: '12px 16px', borderRadius: 8, color: INK, background: 'rgba(229,243,242,0.07)', border: `1px solid ${LINE}` }}>{a.name}</button>
+              <button key={a.pid} type="button" onClick={() => void ask({ ...s, app: a, base: undefined, only: undefined, answers: {}, skipped: [] }, 0)} style={{ font: 'inherit', fontSize: 13, cursor: 'pointer', padding: '12px 16px', borderRadius: 8, color: INK, background: 'rgba(229,243,242,0.07)', border: `1px solid ${LINE}` }}>{a.name}</button>
             ))}
             {s.apps.length === 0 && !s.note && <span style={{ color: FAINT, fontSize: 12 }}>looking at what's open…</span>}
           </div>
+          {s.taught.length > 0 && (
+            <>
+              <p style={{ margin: '6px 0 0', fontSize: 11, letterSpacing: '0.12em', color: FAINT, textTransform: 'uppercase' }}>already taught</p>
+              <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${LINE}`, borderRadius: 8 }}>
+                {s.taught.map((t, i) => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderTop: i ? `1px solid ${LINE}` : 'none' }}>
+                    <span style={{ color: INK, fontSize: 13 }}>{t.name}</span>
+                    <span style={{ color: FAINT, fontSize: 11 }}>{t.abilities.length} of {QUESTIONS.length} answers</span>
+                    <button type="button" onClick={() => revisit(t)} style={{ marginLeft: 'auto', font: 'inherit', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', padding: '6px 10px', borderRadius: 6, color: INK, background: 'rgba(229,243,242,0.07)', border: `1px solid ${LINE}` }}>re-teach</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           <p style={{ margin: 0, fontSize: 12, color: FAINT, lineHeight: 1.5 }}>Don't see it? Open the app first — EasyWorship, ProPresenter, whatever runs your screens — then refresh. Apps Trilorah already knows appear under "screen" on their own.</p>
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>{btn('refresh', lookAtApps)}{btn('cancel', onClose)}</div>
         </>
       )}
 
+      {s.stage === 'revisit' && s.base && (
+        <>
+          <p style={{ margin: 0, fontSize: 15, color: INK, lineHeight: 1.45 }}>What should {s.base.app.name} re-learn?</p>
+          <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>Pick one thing — a question you skipped the first time, or a button that moved — and only that answer changes. Everything else stays as taught.</p>
+          {!s.app && <p style={{ margin: 0, fontSize: 12, color: '#F0A8A0' }}>{s.base.app.name} is not open — open it, then refresh.</p>}
+          {s.note && <p style={{ margin: 0, fontSize: 12, color: DIM }}>{s.note}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${LINE}`, borderRadius: 8 }}>
+            {QUESTIONS.map((qq, i) => {
+              const steps = s.base!.abilities[qq.ability];
+              const target = steps?.[steps.length - 1];
+              return (
+                <button key={qq.ability} type="button" disabled={!s.app}
+                  onClick={() => { if (s.app) void ask({ ...s, only: qq.ability, answers: {}, skipped: [] }, QUESTIONS.findIndex((x) => x.ability === qq.ability)); }}
+                  style={{ font: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'baseline', gap: 10, padding: '10px 12px', cursor: s.app ? 'pointer' : 'default', opacity: s.app ? 1 : 0.5, color: INK, background: 'transparent', border: 'none', borderTop: i ? `1px solid ${LINE}` : 'none' }}>
+                  <span style={{ fontSize: 13 }}>{QUESTION_TITLE[qq.ability]}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: steps ? DIM : FAINT }}>{steps ? `✓ ${target?.label ?? 'taught'}` : '— skipped when it was taught'}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
+            {s.app ? btn('start over — all six', () => { if (s.app) void ask({ ...s, base: undefined, only: undefined, answers: {}, skipped: [] }, 0); }) : btn('refresh', lookAtApps)}
+            {btn('back', () => setS({ ...s, stage: 'pick', base: undefined, only: undefined, note: undefined }))}
+            {btn('cancel', onClose)}
+          </div>
+        </>
+      )}
+
       {s.stage === 'ask' && question && s.app && (
         <>
-          <p style={{ margin: 0, fontSize: 11, letterSpacing: '0.12em', color: FAINT, textTransform: 'uppercase' }}>{s.q + 1} of {QUESTIONS.length} · {QUESTION_TITLE[question.ability]}</p>
-          <p style={{ margin: 0, fontSize: 17, color: INK, lineHeight: 1.45 }}>{question.ask.replace(' here', ` in ${s.app.name}`)}</p>
+          <p style={{ margin: 0, fontSize: 11, letterSpacing: '0.12em', color: FAINT, textTransform: 'uppercase' }}>{s.only ? QUESTION_TITLE[question.ability] : `${s.q + 1} of ${QUESTIONS.length} · ${QUESTION_TITLE[question.ability]}`}</p>
+          <p style={{ margin: 0, fontSize: 17, color: INK, lineHeight: 1.45 }}>{question.ask}</p>
           {s.waiting && (
             <p role="status" aria-live="polite" style={{ margin: 0, fontSize: 13, color: ACCENT, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: ACCENT, display: 'inline-block', animation: 'tri-console-pulse 1.2s ease-in-out infinite' }} />
-              watching {s.app.name} — click it now
+              watching {s.app.name} — every click counts, "that's it" after the last one
             </p>
+          )}
+          {s.waiting && trail.length > 0 && (
+            <p style={{ margin: 0, fontSize: 13, color: INK, lineHeight: 1.6 }}>{trail.map((t, i) => `${i + 1}. ${t}`).join('   ')}</p>
           )}
           {s.got && (
             <>
               <p style={{ margin: 0, fontSize: 13, color: INK }}>✓ got it — {s.got}</p>
-              <p style={{ margin: 0, fontSize: 12, color: DIM }}>Is that the right one?</p>
+              <p style={{ margin: 0, fontSize: 12, color: DIM }}>{s.answers[question.ability] && s.answers[question.ability]!.length > 1 ? 'The last click is the one Trilorah will aim for; the ones before are how it gets there. Right?' : 'Is that the right one?'}</p>
             </>
           )}
           {s.needed && (
@@ -260,11 +355,15 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
           {s.trouble && (
             <p style={{ margin: 0, fontSize: 13, color: '#F0A8A0', lineHeight: 1.5 }}>Trilorah could not watch {s.app.name} for your click — {s.trouble}. Nothing was skipped.</p>
           )}
-          <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            {s.trouble ? <>{btn('try again', retry, 'go')}{!question.required && btn(skipLabel, passOver)}</>
+          <div style={{ marginTop: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {s.trouble ? <>{btn('try again', retry, 'go')}{!question.required && !s.only && btn(SKIP_WORDS[question.ability], passOver)}</>
               : s.needed ? btn('try again', retry, 'go')
-              : s.got ? <>{btn("yes — that's it", () => void advance(s, s.q + 1), 'go')}{btn('no — redo that click', retry)}</>
-              : s.waiting ? btn(question.required ? 'cancel' : skipLabel, skip) : null}
+              : s.got ? <>{btn("yes — that's it", () => void advance(s, s.q + 1), 'go')}{btn('no — redo those clicks', retry)}</>
+              : s.waiting ? <>
+                  {trail.length > 0 && btn("that's it — that was the last click", () => skip('done'), 'go')}
+                  {!s.only && btn(question.required ? 'cancel' : SKIP_WORDS[question.ability], () => skip(question.required ? 'done' : 'skip'))}
+                  {s.only && btn('never mind', () => skip('done'))}
+                </> : null}
             {btn('stop teaching', onClose)}
           </div>
         </>
@@ -281,22 +380,22 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
           )}
           {s.result?.broken.map((b, i) => <p key={i} style={{ margin: 0, fontSize: 12, color: DIM }}>✗ {b.label ?? b.ability} — {b.problem}</p>)}
           <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
-            Taught: {(Object.keys(s.answers) as Ability[]).join(', ') || 'nothing'}{s.skipped.length ? ` · skipped: ${s.skipped.join(', ')}` : ''}. Trilorah will check these again before every service.
+            {s.only ? `Re-taught: ${s.only}. The other answers were kept as they were.` : `Taught: ${Object.keys(s.saved?.abilities ?? s.answers).join(', ') || 'nothing'}${s.skipped.length ? ` · skipped: ${s.skipped.join(', ')}` : ''}.`} Trilorah will check these again before every service.
           </p>
-          {s.result && (s.answers.find ? (
+          {s.result && (canTest ? (
             <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
-              Try it while it's still sound check: the test types {TEST_REFERENCE} into {s.app.name}'s search and presses its go-live — watch its screen.
+              Try it while it's still sound check: the test types {TEST_REFERENCE} into {s.app.name}'s verse search and presses its go-live — watch its screen.
             </p>
           ) : (
             <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
-              Search was skipped, so Trilorah cannot stage a test verse here — select something in {s.app.name} yourself and check go-live by hand.
+              The verse search was skipped, so Trilorah cannot stage a test verse here — select something in {s.app.name} yourself and check go-live by hand.
             </p>
           ))}
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            {s.result && s.answers.find ? (s.tested
+            {s.result && canTest ? (s.tested
               ? btn('clear the test', () => void clearTest())
               : btn(s.testing ? 'testing…' : `test it — ${TEST_REFERENCE} live`, () => { if (!s.testing) void test(); }, 'go')) : null}
-            {btn('done', onClose, s.result && s.answers.find && !s.tested ? 'ash' : 'go')}
+            {btn('done', onClose, s.result && canTest && !s.tested ? 'ash' : 'go')}
           </div>
         </>
       )}

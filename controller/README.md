@@ -28,8 +28,12 @@ Door 1 where it exists, door 2 everywhere, door 3 as a parachute.
   X, type into field Y.* No AI, ever, in that loop.
 - **Learning** (which element means "go live" in *this* app) happens once per app,
   at sound check: recipes we ship for the common apps, or the operator shows it
-  — four questions (find · put on screen · take off · step), each answered by doing
-  it once while Trilorah records *which element* was used. Never during a service.
+  — six questions (find a verse · find a song · put on screen · take off · step
+  forward · step back), each answered by doing the real thing once while Trilorah
+  records the whole trail of clicks: the last click is the target, the ones
+  before it are the way there, replayed only when the target is not already on
+  screen. Verses and songs are asked apart because most apps keep them in
+  different places. Never during a service.
 
 A recipe is matched on several cues (name, role, place in the tree, shortcut) so
 one renamed button does not kill it, verified before every service without

@@ -432,6 +432,12 @@ contextBridge.exposeInMainWorld('api', {
   controllerCheck: () => invokeObserved('controller-check'),
   controllerWatch: (pid: number, clicks: number, seconds: number) => invokeObserved('controller-watch', pid, clicks, seconds),
   controllerWatchCancel: () => ipcRenderer.send('controller-watch-cancel'),
+  onControllerWatchClick: (callback: (click: { record: Record<string, unknown>; count: number }) => void) => {
+    const subscription = (_event: IpcRendererEvent, click: { record: Record<string, unknown>; count: number }) => callback(click)
+    ipcRenderer.on('controller-watch-click', subscription)
+    return () => ipcRenderer.removeListener('controller-watch-click', subscription)
+  },
+  controllerRecipes: () => invokeObserved('controller-recipes'),
   controllerSaveRecipe: (recipe: unknown) => invokeObserved('controller-save-recipe', recipe),
   onPhoneMicSignal: (callback: (message: any) => void) => {
     const subscription = (_event: IpcRendererEvent, message: any) => callback(message)

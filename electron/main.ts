@@ -4704,7 +4704,14 @@ app.whenReady().then(() => {
     ipcMain.handle('controller-watch', async (event, pid: number, clicks: number, seconds: number) => {
       if (!fromOurWindows(event) || !inspectorBinary) return { ok: false, recorded: [] }
       teachingWatch?.cancel()
-      const w = watchClicks(inspectorBinary, Number(pid), Math.max(1, Number(clicks) || 1), Math.min(600, Math.max(5, Number(seconds) || 120)))
+      const w = watchClicks(
+        inspectorBinary,
+        Number(pid),
+        Math.min(12, Math.max(1, Number(clicks) || 1)),
+        Math.min(600, Math.max(5, Number(seconds) || 120)),
+        // Each click as it lands, so the panel can show the trail growing.
+        (record, count) => { try { event.sender.send('controller-watch-click', { record, count }) } catch { /* window gone */ } }
+      )
       teachingWatch = w
       const outcome = await w.done
       if (teachingWatch === w) teachingWatch = null
@@ -4714,6 +4721,17 @@ app.whenReady().then(() => {
       if (event.sender !== mainWindow?.webContents && event.sender !== consoleWindow?.webContents) return
       teachingWatch?.cancel()
       teachingWatch = null
+    })
+    ipcMain.handle('controller-recipes', (event) => {
+      if (!fromOurWindows(event)) return { recipes: [] }
+      // What the revisit panel lists: every recipe this platform can use, with
+      // enough of each to re-teach one ability without re-asking the rest.
+      return {
+        recipes: loadRecipes({ shippedDir, taughtDir }).map((r) => ({
+          id: r.id, name: r.recipe.app.name, source: r.source,
+          abilities: Object.keys(r.recipe.abilities), taughtAt: r.recipe.taught.at, recipe: r.recipe,
+        })),
+      }
     })
     ipcMain.handle('controller-save-recipe', async (event, raw: unknown) => {
       if (!fromOurWindows(event)) return { ok: false, error: 'not from a Trilorah window' }

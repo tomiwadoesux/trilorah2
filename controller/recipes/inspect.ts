@@ -40,38 +40,80 @@ export interface WatchOutcome {
   cancelled?: boolean
 }
 
+/** A streamed click line, when the given line is one. The watchers print each click the moment it lands. */
+export function parseClickLine(line: string): Record<string, unknown> | null {
+  const t = line.trim()
+  if (!t.startsWith('{"click":')) return null
+  try {
+    const o = JSON.parse(t) as { click?: unknown }
+    return o && typeof o.click === 'object' && o.click !== null ? (o.click as Record<string, unknown>) : null
+  } catch { return null }
+}
+
 /**
  * What a watcher run meant. Time running out is honest JSON with nothing
  * recorded; a crash is no JSON at all, or a `Fail` body. Those must never
  * look the same to the teaching flow, or a broken watcher reads as "the
  * operator skipped" and the next question appears before anyone clicked.
+ *
+ * Clicks arrive as their own `{"click":…}` lines as they land, so a trail
+ * survives the operator ending it early ("that's it" kills the process
+ * before the summary prints) — the collected lines ARE the answer then.
  */
 export function readWatchOutput(stdout: string, stderr: string, code: number | null, cancelled: boolean): WatchOutcome {
-  const start = stdout.indexOf('{')
+  const clicks: Record<string, unknown>[] = []
+  const rest: string[] = []
+  for (const line of stdout.split(/\r?\n/)) {
+    const click = parseClickLine(line)
+    if (click) clicks.push(click)
+    else rest.push(line)
+  }
+  const blob = rest.join('\n')
+  const start = blob.indexOf('{')
   let parsed: { ok?: boolean; error?: string; recorded?: unknown } | null = null
-  if (start >= 0) { try { parsed = JSON.parse(stdout.slice(start)) } catch { parsed = null } }
-  const recorded = Array.isArray(parsed?.recorded) ? (parsed!.recorded as Record<string, unknown>[]) : []
+  if (start >= 0) { try { parsed = JSON.parse(blob.slice(start)) } catch { parsed = null } }
+  const recorded = Array.isArray(parsed?.recorded) ? (parsed!.recorded as Record<string, unknown>[]) : clicks
   if (cancelled) return { recorded, cancelled: true }
   if (parsed) {
     if (Array.isArray(parsed.recorded)) return { recorded }
     return { recorded, error: parsed.error || 'the watcher answered without a recording' }
   }
-  // No JSON: the process died. Its own prompts and PowerShell's position noise are not the reason.
+  // No JSON summary: the process died. Its own prompts and PowerShell's position noise are not the reason.
   const said = stderr.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !/^(watching |recorded:|At |\+ )/.test(l))
   return { recorded, error: (said[0] ?? `the watcher stopped before it started (exit ${code ?? '?'})`).slice(0, 200) }
 }
 
 /**
- * A `watch` that can be called off: the teaching flow's skip button. Resolves
- * with the records so far, or with why it could not watch at all.
+ * A `watch` that can be called off: the teaching flow's "that's it" and skip
+ * buttons both end it, and the clicks streamed so far come back either way.
+ * `onClick` fires as each click lands, so a panel can show the trail growing.
  */
-export function watchClicks(binary: string, pid: number, clicks: number, seconds: number): { done: Promise<WatchOutcome>; cancel: () => void } {
+export function watchClicks(
+  binary: string,
+  pid: number,
+  clicks: number,
+  seconds: number,
+  onClick?: (record: Record<string, unknown>, count: number) => void
+): { done: Promise<WatchOutcome>; cancel: () => void } {
   const cmd = commandFor(binary, ['watch', String(pid), '--count', String(clicks), '--seconds', String(seconds)])
   const child = spawn(cmd.file, cmd.args, { stdio: ['ignore', 'pipe', 'pipe'] })
   let out = ''
   let err = ''
   let cancelled = false
-  child.stdout.on('data', (chunk) => { out += String(chunk) })
+  let pending = ''
+  let seen = 0
+  child.stdout.on('data', (chunk) => {
+    const text = String(chunk)
+    out += text
+    if (!onClick) return
+    pending += text
+    const lines = pending.split(/\r?\n/)
+    pending = lines.pop() ?? ''
+    for (const line of lines) {
+      const click = parseClickLine(line)
+      if (click) onClick(click, ++seen)
+    }
+  })
   child.stderr.on('data', (chunk) => { err += String(chunk) })
   const done = new Promise<WatchOutcome>((resolve) => {
     child.on('close', (code) => resolve(readWatchOutput(out, err, code, cancelled)))

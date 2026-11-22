@@ -454,6 +454,13 @@ let watchCallback: CGEventTapCallBack = { _, type, event, _ in
         record["clickedExactly"] = exact.json(withFrame: false)
     }
     watchRecorded.append(record)
+    // Stream the click the moment it lands, one compact line, so the caller
+    // can show the trail growing and keep it when the operator ends the
+    // watch early ("that's it") — the final summary never prints then.
+    if let line = try? JSONSerialization.data(withJSONObject: ["click": record], options: [.sortedKeys]) {
+        FileHandle.standardOutput.write(line)
+        FileHandle.standardOutput.write("\n".data(using: .utf8)!)
+    }
     FileHandle.standardError.write("  recorded: \(node.role) \"\(node.name ?? "")\" at \(path ?? "?")\n".data(using: .utf8)!)
     return Unmanaged.passUnretained(event)
 }

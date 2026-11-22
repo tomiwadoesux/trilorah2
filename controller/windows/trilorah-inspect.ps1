@@ -401,6 +401,9 @@ switch ($command) {
             $node = Describe $control $(if ($path) { $path } else { '?' }) 0
             $rec = Strip $node; $rec.clickedAt = @{ x = $pt.X; y = $pt.Y }
             $recorded += $rec
+            # Stream the click the moment it lands, one compact line, so the caller can show the
+            # trail growing and keep it when the operator ends the watch early ("that's it").
+            [Console]::Out.WriteLine('{"click":' + ($rec | ConvertTo-Json -Depth 8 -Compress) + '}')
             [Console]::Error.WriteLine("  recorded: $($node.role) `"$($node.title)`" at $($rec.path)")
           }
         } catch {}

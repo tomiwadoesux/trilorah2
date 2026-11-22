@@ -36,7 +36,7 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
   const asVerse = (reference: string): ControlVerse => ({ book: reference, chapter: 0, verse: 0, version: recipe.app.name, text: '' })
 
   /** Runs one ability; returns its problem, if any, having told whoever listens. */
-  async function run(ability: 'find' | 'show' | 'clear' | 'next' | 'previous', vars: { query?: string } = {}): Promise<string | null> {
+  async function run(ability: 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous', vars: { query?: string } = {}): Promise<string | null> {
     const result = await perform(recipe, ability, inspector, vars)
     if (result.ok) return null
     const problem = result.failed?.problem ?? `${recipe.app.name} did not ${ability}`
@@ -54,12 +54,12 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
     startListening: (device) => own.startListening(device),
     stopListening: () => own.stopListening(),
     stageScripture: (reference) => {
-      if (!recipe.abilities.find) {
-        opts.onProblem?.('find', `${recipe.app.name} was never taught how to search`)
+      if (!recipe.abilities.findVerse) {
+        opts.onProblem?.('findVerse', `${recipe.app.name} was never taught where verses are searched — re-teach it`)
         return null
       }
       staged = asVerse(reference)
-      void run('find', { query: reference }).then((problem) => { if (problem) staged = null })
+      void run('findVerse', { query: reference }).then((problem) => { if (problem) staged = null })
       return staged
     },
     take: () => {
@@ -69,9 +69,11 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
       return taking
     },
     stageSong: (title) => {
-      if (!recipe.abilities.find) return { error: `${recipe.app.name} was never taught how to search` }
+      // Never the verse box as a stand-in: a song title typed into a scripture
+      // search is the kind of wrong-screen moment teaching exists to prevent.
+      if (!recipe.abilities.findSong) return { error: `${recipe.app.name} was never taught where songs are searched — re-teach it and answer the song question` }
       staged = asVerse(title)
-      void run('find', { query: title }).then((problem) => { if (problem) staged = null })
+      void run('findSong', { query: title }).then((problem) => { if (problem) staged = null })
       return { staged }
     },
     clearLive: () => { void run('clear').then((problem) => { if (!problem) live = null }) },

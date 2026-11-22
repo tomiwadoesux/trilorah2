@@ -44,10 +44,22 @@ export interface ControlCues {
 
 export interface RecipeStep extends ControlCues {
   action: StepAction
+  /**
+   * A click on the way to the target, not the target itself: the Collections
+   * tab the operator opened before reaching the search box. Replay presses
+   * these only when the target does not resolve on its own, so an already
+   * open panel is not toggled shut.
+   */
+  enroute?: boolean
 }
 
-/** The four questions, as the abilities a recipe can answer. */
-export type Ability = 'find' | 'show' | 'clear' | 'next' | 'previous'
+/**
+ * The six questions, as the abilities a recipe can answer. Verses and songs
+ * get separate finds because presentation apps usually keep them in separate
+ * places (EasyWorship: Scriptures vs Songs) — one taught box must never have
+ * the other's words typed into it.
+ */
+export type Ability = 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous'
 
 export interface Recipe {
   format: typeof RECIPE_FORMAT
@@ -92,6 +104,7 @@ function parseStep(raw: unknown): RecipeStep | null {
   if (str(s.name)) step.name = s.name
   if (str(s.id)) step.id = s.id
   if (str(s.label)) step.label = s.label
+  if (s.enroute === true) step.enroute = true
   // A press or type needs something to aim at; menu, key and wait do not.
   if ((action.do === 'press' || action.do === 'type') && !step.path && !step.name && !step.id) return null
   return step
@@ -108,13 +121,21 @@ export function parseRecipe(raw: unknown): Recipe | null {
   const abilitiesRaw = r.abilities as Record<string, unknown> | undefined
   if (!abilitiesRaw || typeof abilitiesRaw !== 'object') return null
   const abilities: Recipe['abilities'] = {}
-  for (const key of ['find', 'show', 'clear', 'next', 'previous'] as const) {
+  // 'find' is the old single search, from before verses and songs were taught
+  // apart; an old recipe's one box was taught on "a song or verse", so it
+  // serves as both until the church re-teaches.
+  for (const key of ['findVerse', 'findSong', 'find', 'show', 'clear', 'next', 'previous'] as const) {
     const steps = abilitiesRaw[key]
     if (steps === undefined) continue
     if (!Array.isArray(steps) || steps.length === 0) return null
     const parsed = steps.map(parseStep)
     if (parsed.some((s) => s === null)) return null
-    abilities[key] = parsed as RecipeStep[]
+    if (key === 'find') {
+      abilities.findVerse ??= parsed as RecipeStep[]
+      abilities.findSong ??= parsed as RecipeStep[]
+    } else {
+      abilities[key] = parsed as RecipeStep[]
+    }
   }
   if (!abilities.show) return null
   const taught = r.taught as Record<string, unknown> | undefined

@@ -1,34 +1,71 @@
 import { cuesFromWatch, RECIPE_FORMAT, type Ability, type Recipe, type RecipePlatform, type RecipeStep } from './schema'
 
 /**
- * The four questions. Trilorah asks, the operator shows, a recipe is written.
+ * The six questions. Trilorah asks, the operator shows, a recipe is written.
  *
- *   find   "Show me how you search for a song or verse here."  (click the box)
- *   show   "Show me how you put what's selected on the screen." (click the button)
- *   clear  "Show me how you take it off — clear or black."
- *   next   "Show me next." / previous
+ * Each question is a small rehearsal of Sunday, not an instruction: "pull up
+ * John 3:16 the way you would live", so the operator understands what the
+ * click is for. An answer is the WHOLE trail of clicks it took — opening
+ * Collections, switching to the Scripture tab, then the search box — ended
+ * by the operator saying "that's it" (or the trail filling up). The last
+ * click is the target; the clicks before it are the way there, kept as
+ * `enroute` steps that replay only when the target is not already reachable.
  *
- * Each answer is one or more clicks recorded by the inspector's `watch`: the
- * element's path and cues, never a mouse position. The `find` answer becomes
- * a type step (the operator's query goes in at run time); the rest become
- * presses. Learning happens at sound check, never during a service — the
- * caller enforces that; this only writes what it is shown.
+ * Verses and songs are asked separately: most presentation software keeps
+ * them in different places, and typing a song title into a scripture box
+ * (or the reverse) is exactly the Sunday surprise teaching exists to prevent.
+ *
+ * Learning happens at sound check, never during a service — the caller
+ * enforces that; this only writes what it is shown.
  */
 
 export interface Question {
   ability: Ability
   ask: string
-  /** How many clicks make up the answer (a search is usually the box; go-live is one button). */
-  clicks: number
+  /** The most clicks one answer can hold; the trail usually ends on "that's it" well before. */
+  maxClicks: number
   required: boolean
 }
 
+export const MAX_TRAIL = 8
+
 export const QUESTIONS: Question[] = [
-  { ability: 'find', ask: 'Show me how you search for a song or verse here — click the search box.', clicks: 1, required: false },
-  { ability: 'show', ask: "Show me how you put what's selected on the screen — click that button.", clicks: 1, required: true },
-  { ability: 'clear', ask: 'Show me how you take it off the screen — click clear or black.', clicks: 1, required: false },
-  { ability: 'next', ask: 'Show me next — click the button that steps forward.', clicks: 1, required: false },
-  { ability: 'previous', ask: 'Show me previous — click the button that steps back.', clicks: 1, required: false },
+  {
+    ability: 'findVerse',
+    ask: 'Pull up John 3:16 the way you would on a Sunday. If you open a Bible or Scripture panel on the way, those clicks are part of the lesson — finish on the box you type the verse into.',
+    maxClicks: MAX_TRAIL,
+    required: false,
+  },
+  {
+    ability: 'findSong',
+    ask: 'Now a song: go where you would look up "Amazing Grace" and finish on the box you type the title into. Songs often live somewhere else than verses — if it is the same box here, click the same box again.',
+    maxClicks: MAX_TRAIL,
+    required: false,
+  },
+  {
+    ability: 'show',
+    ask: 'Put what is selected on the screen, the way you would live — click your go-live.',
+    maxClicks: MAX_TRAIL,
+    required: true,
+  },
+  {
+    ability: 'clear',
+    ask: 'The preacher has moved on. Click whatever takes it off the wall — clear, black, or logo.',
+    maxClicks: MAX_TRAIL,
+    required: false,
+  },
+  {
+    ability: 'next',
+    ask: 'A verse runs over two pages. Click what steps forward.',
+    maxClicks: MAX_TRAIL,
+    required: false,
+  },
+  {
+    ability: 'previous',
+    ask: 'And click what steps back.',
+    maxClicks: MAX_TRAIL,
+    required: false,
+  },
 ]
 
 export interface WatchRecord {
@@ -41,13 +78,13 @@ export interface WatchRecord {
   [key: string]: unknown
 }
 
-/** The inspector's `watch`, as the teacher needs it: ask for N clicks, get the records (or nothing, on skip/timeout). */
-export type Watcher = (ability: Ability, clicks: number) => Promise<WatchRecord[]>
+/** The inspector's `watch`, as the teacher needs it: watch for up to N clicks, get the trail (or nothing, on skip/timeout). */
+export type Watcher = (ability: Ability, maxClicks: number) => Promise<WatchRecord[]>
 
 export interface TeachOptions {
   platform: RecipePlatform
   app: { id: string; name: string; version?: string }
-  /** Which questions to ask; default all five. */
+  /** Which questions to ask; default all six. */
   questions?: Question[]
   /** Called before each question with the words to show the operator. */
   say?: (ask: string, ability: Ability) => void
@@ -62,19 +99,39 @@ export interface TeachResult {
   problem?: string
 }
 
-/** One recorded click, as the step a recipe keeps. The find answer types; everything else presses. */
-export function stepFromRecord(ability: Ability, record: WatchRecord): RecipeStep {
-  const cues = cuesFromWatch(record, labelFor(ability, record))
-  const typing = ability === 'find' || /text|search|combo/i.test(record.role ?? '')
-  return typing
-    ? { ...cues, action: { do: 'type', text: '$query', submit: true } }
-    : { ...cues, action: { do: 'press' } }
+/** The control's own words, for showing the operator what was recorded. */
+export function plainName(record: WatchRecord): string {
+  const name = [record.title, record.description, record.help].find((v) => typeof v === 'string' && v) as string | undefined
+  const role = String(record.role ?? '').replace(/^AX/, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
+  return name ? `${role || 'control'} "${name}"` : (role || 'control')
 }
 
 function labelFor(ability: Ability, record: WatchRecord): string {
   const name = [record.title, record.description, record.help].find((v) => typeof v === 'string' && v) as string | undefined
-  const what = ability === 'find' ? 'search box' : ability === 'show' ? 'go-live button' : `${ability} button`
+  const what =
+    ability === 'findVerse' ? 'verse search box'
+    : ability === 'findSong' ? 'song search box'
+    : ability === 'show' ? 'go-live button'
+    : `${ability} button`
   return name ? `the ${what} ("${name}")` : `the ${what}`
+}
+
+/**
+ * A recorded trail, as the steps a recipe keeps. The last click is the
+ * target — a type step for the finds, a press for everything else. The
+ * clicks before it are the way there: presses, marked `enroute`, replayed
+ * only when the target is not already reachable.
+ */
+export function stepsFromTrail(ability: Ability, records: WatchRecord[]): RecipeStep[] {
+  return records.map((record, i): RecipeStep => {
+    if (i < records.length - 1) {
+      return { ...cuesFromWatch(record, `on the way: ${plainName(record)}`), enroute: true, action: { do: 'press' } }
+    }
+    const typing = ability === 'findVerse' || ability === 'findSong'
+    return typing
+      ? { ...cuesFromWatch(record, labelFor(ability, record)), action: { do: 'type', text: '$query', submit: true } }
+      : { ...cuesFromWatch(record, labelFor(ability, record)), action: { do: 'press' } }
+  })
 }
 
 export async function teach(watch: Watcher, opts: TeachOptions): Promise<TeachResult> {
@@ -82,13 +139,13 @@ export async function teach(watch: Watcher, opts: TeachOptions): Promise<TeachRe
   const skipped: Ability[] = []
   for (const q of opts.questions ?? QUESTIONS) {
     opts.say?.(q.ask, q.ability)
-    const records = await watch(q.ability, q.clicks)
-    if (records.length < q.clicks) {
+    const records = await watch(q.ability, q.maxClicks)
+    if (records.length === 0) {
       skipped.push(q.ability)
       if (q.required) return { recipe: null, skipped, problem: `${opts.app.name} needs the "${q.ability}" answer — without it Trilorah cannot put anything on its screen` }
       continue
     }
-    abilities[q.ability] = records.map((r) => stepFromRecord(q.ability, r))
+    abilities[q.ability] = stepsFromTrail(q.ability, records)
   }
   return {
     recipe: {
