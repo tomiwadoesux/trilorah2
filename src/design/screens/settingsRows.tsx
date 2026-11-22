@@ -534,18 +534,6 @@ export function RowList({
   );
 }
 
-/* The curated faces, shared by Settings and anything that previews them. */
-export const SCRIPTURE_FACES: FontFace[] = [
-  { id: 'cormorant', family: 'Cormorant Garamond', stack: '"Cormorant Garamond", Georgia, serif', kind: 'serif' },
-  { id: 'eb-garamond', family: 'EB Garamond', stack: '"EB Garamond", Georgia, serif', kind: 'serif' },
-  { id: 'playfair', family: 'Playfair Display', stack: '"Playfair Display", Georgia, serif', kind: 'serif' },
-  { id: 'baskerville', family: 'Libre Baskerville', stack: '"Libre Baskerville", Georgia, serif', kind: 'serif' },
-  { id: 'fraunces', family: 'Fraunces', stack: '"Fraunces", Georgia, serif', kind: 'serif' },
-  { id: 'newsreader', family: 'Newsreader', stack: '"Newsreader", Georgia, serif', kind: 'serif' },
-  { id: 'inter', family: 'Inter', stack: '"Inter", system-ui, sans-serif', kind: 'sans' },
-  { id: 'manrope', family: 'Manrope', stack: '"Manrope", system-ui, sans-serif', kind: 'sans' },
-  { id: 'dm-sans', family: 'DM Sans', stack: '"DM Sans", system-ui, sans-serif', kind: 'sans' },
-  { id: 'outfit', family: 'Outfit', stack: '"Outfit", system-ui, sans-serif', kind: 'sans' },
-  { id: 'jakarta', family: 'Plus Jakarta Sans', stack: '"Plus Jakarta Sans", system-ui, sans-serif', kind: 'sans' },
-  { id: 'figtree', family: 'Figtree', stack: '"Figtree", system-ui, sans-serif', kind: 'sans' },
-];
+/* The curated faces, shared by Settings, the preview renderer and the
+   projector (shared/displayFont.ts). Re-exported so existing imports hold. */
+export { SCRIPTURE_FACES } from '../../../shared/displayFont';

@@ -5,7 +5,7 @@ import type { RunSegment } from '../../shared/operatorRun';
 import { operatorRunStore } from '../stores/operatorRunStore';
 
 const theme = {
-  backgroundId: 'imported-background', dimness: 42, blur: 3, shadow: 77,
+  backgroundId: 'imported-background', dimness: 42, blur: 3, shadow: 77, weight: 600,
   font: 'serif' as const, textCase: 'none' as const, textSpacing: 'normal' as const, size: 4, verseSize: 2, refGap: 1.25,
   layout: 'bottom-right' as const, safeMargin: 12.5, textWidth: 75,
 };

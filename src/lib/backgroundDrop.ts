@@ -3,8 +3,9 @@ import { isVideoUrl, toDisplayUrl } from '../../shared/mediaUrl'
 import { clampTextWidth } from '../../shared/textWidth'
 import { resolveTextCase } from '../../shared/textCase'
 import { resolveTextSpacing } from '../../shared/textSpacing'
-import { isTextPosition } from '../../shared/textPosition'
-import { outputThemeSettings } from './outputTheme'
+import { isTextPosition, resolveTextAlign } from '../../shared/textPosition'
+import { outputThemeSettings, sizeFromScale } from './outputTheme'
+import { scriptureFaceById } from '../../shared/displayFont'
 import type { ThemeMedia } from '../design/screens/mediaLibrary'
 import type { SlideTheme } from '../design/screens/slide'
 
@@ -122,8 +123,11 @@ const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.is
  */
 export function themeFieldsFromSettings(s: Record<string, unknown>): Partial<SlideTheme> {
   const out: Partial<SlideTheme> = {}
-  if (s.scriptureFontPreset === 'display-serif') out.font = 'serif'
-  else if (s.scriptureFontPreset === 'modern-sans') out.font = 'default'
+  const face = scriptureFaceById(s.scriptureFontPreset)
+  if (face) out.font = face.kind === 'serif' ? 'serif' : 'default'
+  if (isNumber(s.defaultFontWeight)) out.weight = s.defaultFontWeight
+  if (isNumber(s.defaultFontSize)) out.size = sizeFromScale(s.defaultFontSize)
+  if (isNumber(s.textShadow)) out.shadow = s.textShadow
   if (isNumber(s.overlayOpacity)) out.dimness = round2(s.overlayOpacity * 100)
   if (isNumber(s.backgroundBlur)) out.blur = s.backgroundBlur
   if (s.backgroundVideoSpeed !== undefined) out.videoSpeed = videoSpeed(s.backgroundVideoSpeed)
@@ -131,6 +135,7 @@ export function themeFieldsFromSettings(s: Record<string, unknown>): Partial<Sli
   if (s.backgroundVideoSound !== undefined) out.videoSound = s.backgroundVideoSound === true
   if (isTextPosition(s.verseLayout)) out.layout = s.verseLayout
   else if (s.verseLayout === 'bottom') out.layout = 'bottom-center'
+  if (s.textAlign !== undefined) out.textAlign = resolveTextAlign(s.textAlign)
   if (isNumber(s.safeMargin)) out.safeMargin = s.safeMargin
   if (isNumber(s.textWidth)) out.textWidth = clampTextWidth(s.textWidth)
   if (s.textCase !== undefined) out.textCase = resolveTextCase(s.textCase)
@@ -143,12 +148,16 @@ export function themeFieldsFromSettings(s: Record<string, unknown>): Partial<Sli
 /* Which theme field each stored setting is, for the comparison below. */
 const WALL_FIELDS: ReadonlyArray<readonly [string, keyof SlideTheme]> = [
   ['scriptureFontPreset', 'font'],
+  ['defaultFontWeight', 'weight'],
+  ['defaultFontSize', 'size'],
+  ['textShadow', 'shadow'],
   ['overlayOpacity', 'dimness'],
   ['backgroundBlur', 'blur'],
   ['backgroundVideoSpeed', 'videoSpeed'],
   ['backgroundVideoBass', 'videoBass'],
   ['backgroundVideoSound', 'videoSound'],
   ['verseLayout', 'layout'],
+  ['textAlign', 'textAlign'],
   ['safeMargin', 'safeMargin'],
   ['textWidth', 'textWidth'],
   ['textCase', 'textCase'],

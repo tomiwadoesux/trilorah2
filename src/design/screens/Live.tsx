@@ -30,6 +30,7 @@ import { outputThemeSettings } from '../../lib/outputTheme';
 import { NO_BACKGROUND, backgroundDropAction, backgroundSrc, backgroundFor, canBeBackground, isBackgroundDropKey, liveBackgroundNotice, liveThemeFromSettings, previewBackgroundNotice, sameTheme, wallBackgroundMedia, wallUrlToMediaId, type BackgroundDropKey } from '../../lib/backgroundDrop';
 import { toDisplayUrl } from '../../../shared/mediaUrl';
 import { TEXT_WIDTH } from '../../../shared/textWidth';
+import { TEXT_ALIGNMENTS, resolveTextAlign, type TextAlignOption } from '../../../shared/textPosition';
 import { resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { resolveTextSpacing, type TextSpacing } from '../../../shared/textSpacing';
 import { forgetTriMedia, normalizeTriTheme, readTriLocal, stageTriDisplay, updateStagedTriDisplay, TRI_DISPLAY_EVENT, TRI_DISPLAY_KEY, TRI_THEME_EVENT, TRI_THEME_KEY } from '../../lib/triClient';
@@ -380,14 +381,20 @@ interface ThemeSettings {
   blur: number;
   shadow: number;
   font: FontOption;
+  /** Settings → Appearance's face, carried for drawing only (slide.tsx). */
+  facePreset?: string;
   textCase?: TextCase;
   textSpacing?: TextSpacing;
   size: number;
+  /** The body's CSS weight, 100–900. */
+  weight: number;
   verseSize: number;
   refGap: number;
   layout: TextPositionOption;
   safeMargin: number;
   textWidth: number;
+  /** The lines within the block — 'auto' follows the position. */
+  textAlign?: TextAlignOption;
 }
 
 /*
@@ -435,11 +442,13 @@ const DEFAULT_THEME: ThemeSettings = {
   shadow: 65,
   font: 'default',
   size: 0,
+  weight: 600,
   verseSize: 0,
   refGap: 0.9,
   layout: 'center',
   safeMargin: 10,
   textWidth: TEXT_WIDTH.default,
+  textAlign: 'auto',
 };
 
 /*
@@ -625,9 +634,10 @@ function ThemesEditor({
         onTextCaseChange={(textCase) => onChange({ ...theme, font: theme.font === 'uppercase' ? 'default' : theme.font, textCase })}
         onTextSpacingChange={(textSpacing) => onChange({ ...theme, textSpacing })}
       /> },
-    { id: 'size', keywords: 'text font size shadow strength readability', content:
+    { id: 'size', keywords: 'text font size bold boldness weight thick thin heavy shadow strength dark readability', content:
       <div className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
         <Slider guideId="themes-text-size" label="text size" value={theme.size} onChange={(size) => onChange({ ...theme, size })} min={-2} max={8} />
+        <Slider guideId="themes-weight" label="boldness" value={theme.weight} onChange={(weight) => onChange({ ...theme, weight })} min={100} max={900} step={100} />
         <Slider guideId="themes-shadow" label="shadow strength" value={theme.shadow} onChange={(shadow) => onChange({ ...theme, shadow })} />
       </div> },
     { id: 'reference', keywords: 'reference scripture verse size gap spacing', content:
@@ -652,8 +662,26 @@ function ThemesEditor({
       <Slider guideId="themes-video-bass" label="bass boost" value={videoBass(theme.videoBass)} min={0} max={12} step={1} valueSuffix=" dB" disabled={!theme.videoSound} onChange={(videoBass) => onChange({ ...theme, videoBass })}/>
       <p className="text-xs text-[var(--tri-ink-muted)]">Audio plays on the main live screen. Clips without a soundtrack stay silent.</p>
     </> }] : []),
-    { id: 'position', keywords: 'text layout position alignment screen top middle center bottom left right', content:
-      <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} /> },
+    { id: 'position', keywords: 'text layout position alignment align aligned screen top middle center bottom left right ragged flush', content: <>
+      <TextPositionPicker label="position on the screen" value={theme.layout} onChange={(layout) => onChange({ ...theme, layout })} columns={4} />
+      {/* The lines' own alignment, apart from where the block sits. auto is
+          what every theme did before this existed: the lines follow the
+          position. */}
+      <div className="flex min-w-0 flex-col gap-2">
+        <span className="tri-label tri-control-heading text-[var(--tri-ink-muted)]">line alignment</span>
+        <div role="group" aria-label="line alignment" className="flex flex-wrap gap-2">
+          {TEXT_ALIGNMENTS.map((align) => (
+            <Button
+              key={align}
+              guideId={`themes-align-${align}`}
+              label={align === 'auto' ? 'follow position' : align}
+              pressed={resolveTextAlign(theme.textAlign) === align}
+              onClick={() => onChange({ ...theme, textAlign: align })}
+            />
+          ))}
+        </div>
+      </div>
+    </> },
     { id: 'spacing', keywords: 'text layout width safe margin spacing edges screen', content: <>
       <div className="grid min-w-0 grid-cols-2 gap-x-4">
         <Slider guideId="themes-safe-margin" label="safe margin" value={theme.safeMargin} onChange={(safeMargin) => onChange({ ...theme, safeMargin })} min={SAFE_MARGIN.min} max={SAFE_MARGIN.max} step={SAFE_MARGIN.step} valueSuffix="%" ticks={5} />
@@ -1090,7 +1118,15 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
           live={live === media.id || (projector.screen === 'live' && projector.live?.source === 'media' && projector.live.id === media.id)}
           dragProps={media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : undefined}
           onSelect={() => press(media)}
-          onBackground={canBeBackground(media) ? () => { addMedia({ ...media, collection: 'themes' }); void onChoose(media.id, 'preview', 'pick').then(said => setNotice(`added to themes · ${said}`)); } : undefined}
+          onBackground={canBeBackground(media) ? () => {
+            /* A COPY goes to themes; the card stays in media. Moving it used
+               to turn a clip into a silent looping background that could no
+               longer be staged as content with its sound — and the operator
+               could not tell where it had gone. */
+            const copy = { ...media, id: `${media.id}::bg`, collection: 'themes' as const };
+            addMedia(copy);
+            void onChoose(copy.id, 'preview', 'pick').then(said => setNotice(`copied to themes · ${said}`));
+          } : undefined}
           onRemove={media.url ? () => remove(media) : undefined}
         />)}
       </MediaLibraryGrid> : <MediaGrid key={`${view}-${kind}-${query}`}>{shown.map(media => <div key={media.id} className="group/media relative min-w-0" {...(media.url ? drag.bind(() => ({ source: 'media', mediaId: media.id, label: media.label, preview: mediaSrc(media), path: media.url, mediaKind: media.kind ?? 'photo' })) : {})}
@@ -1107,6 +1143,12 @@ function MediaBrowser({ selected, live, onChoose, onBackgroundGone, onOpenSettin
           {view === 'themes' && canBeBackground(media) ? <button type="button" data-guide="media-wall" title="on the wall now — the background only, the words stay" aria-label={`put ${media.label} on the wall now`}
             className={cx(surface({ tone: 'gold', shape: 'control', interactive: true }), toneClass('gold'), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); void onChoose(media.id, 'live').then(setNotice); }}><MediaIcon size={12} /></button> : null}
+          {/* The way back for a clip or picture that landed here by mistake:
+              a theme loops silently behind the words; media plays as content,
+              a clip with its own sound. */}
+          {view === 'themes' && media.url ? <button type="button" data-guide="media-to-media" title={media.kind === 'video' ? 'send to media — stage it as content, played with its sound' : 'send to media — stage it as content'} aria-label={`send ${media.label} to media`}
+            className={cx(surface({ tone: 'ash', shape: 'control', interactive: true }), toneClass('ash'), 'grid size-7 place-items-center')}
+            onClick={(e) => { e.stopPropagation(); addMedia({ ...media, collection: 'media' }); setNotice(`${media.label} is under media now${media.kind === 'video' ? ' — staged from there it plays with its sound' : ''}`); }}><PresentationIcon size={12} /></button> : null}
           {media.url ? <button type="button" data-guide="media-delete" title={`delete ${media.label}`} aria-label={`delete ${media.label}`}
             className={cx(surface({ tone: 'danger', shape: 'control', interactive: true }), toneClass('danger'), 'grid size-7 place-items-center')}
             onClick={(e) => { e.stopPropagation(); remove(media); }}><TrashIcon size={12} /></button> : null}
@@ -4755,6 +4797,12 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
   const [liveTheme, setLiveTheme] = useState<ThemeSettings>(DEFAULT_THEME);
   const liveThemeNow = useRef(liveTheme);
   liveThemeNow.current = liveTheme;
+  /* Settings → Appearance's scripture face. The theme says serif or sans;
+     this says WHICH serif or sans, so the preview draws the letters the wall
+     will use and a push stops flattening them back to Georgia/Roboto. */
+  const [facePreset, setFacePreset] = useState<string | undefined>(undefined);
+  const facePresetNow = useRef(facePreset);
+  facePresetNow.current = facePreset;
   /* The wall's background as this window last wrote or read it (display
      form). A change that arrives with any other URL was made somewhere else.
      Null until the first read. */
@@ -4784,7 +4832,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
        which could be an announcement photo or a video's poster. */
     const url = chosen === NO_BACKGROUND ? '' : media ? backgroundSrc(media, mediaSrc) : null;
     const appearance = readTriLocal<Record<string, unknown>>(TRI_DISPLAY_KEY, {});
-    const settings: Record<string, unknown> = { ...appearance, ...outputThemeSettings(previewTheme, url ?? ''),
+    const settings: Record<string, unknown> = { ...appearance, ...outputThemeSettings(previewTheme, url ?? '', facePresetNow.current),
       ...(typeof appearance.backgroundFit === 'string' ? { backgroundFit: appearance.backgroundFit } : {}),
       ...(typeof appearance.backgroundPosition === 'string' ? { backgroundPosition: appearance.backgroundPosition } : {}),
     };
@@ -4852,6 +4900,7 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
         return;
       }
       landing.current = null;
+      setFacePreset(typeof settings.scriptureFontPreset === 'string' ? settings.scriptureFontPreset : undefined);
       const raw = typeof settings.defaultBackgroundUrl === 'string' ? settings.defaultBackgroundUrl : '';
       const url = toDisplayUrl(raw);
       let backgroundId = wallUrlToMediaId(url, getMediaLibrary(), mediaSrc, liveThemeNow.current.backgroundId);
@@ -5537,8 +5586,8 @@ function LiveBody({ state, backgroundDrop }: { state?: string; backgroundDrop?: 
               say={say}
               editingTheme={TABS[tab]?.id === 'themes'}
               onThemeChange={setPreviewTheme}
-              previewTheme={previewTheme}
-              liveTheme={liveTheme}
+              previewTheme={facePreset ? { ...previewTheme, facePreset } : previewTheme}
+              liveTheme={facePreset ? { ...liveTheme, facePreset } : liveTheme}
               onFiles={dropFiles}
 
             />

@@ -11,7 +11,8 @@ import { deckPage, type DeckPageSpec } from './deckPage';
 import { BOOKS, CHAPTER_COUNTS, bookIdFromName } from '../../lib/books';
 import { parts } from '../../../shared/referenceParts';
 import { editSongCard, songCards } from '../../../shared/songCards';
-import { isTextPosition } from '../../../shared/textPosition';
+import { isTextPosition, TEXT_ALIGNMENTS } from '../../../shared/textPosition';
+import { scriptureFaceById } from '../../../shared/displayFont';
 import { readingStep } from '../../lib/readingStep';
 import { capitalizeScriptureNames } from '../../../shared/scriptureNames';
 
@@ -242,11 +243,12 @@ export function useMobileRemote() {
           const result=await api!.showQr?.(); if (!result?.success) throw new Error(result?.error || 'Set up the public church link first.'); return {url:result.url};
         }
         case 'theme': {
-          const key=text(a.key); const ranges:Record<string,[number,number]>={safeMargin:[3,20],refScale:[0.4,2],refGap:[0,10],defaultFontSize:[0.5,2],overlayOpacity:[0,1]};
+          const key=text(a.key); const ranges:Record<string,[number,number]>={safeMargin:[3,20],refScale:[0.4,2],refGap:[0,10],defaultFontSize:[0.5,2],overlayOpacity:[0,1],defaultFontWeight:[100,900],textShadow:[0,100]};
           if (key==='backgroundId') { const bg=m.find(x=>x.id===a.value && x.url); if(!bg) throw new Error('Background not found'); return api!.setSetting('defaultBackgroundUrl',bg.url); }
-          if (key==='scriptureFontPreset' && ['display-serif','classic-serif','modern-sans','bold-slab','display-rounded'].includes(String(a.value))) return api!.setSetting(key,a.value);
+          if (key==='scriptureFontPreset' && scriptureFaceById(String(a.value))) return api!.setSetting(key,a.value);
           if (key==='defaultTextColor' && /^#[0-9a-f]{6}$/i.test(String(a.value))) return api!.setSetting(key,a.value);
           if (key==='verseLayout' && (isTextPosition(a.value) || a.value === 'bottom')) return api!.setSetting(key,a.value);
+          if (key==='textAlign' && TEXT_ALIGNMENTS.includes(a.value as never)) return api!.setSetting(key,a.value);
           if (ranges[key] && typeof a.value==='number' && Number.isFinite(a.value)) return api!.setSetting(key,Math.max(ranges[key][0],Math.min(ranges[key][1],a.value)));
           throw new Error('Unsupported theme setting');
         }

@@ -17,15 +17,32 @@ export function isTextPosition(value: unknown): value is TextPositionOption {
   return TEXT_POSITIONS.some((position) => position.id === value);
 }
 
-export function resolveTextPosition(value: unknown) {
+/**
+ * How the LINES sit within the block — its own choice, apart from where the
+ * block sits on the screen. 'auto' is what every older theme had: the lines
+ * follow the position (a bottom-left block reads ragged-left, a centred one
+ * centred). The others pin it, so a centred block can carry flush-left lines
+ * and a corner block can carry centred ones.
+ */
+export const TEXT_ALIGNMENTS = ['auto', 'left', 'center', 'right'] as const;
+export type TextAlignOption = (typeof TEXT_ALIGNMENTS)[number];
+
+export function resolveTextAlign(value: unknown): TextAlignOption {
+  return TEXT_ALIGNMENTS.includes(value as TextAlignOption) ? (value as TextAlignOption) : 'auto';
+}
+
+export function resolveTextPosition(value: unknown, align: unknown = 'auto') {
   // Older display settings called bottom-center simply "bottom".
   const id = value === 'bottom' ? 'bottom-center' : value;
   const position = TEXT_POSITIONS.find((item) => item.id === id) ?? TEXT_POSITIONS[0];
+  const chosen = resolveTextAlign(align);
   return {
     ...position,
     justifyContent: position.vertical === 'top' ? 'flex-start' : position.vertical === 'bottom' ? 'flex-end' : 'center',
+    /* Block placement follows the POSITION alone; the alignment override
+       moves the lines within the block, never the block on the screen. */
     alignItems: position.horizontal === 'left' ? 'flex-start' : position.horizontal === 'right' ? 'flex-end' : 'center',
-    textAlign: position.horizontal,
+    textAlign: chosen === 'auto' ? position.horizontal : chosen,
     referenceAbove: position.vertical === 'top',
   } as const;
 }

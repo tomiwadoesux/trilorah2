@@ -6,7 +6,7 @@ import { operatorRunStore } from '../stores/operatorRunStore';
 import { validRun } from './persistentRun';
 import type { SlideTheme } from '../design/screens/slide';
 import type { FontOption, TextPositionOption } from '../ui';
-import { isTextPosition } from '../../shared/textPosition';
+import { isTextPosition, resolveTextAlign } from '../../shared/textPosition';
 import { clampTextWidth } from '../../shared/textWidth';
 import { resolveTextCase } from '../../shared/textCase';
 import { resolveTextSpacing } from '../../shared/textSpacing';
@@ -42,8 +42,8 @@ export function readTriLocal<T>(key: string, fallback: T): T {
 
 /** Keep every editable layout field while rejecting malformed package values. */
 type PackageTheme = Omit<SlideTheme, 'font' | 'layout'> & { font: FontOption; layout: TextPositionOption };
-export function normalizeTriTheme(value: unknown, fallback: PackageTheme): PackageTheme & { textWidth: number } {
-  if (!value || typeof value !== 'object') return { ...fallback, textWidth: clampTextWidth(fallback.textWidth, 100 - fallback.safeMargin * 2) };
+export function normalizeTriTheme(value: unknown, fallback: PackageTheme): PackageTheme & { textWidth: number; weight: number } {
+  if (!value || typeof value !== 'object') return { ...fallback, weight: fallback.weight ?? 600, textWidth: clampTextWidth(fallback.textWidth, 100 - fallback.safeMargin * 2) };
   const input = value as Record<string, unknown>;
   const number = (key: keyof SlideTheme, min: number, max: number) => typeof input[key] === 'number' && Number.isFinite(input[key]) ? Math.max(min, Math.min(max, input[key] as number)) : fallback[key] as number;
   return {
@@ -52,12 +52,15 @@ export function normalizeTriTheme(value: unknown, fallback: PackageTheme): Packa
     ...(input.videoBass !== undefined || fallback.videoBass !== undefined ? { videoBass: videoBass(input.videoBass ?? fallback.videoBass) } : {}),
     ...(input.videoSound !== undefined || fallback.videoSound !== undefined ? { videoSound: (input.videoSound ?? fallback.videoSound) === true } : {}),
     dimness: number('dimness', 0, 100), blur: number('blur', 0, 12), shadow: number('shadow', 0, 100),
-    size: number('size', -2, 8), verseSize: number('verseSize', -2, 8), refGap: number('refGap', 0, 3), safeMargin: number('safeMargin', 3, 20),
+    size: number('size', -2, 8), weight: number('weight', 100, 900) ?? 600, verseSize: number('verseSize', -2, 8), refGap: number('refGap', 0, 3), safeMargin: number('safeMargin', 3, 20),
     textWidth: clampTextWidth(input.textWidth, 100 - number('safeMargin', 3, 20) * 2),
     font: ['default', 'serif', 'uppercase'].includes(String(input.font)) ? input.font as FontOption : fallback.font,
     textCase: resolveTextCase(input.textCase, typeof input.font === 'string' ? input.font : fallback.font),
     textSpacing: resolveTextSpacing(input.textSpacing),
     layout: isTextPosition(input.layout) ? input.layout : input.layout === 'bottom' ? 'bottom-center' : fallback.layout,
+    ...(input.textAlign !== undefined || fallback.textAlign !== undefined
+      ? { textAlign: resolveTextAlign(input.textAlign ?? fallback.textAlign) }
+      : {}),
   };
 }
 

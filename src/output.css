@@ -87,9 +87,10 @@ body {
   letter-spacing: var(--text-letter-spacing, 0em);
   text-wrap: balance;
   color: var(--verse-color, #ffffff);
-  text-shadow:
-    0 2px 14px rgba(0, 0, 0, 0.6),
-    0 0 3px rgba(0, 0, 0, 0.5);
+  /* From the theme's shadow-strength slider (shared/displayFont
+     verseTextShadow, set as --verse-shadow by output.tsx). In ems, so the
+     reference and credit lines carry proportionally lighter shadows. */
+  text-shadow: var(--verse-shadow, 0 2px 14px rgba(0, 0, 0, 0.6), 0 0 3px rgba(0, 0, 0, 0.5));
   max-width: 62ch;
 }
 
@@ -124,7 +125,7 @@ body {
   letter-spacing: 0.08em;
   font-size: calc(clamp(1.1rem, 1.8vw, 2.4vw) * var(--ref-scale, 1));
   color: var(--verse-color, #ffffff);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  text-shadow: var(--verse-shadow, 0 1px 8px rgba(0, 0, 0, 0.6));
 }
 
 /* Reference above the verse (the 'top' layout): the same one gap, on the
@@ -471,7 +472,7 @@ body {
   line-height: 1.35;
   text-transform: none;
   color: rgba(255, 255, 255, 0.55);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  text-shadow: var(--verse-shadow, 0 1px 6px rgba(0, 0, 0, 0.6));
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

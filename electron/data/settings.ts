@@ -27,7 +27,10 @@ export const defaults = {
   falsePositiveFilterEnabled: true,
   defaultFontSize: 1,
   defaultFontFamily: 'serif',
-  defaultFontWeight: 400,
+  // Scripture reads at a distance, over a background: a step above regular.
+  defaultFontWeight: 600,
+  /** The dark glow behind the words, 0–100 (shared/displayFont). */
+  textShadow: 65,
   defaultTextColor: '#ffffff',
   overlayOpacity: 0.3,
   mlModel: 'regex',
@@ -77,6 +80,8 @@ export const defaults = {
   backgroundVideoSpeed: 1,
   backgroundVideoBass: 0,
   backgroundVideoSound: false,
+  /** The lines within the verse block — 'auto' follows verseLayout. */
+  textAlign: 'auto' as 'auto' | 'left' | 'center' | 'right',
   backgroundFit: 'cover' as 'cover' | 'contain' | 'fill',
   backgroundPosition: 'center' as 'center' | 'top' | 'bottom',
   qrCompanionCaption: 'Follow along on your phone',

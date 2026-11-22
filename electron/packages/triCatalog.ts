@@ -7,11 +7,11 @@ import type { TriCategory, TriItem, TriSelection, TriSnapshot } from '../../shar
 /** Portable appearance only: never output device IDs, credentials or engine gates. */
 export const DISPLAY_KEYS = [
   'textTransition', 'textTransitionMs', 'defaultFontSize', 'defaultFontFamily',
-  'defaultFontWeight', 'defaultTextColor', 'overlayOpacity', 'defaultBackgroundUrl',
+  'defaultFontWeight', 'textShadow', 'defaultTextColor', 'overlayOpacity', 'defaultBackgroundUrl',
   'backgroundVideoSpeed', 'backgroundVideoBass', 'backgroundVideoSound',
   'backgroundBlur', 'backgroundFit', 'backgroundPosition', 'accentId', 'colorMode',
   'uiFont', 'scriptureFontPreset', 'displayVersion', 'secondaryVersion',
-  'streamLayout', 'verseLayout', 'safeMargin', 'textWidth', 'textCase', 'textSpacing', 'refScale', 'refGap', 'stageShowClock',
+  'streamLayout', 'verseLayout', 'textAlign', 'safeMargin', 'textWidth', 'textCase', 'textSpacing', 'refScale', 'refGap', 'stageShowClock',
   'stageShowNext', 'stageShowVerseText', 'stageShowTimer', 'stageShowElapsed',
   'breakOnVerse', 'showVerseNumbers', 'referenceMode', 'showTranslation', 'maxCharsPerSlide',
 ] as const

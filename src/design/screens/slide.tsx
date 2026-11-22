@@ -2,12 +2,12 @@ import { BackgroundVideo } from '../../components/BackgroundVideo';
 import { Fragment, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { splitVerseNumbers, type VerseSlide } from '../../../shared/verseDisplay';
 import type { TextTransition } from '../../../shared/textTransitions';
-import { resolveTextPosition } from '../../../shared/textPosition';
+import { resolveTextPosition, type TextAlignOption } from '../../../shared/textPosition';
 import { textWidthFrame } from '../../../shared/textWidth';
 import { formatDisplayText, resolveTextCase, type TextCase } from '../../../shared/textCase';
 import { LYRIC_TYPE, lyricLetterSpacing, resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../../../shared/textSpacing';
 import { useMediaLibrary, mediaSrc } from './mediaLibrary';
-import { displayFontFamily } from '../../../shared/displayFont';
+import { displayFontFamily, scriptureFaceForKind, verseTextShadow } from '../../../shared/displayFont';
 import { useFitText } from '../../lib/useFitText';
 import { backgroundFor, backgroundSrc } from '../../lib/backgroundDrop';
 
@@ -191,6 +191,10 @@ export interface SlideTheme {
   textSpacing?: TextSpacing;
   /** The scripture body. */
   size: number;
+  /** The body's CSS weight, 100–900. Absent in older saved themes (then 600). */
+  weight?: number;
+  /** Settings → Appearance's face id; `font` picks serif/sans, this picks which. */
+  facePreset?: string;
   /** The reference line (John 3:16) — its own size, not a scale of the body. */
   verseSize: number;
   /** Space between the body and the reference, in ems of the body. */
@@ -199,6 +203,8 @@ export interface SlideTheme {
   safeMargin: number;
   /** Percentage of the screen width; absent in older saved themes. */
   textWidth?: number;
+  /** The lines within the block — 'auto' (and absent) follows the position. */
+  textAlign?: TextAlignOption;
 }
 
 /* The wall's .output-verse-num, for the stage boxes and editor. */
@@ -256,10 +262,15 @@ export function SlideCanvas({
   /* No picture for NO_BACKGROUND, and a themes still — not the newest thing
      on the shelf — for a background that has gone (lib/backgroundDrop). */
   const media = backgroundFor(theme.backgroundId, library);
-  const { justifyContent, alignItems, textAlign, referenceAbove } = resolveTextPosition(theme.layout);
+  const { justifyContent, alignItems, textAlign, horizontal, referenceAbove } = resolveTextPosition(theme.layout, theme.textAlign);
   const atBottom = !referenceAbove;
-  const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, textAlign);
-  const fontFamily = displayFontFamily(theme.font);
+  /* The frame anchors on the position; the alignment only moves the lines. */
+  const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, horizontal);
+  /* The exact stack the wall will use: the theme's serif/sans choice lands
+     on Settings' chosen face when one is carried, Georgia/Roboto when not. */
+  const fontFamily = theme.facePreset
+    ? scriptureFaceForKind(theme.facePreset, theme.font === 'serif' ? 'serif' : 'sans').stack
+    : displayFontFamily(theme.font);
   const textTransform = resolveTextCase(theme.textCase, theme.font);
   const textSpacing = TEXT_SPACING[resolveTextSpacing(theme.textSpacing)];
 
@@ -278,7 +289,7 @@ export function SlideCanvas({
   const wordsRef = useRef<HTMLDivElement>(null);
   useFitText(textBoxRef, wordsRef, JSON.stringify([
     words?.lines ?? null, words?.reference ?? null, words?.lyric ?? null, transition?.play ?? null,
-    theme.font, theme.size, theme.verseSize, theme.refGap, theme.layout, theme.safeMargin, theme.textWidth,
+    theme.font, theme.facePreset, theme.size, theme.weight, theme.verseSize, theme.refGap, theme.layout, theme.safeMargin, theme.textWidth,
     theme.textCase, theme.textSpacing, screen,
   ]), words?.lyric ? LYRIC_TYPE.floor : undefined, true);
 
@@ -486,11 +497,11 @@ export function SlideCanvas({
               fontFamily,
               width: '100%',
               fontSize: `${Math.max(17, 27 + theme.size * 2) / 6}cqw`,
-              fontWeight: 500,
+              fontWeight: theme.weight ?? 600,
               lineHeight: 1.35,
               textWrap: 'balance',
               textTransform: 'none',
-              textShadow: `0 2px ${Math.round(5 + theme.shadow / 7)}px rgb(0 0 0 / ${Math.min(0.92, 0.25 + theme.shadow / 110)})`,
+              textShadow: verseTextShadow(theme.shadow),
               alignItems: alignItems === 'flex-start' ? 'flex-start' : alignItems === 'flex-end' ? 'flex-end' : 'center',
             }}
           >

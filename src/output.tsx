@@ -13,12 +13,12 @@ import { isVideoUrl, cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shar
 import { mediaImageSource } from './lib/mediaImage';
 import type { LiveContent } from '../shared/liveContent';
 import { clampTransitionMs, isTextTransition, type TextTransition } from '../shared/textTransitions';
-import { resolveTextPosition } from '../shared/textPosition';
+import { resolveTextAlign, resolveTextPosition, type TextAlignOption } from '../shared/textPosition';
 import { clampTextWidth, textWidthFrame, TEXT_WIDTH } from '../shared/textWidth';
 import { formatDisplayText, resolveTextCase, type TextCase } from '../shared/textCase';
 import { LYRIC_TYPE, lyricLetterSpacing, resolveTextSpacing, TEXT_SPACING, type TextSpacing } from '../shared/textSpacing';
 import './output.css';
-import { DISPLAY_FONTS } from '../shared/displayFont';
+import { LEGACY_FACES, SCRIPTURE_FACES, TEXT_SHADOW, clampTextShadow, verseTextShadow } from '../shared/displayFont';
 import { watchVersionCredits } from './lib/versionCredits';
 
 /**
@@ -62,6 +62,8 @@ interface Theme {
   fontFamily: string;
   scale: number;
   weight: number;
+  /** The dark glow behind the words, 0–100 (shared/displayFont). */
+  shadow: number;
   color: string;
   backgroundUrl: string;
   backgroundBlur: number;
@@ -88,6 +90,8 @@ interface Theme {
   verseLayout: string;
   safeMargin: number;
   textWidth: number;
+  /** The lines within the block — 'auto' follows the position. */
+  textAlign: TextAlignOption;
   textCase: TextCase;
   textSpacing: TextSpacing;
   /** The reference line's own size, independent of the verse body's. */
@@ -99,19 +103,20 @@ interface Theme {
   textTransitionMs: number;
 }
 
-const FONT_PRESETS: Record<string, string> = {
-  'display-serif': DISPLAY_FONTS.serif,
-  'classic-serif': "'Times New Roman', Georgia, serif",
-  'modern-sans': DISPLAY_FONTS.default,
-  'bold-slab': "'Alfa Slab One', Georgia, serif",
-  'display-rounded': "'Paytone One', system-ui, sans-serif",
-};
+/* Every face a church can pick — the curated Google faces AND the legacy
+   presets older builds wrote. Settings' 'cormorant' used to miss this table
+   and quietly fall back to Georgia on the wall. The faces themselves are
+   loaded with their full weight ranges in output.html. */
+const FONT_PRESETS: Record<string, string> = Object.fromEntries(
+  [...SCRIPTURE_FACES, ...LEGACY_FACES].map((f) => [f.id, f.stack]),
+);
 
 const DEFAULT_THEME: Theme = {
   fontFamily: FONT_PRESETS['display-serif'],
   scale: 1,
   // Scripture reads at a distance, over a background: a step above regular.
   weight: 600,
+  shadow: TEXT_SHADOW.default,
   color: '#ffffff',
   backgroundUrl: '',
   backgroundBlur: 0,
@@ -137,6 +142,7 @@ const DEFAULT_THEME: Theme = {
   verseLayout: 'center',
   safeMargin: 10,
   textWidth: TEXT_WIDTH.default,
+  textAlign: 'auto',
   textCase: 'none',
   textSpacing: 'normal',
   refScale: 1,
@@ -157,6 +163,7 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
         : DEFAULT_THEME.fontFamily),
     scale: typeof s.defaultFontSize === 'number' && s.defaultFontSize > 0 ? s.defaultFontSize : 1,
     weight: typeof s.defaultFontWeight === 'number' ? s.defaultFontWeight : DEFAULT_THEME.weight,
+    shadow: clampTextShadow(s.textShadow),
     color: typeof s.defaultTextColor === 'string' && s.defaultTextColor ? s.defaultTextColor : '#ffffff',
     backgroundUrl: toDisplayUrl(typeof s.defaultBackgroundUrl === 'string' ? s.defaultBackgroundUrl : ''),
     backgroundBlur: typeof s.backgroundBlur === 'number' ? Math.max(0, Math.min(40, s.backgroundBlur)) : 0,
@@ -187,6 +194,7 @@ function themeFromSettings(s: Record<string, unknown>): Theme {
     verseLayout: typeof s.verseLayout === 'string' ? (s.verseLayout as string) : 'center',
     safeMargin: typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 10,
     textWidth: clampTextWidth(s.textWidth, 100 - 2 * (typeof s.safeMargin === 'number' && s.safeMargin > 0 ? s.safeMargin : 10)),
+    textAlign: resolveTextAlign(s.textAlign),
     textCase: resolveTextCase(s.textCase),
     textSpacing: resolveTextSpacing(s.textSpacing),
     /* Both default when a theme saved before these existed is read back, so
@@ -498,9 +506,11 @@ function OutputSurface() {
     ? timers.find((t) => t.id === theme.stageShowTimer || t.name === theme.stageShowTimer) ?? null
     : null;
 
-  const { justifyContent: stageJustify, alignItems: stageAlign, textAlign: stageTextAlign, referenceAbove } = resolveTextPosition(theme.verseLayout);
+  const { justifyContent: stageJustify, alignItems: stageAlign, textAlign: stageTextAlign, horizontal: stageAnchor, referenceAbove } = resolveTextPosition(theme.verseLayout, theme.textAlign);
   const atBottom = !referenceAbove;
-  const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, stageTextAlign);
+  /* The width frame anchors on the POSITION; the alignment override only
+     moves the lines within it. */
+  const textFrame = textWidthFrame(theme.safeMargin, theme.textWidth, stageAnchor);
   const textSpacing = TEXT_SPACING[theme.textSpacing];
 
   /* Words that fit the screen (lib/useFitText): a reading too tall for the
@@ -520,6 +530,7 @@ function OutputSurface() {
     '--verse-font': theme.fontFamily,
     '--verse-scale': String(theme.scale),
     '--verse-weight': String(theme.weight),
+    '--verse-shadow': verseTextShadow(theme.shadow),
     '--verse-color': theme.color,
     '--safe-margin': `${theme.safeMargin}%`,
     '--text-width': `${textFrame.width}%`,
