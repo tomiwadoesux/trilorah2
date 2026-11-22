@@ -217,6 +217,28 @@ jobs:
           [ ! -e "$r/bible.db" ] || { echo "Trilorah Sender picked up the main app's Bible"; exit 1; }
           /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$r/../Info.plist"
 
+      # Trilorah Stage Timer: the small separate download for the preacher's
+      # countdown screen (electron/timerapp). No native modules, Bible or
+      # models — the lightest install, for the computers the main app
+      # struggles on. It lands in release/timerapp/.
+      - name: Package Trilorah Stage Timer
+        run: node scripts/build-timerapp.mjs ${{ matrix.flag }} --publish never
+
+      - name: Verify Trilorah Stage Timer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "release/timerapp/win-unpacked/resources/app.asar")) { throw "Trilorah Stage Timer is incomplete" }
+          if (Test-Path "release/timerapp/win-unpacked/resources/bible.db") { throw "Trilorah Stage Timer picked up the main app's Bible" }
+
+      - name: Verify Trilorah Stage Timer (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          r="release/timerapp/mac-arm64/Trilorah Stage Timer.app/Contents/Resources"
+          [ -e "$r/app.asar" ] || { echo "MISSING: $r/app.asar"; exit 1; }
+          [ ! -e "$r/bible.db" ] || { echo "Trilorah Stage Timer picked up the main app's Bible"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$r/../Info.plist"
+
       # The trilorah CLI: a remote control for the installed app, one
       # dependency-free Node script — so a single zip serves every platform,
       # built once on the Mac runner.
@@ -235,6 +257,9 @@ jobs:
             release/sender/*.exe
             release/sender/*.dmg
             release/sender/*.zip
+            release/timerapp/*.exe
+            release/timerapp/*.dmg
+            release/timerapp/*.zip
 
   publish:
     needs: build
@@ -252,16 +277,17 @@ jobs:
           files: |
             installers/*
             installers/sender/*
+            installers/timerapp/*
           generate_release_notes: true
           body: |
-            The console and the `trilorah` CLI now use the same command layer. Choose Trilorah's own wall or an app you have taught it to control.
+            New: **Trilorah Stage Timer**, a separate small download for the preacher's countdown screen — and a reworked, six-question teach flow for driving the app you already use.
+
+            **Trilorah Stage Timer** (`Trilorah-Stage-Timer-…`): the stage clock on its own. Pick the screen it shows on, click the clock and type the time, start it, and grant +3/+5/+7 minutes at the end — the face keeps counting even when the window is covered. If Trilorah is open on the same Wi-Fi with **settings → external control → stage timer link** on, the scriptures the preacher names ("Genesis chapter one verse five") appear on the timer screen for a few seconds, the reference only, the moment they are said. It carries none of the main app's heavy parts, so it also runs on computers the main app struggles on.
 
             **Also new**
 
-            - **Teach an app:** choose an open app and show Trilorah how to search, put content on screen, clear it and move between items. Trilorah records the controls and checks them again before using the recipe.
-            - **Console:** choose which screen the commands control. The guided app picker explains what to do when your app is missing.
-            - **CLI:** download `Trilorah-CLI-0.4.12.zip` to send the same commands from a terminal.
-            - **App inspector:** Mac and Windows installers include the platform tools. No app recipes are pre-installed yet; teach an app during setup. Mac control needs Accessibility permission. Windows app control has not yet been verified with a real Windows presentation app.
+            - **Teach an app, rebuilt:** six rehearsals instead of five instructions — verse search and song search are separate questions, the whole click trail counts ("that's it — that was the last click"), and already-taught apps can be re-taught whole or one answer at a time.
+            - **Stage timer link:** Trilorah announces named references to stage timers on the local network. Off by default; reference strings only, never verse text.
 
             **Windows:** download the `.exe`. Windows may say "Windows protected your PC" — click **More info → Run anyway**. Add a Deepgram key in Settings to use speech.
 

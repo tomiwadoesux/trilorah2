@@ -1,0 +1,52 @@
+# Trilorah Stage Timer — the small separate download for the preacher's
+# countdown screen (electron/timerapp/main.ts). Build it with
+# `npm run dist:timer`, which stages dist-timerapp/ first; never run
+# electron-builder on this file directly.
+#
+# dist-timerapp/ holds only the timer's window and main process — no engine,
+# Bible, models, whisper or native modules.
+
+appId: com.trilorah.stagetimer
+productName: Trilorah Stage Timer
+artifactName: Trilorah-Stage-Timer-${version}-${arch}.${ext}
+
+directories:
+  app: dist-timerapp
+  output: release/timerapp
+  buildResources: build
+
+files:
+  - "**/*"
+  - "!**/.DS_Store"
+
+npmRebuild: false
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  # Unsigned, like the main app (right-click → Open the first time).
+  identity: null
+  extendInfo:
+    # Hearing Trilorah's beacon on the church Wi-Fi is the whole link, and
+    # macOS gates it behind the Local Network permission.
+    NSLocalNetworkUsageDescription: Trilorah Stage Timer listens on your church network for Trilorah, so the scriptures the preacher names can appear on the timer screen.
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+
+dmg:
+  sign: false
+
+win:
+  icon: build/icon-1024.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  artifactName: Trilorah-Stage-Timer-Setup-${version}.${ext}
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false

@@ -169,6 +169,24 @@ function TextSetting({
   );
 }
 
+/** On/off setting as a checkbox, saved the moment it is pressed. */
+function BoolSetting({ label, settingKey, suffix }: { label: string; settingKey: string; suffix?: string }) {
+  const settings = useAppStore((s) => s.settings);
+  const save = useSave();
+  const checked = Boolean(settings?.[settingKey]);
+  return (
+    <Row label={label} settingKey={settingKey}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => save(settingKey, e.target.checked, label)}
+        className="h-4 w-4 accent-emerald-400"
+      />
+      {suffix && <span className="text-xs text-neutral-400">{suffix}</span>}
+    </Row>
+  );
+}
+
 function NumberSetting({ label, settingKey, suffix }: { label: string; settingKey: string; suffix?: string }) {
   const settings = useAppStore((s) => s.settings);
   const save = useSave();
@@ -440,6 +458,17 @@ function SettingsBody() {
       </Section>
 
       <Section title="external control">
+        <BoolSetting
+          label="stage timer link"
+          settingKey="stageLinkEnabled"
+          suffix="lets a Trilorah Stage Timer on this network show the scriptures the preacher names"
+        />
+        <p className="max-w-2xl pl-50 text-xs leading-relaxed text-neutral-400">
+          The Stage Timer is a separate small download for the preacher's countdown screen. With
+          this on, the moment the preacher names a scripture — "Genesis chapter one verse five" —
+          the reference (never the verse text) appears on that screen for a few seconds, before
+          anyone presses anything here.
+        </p>
         <p className="text-sm leading-relaxed text-neutral-500">
           Stream Deck / Bitfocus Companion can reach the app at{' '}
           <span className="font-mono text-ink">ws://localhost:8081</span> — send JSON like{' '}

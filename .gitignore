@@ -11,6 +11,7 @@ web/.env.local
 # build output (recovery snapshots live in recovery/, which IS committed)
 dist/
 dist-sender/
+dist-timerapp/
 dist-electron/*.js
 web/.next/
 *.tsbuildinfo

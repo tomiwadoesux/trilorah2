@@ -1,0 +1,114 @@
+/* Trilorah Stage Timer — the little app's own ground. One flat colour,
+   near-black like the main app's outputs; the face carries its own #080808. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: #050505;
+  color: #e5f3f2;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+input {
+  font: inherit;
+}
+
+/* The control window's option rows: one bordered group with rules between
+   rows, not pill by pill (owner, 2026-10-08). */
+.tt-group {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.tt-row + .tt-row {
+  border-top: 1px solid rgb(255 255 255 / 0.07);
+}
+
+.tt-button {
+  border: 1px solid rgb(255 255 255 / 0.15);
+  background: rgb(255 255 255 / 0.1);
+  color: #e5f3f2;
+  border-radius: 6px;
+  font-weight: 700;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 150ms ease;
+}
+
+.tt-button:hover {
+  background: rgb(255 255 255 / 0.15);
+}
+
+.tt-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tt-button.quiet {
+  background: rgb(255 255 255 / 0.05);
+  border-color: rgb(255 255 255 / 0.1);
+  color: rgb(229 243 242 / 0.75);
+}
+
+.tt-button.quiet:hover {
+  background: rgb(255 255 255 / 0.1);
+  color: #e5f3f2;
+}
+
+.tt-button.danger {
+  background: rgb(234 199 198 / 0.08);
+  border-color: rgb(234 199 198 / 0.2);
+  color: #eac7c6;
+}
+
+.tt-button.danger:hover {
+  background: rgb(234 199 198 / 0.16);
+}
+
+.tt-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(229 243 242 / 0.55);
+}
+
+/* The text blinker while the clock is being typed into. */
+@keyframes tt-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.tt-muted {
+  color: rgb(229 243 242 / 0.45);
+  font-size: 12px;
+  line-height: 1.5;
+}

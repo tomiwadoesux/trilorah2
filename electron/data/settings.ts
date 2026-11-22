@@ -48,6 +48,9 @@ export const defaults = {
   slowPathEnabled: false,
   batchIntervalMs: 3000,
   activePreacherId: '',
+  /** Announce named references to Trilorah Stage Timer apps on this network
+   *  (electron/lan/stageLink.ts). Reference strings only, never verse text. */
+  stageLinkEnabled: false,
   obsEnabled: false,
   obsHost: 'localhost',
   obsPort: 4455,

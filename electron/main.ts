@@ -337,6 +337,7 @@ import {
   connectedDevices,
   type RemoteHandlers
 } from './integrations/websocketServer'
+import { startStageLink, stopStageLink } from './lan/stageLink'
 import { getOBSClient, disposeOBSClient } from './integrations/obsClient'
 import { getVMixClient } from './integrations/vmixClient'
 import { announceSender, closeNetworkSound, isSending, listNetworkSounds, senderStatus, sendSound, stopSending, type SoundFrame } from './ndi/networkSound'
@@ -3638,6 +3639,11 @@ ipcMain.handle('set-setting', (_event, { key, value }) => {
   if (!sameTheme) setSetting(key, value)
   if (GIVING_SETTING_KEYS.includes(key)) setSetting('givingSettingsPending', true)
   if (key === 'streamUrl' || key === 'audienceTrainingEnabled') serviceCompanionSettingsPending = true
+  // The stage-timer link follows its switch without a restart.
+  if (key === 'stageLinkEnabled') {
+    if (value) startStageLink(() => String(getSetting('churchName') ?? ''))
+    else stopStageLink()
+  }
   if (GIVING_SETTING_KEYS.includes(key) || key === 'streamUrl' || key === 'audienceTrainingEnabled') {
     if (companionSettingsTimer) clearTimeout(companionSettingsTimer)
     companionSettingsTimer = setTimeout(() => {
@@ -4814,6 +4820,8 @@ app.whenReady().then(() => {
     startWebSocketServer(remoteHandlers, pairing, 8081)
   }
 
+  // Named references for Trilorah Stage Timer apps on this network.
+  if (getSetting('stageLinkEnabled')) startStageLink(() => String(getSetting('churchName') ?? ''))
 
   initCloudSync()
   console.log('🚀 AI Preacher Assistant ready')
@@ -4851,6 +4859,7 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   closeNetworkSound()
+  stopStageLink()
   mobileServer?.stop()
   void controlServer?.close().catch(() => undefined)
   controlServer = null

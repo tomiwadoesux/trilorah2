@@ -1,7 +1,7 @@
 {
   "name": "ai-preacher-assistant",
   "private": true,
-  "version": "0.4.15",
+  "version": "0.4.16",
   "license": "SEE LICENSE IN LICENSE",
   "description": "Trilorah — church presentation software with an agentic sermon engine. Beautiful, effortless, intelligent.",
   "main": "dist-electron/main.js",
@@ -24,6 +24,7 @@
     "dist": "npm run passages:model && npm run build && node scripts/write-service-defaults.mjs && electron-builder; node scripts/write-service-defaults.mjs --restore",
     "dist:dir": "npm run passages:model && npm run build && node scripts/write-service-defaults.mjs && electron-builder --dir; node scripts/write-service-defaults.mjs --restore",
     "dist:sender": "node scripts/build-sender.mjs",
+    "dist:timer": "node scripts/build-timerapp.mjs",
     "dist:cli": "node scripts/build-cli.mjs",
     "eval": "tsx evals/run.ts",
     "eval:gate": "tsx evals/gate.ts",

@@ -1,6 +1,7 @@
 import { BrowserWindow } from 'electron'
 import type { SegmentType, VerseDetection, VoiceCommandEvent } from '../shared/types'
 import { capitalizeScriptureNames } from '../shared/normalizeDisplay'
+import { stageLinkPreview } from './lan/stageLink'
 
 let lastRef = ''
 let lastTime = 0
@@ -36,6 +37,9 @@ export function emitVerseDetected(
   if (detection.isPreview) {
     console.log(`👁️ Preview: ${refStr}`)
     tap('on-verse-preview', detection)
+    // A reference the preacher NAMED also goes to any Trilorah Stage Timer
+    // on the network (electron/lan/stageLink.ts filters; off = no-op).
+    stageLinkPreview(detection)
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed())
         win.webContents.send('on-verse-preview', detection)
