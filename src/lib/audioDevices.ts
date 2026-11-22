@@ -7,7 +7,7 @@
  * throwaway stream to unlock the labels, and enumerate again.
  */
 
-import { DEVICE_AUDIO, DEVICE_AND_MIC, networkSoundLabel } from '../../shared/audioInput';
+import { DEVICE_AUDIO, DEVICE_AND_MIC, networkSoundLabel, tidyAudioInputs } from '../../shared/audioInput';
 
 export interface AudioInput {
   id: string;
@@ -61,10 +61,12 @@ async function listLocalInputs(): Promise<AudioInput[]> {
   /* Chromium lists the system's default input twice: once as itself and once
      as "Default - <its name>" (and "Communications - …" on Windows). The
      copies are the same microphone under a second name; "system default"
-     already covers following the OS, so they are never shown. */
-  return [...deviceInputs, ...inputs
+     already covers following the OS, so they are never shown. The rest go
+     through tidyAudioInputs: real inputs first, virtual cables last, and a
+     Hands-Free twin or doubled label dropped — see shared/audioInput.ts. */
+  return [...deviceInputs, ...tidyAudioInputs(inputs
     .filter((d) => d.label && d.deviceId !== 'default' && d.deviceId !== 'communications')
-    .map((d) => ({ id: d.deviceId, label: d.label }))];
+    .map((d) => ({ id: d.deviceId, label: d.label })))];
 }
 
 /** Subscribe to plug/unplug events; returns the unsubscribe. */

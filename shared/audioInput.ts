@@ -49,3 +49,39 @@ export function networkSoundTitle(label: string): string {
 
 /** Which side of a stereo input the sender passes on. A mic on input 1 of a two-input box arrives on the left only. */
 export type SenderChannels = 'both' | 'left' | 'right'
+
+/*
+ * Windows hands Chromium every audio endpoint it has: each jack of each
+ * device, Bluetooth headsets again as their telephony "Hands-Free" twin,
+ * and a virtual cable for everything ever installed (Stereo Mix, VB-Audio,
+ * VoiceMeeter, NDI Audio…). A volunteer looking for "the desk" reads a wall
+ * of near-identical lines. This keeps every real choice but puts them in
+ * the order a person looks: microphones, line-ins and USB interfaces first,
+ * the rest in the middle, virtual/loopback endpoints last. Only true noise
+ * goes: a label listed twice, and a Hands-Free copy of a device the list
+ * already has as itself (the telephony endpoint is phone-call quality).
+ */
+const VIRTUAL_INPUT = /stereo mix|what u hear|loopback|virtual|vb-audio|cable (?:output|input)|voicemeeter|\bndi\b|blackhole|soundflower|aggregate device/i
+const HANDS_FREE = /hands-?free/i
+/** "Microphone (Scarlett 2i2 USB)" → "scarlett 2i2 usb"; no brackets, the whole label. */
+const enclosureOf = (label: string): string =>
+  (label.match(/\(([^)]+)\)\s*$/)?.[1] ?? label).replace(HANDS_FREE, '').replace(/\bag audio\b/i, '').trim().toLowerCase()
+
+export function tidyAudioInputs<T extends { label: string }>(inputs: readonly T[]): T[] {
+  const seen = new Set<string>()
+  const unique = inputs.filter((d) => {
+    const key = d.label.trim().toLowerCase()
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  const telephonyTwin = (d: T) =>
+    HANDS_FREE.test(d.label) && unique.some((o) => o !== d && !HANDS_FREE.test(o.label) && enclosureOf(o.label) === enclosureOf(d.label))
+  const rank = (d: T) =>
+    VIRTUAL_INPUT.test(d.label) ? 2 : /\bmic|line.?in|\baux\b|\busb\b|\binput\b/i.test(d.label) ? 0 : 1
+  return unique
+    .filter((d) => !telephonyTwin(d))
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => rank(a.d) - rank(b.d) || a.i - b.i)
+    .map(({ d }) => d)
+}
