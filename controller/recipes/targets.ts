@@ -50,6 +50,9 @@ export function switchableHost(opts: SwitchableOptions): ControlHost {
     preview: () => current.preview(),
     live: () => current.live(),
     openConsole: () => own.openConsole(),
+    // Searching is listening — the brain's. Staging the found song is the target's.
+    searchSongs: (words) => own.searchSongs?.(words) ?? { heard: words ?? '', matches: [] },
+    stageSong: (title) => current.stageSong?.(title) ?? { error: 'this screen cannot stage songs by command' },
 
     targets: (): ControlTarget[] => [
       { id: OWN_TARGET, name: 'Trilorah' },

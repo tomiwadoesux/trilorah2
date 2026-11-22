@@ -46,6 +46,22 @@ export type ControlCommand =
   /** Whose screen the commands move: Trilorah's own wall, or a taught app. */
   | { kind: 'target.list' }
   | { kind: 'target.set'; id: string }
+  /** The ♪ press: match the last words heard (or these words) against the song library. */
+  | { kind: 'song.search'; words?: string }
+  /** Stage a song by title on the current target — a taught app types it into its search. */
+  | { kind: 'song.stage'; title: string }
+
+/** One song the words heard could be, ranked. */
+export interface ControlSongMatch {
+  id: string
+  title: string
+  /** The section whose line matched: "chorus", "verse 2". */
+  section: string
+  /** 0–1: how much of the heard phrase that section's line covered. */
+  score: number
+  /** On today's run of service — ranked ahead of library-only matches. */
+  scheduled?: boolean
+}
 
 /** One place the commands can land. 'trilorah' is always there. */
 export interface ControlTarget {
@@ -69,7 +85,7 @@ export interface ControlSnapshot {
 }
 
 export type ControlResult =
-  | { ok: true; op: string; snapshot: ControlSnapshot; staged?: ControlVerse; live?: ControlVerse; targets?: ControlTarget[] }
+  | { ok: true; op: string; snapshot: ControlSnapshot; staged?: ControlVerse; live?: ControlVerse; targets?: ControlTarget[]; songs?: { heard: string; matches: ControlSongMatch[] } }
   | { ok: false; op: string; error: string; snapshot: ControlSnapshot }
 
 /** One thing that happened, in order. `channel` names what, `payload` carries it. */
@@ -116,6 +132,11 @@ export function parseControlCommand(raw: unknown): ControlCommand | null {
         : null
     case 'screen.toggle':
       return m.state === 'black' || m.state === 'logo' ? { kind: 'screen.toggle', state: m.state } : null
+    case 'song.search':
+      if (m.words !== undefined && !str(m.words)) return null
+      return { kind: 'song.search', ...(str(m.words) ? { words: m.words } : {}) }
+    case 'song.stage':
+      return str(m.title, 200) ? { kind: 'song.stage', title: m.title } : null
     default:
       return null
   }

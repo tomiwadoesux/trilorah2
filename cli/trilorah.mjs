@@ -197,6 +197,8 @@ const HELP = `trilorah — remote control for the running Trilorah app
   trilorah wall                       bring the wall back to live
   trilorah console                    open the pop-up console (buttons, no typing)
   trilorah target [name]              whose screen the commands move: Trilorah, or a taught app
+  trilorah song [words…]             match the last words heard (or these) against the song library
+  trilorah song take "Way Maker"      stage that song on the current target and go live
   trilorah events                     follow what happens, line by line
 
   --version <name>   Bible translation for scripture/take
@@ -250,6 +252,36 @@ function main() {
         socket.end();
         process.exit(result.ok ? 0 : 1);
       });
+    case "song": {
+      if (rest[0] === "take") {
+        const title = rest.slice(1).join(" ");
+        if (!title) return die('which song? e.g. trilorah song take "Way Maker"');
+        return connect(async ({ request, socket }) => {
+          const staged = await request("command", { command: { kind: "song.stage", title } });
+          const result = staged.ok ? await request("command", { command: { kind: "live.take" } }) : staged;
+          if (json) process.stdout.write(`${JSON.stringify(result)}\n`);
+          else if (!result.ok) process.stderr.write(`no: ${result.error}\n`);
+          else process.stdout.write(`live: ${verseText(result.live)}\n`);
+          socket.end();
+          process.exit(result.ok ? 0 : 1);
+        });
+      }
+      const songWords = rest.join(" ");
+      return connect(async ({ request, socket }) => {
+        const result = await request("command", { command: { kind: "song.search", ...(songWords ? { words: songWords } : {}) } });
+        if (json) process.stdout.write(`${JSON.stringify(result)}\n`);
+        else if (!result.ok) process.stderr.write(`no: ${result.error}\n`);
+        else {
+          const { heard, matches } = result.songs ?? { heard: "", matches: [] };
+          process.stdout.write(`heard  ..${heard}..\n`);
+          if (!matches.length) process.stdout.write("no song matched — a few more words of its line usually do it\n");
+          for (const m of matches) process.stdout.write(`  ${m.title}${m.scheduled ? "  · on the plan" : ""}  (${m.section}, ${Math.round(m.score * 100)}%)\n`);
+          if (matches.length) process.stdout.write(`\ntake one: trilorah song take "${matches[0].title}"\n`);
+        }
+        socket.end();
+        process.exit(result.ok ? 0 : 1);
+      });
+    }
     case "events":
       return followEvents({ json });
     case "help":

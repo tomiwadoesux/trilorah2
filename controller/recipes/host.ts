@@ -68,6 +68,12 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
       void run('show').then((problem) => { if (!problem) live = taking })
       return taking
     },
+    stageSong: (title) => {
+      if (!recipe.abilities.find) return { error: `${recipe.app.name} was never taught how to search` }
+      staged = asVerse(title)
+      void run('find', { query: title }).then((problem) => { if (problem) staged = null })
+      return { staged }
+    },
     clearLive: () => { void run('clear').then((problem) => { if (!problem) live = null }) },
     next: () => { void run('next') },
     previous: () => { void run('previous') },

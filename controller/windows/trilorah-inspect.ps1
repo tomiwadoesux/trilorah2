@@ -1,4 +1,4 @@
-<#
+﻿<#
  trilorah-inspect (Windows) — Door 2 on Windows: see and operate any app
  through UI Automation, the twin of controller/macos/inspect.swift.
 

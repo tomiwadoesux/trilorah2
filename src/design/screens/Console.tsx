@@ -54,6 +54,14 @@ function parsePrompt(raw: string, listening: boolean): ControlCommand | { help: 
   if (head === 'wall') return { kind: 'screen.set', state: 'live' };
   if (head === 'next') return { kind: 'live.next' };
   if (head === 'prev' || head === 'previous' || head === 'back') return { kind: 'live.previous' };
+  if (head === 'song') {
+    const tail = text.slice(4).trim();
+    if (/^take\s/i.test(tail)) {
+      const title = tail.slice(4).trim().replace(/^"(.*)"$/, '$1');
+      return title ? { kind: 'song.stage', title } : null;
+    }
+    return tail ? { kind: 'song.search', words: tail } : { kind: 'song.search' };
+  }
   return { kind: 'scripture.stage', reference: raw.trim() };
 }
 
@@ -78,6 +86,8 @@ interface TeachState {
   needed?: boolean;
   note?: string;
   result?: { verified: boolean; broken: Array<{ ability: string; label?: string; problem: string }>; file?: string };
+  testing?: boolean;
+  tested?: boolean;
 }
 
 const QUESTION_TITLE: Record<Ability, string> = {
@@ -124,11 +134,14 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
       const next = { ...state, stage: 'ask' as const, q, waiting: false, got, answers: { ...state.answers, [question.ability]: r.recorded as WatchRecord[] } };
       setS(next);
       say('ok', `${state.app.name}: ${question.ability} → ${got}`);
-      setTimeout(() => { if (alive.current) void advance(next, q + 1); }, 900);
+      // No auto-advance: the operator reads what was recorded and confirms or redoes it.
     } else if (question.required) {
       setS({ ...state, stage: 'ask', q, waiting: false, needed: true });
     } else {
-      const next = { ...state, stage: 'ask' as const, q, waiting: false, skipped: [...state.skipped, question.ability] };
+      // A skip after a redo must also drop the first (wrong) click, or it would ship anyway.
+      const answers = { ...state.answers };
+      delete answers[question.ability];
+      const next = { ...state, stage: 'ask' as const, q, waiting: false, answers, skipped: [...state.skipped.filter((a) => a !== question.ability), question.ability] };
       void advance(next, q + 1);
     }
   }, [api, say]);
@@ -151,6 +164,31 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
 
   const skip = () => { api?.controllerWatchCancel?.(); };
   const retry = () => { if (s.app) void ask(s, s.q); };
+
+  /* The sound-check test: point the commands at the app just taught, stage a
+     verse through its taught search box and press its taught go-live — the
+     same path Sunday uses, so a wrong click shows itself now, not then. */
+  const TEST_REFERENCE = 'John 3:16';
+  const test = useCallback(async () => {
+    if (!s.app || !api?.controlCommand) return;
+    setS((x) => ({ ...x, testing: true }));
+    try {
+      const picked = await api.controlCommand({ kind: 'target.set', id: `app:${s.app.id}` });
+      if (!picked.ok) { say('err', `no: ${picked.error}`); return; }
+      const took = await api.controlCommand({ kind: 'live.take', reference: TEST_REFERENCE });
+      if (!took.ok) { say('err', `no: ${took.error}`); return; }
+      say('ok', `test sent — ${TEST_REFERENCE} should be on ${s.app.name}'s screen now`);
+      if (alive.current) setS((x) => ({ ...x, tested: true }));
+    } finally {
+      if (alive.current) setS((x) => ({ ...x, testing: false }));
+    }
+  }, [api, s, say]);
+  const clearTest = useCallback(async () => {
+    if (!api?.controlCommand) return;
+    await api.controlCommand({ kind: 'live.clear' });
+    say('ok', 'test cleared');
+    if (alive.current) setS((x) => ({ ...x, tested: false }));
+  }, [api, say]);
   const question = QUESTIONS[s.q];
   const dots = QUESTIONS.map((qq, i) => {
     const done = s.answers[qq.ability] ? ACCENT : s.skipped.includes(qq.ability) ? FAINT : i === s.q && s.stage === 'ask' ? INK : 'rgba(229,243,242,0.18)';
@@ -194,12 +232,19 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
               watching {s.app.name} — click it now
             </p>
           )}
-          {s.got && <p style={{ margin: 0, fontSize: 13, color: INK }}>✓ got it — {s.got}</p>}
+          {s.got && (
+            <>
+              <p style={{ margin: 0, fontSize: 13, color: INK }}>✓ got it — {s.got}</p>
+              <p style={{ margin: 0, fontSize: 12, color: DIM }}>Is that the right one?</p>
+            </>
+          )}
           {s.needed && (
             <p style={{ margin: 0, fontSize: 13, color: '#F0A8A0', lineHeight: 1.5 }}>Trilorah needs this one — without it, it cannot put anything on {s.app.name}'s screen.</p>
           )}
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            {s.needed ? btn('try again', retry, 'go') : s.waiting ? btn(question.required ? 'cancel' : `skip — no ${question.ability === 'find' ? 'search' : question.ability} here`, skip) : null}
+            {s.needed ? btn('try again', retry, 'go')
+              : s.got ? <>{btn("yes — that's it", () => void advance(s, s.q + 1), 'go')}{btn('no — redo that click', retry)}</>
+              : s.waiting ? btn(question.required ? 'cancel' : `skip — no ${question.ability === 'find' ? 'search' : question.ability} here`, skip) : null}
             {btn('stop teaching', onClose)}
           </div>
         </>
@@ -218,8 +263,20 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
           <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
             Taught: {(Object.keys(s.answers) as Ability[]).join(', ') || 'nothing'}{s.skipped.length ? ` · skipped: ${s.skipped.join(', ')}` : ''}. Trilorah will check these again before every service.
           </p>
+          {s.result && (s.answers.find ? (
+            <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
+              Try it while it's still sound check: the test types {TEST_REFERENCE} into {s.app.name}'s search and presses its go-live — watch its screen.
+            </p>
+          ) : (
+            <p style={{ margin: 0, fontSize: 12, color: DIM, lineHeight: 1.5 }}>
+              Search was skipped, so Trilorah cannot stage a test verse here — select something in {s.app.name} yourself and check go-live by hand.
+            </p>
+          ))}
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            {btn('done', onClose, 'go')}
+            {s.result && s.answers.find ? (s.tested
+              ? btn('clear the test', () => void clearTest())
+              : btn(s.testing ? 'testing…' : `test it — ${TEST_REFERENCE} live`, () => { if (!s.testing) void test(); }, 'go')) : null}
+            {btn('done', onClose, s.result && s.answers.find && !s.tested ? 'ash' : 'go')}
           </div>
         </>
       )}
@@ -252,6 +309,8 @@ function ScreenPicker({ targets, current, onPick, onTeach }: { targets: ControlT
 const HELP_LINES = [
   'type a reference to stage it — John 3:16, Psalm 23, Romans 8:28-30',
   'take [reference]   put the preview (or this verse) on the wall',
+  'song [words]   match the last words heard (or these) against the song library',
+  'song take "Way Maker"   stage that song on the current screen and go live',
   'clear · black · logo · wall    what the wall shows',
   'listen [start|stop] · next · prev · status',
   'Enter stages — Ctrl/⌘Enter (or "take") goes live',
@@ -291,6 +350,12 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
       if (!result.ok) say('err', `no: ${result.error}`);
       else if (result.live) say('ok', `live · ${refOf(result.live)} (${result.live.version})`);
       else if (result.staged) say('ok', `staged · ${refOf(result.staged)} (${result.staged.version})`);
+      else if (result.songs) {
+        say('note', `heard ..${result.songs.heard}..`);
+        if (!result.songs.matches.length) say('note', 'no song matched — a few more words of its line usually do it');
+        for (const m of result.songs.matches) say('ok', `♪ ${m.title}${m.scheduled ? ' · on the plan' : ''} (${m.section}, ${Math.round(m.score * 100)}%)`);
+        if (result.songs.matches.length) say('note', `song take "${result.songs.matches[0].title}" puts the top one up`);
+      }
       else if (command.kind === 'status') say('note', `listening ${result.snapshot.listening ? 'yes' : 'no'} · preview ${refOf(result.snapshot.preview) ?? '—'} · live ${refOf(result.snapshot.live) ?? '—'} · wall ${result.snapshot.screen}`);
       else say('ok', 'done');
       return result;
@@ -347,6 +412,11 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
     historyAt.current = -1;
     setPrompt('');
     if ('help' in parsed) { HELP_LINES.forEach((l) => say('note', l)); return; }
+    // "song take" is two honest steps: stage on the target, then the press.
+    if (parsed.kind === 'song.stage') {
+      void run(parsed).then((r) => { if (r?.ok) void run({ kind: 'live.take' }); });
+      return;
+    }
     // Ctrl/⌘Enter on a typed reference means take it, not just stage it.
     const command: ControlCommand = take && parsed.kind === 'scripture.stage' ? { kind: 'live.take', reference: parsed.reference, version: parsed.version } : parsed;
     void run(command);
@@ -443,6 +513,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
 
         {bigButton('go live', { kind: 'live.take' }, 'go')}
         <div style={{ display: 'flex', gap: 8 }}>
+          {bigButton('♪ song', { kind: 'song.search' })}
           {bigButton('clear', { kind: 'live.clear' })}
           {bigButton('black', { kind: 'screen.set', state: 'black' })}
           {bigButton('logo', { kind: 'screen.set', state: 'logo' })}
@@ -485,6 +556,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
           {button(snap?.listening ? 'stop' : 'listen', { kind: snap?.listening ? 'listen.stop' : 'listen.start' })}
           {button('go live', { kind: 'live.take' }, 'go')}
+          {button('♪ song', { kind: 'song.search' })}
           {button('clear', { kind: 'live.clear' })}
           {button('black', { kind: 'screen.set', state: 'black' })}
           {button('logo', { kind: 'screen.set', state: 'logo' })}

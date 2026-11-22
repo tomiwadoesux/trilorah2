@@ -29,6 +29,7 @@ import {
 import { ControlDispatcher, type ControlHost } from './control/dispatcher'
 import { startControlServer, type ControlServer } from './control/socketServer'
 import { switchableHost } from '../controller/recipes/targets'
+import { searchSongsLive, tailWords } from './songs/liveSearch'
 import { loadRecipes, taughtRecipesDir } from '../controller/recipes/store'
 import { findInspectorBinary, spawnInspector, watchClicks } from '../controller/recipes/inspect'
 import { parseRecipe } from '../controller/recipes/schema'
@@ -4592,6 +4593,17 @@ app.whenReady().then(() => {
             text: String(v.text ?? ''),
           }
         : null
+    /* The last words heard, for the ♪ song search: a small rolling tail kept
+       from the same transcript events the clients stream (tap below). */
+    const heardFinals: string[] = []
+    let heardPartial = ''
+    const hearLine = (payload: unknown) => {
+      const line = payload as { text?: unknown; isFinal?: unknown } | null
+      const text = typeof line?.text === 'string' ? line.text : ''
+      if (!text) return
+      if (line?.isFinal) { heardFinals.push(text); if (heardFinals.length > 6) heardFinals.shift(); heardPartial = '' }
+      else heardPartial = text
+    }
     const controlHost: ControlHost = {
       listening: () => isListening,
       startListening: (device) => {
@@ -4622,6 +4634,16 @@ app.whenReady().then(() => {
       preview: () => (currentPreviewData?.isPreview ? asVerse(currentPreviewData) : null),
       live: () => asVerse(verseDelivery.live),
       openConsole: () => createConsoleWindow(),
+      searchSongs: (words) => {
+        const heard = words?.trim() || tailWords(heardFinals, heardPartial)
+        if (!heard) return { heard: '', matches: [] }
+        const library = songStore().list().map((song) => ({ id: song.id, title: song.title, sections: song.sections }))
+        const run = getSetting('operatorRunV1')
+        const segments = Array.isArray(run) ? run : run?.segments ?? []
+        return { heard, matches: searchSongsLive(heard, library, segments) }
+      },
+      // The Songs tab stages songs on Trilorah's own wall; by command, a song lands on a taught app.
+      stageSong: () => ({ error: "Trilorah's own wall stages songs from the Songs tab — point the screen at a taught app (trilorah target) to stage one by command" }),
     }
     /*
      * Whose screen the commands move: Trilorah's own wall, or an app a church
@@ -4703,7 +4725,7 @@ app.whenReady().then(() => {
     })
     // The engine's own announcements, in the control stream too.
     setEmitterTap((channel, payload) => {
-      if (channel === 'on-transcript-line') dispatcher.event('transcript', payload)
+      if (channel === 'on-transcript-line') { hearLine(payload); dispatcher.event('transcript', payload) }
       else if (channel === 'on-verse-preview') dispatcher.event('preview', asVerse(payload))
       else if (channel === 'on-verse-detected') dispatcher.event('live', asVerse(payload))
       else if (channel === 'on-verse-auto-dismiss') dispatcher.event('cleared', null)

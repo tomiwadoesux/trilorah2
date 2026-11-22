@@ -4,6 +4,7 @@ import {
   type ControlEvent,
   type ControlResult,
   type ControlSnapshot,
+  type ControlSongMatch,
   type ControlTarget,
   type ControlVerse,
 } from '../../shared/control/schema'
@@ -43,6 +44,10 @@ export interface ControlHost {
   target?(): string
   /** Null when switched; otherwise why not ("no app called that", "not verified"). */
   setTarget?(id: string): string | null
+  /** The ♪ press: the last words heard (or these words) against the song library. Always Trilorah's own brain. */
+  searchSongs?(words?: string): { heard: string; matches: ControlSongMatch[] }
+  /** Stage a song by title on the current target; the error says why not. */
+  stageSong?(title: string): { staged: ControlVerse } | { error: string }
 }
 
 export type ControlVia = 'console' | 'socket' | 'remote'
@@ -142,10 +147,22 @@ export class ControlDispatcher {
         const refused = this.host.setTarget(command.id)
         return refused ? this.fail(op, refused) : this.done(op)
       }
+      case 'song.search': {
+        if (!this.host.searchSongs) return this.fail(op, 'this Trilorah cannot search songs by command yet')
+        const found = this.host.searchSongs(command.words)
+        return found.heard
+          ? this.done(op, { songs: found })
+          : this.fail(op, 'nothing has been heard yet — say (or pass) a few words of the song')
+      }
+      case 'song.stage': {
+        if (!this.host.stageSong) return this.fail(op, 'this Trilorah cannot stage songs by command yet')
+        const staged = this.host.stageSong(command.title)
+        return 'error' in staged ? this.fail(op, staged.error) : this.done(op, { staged: staged.staged })
+      }
     }
   }
 
-  private done(op: string, extra: { staged?: ControlVerse; live?: ControlVerse; targets?: ControlTarget[] } = {}): ControlResult {
+  private done(op: string, extra: { staged?: ControlVerse; live?: ControlVerse; targets?: ControlTarget[]; songs?: { heard: string; matches: ControlSongMatch[] } } = {}): ControlResult {
     return { ok: true, op, snapshot: this.snapshot(), ...extra }
   }
 
