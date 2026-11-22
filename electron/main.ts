@@ -4704,9 +4704,9 @@ app.whenReady().then(() => {
       teachingWatch?.cancel()
       const w = watchClicks(inspectorBinary, Number(pid), Math.max(1, Number(clicks) || 1), Math.min(600, Math.max(5, Number(seconds) || 120)))
       teachingWatch = w
-      const recorded = await w.done
+      const outcome = await w.done
       if (teachingWatch === w) teachingWatch = null
-      return { ok: recorded.length > 0, recorded }
+      return { ok: outcome.recorded.length > 0, recorded: outcome.recorded, error: outcome.error, cancelled: !!outcome.cancelled }
     })
     ipcMain.on('controller-watch-cancel', (event) => {
       if (event.sender !== mainWindow?.webContents && event.sender !== consoleWindow?.webContents) return

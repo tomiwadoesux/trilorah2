@@ -84,6 +84,8 @@ interface TeachState {
   waiting: boolean;
   got?: string;
   needed?: boolean;
+  /** The watcher itself failed (not a timeout, not a skip): the reason, shown on the question. */
+  trouble?: string;
   note?: string;
   result?: { verified: boolean; broken: Array<{ ability: string; label?: string; problem: string }>; file?: string };
   testing?: boolean;
@@ -126,9 +128,15 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
   const ask = useCallback(async (state: TeachState, q: number) => {
     const question = QUESTIONS[q];
     if (!question || !state.app) return;
-    setS({ ...state, stage: 'ask', q, waiting: true, got: undefined, needed: false });
+    setS({ ...state, stage: 'ask', q, waiting: true, got: undefined, needed: false, trouble: undefined });
     const r = await api!.controllerWatch(state.app.pid, question.clicks, 120);
     if (!alive.current) return;
+    if (r.error) {
+      // The watcher failed. That is not the operator skipping, so the question stays put and says why.
+      setS({ ...state, stage: 'ask', q, waiting: false, trouble: r.error });
+      say('err', `${state.app.name}: could not watch for the click — ${r.error}`);
+      return;
+    }
     if (r.recorded.length >= question.clicks) {
       const got = nameOf(r.recorded[0] as WatchRecord);
       const next = { ...state, stage: 'ask' as const, q, waiting: false, got, answers: { ...state.answers, [question.ability]: r.recorded as WatchRecord[] } };
@@ -190,6 +198,14 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
     if (alive.current) setS((x) => ({ ...x, tested: false }));
   }, [api, say]);
   const question = QUESTIONS[s.q];
+  const skipLabel = question ? `skip — no ${question.ability === 'find' ? 'search' : question.ability} here` : 'skip';
+  /* Skipping when no watch is running (the watcher failed): the same bookkeeping a timed-out skip does. */
+  const passOver = () => {
+    if (!question) return;
+    const answers = { ...s.answers };
+    delete answers[question.ability];
+    void advance({ ...s, waiting: false, trouble: undefined, answers, skipped: [...s.skipped.filter((a) => a !== question.ability), question.ability] }, s.q + 1);
+  };
   const dots = QUESTIONS.map((qq, i) => {
     const done = s.answers[qq.ability] ? ACCENT : s.skipped.includes(qq.ability) ? FAINT : i === s.q && s.stage === 'ask' ? INK : 'rgba(229,243,242,0.18)';
     return <span key={qq.ability} style={{ width: 8, height: 8, borderRadius: 4, background: done, display: 'inline-block' }} />;
@@ -241,10 +257,14 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
           {s.needed && (
             <p style={{ margin: 0, fontSize: 13, color: '#F0A8A0', lineHeight: 1.5 }}>Trilorah needs this one — without it, it cannot put anything on {s.app.name}'s screen.</p>
           )}
+          {s.trouble && (
+            <p style={{ margin: 0, fontSize: 13, color: '#F0A8A0', lineHeight: 1.5 }}>Trilorah could not watch {s.app.name} for your click — {s.trouble}. Nothing was skipped.</p>
+          )}
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8 }}>
-            {s.needed ? btn('try again', retry, 'go')
+            {s.trouble ? <>{btn('try again', retry, 'go')}{!question.required && btn(skipLabel, passOver)}</>
+              : s.needed ? btn('try again', retry, 'go')
               : s.got ? <>{btn("yes — that's it", () => void advance(s, s.q + 1), 'go')}{btn('no — redo that click', retry)}</>
-              : s.waiting ? btn(question.required ? 'cancel' : `skip — no ${question.ability === 'find' ? 'search' : question.ability} here`, skip) : null}
+              : s.waiting ? btn(question.required ? 'cancel' : skipLabel, skip) : null}
             {btn('stop teaching', onClose)}
           </div>
         </>

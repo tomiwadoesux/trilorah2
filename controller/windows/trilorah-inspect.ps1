@@ -362,7 +362,12 @@ switch ($command) {
     if ($positional.Count -lt 2) { Fail 'watch <app> [--count N] [--seconds N]' @{} 2 }
     $app = FindApp $positional[1]
     $want = IntFlag 'count' 1; $seconds = IntFlag 'seconds' 60
-    Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern short GetAsyncKeyState(int k); [DllImport("user32.dll")] public static extern bool GetCursorPos(out System.Drawing.Point p);' -Name K -Namespace W -ErrorAction SilentlyContinue
+    # The P/Invoke names System.Drawing.Point, and Add-Type's compiler references only System.dll on its
+    # own: without System.Drawing the type never compiles, [W.K] does not exist, the next line throws and
+    # the watch ends before it begins — which the app used to read as "the operator skipped".
+    try {
+      Add-Type -ReferencedAssemblies System.Drawing -MemberDefinition '[DllImport("user32.dll")] public static extern short GetAsyncKeyState(int k); [DllImport("user32.dll")] public static extern bool GetCursorPos(out System.Drawing.Point p);' -Name K -Namespace W
+    } catch { Fail "the click watcher could not start: $($_.Exception.Message)" }
     [Console]::Error.WriteLine("watching $($app.name) — click the control you want to teach ($want click(s), up to ${seconds}s)")
     $recorded = @(); $deadline = (Get-Date).AddSeconds($seconds); $wasDown = $false
     while ($recorded.Count -lt $want -and (Get-Date) -lt $deadline) {

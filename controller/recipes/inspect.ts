@@ -32,25 +32,52 @@ function commandFor(binary: string, args: string[]): { file: string; args: strin
   return { file: binary, args }
 }
 
+export interface WatchOutcome {
+  recorded: Record<string, unknown>[]
+  /** The watcher failed rather than ran out of time. The operator must see this; it is never a skip. */
+  error?: string
+  /** The operator called it off, so nothing recorded is the expected answer. */
+  cancelled?: boolean
+}
+
+/**
+ * What a watcher run meant. Time running out is honest JSON with nothing
+ * recorded; a crash is no JSON at all, or a `Fail` body. Those must never
+ * look the same to the teaching flow, or a broken watcher reads as "the
+ * operator skipped" and the next question appears before anyone clicked.
+ */
+export function readWatchOutput(stdout: string, stderr: string, code: number | null, cancelled: boolean): WatchOutcome {
+  const start = stdout.indexOf('{')
+  let parsed: { ok?: boolean; error?: string; recorded?: unknown } | null = null
+  if (start >= 0) { try { parsed = JSON.parse(stdout.slice(start)) } catch { parsed = null } }
+  const recorded = Array.isArray(parsed?.recorded) ? (parsed!.recorded as Record<string, unknown>[]) : []
+  if (cancelled) return { recorded, cancelled: true }
+  if (parsed) {
+    if (Array.isArray(parsed.recorded)) return { recorded }
+    return { recorded, error: parsed.error || 'the watcher answered without a recording' }
+  }
+  // No JSON: the process died. Its own prompts and PowerShell's position noise are not the reason.
+  const said = stderr.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !/^(watching |recorded:|At |\+ )/.test(l))
+  return { recorded, error: (said[0] ?? `the watcher stopped before it started (exit ${code ?? '?'})`).slice(0, 200) }
+}
+
 /**
  * A `watch` that can be called off: the teaching flow's skip button. Resolves
- * with the records so far (none when skipped before a click landed).
+ * with the records so far, or with why it could not watch at all.
  */
-export function watchClicks(binary: string, pid: number, clicks: number, seconds: number): { done: Promise<Record<string, unknown>[]>; cancel: () => void } {
+export function watchClicks(binary: string, pid: number, clicks: number, seconds: number): { done: Promise<WatchOutcome>; cancel: () => void } {
   const cmd = commandFor(binary, ['watch', String(pid), '--count', String(clicks), '--seconds', String(seconds)])
-  const child = spawn(cmd.file, cmd.args, { stdio: ['ignore', 'pipe', 'ignore'] })
+  const child = spawn(cmd.file, cmd.args, { stdio: ['ignore', 'pipe', 'pipe'] })
   let out = ''
+  let err = ''
+  let cancelled = false
   child.stdout.on('data', (chunk) => { out += String(chunk) })
-  const done = new Promise<Record<string, unknown>[]>((resolve) => {
-    child.on('close', () => {
-      try {
-        const parsed = JSON.parse(out.slice(out.indexOf('{'))) as { recorded?: Record<string, unknown>[] }
-        resolve(parsed.recorded ?? [])
-      } catch { resolve([]) }
-    })
-    child.on('error', () => resolve([]))
+  child.stderr.on('data', (chunk) => { err += String(chunk) })
+  const done = new Promise<WatchOutcome>((resolve) => {
+    child.on('close', (code) => resolve(readWatchOutput(out, err, code, cancelled)))
+    child.on('error', (e) => resolve({ recorded: [], error: `could not start the watcher: ${e.message}` }))
   })
-  return { done, cancel: () => { try { child.kill('SIGTERM') } catch { /* already gone */ } } }
+  return { done, cancel: () => { cancelled = true; try { child.kill('SIGTERM') } catch { /* already gone */ } } }
 }
 
 export function spawnInspector(binary: string, timeoutMs = 15_000): Inspector {
