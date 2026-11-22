@@ -347,6 +347,9 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
             <>
               <p style={{ margin: 0, fontSize: 13, color: INK }}>✓ got it — {s.got}</p>
               <p style={{ margin: 0, fontSize: 12, color: DIM }}>{s.answers[question.ability] && s.answers[question.ability]!.length > 1 ? 'The last click is the one Trilorah will aim for; the ones before are how it gets there. Right?' : 'Is that the right one?'}</p>
+              {!s.only && s.q + 1 < QUESTIONS.length && (
+                <p style={{ margin: 0, fontSize: 12, color: FAINT }}>next up: {QUESTION_TITLE[QUESTIONS[s.q + 1].ability]}</p>
+              )}
             </>
           )}
           {s.needed && (
@@ -358,7 +361,7 @@ function TeachPanel({ onClose, onTaught, say }: { onClose: () => void; onTaught:
           <div style={{ marginTop: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {s.trouble ? <>{btn('try again', retry, 'go')}{!question.required && !s.only && btn(SKIP_WORDS[question.ability], passOver)}</>
               : s.needed ? btn('try again', retry, 'go')
-              : s.got ? <>{btn("yes — that's it", () => void advance(s, s.q + 1), 'go')}{btn('no — redo those clicks', retry)}</>
+              : s.got ? <>{btn(s.only ? 'right — save it' : s.q + 1 < QUESTIONS.length ? 'right — next question →' : 'right — finish', () => void advance(s, s.q + 1), 'go')}{btn('no — redo those clicks', retry)}</>
               : s.waiting ? <>
                   {trail.length > 0 && btn("that's it — that was the last click", () => skip('done'), 'go')}
                   {!s.only && btn(question.required ? 'cancel' : SKIP_WORDS[question.ability], () => skip(question.required ? 'done' : 'skip'))}
