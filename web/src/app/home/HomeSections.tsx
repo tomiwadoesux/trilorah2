@@ -30,16 +30,16 @@ export function HomeFeatureSections() {
       <section className="home-section home-intro" id="workflow" aria-labelledby="workflow-heading">
         <div className="home-container">
           <div className="home-section-heading">
-            <div><span className="home-eyebrow">From the first word to the final amen</span><h2 id="workflow-heading">Everything in its place.<br /><span>Everyone in the moment.</span></h2></div>
-            <p>The best tools leave room for what matters. Bring your service, your screens, and your congregation together with less to keep track of.</p>
+            <div><span className="home-eyebrow">From the first word to the final amen</span><h2 id="workflow-heading">The service has an engine now.<br /><span>You have the controls.</span></h2></div>
+            <p>Trilorah runs the parts a service repeats — finding scripture, staging songs, driving screens — so the desk’s attention goes where the room needs it.</p>
           </div>
           <div className="home-bento">
             <a className="home-feature home-feature-scripture" href="#scripture">
               <div className="home-feature-art"><SignalDrawing /><div className="home-verse-float"><span><Radio size={14} /> Scripture recognized</span><p>Psalm 46:10</p><small>“Be still, and know that I am God…”</small><div><Check size={13} /> Ready for the screen</div></div></div>
-              <div className="home-feature-copy"><BookOpen size={22} /><h3>The right verse.<br />Right when it’s needed.</h3><p>Trilorah listens along, finds scripture references, and helps you follow the message as it unfolds.</p><span className="home-feature-link">See it in action <ArrowRight size={16} /></span></div>
+              <div className="home-feature-copy"><BookOpen size={22} /><h3>Spoken scripture,<br />found as it’s said.</h3><p>The engine follows the sermon, matches references and allusions against the whole Bible, and stages each verse for your press.</p><span className="home-feature-link">See it in action <ArrowRight size={16} /></span></div>
             </a>
             <a className="home-feature home-feature-companion" href="#companion">
-              <div className="home-small-feature-copy"><StickyNote size={21} /><h3>A seat for everyone.</h3><p>Live verses, a transcript, and sermon notes. Right there on their phone.</p><span className="home-feature-link">Meet the companion <ArrowRight size={16} /></span></div>
+              <div className="home-small-feature-copy"><StickyNote size={21} /><h3>Every phone, part of the service.</h3><p>Live verses, the transcript and sermon notes, on the congregation’s phones from one QR code.</p><span className="home-feature-link">Meet the companion <ArrowRight size={16} /></span></div>
               <div className="home-pocket-card" aria-hidden="true"><div className="home-pocket-top"><BrandMark /><span>Sunday, together</span></div><div className="home-pocket-rule" /><small>SERMON NOTES</small><p>Make room<br />for the stillness.</p><div className="home-pocket-lines"><i /><i /><i /></div><span className="home-pocket-saved"><Check size={12} /> A thought worth keeping</span></div>
             </a>
             <a className="home-feature home-feature-portable" href="#notes">
@@ -56,7 +56,7 @@ export function HomeFeatureSections() {
       <HomeNotes />
       <LineStudio />
 
-      <section className="home-closing" aria-labelledby="closing-heading"><div className="home-container"><div className="home-closing-art" aria-hidden="true"><SignalDrawing id="closing-signal-fade" /></div><span className="home-eyebrow">Built around what matters</span><h2 id="closing-heading">Your next service.<br /><span>A little more present.</span></h2><Link href="/app/signup" className="home-button home-button-primary">Start your service <ArrowRight size={16} /></Link><p>Already part of Trilorah? <Link href="/app">Sign in <span aria-hidden="true"><ArrowUpRight size={12} /></span></Link></p></div></section>
+      <section className="home-closing" aria-labelledby="closing-heading"><div className="home-container"><div className="home-closing-art" aria-hidden="true"><SignalDrawing id="closing-signal-fade" /></div><span className="home-eyebrow">The engine is ready</span><h2 id="closing-heading">Your next service.<br /><span>With an engine behind it.</span></h2><Link href="/app/signup" className="home-button home-button-primary">Start your service <ArrowRight size={16} /></Link><p>Already part of Trilorah? <Link href="/app">Sign in <span aria-hidden="true"><ArrowUpRight size={12} /></span></Link></p></div></section>
     </>
   );
 }

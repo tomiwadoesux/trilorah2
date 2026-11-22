@@ -26,7 +26,7 @@ peak opacity with the existing 3.5-second delay.
 the `/home` feature sections (`HomeFeatureSections` and `HomeFooter` in
 `home/HomeSections.tsx`) follow the landscape. Those sections are drawn for a dark
 page, so they keep the look's dark palette in light mode too, and their content
-sits on the hero's 1300px grid. The landscape is `#workspace`, and links to it
+sits on the hero's 1200px grid. The landscape is `#workspace`, and links to it
 land on the fully open view.
 
 Between the landscape and those sections, `HeroFeatures.tsx` (styles in
@@ -38,8 +38,11 @@ placeholder. Every illustration is a `DummyArt` slot: a dashed outline with
 crossed diagonals, labelled with its size in the 1440px design. Slots that bleed
 past a card's edge stretch with the card. Replace a slot by swapping its
 `DummyArt` for the drawing at the same size and position.
-The header, introduction, and landscape share a 1300px maximum content width,
-with 20px side gutters on desktop and 18.75px below 1024px. The header is 64px on
+The header, introduction, and landscape share a 1200px maximum content width,
+with 20px side gutters on desktop and 18.75px below 1024px. That width is written
+once, as `--hero-content-width` in `landing.css`; `AppPreview` reads the same
+custom property rather than carrying a number of its own, so the landscape cannot
+drift wider than the header again. The header is 64px on
 desktop and smaller screens. Dark mode uses a solid near-black `#060907` with a faint green undertone
 background and `#edf3ee` text, with `#acb9ae` supporting text. Light mode uses
 solid `#f0f1f3` and `#22252a`. Secondary surfaces are `#141a16` in dark mode
@@ -47,10 +50,22 @@ and `#ffffff` in light mode. Both use the supplied
 geometric logo. Primary actions and accent details use `#E4D87A` in dark mode
 and `#07271C` in light mode, with pale-mint text on the green buttons.
 
+For now the photographs are commented out (owner, 2026-11-10). In their place the
+frame shows the app's own dot patches, `HeroDots.tsx`, a port of the desktop's
+`DitheredPatches` that imports its field and clock from `src/design/screens/`, and
+a one-pixel rule across the full width marks where the landscape begins. The dot
+colour and strength are `--hero-dot-rgb` and `--hero-dot-alpha` in `landing.css`,
+set per theme; the rule is `--hero-rule`. To bring the photographs back, uncomment
+the `Image` block in `AppPreview.tsx` and the pairing rules at the end of
+`landing.css`.
+
 The hero uses `web/public/hero-landscape/light.webp` and `dark.webp`, copied from
 the laptop's Downloads folder. `AppPreview` renders both responsive images so
-switching is immediate. On `/hero`, the native service demonstration starts big:
-fitted inside the 1300px card with 24px to spare each side, with only its top 30%
+switching is immediate. The photographs answer the theme rather than echoing it:
+the dark theme opens onto the daylight valley, and the light theme onto the lit
+cabin at night. The file names describe each picture, so the pairing lives in
+`landing.css`, not in the names. On `/hero`, the native service demonstration starts big:
+fitted inside the 1200px card with 24px to spare each side, with only its top 30%
 (`REST_PEEK` in `AppPreview.tsx`) showing above the fold, or above the
 landscape's own bottom edge where that comes first (phones, very tall screens),
 and never closer than 32px to the landscape's top edge. As the image expands on scroll it rises and

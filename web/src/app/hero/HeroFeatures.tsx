@@ -17,9 +17,9 @@ function DummyArt({ width, height, className }: { width: number; height: number;
 }
 
 const figures = [
-  { title: 'Made for Sunday', body: 'Shaped by the rhythm of real services, from the first song to the final amen.' },
-  { title: 'Listens along', body: 'Hears each verse as it is preached, then waits for your press to show it.' },
-  { title: 'Built to stay calm', body: 'Fewer clicks and fewer surprises, so the whole team can stay in the moment.' },
+  { title: 'Knows the Bible by ear', body: 'A quotation without chapter and verse is still found. The engine matches what was actually said, from Genesis to Revelation.' },
+  { title: 'The engine stages, you send', body: 'Each catch waits in preview with the passage resolved. Nothing reaches the congregation until you press.' },
+  { title: 'One desk, every screen', body: 'Songs, scripture, slides and media from a single surface, with each screen in the room doing its own job.' },
 ];
 
 function HeroFigures() {
@@ -27,7 +27,7 @@ function HeroFigures() {
     <section className="hero-figures" aria-labelledby="hero-figures-heading">
       <div className="hero-container">
         <h2 id="hero-figures-heading">
-          A calmer way to run Sunday. <span>Built for the people behind the screens, Trilorah listens along with the sermon and keeps every screen in step with the message.</span>
+          A listening engine at the heart of the service. <span>Trilorah hears the sermon as it&rsquo;s preached — named references, allusions, half-quoted lines — and holds every screen in the room to a single press.</span>
         </h2>
         <div className="hero-figures-grid">
           {figures.map((figure, index) => (
@@ -60,8 +60,8 @@ function HeroBento() {
         <BentoCard className="hero-bento-scripture" icon={<BookOpen size={18} />} title="Live scripture">
           <p>Every sermon is followed by <strong>a listener that knows the Bible</strong>, from Genesis to Revelation.</p>
           <ul className="hero-bento-checks">
-            <li><Check size={15} />Every major translation</li>
             <li><Check size={15} />Hears references and allusions</li>
+            <li><Check size={15} />Finds quotes without a reference</li>
             <li><Check size={15} />Waits for your press</li>
           </ul>
           <DummyArt width={168} height={168} className="hero-bento-art" />
@@ -71,7 +71,7 @@ function HeroBento() {
           <DummyArt width={300} height={195} className="hero-bento-art" />
         </BentoCard>
         <BentoCard className="hero-bento-songs" icon={<Headphones size={18} />} title="Songs and lyrics">
-          <p>Find any song’s words <strong>and have them ready for the screen.</strong></p>
+          <p>Any song’s words, <strong>found and set for the screen.</strong></p>
           <span className="hero-bento-chip"><span aria-hidden="true">›</span> search lyrics <em>amazing grace</em></span>
           <DummyArt width={300} height={200} className="hero-bento-art" />
         </BentoCard>
@@ -80,7 +80,7 @@ function HeroBento() {
           <DummyArt width={300} height={210} className="hero-bento-art" />
         </BentoCard>
         <BentoCard className="hero-bento-screens" icon={<Radio size={18} />} title="Every screen">
-          <p><strong>Send the right thing to each screen</strong> in the room, in real time.</p>
+          <p><strong>Every screen in the room, assigned its role</strong> and driven from one desk.</p>
           <DummyArt width={300} height={260} className="hero-bento-art" />
         </BentoCard>
         <BentoCard className="hero-bento-recap" icon={<StickyNote size={18} />} title="Sermon recap">

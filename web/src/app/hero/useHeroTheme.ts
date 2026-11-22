@@ -5,8 +5,9 @@ import type { HeroTheme } from './AppPreview';
 
 const themeStorageKey = 'trilorah-hero-theme';
 
-export function useHeroTheme() {
-  const [theme, setTheme] = useState<HeroTheme>('dark');
+/** The visitor's last choice wins; `defaultTheme` only decides the first visit. */
+export function useHeroTheme(defaultTheme: HeroTheme = 'dark') {
+  const [theme, setTheme] = useState<HeroTheme>(defaultTheme);
 
   useEffect(() => {
     try {

@@ -1,8 +1,9 @@
 'use client';
 
 import { useLayoutEffect, useRef } from 'react';
-import Image from 'next/image';
+// import Image from 'next/image'; // used by the commented-out photographs below
 import { ServiceDemo } from './ServiceDemo';
+import { HeroDots } from './HeroDots';
 
 export type HeroTheme = 'light' | 'dark';
 
@@ -34,6 +35,7 @@ export function AppPreview({ theme, showInterface = false }: { theme: HeroTheme;
       if (motion.matches) {
         aperture.style.removeProperty('clip-path');
         aperture.style.removeProperty('transform');
+        aperture.style.removeProperty('--hero-clip-top');
         interfaceRef.current?.style.removeProperty('transform');
         initialized = false;
         lastTime = 0;
@@ -47,12 +49,14 @@ export function AppPreview({ theme, showInterface = false }: { theme: HeroTheme;
         const viewportWidth = document.documentElement.clientWidth;
         const viewportHeight = aperture.clientHeight;
         const gutter = Number.parseFloat(styles.getPropertyValue('--hero-gutter')) || 20;
-        const cardWidth = Math.min(1520, viewportWidth - gutter * 2);
+        // The landscape sits on the same grid as the header and the intro.
+        const contentWidth = Number.parseFloat(styles.getPropertyValue('--hero-content-width')) || 1200;
+        const cardWidth = Math.min(contentWidth, viewportWidth - gutter * 2);
         const start = bounds.top + globalThis.scrollY;
         const appWidth = interfaceRef.current?.clientWidth || 0;
         const appHeight = interfaceRef.current?.clientHeight || 0;
         // Widen the resting window without increasing its original height.
-        const initialHeight = Math.min(viewportHeight, Math.min(1300, cardWidth) * 941 / 1672);
+        const initialHeight = Math.min(viewportHeight, cardWidth * 941 / 1672);
         // At rest the UI is nearly full size, fitted inside the card, and only its
         // top ~30% shows above the fold, or above the landscape's own bottom edge
         // where that comes first (phones, very tall screens). It never starts
@@ -102,6 +106,8 @@ export function AppPreview({ theme, showInterface = false }: { theme: HeroTheme;
 
       // Section edges stay attached to native scrolling, even while expansion eases.
       aperture.style.clipPath = `inset(${top}px ${metrics.side * (1 - horizontal)}px ${bottom}px round ${4 * (1 - horizontal)}px)`;
+      // The rule marks where the landscape begins: the clip's top edge, not the frame's.
+      aperture.style.setProperty('--hero-clip-top', `${top}px`);
       aperture.style.transform = leave ? `translate3d(0, ${leave}px, 0)` : '';
       const app = interfaceRef.current;
       if (app) {
@@ -148,19 +154,25 @@ export function AppPreview({ theme, showInterface = false }: { theme: HeroTheme;
   return (
     <section className="hero-landscape-section" id="workspace" ref={sectionRef} aria-label="Trilorah landscape">
       <div className="hero-app-frame" ref={windowRef}>
+        {/* The rule marks where the landscape begins, the top of the frame as it
+            opens; the app's dot patches stand in for the photographs below. */}
+        <span className="hero-landscape-rule" aria-hidden="true" />
+        <HeroDots />
+        {/* The cabin photographs, kept for when they return (owner, 2026-11-10):
         {(['dark', 'light'] as const).map((mode) => (
           <Image
             key={mode}
             className={`hero-landscape-image hero-landscape-${mode}`}
             src={`/hero-landscape/${mode}.webp`}
             alt={mode === 'light' ? 'A quiet cabin beneath misty mountains in daylight' : 'A warmly lit cabin beneath misty mountains at night'}
-            aria-hidden={theme !== mode}
+            aria-hidden={theme === mode}
             width={1672}
             height={941}
             sizes="100vw"
             priority
           />
         ))}
+        */}
         {showInterface && (
           <div className="hero-landscape-ui" ref={interfaceRef}>
             <ServiceDemo theme={theme} />

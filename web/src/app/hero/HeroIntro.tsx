@@ -85,8 +85,8 @@ export function HeroIntro({ downloadHref }: { downloadHref: string }) {
     <h1><RevealText text={headline} variant="title" /></h1>
     <p className="hero-subtext"><RevealText text={description} variant="copy" /></p>
     <div className="hero-intro-actions">
-      <HeroAction href={downloadHref} label="Download" icon={<ArrowDown size={17} aria-hidden="true" />} primary />
-      <HeroAction href="/home#workflow" label="Explore Trilorah" icon={<ArrowRight size={17} aria-hidden="true" />} />
+      <HeroAction href={downloadHref} label="Get Trilorah" icon={<ArrowDown size={17} aria-hidden="true" />} primary />
+      <HeroAction href="#workspace" label="Watch the engine work" icon={<ArrowRight size={17} aria-hidden="true" />} />
     </div>
   </div>;
 }

@@ -1,4 +1,7 @@
-/* Cursor's shared content grid: 1300px maximum, 20px gutters (18.75px on mobile). */
+/* Cursor's shared content grid: 1200px maximum, 20px gutters (18.75px on mobile).
+   --hero-content-width is the one place the grid's width is written: the header,
+   the introduction, the landscape card and the sections below all read it, and
+   AppPreview measures it rather than carrying a number of its own. */
 html:has(.hero-landing-page), body:has(.hero-landing-page) { background: #14120b; }
 html:has(.hero-landing-page[data-theme='light']), body:has(.hero-landing-page[data-theme='light']) { background: #f6f5f1; color-scheme: light; }
 
@@ -11,6 +14,10 @@ html:has(.hero-landing-page[data-theme='light']), body:has(.hero-landing-page[da
   --hero-primary-hover: #d7d6d5;
   --hero-nav-height: 64px;
   --hero-gutter: 20px;
+  --hero-content-width: 1200px;
+  --hero-rule: #34322a;
+  --hero-dot-rgb: 229 235 243;
+  --hero-dot-alpha: .3;
   background: var(--home-bg);
   color: var(--home-ink);
   color-scheme: dark;
@@ -22,13 +29,16 @@ html:has(.hero-landing-page[data-theme='light']), body:has(.hero-landing-page[da
   --home-muted: #66645a;
   --hero-secondary: #e8e6df;
   --hero-secondary-hover: #dedcd3;
+  --hero-rule: #d9d7cf;
+  --hero-dot-rgb: 31 30 24;
+  --hero-dot-alpha: .22;
   --hero-primary-hover: #3e3c32;
   color-scheme: light;
 }
 
 .hero-landing-page :is(.home-nav-inner, .hero-container) {
   width: calc(100% - 2 * var(--hero-gutter));
-  max-width: 1300px;
+  max-width: var(--hero-content-width);
   margin-inline: auto;
 }
 
@@ -164,6 +174,7 @@ html:has(.hero-landing-page[data-theme='light']), body:has(.hero-landing-page[da
   height: 100svh;
   margin: 0;
   border-radius: 0;
+  background: var(--home-bg);
   clip-path: inset(100% 0 0);
   pointer-events: none;
 }
@@ -174,6 +185,10 @@ html:has(.hero-landing-page[data-theme='light']), body:has(.hero-landing-page[da
   height: 100%;
   object-fit: cover;
 }
+/* Where the landscape begins: a line across the whole width at the frame's top,
+   which the clip reveals exactly as the picture used to. */
+.hero-landscape-rule { position: absolute; top: var(--hero-clip-top, 0px); left: 0; right: 0; height: 1px; background: var(--hero-rule); z-index: 1; }
+.hero-dots { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .hero-landscape-ui {
   position: absolute;
   top: 0;
@@ -196,12 +211,15 @@ html:has(.hero-landing-page[data-theme='light']), body:has(.hero-landing-page[da
   .hero-landing-page .hero-landscape-section > .hero-app-frame { position: relative; height: auto; aspect-ratio: 1672 / 941; clip-path: none; }
   .hero-landscape-ui { top: calc(50% + 24px); width: 76%; transform: translate(-50%, -50%); }
 }
-/* The /home sections follow the landscape on the hero's 1300px grid. */
+/* The /home sections follow the landscape on the hero's shared grid. */
 .hero-home-sections { position: relative; background: var(--home-bg); color: var(--home-ink); }
-.hero-home-sections .home-container { width: calc(100% - 2 * var(--hero-gutter)); max-width: 1300px; }
-.hero-landing-page .hero-landscape-light { position: absolute; inset: 0; opacity: 0; }
-.hero-landing-page[data-theme='light'] .hero-landscape-light { opacity: 1; }
-.hero-landing-page[data-theme='light'] .hero-landscape-dark { opacity: 0; }
+.hero-home-sections .home-container { width: calc(100% - 2 * var(--hero-gutter)); max-width: var(--hero-content-width); }
+/* The photographs answer the theme, rather than echoing it: the dark theme
+   opens onto daylight, and the light theme onto the lit cabin at night.
+   Commented out with the photographs in AppPreview.tsx (owner, 2026-11-10).
+.hero-landing-page .hero-landscape-dark { position: absolute; inset: 0; opacity: 0; }
+.hero-landing-page[data-theme='light'] .hero-landscape-dark { opacity: 1; }
+.hero-landing-page[data-theme='light'] .hero-landscape-light { opacity: 0; } */
 .hero-landing-page .hero-theme-toggle {
   display: inline-flex;
   align-items: center;

@@ -1,0 +1,291 @@
+/* /hero3 — a centred hero: announcement, headline, download, then the
+   workspace on a grid under a five-colour rule. Light first; the shared
+   toggle still switches it. Builds on landing.css for the nav and tokens. */
+
+.hero3-page {
+  --home-bg: #ffffff;
+  --home-ink: #1f1e18;
+  --home-muted: #5f5d54;
+  --hero3-line: #d9d7cf;
+  --hero3-canvas: #f4f4ef;
+  --hero3-grid: rgb(31 30 24 / 7%);
+  --hero3-mark: #07271c;
+  --hero3-mark-faint: #c9d9cf;
+  --hero3-primary: #07271c;
+  --hero3-primary-ink: #e5f3f2;
+  --hero3-primary-hover: #0c3b2a;
+  --hero3-menu: #ffffff;
+  --hero3-secondary: #f1f0ea;
+  --hero3-secondary-hover: #e7e6df;
+  --hero-nav-height: 72px;
+  /* A touch wider than the shared 1200px grid, on this page only. */
+  --hero-content-width: 1260px;
+  background: var(--home-bg);
+  color: var(--home-ink);
+}
+.hero3-page[data-theme='dark'] {
+  --home-bg: #14120b;
+  --home-ink: #edecec;
+  --home-muted: #bcbab2;
+  --hero3-line: #34322a;
+  --hero3-canvas: #1a1811;
+  --hero3-grid: rgb(237 236 236 / 7%);
+  --hero3-mark: #e4d87a;
+  --hero3-mark-faint: #3b3a2a;
+  --hero3-primary: #e4d87a;
+  --hero3-primary-ink: #14120b;
+  --hero3-primary-hover: #efe598;
+  --hero3-menu: #1f1d15;
+  --hero3-secondary: #26251e;
+  --hero3-secondary-hover: #333229;
+}
+html:has(.hero3-page[data-theme='light']), body:has(.hero3-page[data-theme='light']) { background: #ffffff; }
+
+.hero3-page .home-nav { border-bottom: 1px solid var(--hero3-line); }
+/* hero.css holds every hero page to min-height 100svh; on a phone the grid, not bare
+   background, takes the leftover, so it reaches the bottom of the screen. */
+.hero3-page { display: flex; flex-direction: column; }
+.hero3-page .hero3-main { display: flex; flex-direction: column; flex: 1; padding: 0; overflow-x: clip; }
+
+/* ---- the centred stage ------------------------------------------------ */
+.hero3-stage { padding: clamp(18px, 2.6vw, 36px) 0 clamp(32px, 4.5vw, 56px); }
+.hero3-container {
+  width: calc(100% - 2 * var(--hero-gutter));
+  max-width: var(--hero-content-width, 1200px);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hero3-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid var(--hero3-line);
+  border-radius: 999px;
+  color: var(--home-ink);
+  font-size: 15px;
+  line-height: 20px;
+  background: var(--home-bg);
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.hero3-pill-tag {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--hero3-primary);
+  color: var(--hero3-primary-ink);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.hero3-pill-arrow {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--hero3-line);
+  border-radius: 50%;
+  transition: transform 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hero3-pill:hover { border-color: var(--home-muted); }
+  .hero3-pill:hover .hero3-pill-arrow { transform: translateX(2px); }
+}
+
+.hero3-title {
+  max-width: 13ch;
+  margin: clamp(16px, 2.2vw, 26px) 0 clamp(20px, 2.8vw, 32px);
+  font-family: var(--font-heading), Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: clamp(34px, 4.6vw, 64px);
+  font-weight: 500;
+  line-height: .98;
+  letter-spacing: -.05em;
+  text-wrap: balance;
+}
+
+/* ---- actions ------------------------------------------------------------ */
+.hero3-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.hero3-actions :is(a, summary) { color: inherit; }
+
+.hero3-split {
+  position: relative;
+  display: inline-flex;
+  border-radius: 8px;
+  background: var(--hero3-primary);
+  color: var(--hero3-primary-ink);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+}
+.hero3-split-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 8px 0 0 8px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+.hero3-split-menu { position: relative; }
+.hero3-split-menu > summary {
+  display: inline-grid;
+  place-items: center;
+  height: 100%;
+  min-width: 48px;
+  border-left: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 150ms ease;
+}
+.hero3-page[data-theme='dark'] .hero3-split-menu > summary { border-left-color: rgb(0 0 0 / 22%); }
+.hero3-split-menu > summary::-webkit-details-marker { display: none; }
+.hero3-split-menu > summary svg { transition: transform 180ms ease; }
+.hero3-split-menu[open] > summary svg { transform: rotate(180deg); }
+@media (hover: hover) and (pointer: fine) {
+  .hero3-split-main:hover, .hero3-split-menu > summary:hover { background: var(--hero3-primary-hover); }
+}
+.hero3-split-menu > ul {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  min-width: 280px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  text-align: left;
+  background: var(--hero3-menu);
+  color: var(--home-ink);
+  border: 1px solid var(--hero3-line);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 14%);
+}
+.hero3-split-menu > ul a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+.hero3-split-menu > ul a > span { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.hero3-split-menu > ul small { color: var(--home-muted); font-size: 12.5px; }
+.hero3-split-menu > ul svg { flex: none; color: var(--home-muted); }
+@media (hover: hover) and (pointer: fine) {
+  .hero3-split-menu > ul a:hover { background: var(--hero3-secondary); }
+}
+
+.hero3-secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 1px solid var(--hero3-line);
+  border-radius: 8px;
+  background: var(--hero3-secondary);
+  font-size: 17px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .hero3-secondary:hover { background: var(--hero3-secondary-hover); }
+}
+
+/* ---- the rule and the grid ------------------------------------------------ */
+.hero3-stripe { display: flex; height: 6px; }
+.hero3-stripe > span { flex: 1; }
+.hero3-stripe > span:nth-child(1) { background: #4f8a5b; }
+.hero3-stripe > span:nth-child(2) { background: #e4d87a; }
+.hero3-stripe > span:nth-child(3) { background: #07271c; }
+.hero3-stripe > span:nth-child(4) { background: #9fd3bd; }
+.hero3-stripe > span:nth-child(5) { background: #2f6f4f; }
+
+.hero3-canvas {
+  position: relative;
+  isolation: isolate;
+  /* A 0px basis, not 0%: with the page height indefinite, 0% collapses to the content
+     height and the whole capture would show. 0px makes the canvas exactly
+     max(min-height, the space the 100svh page minimum leaves over). */
+  flex: 1 1 0px;
+  min-height: clamp(300px, 46vw, 640px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-top: clamp(48px, 6vw, 88px);
+  background-color: var(--hero3-canvas);
+  background-image:
+    linear-gradient(var(--hero3-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hero3-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: center top;
+}
+/* The grid fades towards the edges so the workspace, not the paper, is the subject. */
+.hero3-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: radial-gradient(ellipse 70% 90% at 50% 100%, transparent 40%, var(--hero3-canvas) 100%);
+  pointer-events: none;
+}
+
+/* Two pixel marks in the top corners, three squares each, like a registration mark. */
+.hero3-mark {
+  position: absolute;
+  top: 36px;
+  width: 12px;
+  height: 12px;
+  background: var(--hero3-mark);
+  z-index: 1;
+}
+.hero3-mark-left { left: 36px; box-shadow: 12px 0 0 #4f8a5b, 0 12px 0 var(--hero3-mark-faint); }
+.hero3-mark-right { right: 36px; box-shadow: -12px 0 0 #c9a24f, 0 12px 0 var(--hero3-mark-faint); }
+
+.hero3-shot {
+  position: relative;
+  z-index: 1;
+  width: min(var(--hero-content-width, 1200px), calc(100% - 2 * var(--hero-gutter)));
+  /* auto on top pins it to the bottom edge when there is room, and resolves to 0
+     when there is not, so the crop always takes the bottom of the picture. */
+  margin: auto auto 0;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 10%),
+    0 24px 60px rgb(0 0 0 / 18%);
+  background: #0b0b0c;
+}
+.hero3-shot img { display: block; width: 100%; height: auto; }
+
+/* ---- smaller screens -------------------------------------------------------- */
+@media (max-width: 1023px) {
+  .hero3-page { --hero-nav-height: 64px; }
+}
+@media (max-width: 760px) {
+  .hero3-stage { padding-top: 20px; }
+  .hero3-pill { font-size: 14px; }
+  .hero3-title { font-size: clamp(28px, 7.8vw, 40px); letter-spacing: -.04em; }
+  .hero3-actions { width: 100%; flex-direction: column; gap: 10px; }
+  .hero3-split, .hero3-secondary { width: 100%; justify-content: center; }
+  .hero3-split-main { flex: 1; justify-content: center; padding: 0 16px; font-size: 16px; }
+  .hero3-split-menu > ul { left: 0; right: 0; min-width: 0; }
+  .hero3-stripe { height: 4px; }
+  .hero3-canvas { min-height: clamp(220px, 64vw, 380px); }
+  .hero3-mark { top: 18px; width: 8px; height: 8px; }
+  .hero3-mark-left { left: 18px; box-shadow: 8px 0 0 #4f8a5b, 0 8px 0 var(--hero3-mark-faint); }
+  .hero3-mark-right { right: 18px; box-shadow: -8px 0 0 #c9a24f, 0 8px 0 var(--hero3-mark-faint); }
+  .hero3-canvas { padding-top: 40px; }
+  .hero3-shot { width: calc(100% - 24px); border-radius: 8px 8px 0 0; }
+}
+@media (max-width: 420px) {
+  .hero3-split-main span { white-space: normal; text-align: center; line-height: 1.15; }
+}
