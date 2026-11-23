@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "platform": "windows",
+  "app": { "id": "Proclaim.exe", "name": "Proclaim", "version": "4.22" },
+  "abilities": {
+    "show": [
+      { "role": "Button", "name": "ON AIR", "label": "the ON AIR button (goes on air from the selected item of the order of service; pressing it while on air goes OFF air)", "action": { "do": "press" } }
+    ],
+    "clear": [
+      { "role": "Text", "name": "Blank", "label": "the Blank quick screen in the on-air panel", "action": { "do": "press" } }
+    ],
+    "next": [
+      { "label": "Right arrow steps the on-air slides forward", "action": { "do": "key", "keys": "right" } }
+    ],
+    "previous": [
+      { "label": "Left arrow steps the on-air slides back", "action": { "do": "key", "keys": "left" } }
+    ]
+  },
+  "taught": { "by": "trilorah", "at": "2026-11-23T11:40:00.000Z" }
+}

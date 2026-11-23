@@ -1,0 +1,29 @@
+{
+  "format": 1,
+  "platform": "windows",
+  "app": { "id": "MediaShout 7.exe", "name": "MediaShout", "version": "7.7.1" },
+  "abilities": {
+    "findVerse": [
+      { "role": "Button", "name": "Bibles", "label": "on the way: the Bibles button in the Cues toolbar (a real click: it tells the accessibility press it worked and opens nothing)", "enroute": true, "action": { "do": "press", "via": "click" } },
+      { "enroute": true, "action": { "do": "wait", "ms": 2500 } },
+      { "path": "0/5/9/17", "role": "Edit", "id": "PART_Editor", "label": "the reference box in the Bibles panel (Enter finds the verse and ticks it)", "action": { "do": "type", "text": "$query", "submit": true } },
+      { "action": { "do": "wait", "ms": 2500 } },
+      { "role": "Button", "name": "Insert Bible", "label": "Insert Bible, which adds the ticked verse to the script as a selected cue", "action": { "do": "press" } },
+      { "action": { "do": "wait", "ms": 3000 } },
+      { "path": "0/5/9/1", "role": "Button", "label": "the close button of the Bibles panel", "action": { "do": "press" } }
+    ],
+    "show": [
+      { "role": "Button", "name": "Fire selected page", "label": "the Fire selected page button under the editor", "action": { "do": "press" } }
+    ],
+    "clear": [
+      { "role": "Button", "name": "Stop All", "label": "the Stop All button under the editor", "action": { "do": "press" } }
+    ],
+    "next": [
+      { "role": "Button", "name": "Next Step", "label": "the Next Step button under the editor", "action": { "do": "press" } }
+    ],
+    "previous": [
+      { "role": "Button", "name": "Previous Step", "label": "the Previous Step button under the editor", "action": { "do": "press" } }
+    ]
+  },
+  "taught": { "by": "trilorah", "at": "2026-11-23T15:15:00.000Z" }
+}

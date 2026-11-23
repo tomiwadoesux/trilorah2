@@ -14,7 +14,7 @@
    apps                                     top-level windows: name, exe, pid
    see <app> [--all] [--pretty] [--depth N]
    find <app> <selector…>
-   press <app> <selector…> [--first]
+   press <app> <selector…> [--first] [--at left|right] [--action toggle|select|expand|click]
    type <app> <selector…> --text "…" [--submit]
    menu <app> "File>Open"
    focus <app>
@@ -23,13 +23,19 @@
 
  Selectors as on the Mac: name:<text> (Name/HelpText contains, case-insensitive),
  role:Button (control type), id:<AutomationId>, path:0/3/2 (index path from
- the app's top window list), bare word = name:. An ambiguous press is an error
- unless --first.
+ the app's top window list), class:<window class> (Windows only: TsdSpeedButton,
+ Edit…), bare word = name:. An ambiguous press is an error unless --first.
 #>
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Argv)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms
+# UI Automation reports physical pixels; without this, a scaled display (125 %, 200 %) makes
+# Windows hand this process shrunken coordinates, and every fallback click lands short.
+try {
+  Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();' -Name D -Namespace W
+  [void][W.D]::SetProcessDPIAware()
+} catch {}
 
 # ---------------------------------------------------------------- output
 
@@ -44,7 +50,7 @@ function Fail($message, $extra = @{}, $code = 1) {
 # ---------------------------------------------------------------- arguments
 
 $positional = @(); $flags = @{}; $switches = @{}
-$valued = @('depth', 'action', 'text', 'limit', 'children', 'seconds', 'count')
+$valued = @('depth', 'action', 'text', 'limit', 'children', 'seconds', 'count', 'at')
 for ($i = 0; $i -lt $Argv.Count; $i++) {
   $a = $Argv[$i]
   if ($a -like '--*') {
@@ -83,6 +89,9 @@ function Describe($el, $path, $depth) {
   if ($cur.HelpText) { $node.help = $cur.HelpText }
   if ($cur.AutomationId) { $node.id = $cur.AutomationId }
   if ($cur.ClassName) { $node.class = $cur.ClassName }
+  # Where it is, in physical pixels: what a fallback click aims at, and what a person checks against a screenshot.
+  $b = $cur.BoundingRectangle
+  if (-not $b.IsEmpty) { $node.rect = @([int]$b.X, [int]$b.Y, [int]$b.Width, [int]$b.Height) }
   $node.enabled = [bool]$cur.IsEnabled
   if ($cur.HasKeyboardFocus) { $node.focused = $true }
   try {
@@ -115,14 +124,18 @@ function Interesting($n) {
 $rowContainers = @('List', 'DataGrid', 'Tree', 'Table')
 
 # The app's "root": every top-level window belonging to the process, in z-order.
-function AppRoots($pid) {
-  $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$pid)
+function AppRoots($procId) {
+  $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$procId)
   $found = $AE::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)
-  $out = @(); foreach ($w in $found) { $out += $w }
-  return ,$out
+  # The app's main window is always root 0, whatever is stacked above it (a full-screen
+  # output, a notification): a path recorded as 0/… must mean the same window on Sunday.
+  $main = [long](Get-Process -Id $procId -ErrorAction SilentlyContinue).MainWindowHandle
+  $first = @(); $rest = @()
+  foreach ($w in $found) { if ($main -ne 0 -and [long]$w.Current.NativeWindowHandle -eq $main) { $first += $w } else { $rest += $w } }
+  return ,($first + $rest)
 }
 
-function Walk($pid, $maxDepth, $maxNodes, $maxChildren, $maxRows, $compact, [scriptblock]$visit) {
+function Walk($procId, $maxDepth, $maxNodes, $maxChildren, $maxRows, $compact, [scriptblock]$visit) {
   $script:walkCount = 0; $script:truncated = $false
   function Go($el, $path, $depth) {
     if ($script:walkCount -ge $maxNodes) { $script:truncated = $true; return }
@@ -137,14 +150,14 @@ function Walk($pid, $maxDepth, $maxNodes, $maxChildren, $maxRows, $compact, [scr
       Go $kids[$i] ($(if ($path -eq '') { "$i" } else { "$path/$i" })) ($depth + 1)
     }
   }
-  $roots = AppRoots $pid
+  $roots = AppRoots $procId
   for ($i = 0; $i -lt $roots.Count; $i++) { Go $roots[$i] "$i" 0 }
   return $script:truncated
 }
 
-function Resolve($pid, $path) {
+function Resolve($procId, $path) {
   $parts = $path -split '/'
-  $roots = AppRoots $pid
+  $roots = AppRoots $procId
   $idx = [int]$parts[0]
   if ($idx -ge $roots.Count) { return $null }
   $cur = $roots[$idx]
@@ -161,9 +174,24 @@ function Resolve($pid, $path) {
 # ---------------------------------------------------------------- apps
 
 function RunningApps() {
+  # Every process with a top-level window on screen — not only those Windows calls a "main
+  # window": an app showing nothing but its activation wizard (MediaShout) has none, and would
+  # otherwise be invisible to `apps`, `press` and the rest.
+  # (String keys on purpose: an ordered hashtable reads an int key as a position.)
+  $byPid = [ordered]@{}
+  foreach ($w in $AE::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)) {
+    $c = $w.Current
+    if ($c.IsOffscreen -and -not $c.Name) { continue }
+    $key = [string][int]$c.ProcessId
+    if (-not $byPid.Contains($key)) { $byPid[$key] = [string]$c.Name }
+    elseif (-not $byPid[$key] -and $c.Name) { $byPid[$key] = [string]$c.Name }
+  }
   $out = @()
-  foreach ($p in Get-Process | Where-Object { $_.MainWindowHandle -ne 0 }) {
-    $out += [ordered]@{ name = $p.ProcessName; title = $p.MainWindowTitle; exe = $(try { [IO.Path]::GetFileName($p.Path) } catch { '' }); pid = $p.Id }
+  foreach ($key in @($byPid.Keys)) {
+    $p = Get-Process -Id ([int]$key) -ErrorAction SilentlyContinue
+    if (-not $p) { continue }
+    $title = if ($p.MainWindowTitle) { $p.MainWindowTitle } else { $byPid[$key] }
+    $out += [ordered]@{ name = $p.ProcessName; title = $title; exe = $(try { [IO.Path]::GetFileName($p.Path) } catch { '' }); pid = $p.Id }
   }
   return ,$out
 }
@@ -183,9 +211,9 @@ function FindApp($query) {
 # ---------------------------------------------------------------- selectors
 
 function ParseSelector($words) {
-  $s = @{ name = $null; role = $null; path = $null; id = $null; value = $null }
+  $s = @{ name = $null; role = $null; path = $null; id = $null; value = $null; class = $null }
   foreach ($w in $words) {
-    if ($w -match '^(name|role|path|id|value):(.*)$') {
+    if ($w -match '^(name|role|path|id|value|class):(.*)$') {
       $k = $Matches[1]; $v = $Matches[2]
       if ($k -eq 'name') { $s.name = if ($s.name) { "$($s.name) $v" } else { $v } } else { $s[$k] = $v }
     } else { $s.name = if ($s.name) { "$($s.name) $w" } else { $w } }
@@ -197,6 +225,9 @@ function Matches($s, $n) {
   if ($s.path -and $n.path -ne $s.path) { return $false }
   if ($s.role -and $n.role.ToLower() -ne $s.role.ToLower().Replace('ax', '')) { return $false }
   if ($s.id -and $n.id -ne $s.id) { return $false }
+  # The window class (TsdImageButton, Edit…): the one steady cue in apps whose names are
+  # the text they show and whose ids are window handles that change on every launch.
+  if ($s.class -and ([string]$n.class).ToLower() -ne $s.class.ToLower()) { return $false }
   if ($s.value -and -not (([string]$n.value).ToLower().Contains($s.value.ToLower()))) { return $false }
   if ($s.name) {
     $q = $s.name.ToLower()
@@ -206,15 +237,15 @@ function Matches($s, $n) {
   return $true
 }
 
-function Collect($pid, $s, $all) {
+function Collect($procId, $s, $all) {
   if ($s.path) {
-    $el = Resolve $pid $s.path
+    $el = Resolve $procId $s.path
     if (-not $el) { return ,@() }
     $node = Describe $el $s.path (($s.path -split '/').Count - 1)
     if (Matches $s $node) { return ,@($node) } else { return ,@() }
   }
   $found = New-Object System.Collections.ArrayList
-  $null = Walk $pid 14 6000 200 25 (-not $all) { param($n) if (Matches $s $n) { $null = $found.Add($n) } }
+  $null = Walk $procId 14 6000 200 25 (-not $all) { param($n) if (Matches $s $n) { $null = $found.Add($n) } }
   $q = if ($s.name) { $s.name.ToLower() } else { $null }
   $sorted = $found | Sort-Object -Property @{ Expression = { if ($q -and ([string]$_.title).ToLower() -eq $q) { 0 } else { 1 } } }, @{ Expression = { if ($_.actions -contains 'press') { 0 } else { 1 } } }
   return ,@($sorted)
@@ -222,32 +253,72 @@ function Collect($pid, $s, $all) {
 
 function Strip($n) { $c = [ordered]@{}; foreach ($k in $n.Keys) { if ($k -ne '_el') { $c[$k] = $n[$k] } }; return $c }
 
-function Pick($matches, $first, $what) {
-  if ($matches.Count -eq 0) { Fail "nothing matches $what" }
-  if ($matches.Count -gt 1 -and -not $first) {
-    Fail "$($matches.Count) elements match $what — add role:/path: to say which, or --first" @{ matches = @($matches | Select-Object -First 20 | ForEach-Object { Strip $_ }) }
+function Pick($found, $first, $what) {
+  # ($found, not $matches: -match below writes PowerShell's automatic $Matches.)
+  if ($found.Count -eq 0) { Fail "nothing matches $what" }
+  # "Live" must not be a coin toss between Live and Go Live: when exactly one match is
+  # called precisely what was asked for, that one is meant. (Collect sorts it first.)
+  if ($found.Count -gt 1 -and $what -match '(?:^|\s)name:(.+?)(?:\s+(?:role|path|id|class|value):|$)') {
+    $exactName = $Matches[1].Trim().ToLower()
+    $exact = @($found | Where-Object { ([string]$_.title).ToLower() -eq $exactName })
+    if ($exact.Count -eq 1) { return $exact[0] }
   }
-  return $matches[0]
+  if ($found.Count -gt 1 -and -not $first) {
+    Fail "$($found.Count) elements match $what — add role:/path: to say which, or --first" @{ matches = @($found | Select-Object -First 20 | ForEach-Object { Strip $_ }) }
+  }
+  return $found[0]
 }
 
-function PressElement($el) {
+function PressElement($el, $at = $null, $action = $null) {
   $p = $null
+  # A part of the control was asked for ("the right half"): only a real click can mean that.
+  if ($at) { return (ClickCentre $el $at) }
+  # --action toggle|select|expand|click: one particular pattern, for a checkable list item
+  # that Invoke would merely highlight (OpenLP's download lists) or a menu that must expand.
+  switch ($action) {
+    'toggle' { if ($el.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$p)) { $p.Toggle(); return 'Toggle' }; return $null }
+    'select' { if ($el.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$p)) { $p.Select(); return 'Select' }; return $null }
+    'expand' { if ($el.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$p)) { $p.Expand(); return 'Expand' }; return $null }
+    'click' { return (ClickCentre $el) }
+  }
   if ($el.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern, [ref]$p)) { $p.Invoke(); return 'Invoke' }
   if ($el.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$p)) { $p.Toggle(); return 'Toggle' }
   if ($el.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$p)) { $p.Select(); return 'Select' }
   if ($el.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$p)) { $p.Expand(); return 'Expand' }
   # Last resort: a real click at its centre — the element has no pattern but is on screen.
+  return (ClickCentre $el)
+}
+
+# A real mouse click on the middle of an element; $null when it has no place on screen.
+# Delphi apps (EasyWorship) draw their buttons and boxes without any UI Automation
+# pattern, so this is how most of their controls get pressed or focused.
+function ClickCentre($el, $at = $null) {
   $r = $el.Current.BoundingRectangle
   if ($r.IsEmpty) { return $null }
-  [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
-  Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, UIntPtr i);' -Name M -Namespace W
-  [W.M]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); [W.M]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+  # --at left|right: a quarter of the way in from that side — EasyWorship's previous/next arrows
+  # are the two halves of one drawn panel, one element to UI Automation.
+  $frac = switch ($at) { 'left' { 0.25 } 'right' { 0.75 } default { 0.5 } }
+  $x = [int]($r.X + $r.Width * $frac); $y = [int]($r.Y + $r.Height / 2)
+  if (-not ('W.M' -as [type])) {
+    Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, UIntPtr i);' -Name M -Namespace W
+  }
+  # Arrive like a hand would — two real moves onto the spot, then down, a beat, up. Drawn
+  # controls (EasyWorship's toolbar buttons and its previous/next arrows) decide what is under
+  # the pointer from the move messages, so a pointer that appears from nowhere presses nothing.
+  $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  $nx = [uint32]([double]$x * 65535 / [Math]::Max(1, $b.Width - 1)); $ny = [uint32]([double]$y * 65535 / [Math]::Max(1, $b.Height - 1))
+  $ABS_MOVE = [uint32]0x8001
+  [W.M]::mouse_event($ABS_MOVE, [Math]::Max(0, $nx - 40), $ny, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 40
+  [W.M]::mouse_event($ABS_MOVE, $nx, $ny, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 80
+  [W.M]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
+  [W.M]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+  Start-Sleep -Milliseconds 120
   return 'Click'
 }
 
-function Activate($pid) {
+function Activate($procId) {
   Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);' -Name F -Namespace W -ErrorAction SilentlyContinue
-  $h = (Get-Process -Id $pid).MainWindowHandle
+  $h = (Get-Process -Id $procId).MainWindowHandle
   if ($h -ne 0) { [void][W.F]::SetForegroundWindow($h) }
 }
 
@@ -285,7 +356,10 @@ switch ($command) {
   'find' {
     if ($positional.Count -lt 3) { Fail 'find <app> <selector…>' @{} 2 }
     $app = FindApp $positional[1]
-    $m = Collect $app.pid (ParseSelector $positional[2..($positional.Count - 1)]) $switches.ContainsKey('all')
+    $sel = ParseSelector $positional[2..($positional.Count - 1)]
+    $m = Collect $app.pid $sel $switches.ContainsKey('all')
+    # The same tie-break a press makes: one control called exactly the name asked for counts as the one match.
+    if ($m.Count -gt 1 -and $sel.name) { $exact = @($m | Where-Object { ([string]$_.title).ToLower() -eq $sel.name.ToLower() }); if ($exact.Count -eq 1) { $m = $exact } }
     Emit ([ordered]@{ ok = $true; count = $m.Count; matches = @($m | Select-Object -First 50 | ForEach-Object { Strip $_ }) })
   }
   'press' {
@@ -294,8 +368,15 @@ switch ($command) {
     $what = ($positional[2..($positional.Count - 1)] -join ' ')
     $target = Pick (Collect $app.pid (ParseSelector $positional[2..($positional.Count - 1)]) $switches.ContainsKey('all')) $switches.ContainsKey('first') $what
     if (-not $target.enabled) { Fail "`"$($target.title)`" is disabled right now" @{ element = (Strip $target) } }
-    $how = PressElement $target._el
-    if (-not $how) { Fail "could not press `"$($target.title)`" — no action and not on screen" @{ element = (Strip $target) } }
+    $at = if ($flags.ContainsKey('at') -and @('left', 'right') -contains $flags['at']) { $flags['at'] } else { $null }
+    # Bring the app forward first: a click that also has to wake a background window is
+    # spent on the waking in some drawn controls (EasyWorship's live arrows), and does nothing else.
+    Activate $app.pid; Start-Sleep -Milliseconds 150
+    $how = PressElement $target._el $at $flags['action']
+    if (-not $how) {
+      $why = if ($flags['action']) { 'it has no "' + $flags['action'] + '" action' } else { 'no action and not on screen' }
+      Fail "could not press `"$($target.title)`" — $why" @{ element = (Strip $target) }
+    }
     Emit ([ordered]@{ ok = $true; action = $how; element = (Strip $target) })
   }
   'type' {
@@ -311,7 +392,21 @@ switch ($command) {
     } else {
       Activate $app.pid; Start-Sleep -Milliseconds 150
       try { $target._el.SetFocus() } catch {}
-      [System.Windows.Forms.SendKeys]::SendWait(($flags['text'] -replace '([+^%~(){}\[\]])', '{$1}'))
+      # A box UI Automation cannot focus (a drawn Delphi edit) still takes a click; without
+      # one the keys would land wherever focus happens to be — in EasyWorship, the live pane.
+      if (-not $target._el.Current.HasKeyboardFocus) {
+        if (-not (ClickCentre $target._el)) { Fail "could not focus `"$what`" — it has no place on screen to click" @{ element = (Strip $target) } }
+        if (-not $target._el.Current.HasKeyboardFocus) { Fail "`"$what`" did not take focus, so nothing was typed" @{ element = (Strip $target) } }
+      }
+      # Replace what the box held (Home, Shift+End: Ctrl+A means other things to some boxes), then
+      # type one character at a time — EasyWorship's reference box parses as it goes and turns a
+      # burst of "Psalm 23:1" into "Psalm 1:1".
+      [System.Windows.Forms.SendKeys]::SendWait('{HOME}+{END}')
+      Start-Sleep -Milliseconds 60
+      foreach ($ch in $flags['text'].ToCharArray()) {
+        [System.Windows.Forms.SendKeys]::SendWait(([string]$ch -replace '([+^%~(){}\[\]])', '{$1}'))
+        Start-Sleep -Milliseconds 45
+      }
       $how = 'keys'
     }
     if ($switches.ContainsKey('submit')) { Activate $app.pid; Start-Sleep -Milliseconds 50; [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') }

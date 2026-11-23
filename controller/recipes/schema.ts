@@ -26,7 +26,16 @@ export type RecipePlatform = 'macos' | 'windows'
 
 /** What a step does to its control. */
 export type StepAction =
-  | { do: 'press' }
+  /**
+   * `at`: which part of the control to click when it must be clicked (no
+   * accessibility action). EasyWorship draws its previous/next arrows as the
+   * two halves of one panel, so "the left of it" and "the right of it" are
+   * two different buttons to a church and one element to Windows.
+   * `via: 'click'`: a real click even though the control offers an
+   * accessibility action — MediaShout's toolbar says "pressed" to Invoke and
+   * opens nothing; only a click opens its Bibles panel.
+   */
+  | { do: 'press'; at?: 'left' | 'right'; via?: 'click' }
   | { do: 'type'; text: '$query' | '$reference' | string; submit?: boolean }
   | { do: 'menu'; path: string }
   | { do: 'key'; keys: string }
@@ -38,6 +47,12 @@ export interface ControlCues {
   role?: string
   name?: string
   id?: string
+  /**
+   * The window class, Windows only (TsdSpeedButton, Edit). Delphi apps such as
+   * EasyWorship name a control by the text it shows and give it a fresh id every
+   * launch, so the class is the cue that tells the Songs tab from the SONGS heading.
+   */
+  class?: string
   /** Shown to the person re-teaching a broken step: "the button that used to say Go Live". */
   label?: string
 }
@@ -84,7 +99,7 @@ function parseAction(raw: unknown): StepAction | null {
   if (!raw || typeof raw !== 'object') return null
   const a = raw as Record<string, unknown>
   switch (a.do) {
-    case 'press': return { do: 'press' }
+    case 'press': return { do: 'press', ...(a.at === 'left' || a.at === 'right' ? { at: a.at } : {}), ...(a.via === 'click' ? { via: 'click' as const } : {}) }
     case 'type': return str(a.text, 2000) ? { do: 'type', text: a.text, ...(a.submit === true ? { submit: true } : {}) } : null
     case 'menu': return str(a.path) ? { do: 'menu', path: a.path } : null
     case 'key': return str(a.keys, 40) ? { do: 'key', keys: a.keys } : null
@@ -103,6 +118,7 @@ function parseStep(raw: unknown): RecipeStep | null {
   if (str(s.role, 60)) step.role = s.role
   if (str(s.name)) step.name = s.name
   if (str(s.id)) step.id = s.id
+  if (str(s.class, 120)) step.class = s.class
   if (str(s.label)) step.label = s.label
   if (s.enroute === true) step.enroute = true
   // A press or type needs something to aim at; menu, key and wait do not.
@@ -159,6 +175,7 @@ export function cuesFromWatch(record: Record<string, unknown>, label?: string): 
   const name = [record.title, record.description, record.help].find((v) => str(v))
   if (name) cues.name = name as string
   if (str(record.id)) cues.id = record.id
+  if (str(record.class, 120)) cues.class = record.class
   if (label) cues.label = label
   return cues
 }
@@ -169,6 +186,7 @@ export function selectorWords(cues: ControlCues): string[] {
   if (cues.path) words.push(`path:${cues.path}`)
   if (cues.role) words.push(`role:${cues.role}`)
   if (cues.id) words.push(`id:${cues.id}`)
+  if (cues.class) words.push(`class:${cues.class}`)
   if (cues.name) words.push(`name:${cues.name}`)
   return words
 }

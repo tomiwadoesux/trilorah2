@@ -34,6 +34,14 @@ describe('recipes', () => {
     expect(cues).toEqual({ path: '0/1/0', role: 'AXCheckBox', name: 'bold', label: 'the bold button' })
     expect(selectorWords(cues)).toEqual(['path:0/1/0', 'role:AXCheckBox', 'name:bold'])
   })
+
+  it('keeps the Windows window class as a cue, so the Songs tab is not the SONGS heading', () => {
+    const cues = cuesFromWatch({ path: '0/1/0/1/0/0/1/1', role: 'Pane', title: 'Songs', class: 'TsdImageButton', id: '69754' }, 'the Songs tab')
+    expect(cues).toMatchObject({ class: 'TsdImageButton', id: '69754' })
+    expect(selectorWords(cues)).toEqual(['path:0/1/0/1/0/0/1/1', 'role:Pane', 'id:69754', 'class:TsdImageButton', 'name:Songs'])
+    const r = parseRecipe({ ...good, platform: 'windows', abilities: { show: [{ role: 'Pane', class: 'TsdSpeedButton', name: 'Go Live', action: { do: 'press' } }] } })
+    expect(r?.abilities.show?.[0]).toMatchObject({ class: 'TsdSpeedButton', name: 'Go Live' })
+  })
 })
 
 describe('old recipes', () => {

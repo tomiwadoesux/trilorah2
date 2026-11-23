@@ -51,6 +51,13 @@ export const defaults = {
   /** Announce named references to Trilorah Stage Timer apps on this network
    *  (electron/lan/stageLink.ts). Reference strings only, never verse text. */
   stageLinkEnabled: false,
+  /** ProPresenter's API (controller/propresenter): where it listens. Port 0 = ask
+   *  the operating system which port ProPresenter's network process holds. */
+  proPresenterApiHost: '127.0.0.1',
+  proPresenterApiPort: 0,
+  /** OpenLP's API (controller/openlp): its Remote port, 4316 unless the church changed it (0 = that default). */
+  openLpApiHost: '127.0.0.1',
+  openLpApiPort: 0,
   obsEnabled: false,
   obsHost: 'localhost',
   obsPort: 4455,

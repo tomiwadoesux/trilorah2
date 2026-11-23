@@ -51,6 +51,32 @@ describe('recipe runner', () => {
     expect(calls[0]).toEqual(['type', 'com.example.slides', 'path:0/3', 'role:AXTextField', 'name:search', '--text', 'John 3:16', '--submit'])
   })
 
+  it('perform asks for the side of a control when the step names one', async () => {
+    const arrows = parseRecipe({
+      format: 1, platform: 'windows', app: { id: 'EasyWorship.exe', name: 'EasyWorship' },
+      abilities: {
+        show: [{ role: 'Pane', name: 'Go Live', action: { do: 'press' } }],
+        next: [{ path: '0/1/9', role: 'Pane', class: 'TsdPanel', action: { do: 'press', at: 'right' } }],
+        previous: [{ path: '0/1/9', role: 'Pane', class: 'TsdPanel', action: { do: 'press', at: 'left' } }],
+      },
+      taught: { by: 'trilorah', at: '2026-11-23T00:00:00Z' },
+    })!
+    const { inspector, calls } = fake({})
+    expect((await perform(arrows, 'next', inspector)).ok).toBe(true)
+    expect(calls[0]).toEqual(['press', 'EasyWorship.exe', 'path:0/1/9', 'role:Pane', 'class:TsdPanel', '--at', 'right'])
+    await perform(arrows, 'previous', inspector)
+    expect(calls[1].slice(-2)).toEqual(['--at', 'left'])
+    await perform(arrows, 'show', inspector)
+    expect(calls[2]).toEqual(['press', 'EasyWorship.exe', 'role:Pane', 'name:Go Live'])
+    const clicky = parseRecipe({
+      format: 1, platform: 'windows', app: { id: 'MediaShout 7.exe', name: 'MediaShout' },
+      abilities: { show: [{ role: 'Button', name: 'Bibles', action: { do: 'press', via: 'click' } }] },
+      taught: { by: 'trilorah', at: '2026-11-23T00:00:00Z' },
+    })!
+    await perform(clicky, 'show', inspector)
+    expect(calls[3]).toEqual(['press', 'MediaShout 7.exe', 'role:Button', 'name:Bibles', '--action', 'click'])
+  })
+
   it('perform stops at the first failing step and says which', async () => {
     const { inspector } = fake({ 'press path:0/9': { ok: false, error: '"Go Live" is disabled right now' } })
     const result = await perform(recipe, 'show', inspector)

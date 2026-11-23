@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "platform": "windows",
+  "app": { "id": "ZionWorx.exe", "name": "ZionWorx", "version": "4.1.1" },
+  "abilities": {
+    "findSong": [
+      { "path": "0/1/1/0/0/0/4", "role": "Pane", "class": "TAdvEditBtn", "label": "the Songs search box (the list filters as you type and its first match is selected)", "action": { "do": "type", "text": "$query" } }
+    ],
+    "show": [
+      { "path": "0/1/1/0/0/0/3/0", "role": "Pane", "class": "TAdvGlowButton", "label": "the blue play button under the song list: \"Add to playlist and present immediately\"", "action": { "do": "press" } }
+    ],
+    "clear": [
+      { "path": "0/3/0/2/0", "role": "Pane", "class": "TAdvGlowButton", "label": "the curtain button at the top of the Presenter pane", "action": { "do": "press" } }
+    ],
+    "next": [
+      { "path": "0/3/0/1/0/0/5", "role": "Pane", "class": "TAdvGlowButton", "label": "the next-slide arrow under the Presenter pane (there only while something is presented)", "action": { "do": "press" } }
+    ],
+    "previous": [
+      { "path": "0/3/0/1/0/0/4", "role": "Pane", "class": "TAdvGlowButton", "label": "the previous-slide arrow under the Presenter pane (there only while something is presented)", "action": { "do": "press" } }
+    ]
+  },
+  "taught": { "by": "trilorah", "at": "2026-11-23T12:00:00.000Z" }
+}

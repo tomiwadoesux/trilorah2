@@ -112,7 +112,10 @@ async function act(step: RecipeStep, recipe: Recipe, inspect: Inspector, vars: {
   const app = recipe.app.id
   switch (step.action.do) {
     case 'press': {
-      const r = await inspect.run(['press', app, ...selectorWords(step)])
+      const args = ['press', app, ...selectorWords(step)]
+      if (step.action.at) args.push('--at', step.action.at)
+      if (step.action.via === 'click') args.push('--action', 'click')
+      const r = await inspect.run(args)
       return r.ok ? null : (r.error ?? 'the press failed')
     }
     case 'type': {

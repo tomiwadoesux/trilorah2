@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "platform": "windows",
+  "app": { "id": "Pewbeam.exe", "name": "Pewbeam", "version": "2.8.3" },
+  "abilities": {
+    "findVerse": [
+      { "role": "ComboBox", "name": "John 3:16 or keyword", "label": "the reference box above the chapter list (Enter opens the chapter, selects the verse and previews it)", "action": { "do": "type", "text": "$query", "submit": true } }
+    ],
+    "show": [
+      { "label": "Escape leaves the reference box, so the next Enter acts on the selected verse", "action": { "do": "key", "keys": "escape" } },
+      { "action": { "do": "wait", "ms": 400 } },
+      { "label": "Enter presents the selected verse on the output", "action": { "do": "key", "keys": "enter" } }
+    ],
+    "clear": [
+      { "role": "Button", "name": "Clear scripture from output", "label": "the CLEAR button in the top bar (its name reads \"Show scripture again\" while the output is already clear)", "action": { "do": "press" } }
+    ]
+  },
+  "taught": { "by": "trilorah", "at": "2026-11-23T13:30:00.000Z" }
+}

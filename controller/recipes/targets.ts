@@ -15,9 +15,25 @@ import type { LoadedRecipe } from './store'
  * answer, so a console or the CLI can show "EasyWorship ✓" or "EasyWorship:
  * 1 control not found" before anyone leans on it.
  */
+/**
+ * An app that volunteers its functions (door 1: ProPresenter's API, later OBS,
+ * vMix): a host of its own, no recipe, no inspector. It appears under
+ * **screen** beside the taught apps and is verified the same way when chosen.
+ */
+export interface DirectTarget {
+  /** How commands name it: app:<name>. */
+  id: string
+  name: string
+  host: () => ControlHost
+  /** Look without acting; the broken list is in the operator's words. */
+  verify: () => Promise<{ ok: boolean; broken: string[] }>
+}
+
 export interface SwitchableOptions {
   own: ControlHost
   recipes: () => LoadedRecipe[]
+  /** Apps reached through their own API rather than a recipe; default none. */
+  direct?: () => DirectTarget[]
   /** Null when this computer has no inspector for its platform. */
   inspector: Inspector | null
   onProblem?: (target: string, ability: string, problem: string) => void
@@ -34,6 +50,8 @@ export function switchableHost(opts: SwitchableOptions): ControlHost {
 
   const own = opts.own
   const find = (id: string) => opts.recipes().find((r) => r.id === id || r.recipe.app.name.toLowerCase() === id.toLowerCase())
+  const direct = () => opts.direct?.() ?? []
+  const findDirect = (id: string) => direct().find((d) => d.id === id || d.name.toLowerCase() === id.toLowerCase())
 
   return {
     listening: () => own.listening(),
@@ -54,15 +72,35 @@ export function switchableHost(opts: SwitchableOptions): ControlHost {
     searchSongs: (words) => own.searchSongs?.(words) ?? { heard: words ?? '', matches: [] },
     stageSong: (title) => current.stageSong?.(title) ?? { error: 'this screen cannot stage songs by command' },
 
-    targets: (): ControlTarget[] => [
-      { id: OWN_TARGET, name: 'Trilorah' },
-      ...opts.recipes().map((r) => ({ id: r.id, name: r.recipe.app.name, ...(verified.has(r.id) ? { verified: verified.get(r.id)! } : {}) })),
-    ],
+    targets: (): ControlTarget[] => {
+      const seen = new Set<string>()
+      const out: ControlTarget[] = [{ id: OWN_TARGET, name: 'Trilorah' }]
+      // An app's own API first: when ProPresenter answers, its recipe (if a church taught one) is the fallback, not the list entry.
+      for (const d of direct()) {
+        seen.add(d.id)
+        out.push({ id: d.id, name: d.name, ...(verified.has(d.id) ? { verified: verified.get(d.id)! } : {}) })
+      }
+      for (const r of opts.recipes()) {
+        if (seen.has(r.id)) continue
+        out.push({ id: r.id, name: r.recipe.app.name, ...(verified.has(r.id) ? { verified: verified.get(r.id)! } : {}) })
+      }
+      return out
+    },
     target: () => currentId,
     setTarget: (id) => {
       if (id === OWN_TARGET || id.toLowerCase() === 'trilorah') {
         currentId = OWN_TARGET
         current = own
+        return null
+      }
+      const api = findDirect(id)
+      if (api) {
+        currentId = api.id
+        current = api.host()
+        void api.verify().then((report) => {
+          verified.set(api.id, report.ok)
+          opts.onVerified?.(api.id, report.ok, report.broken)
+        }).catch(() => { verified.set(api.id, false) })
         return null
       }
       const loaded = find(id)

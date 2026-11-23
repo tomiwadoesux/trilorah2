@@ -41,15 +41,37 @@ pressing anything, and re-taught one step at a time when an update moves things.
 
 ## What is here
 
+- `propresenter/`: door 1 for ProPresenter 7+, over its HTTP API (Preferences ›
+  Network › Enable Network). `discover.ts` lists the ports this computer has
+  open and `target.ts` knocks on each with GET /version (ProPresenter picks its
+  own port; a church can pin one in settings), `client.ts` is the slice of the
+  API we use, `host.ts` answers the five abilities — a verse goes up as a
+  ProPresenter *Message* carrying the reference and the text Trilorah resolved
+  (its API has no Bible search; the message is created once on the Scripture
+  theme), a song is looked up by title in the Default library and triggered
+  from its first slide, clear takes the message and slide layers, next/previous
+  are its own triggers — and `target.ts` lists it under **screen** whenever the
+  API answers. Checked against ProPresenter 22.0.1 on Windows, 2026-11-23.
+- `openlp/`: door 1 for OpenLP 3, over its Remote API (port 4316 unless the
+  church changed it; a login there must be off). Its own Bible and song
+  searches find the item, `songs/live` and `bibles/live` show it,
+  `controller/progress` steps, `core/display` blanks. Checked against OpenLP
+  3.1.7 on Windows, 2026-11-23.
 - `macos/inspect.swift` → `bin/trilorah-inspect` (built by `scripts/build-inspect.sh`):
   the operating layer on macOS. `check`, `apps`, `see`, `find`, `press`, `type`,
   `menu`, `focus`. JSON out; `--pretty` for people. A press refuses to guess:
   an ambiguous selector is an error, not a coin toss.
 - `windows/trilorah-inspect.ps1`: the Windows twin, same commands and JSON over
   UI Automation. A PowerShell script on purpose — UI Automation and PowerShell
-  5.1 ship inside every Windows 10/11, so a church installs nothing. Untested
-  until it meets a real Windows machine (EasyWorship is Windows-only; that
-  session happens at the owner's Windows laptop).
+  5.1 ship inside every Windows 10/11, so a church installs nothing. Met real
+  Windows apps on 2026-11-23 and learned from them: it is DPI-aware (a scaled
+  screen halved every click before), presses bring the app forward and click
+  like a hand (move, down, a beat, up), typing clicks the box first and types
+  one character at a time (EasyWorship's reference box parses as it goes), and
+  two selector words were added — `class:` (the window class, the steady cue in
+  Delphi apps whose names are the text they show) and `--at left|right` /
+  `--action toggle|select|expand|click`. Each call starts a PowerShell, so a
+  call costs seconds, not milliseconds.
 - `recipes/`: the recipe format, the runner (verify without acting; perform and
   stop at the first failure), the four-question teacher, and the spawn-based
   inspector that picks the right tool per platform. `cli/teach.ts` runs the

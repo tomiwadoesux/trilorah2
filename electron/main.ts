@@ -34,6 +34,8 @@ import { loadRecipes, taughtRecipesDir } from '../controller/recipes/store'
 import { findInspectorBinary, spawnInspector, watchClicks } from '../controller/recipes/inspect'
 import { parseRecipe } from '../controller/recipes/schema'
 import { verify as verifyRecipe } from '../controller/recipes/runner'
+import { proPresenterTarget } from '../controller/propresenter/target'
+import { openLpTarget } from '../controller/openlp/target'
 import type { ControlCommand, ControlVerse } from '../shared/control/schema'
 import { feedAudioChunk } from './asr/audioBus'
 import { queueHealth } from './cloud/offlineQueue'
@@ -4665,10 +4667,32 @@ app.whenReady().then(() => {
     ])
     const shippedDir = isDev ? path.join(__dirname, '..', 'controller', 'recipes', 'shipped') : path.join(process.resourcesPath ?? '', 'controller', 'shipped')
     const taughtDir = taughtRecipesDir(app.getPath('userData'))
+    // ProPresenter volunteers its functions over HTTP (controller/propresenter): it is
+    // listed under screen whenever its API answers on this computer, no teaching needed.
+    const proPresenter = proPresenterTarget({
+      own: controlHost,
+      settings: () => ({ host: getSetting('proPresenterApiHost'), port: getSetting('proPresenterApiPort') }),
+      onProblem: (ability, problem) => publishServiceNotice({
+        id: 'app-target', severity: 'warning', target: 'audio',
+        title: `ProPresenter did not ${ability === 'show' ? 'go live' : ability === 'findSong' ? 'find the song' : ability}`,
+        detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
+      }),
+    })
+    // OpenLP's Remote API, the same way (controller/openlp).
+    const openLp = openLpTarget({
+      own: controlHost,
+      settings: () => ({ host: getSetting('openLpApiHost'), port: getSetting('openLpApiPort') }),
+      onProblem: (ability, problem) => publishServiceNotice({
+        id: 'app-target', severity: 'warning', target: 'audio',
+        title: `OpenLP did not ${ability === 'show' ? 'go live' : ability === 'findSong' ? 'find the song' : ability === 'findVerse' ? 'find the verse' : ability}`,
+        detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
+      }),
+    })
     const targetHost = switchableHost({
       own: controlHost,
       inspector: inspectorBinary ? spawnInspector(inspectorBinary) : null,
       recipes: () => loadRecipes({ shippedDir, taughtDir }),
+      direct: () => [...proPresenter.list(), ...openLp.list()],
       onProblem: (target, ability, problem) => publishServiceNotice({
         id: 'app-target', severity: 'warning', target: 'audio',
         title: `${target.replace(/^app:/, '')} did not ${ability === 'show' ? 'go live' : ability}`,
