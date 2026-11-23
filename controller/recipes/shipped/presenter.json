@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "platform": "windows",
+  "app": { "id": "Presenter.exe", "name": "Presenter", "version": "2026.1.14" },
+  "abilities": {
+    "findVerse": [
+      { "path": "0/1/0/0/0/0/1/0/0/0/6", "role": "Button", "name": "Scripture", "label": "on the way: the Scripture tab in the top bar", "enroute": true, "action": { "do": "press" } },
+      { "role": "Edit", "id": "ReferenceSearch", "name": "Passage", "label": "the Passage box (Enter lays the passage out as slides; nothing goes live)", "action": { "do": "type", "text": "$query", "submit": true } }
+    ],
+    "show": [
+      { "path": "0/1/0/0/0/0/1/0/0/57/0", "role": "Text", "label": "the first slide of the passage (clicking a slide puts it on the audience output)", "action": { "do": "press" } }
+    ],
+    "clear": [
+      { "label": "F10 clears the slide content from the audience output", "action": { "do": "key", "keys": "f10" } }
+    ],
+    "next": [
+      { "label": "Right arrow steps the live passage to its next slide", "action": { "do": "key", "keys": "right" } }
+    ],
+    "previous": [
+      { "label": "Left arrow steps the live passage back", "action": { "do": "key", "keys": "left" } }
+    ]
+  },
+  "taught": { "by": "trilorah", "at": "2026-11-23T15:45:00.000Z" }
+}
