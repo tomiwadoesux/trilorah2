@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { STAGE_REFERENCE_HOLD_MS } from '../../shared/stageLink'
+import { OVERRUN_CAP_MS } from '../../shared/timerBounds'
 import { formatTimerDisplay } from '../../shared/timerDisplay'
 import { getTimerColor } from '../../shared/timerColor'
 import type { TimerSnapshot } from './types'
@@ -54,6 +55,9 @@ export function faceMs(t: TimerSnapshot, takenAt: number): number {
   // Extrapolation stops at the extension boundary and lets the next
   // broadcast do the handover, so the face never dips below zero and snaps up.
   if (!t.inExtension && grace > 0 && next < 0) return 0
+  // And it stops where the store stops: without this the face would run on
+  // past ten minutes over for a tick and then snap back to the cap.
+  if (next < -OVERRUN_CAP_MS) return -OVERRUN_CAP_MS
   return next
 }
 
@@ -66,10 +70,16 @@ export function faceState(activeTimer: TimerSnapshot | null, takenAtMs: number, 
       (activeTimer.overrunning ||
         (activeTimer.kind === 'countdown' && !activeTimer.inExtension && !activeTimer.extraSec && ms < 0)),
   )
+  /* Trust the store's own verdict, but let the extrapolated value tip it
+     over too: between broadcasts the face is the only thing counting, and a
+     clock that reached the cap a moment ago must not keep showing a number
+     until the next snapshot lands. */
+  const pastCap = Boolean(activeTimer && over && (activeTimer.pastCap || ms <= -OVERRUN_CAP_MS))
   return {
     ms,
     phaseMs,
     over,
+    pastCap,
     color: activeTimer ? getTimerColor(ms, phaseMs) : '#22c55e',
     display: formatTimerDisplay(ms),
     target: activeTimer && phaseMs > 0 ? formatTimerDisplay(phaseMs) : null,

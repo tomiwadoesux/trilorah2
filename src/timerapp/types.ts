@@ -12,6 +12,8 @@ export interface TimerSnapshot {
   extraSec?: number
   inExtension?: boolean
   phaseTotalMs?: number
+  /** Ten minutes past zero: remainingMs holds at the cap and the face says so. */
+  pastCap?: boolean
 }
 
 export interface DisplayInfo {

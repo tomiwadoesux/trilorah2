@@ -4,6 +4,7 @@ import {
   formatTimerDisplay,
   nextOccurrence,
   isTargetTime,
+  OVERRUN_CAP_MS,
   type TimerSnapshot
 } from './timers'
 
@@ -168,6 +169,63 @@ describe('countdown', () => {
     expect(v.remainingMs).toBe(-12_000)
     expect(v.display).toBe('-0:12')
     expect(v.overrunning).toBe(true)
+  })
+
+  it('counts up past zero in the red for ten minutes, then holds at the cap', () => {
+    const s = store()
+    const t = s.create({ kind: 'countdown', durationSec: 10, overrun: true })!
+    s.start(t.id)
+
+    // One second over: the number everyone is watching.
+    now += 11_000
+    expect(s.valueOf(t.id)!.display).toBe('-0:01')
+    expect(s.valueOf(t.id)!.pastCap).toBe(false)
+
+    // A second short of the cap, still counting.
+    now += OVERRUN_CAP_MS - 2_000
+    expect(s.valueOf(t.id)!.display).toBe('-9:59')
+    expect(s.valueOf(t.id)!.pastCap).toBe(false)
+
+    // At the cap, and from here it holds there however long the sermon runs.
+    now += 1_000
+    expect(s.valueOf(t.id)!.pastCap).toBe(true)
+    expect(s.valueOf(t.id)!.remainingMs).toBe(-OVERRUN_CAP_MS)
+    now += 45 * 60_000
+    const late = s.valueOf(t.id)!
+    expect(late.remainingMs).toBe(-OVERRUN_CAP_MS)
+    expect(late.display).toBe('-10:00')
+    expect(late.overrunning).toBe(true)
+  })
+
+  it('never caps a countdown that is not allowed to overrun', () => {
+    const s = store()
+    const t = s.create({ kind: 'countdown', durationSec: 10 })!
+    s.start(t.id)
+    now += OVERRUN_CAP_MS * 3
+    const v = s.valueOf(t.id)!
+    expect(v.remainingMs).toBe(0)
+    expect(v.pastCap).toBe(false)
+  })
+
+  it('gives a granted extension its own ten minutes past zero', () => {
+    const s = store()
+    const t = s.create({ kind: 'countdown', durationSec: 60, overrun: true })!
+    s.start(t.id)
+    now += 60_000
+    s.update(t.id, { extraSec: 120 })
+
+    // The extension is counting down, not capped.
+    expect(s.valueOf(t.id)!.inExtension).toBe(true)
+    expect(s.valueOf(t.id)!.pastCap).toBe(false)
+
+    // Two minutes of grace spent, plus one second: over again, still counting.
+    now += 121_000
+    expect(s.valueOf(t.id)!.pastCap).toBe(false)
+
+    // Ten minutes past the END of the extension is where it holds.
+    now += OVERRUN_CAP_MS
+    expect(s.valueOf(t.id)!.pastCap).toBe(true)
+    expect(s.valueOf(t.id)!.remainingMs).toBe(-OVERRUN_CAP_MS)
   })
 
   it('is not overrunning while it still has time on the clock', () => {

@@ -23,6 +23,10 @@
 // this module keep their existing import.
 export { formatTimerDisplay } from '../../shared/timerDisplay'
 import { formatTimerDisplay } from '../../shared/timerDisplay'
+// The overrun cap lives in shared/ for the same reason the formatter does:
+// a renderer extrapolating between ticks must stop where the store stops.
+export { OVERRUN_CAP_MS } from '../../shared/timerBounds'
+import { OVERRUN_CAP_MS } from '../../shared/timerBounds'
 
 export type TimerKind = 'countdown' | 'to-time' | 'elapsed'
 export type TimerState = 'stopped' | 'running' | 'paused'
@@ -89,6 +93,12 @@ export interface TimerSnapshot {
   inExtension: boolean
   /** Full length of whichever phase remainingMs belongs to, in ms. */
   phaseTotalMs: number
+  /**
+   * The countdown has run OVERRUN_CAP_MS past zero. `remainingMs` holds at
+   * exactly -OVERRUN_CAP_MS from here on, and the face stops showing a
+   * number and says the time is up instead.
+   */
+  pastCap: boolean
 }
 
 export interface CreateTimerInput {
@@ -146,6 +156,7 @@ export function nextOccurrence(targetTime: string, from: number): number {
  * without ever leaving a stale countdown on screen the next morning.
  */
 const STOPPED_ROLLOVER_GRACE_MS = HOUR_MS
+
 
 /** Local midnight for the day containing `at`. */
 function startOfDay(at: number): number {
@@ -407,6 +418,14 @@ function snapshotOf(t: Timer, at: number): TimerSnapshot {
   const past = t.kind !== 'elapsed' && remainingMs < 0
   if (past && !t.overrun) remainingMs = 0
 
+  /* Ten minutes over, and the clock stops climbing. Held at exactly the cap
+     rather than left running, so every surface drawing this snapshot agrees
+     on the moment it tips over, and a face that reads the number still has
+     a sane one to read. A granted extension is a fresh phase, so its own
+     overrun gets the same ten minutes. */
+  const pastCap = past && t.overrun && -remainingMs >= OVERRUN_CAP_MS
+  if (pastCap) remainingMs = -OVERRUN_CAP_MS
+
   return {
     id: t.id,
     name: t.name,
@@ -418,7 +437,8 @@ function snapshotOf(t: Timer, at: number): TimerSnapshot {
     durationSec: t.durationSec,
     extraSec: t.extraSec,
     inExtension,
-    phaseTotalMs
+    phaseTotalMs,
+    pastCap
   }
 }
 

@@ -221,6 +221,8 @@ export function TimerControl() {
           target={faceTarget}
           color={faceColor}
           over={faceOver}
+          pastCap={!showingDraft && state.pastCap}
+          cappedMs={state.ms}
           extraLabel={state.extraLabel}
           idle={!activeTimer}
           stateLabel={activeTimer?.state ?? null}

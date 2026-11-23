@@ -20,6 +20,8 @@ export function TimerScreen() {
       target={state.target}
       color={state.color}
       over={state.over}
+      pastCap={state.pastCap}
+      cappedMs={state.ms}
       extraLabel={state.extraLabel}
       idle={!activeTimer}
       stateLabel={activeTimer?.state ?? null}

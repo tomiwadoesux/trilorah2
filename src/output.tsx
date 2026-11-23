@@ -9,6 +9,8 @@ import { useFitText } from './lib/useFitText';
 import { useBackgroundCrossfade } from './lib/useBackgroundCrossfade';
 import { formatTimerDisplay } from '../shared/timerDisplay';
 import { getTimerColor } from '../shared/timerColor';
+import { OVERRUN_CAP_MS } from '../shared/timerBounds';
+import { OVERRUN_HEADLINE, overrunSubline } from '../shared/overrunMessage';
 import { isVideoUrl, cssImageUrl, fileToDisplayUrl, toDisplayUrl } from '../shared/mediaUrl';
 import { mediaImageSource } from './lib/mediaImage';
 import type { LiveContent } from '../shared/liveContent';
@@ -562,13 +564,17 @@ function OutputSurface() {
   if (isTimer) {
     const activeTimer = timers.find((t) => t.state === 'running') ?? timers[0] ?? null;
     const drift = activeTimer && activeTimer.state === 'running' ? Date.now() - takenAt.current : 0;
-    const ms = activeTimer
+    const rawMs = activeTimer
       ? activeTimer.state !== 'running'
         ? activeTimer.remainingMs
         : activeTimer.kind === 'elapsed'
           ? activeTimer.remainingMs + drift
           : activeTimer.remainingMs - drift
       : 0;
+    /* Stop where the store stops (electron/engine/timers.ts OVERRUN_CAP_MS):
+       between snapshots this interpolation is the only thing counting, and
+       it must not run past ten minutes over and then snap back. */
+    const ms = activeTimer && activeTimer.kind !== 'elapsed' && rawMs < -OVERRUN_CAP_MS ? -OVERRUN_CAP_MS : rawMs;
     // Colour by the phase the store says we are in, not by durationSec. Once
     // the agreed time is spent and grace was granted, remainingMs belongs to
     // the EXTENSION, so dividing it by the sermon's full length would read
@@ -588,6 +594,10 @@ function OutputSurface() {
         (activeTimer.overrunning ||
           (activeTimer.kind === 'countdown' && !activeTimer.inExtension && !activeTimer.extraSec && ms < 0)),
     );
+    /* Ten minutes over, and the clock stops counting (shared/timerBounds).
+       The store says so; the interpolated value is allowed to tip it over
+       too, because between snapshots nothing else is counting. */
+    const pastCap = Boolean(activeTimer && isOverrun && ((activeTimer as { pastCap?: boolean }).pastCap || ms <= -OVERRUN_CAP_MS));
     // "OF 45:00" during the extension would be a lie — the big number is
     // counting the grace, not the sermon — so the caption follows the phase.
     const targetDisplay = phaseTotalMs > 0 ? formatTimerDisplay(phaseTotalMs) : null;
@@ -616,7 +626,24 @@ function OutputSurface() {
         {/* Center: Giant Countdown Display */}
         <div className="timer-screen-center">
           {activeTimer ? (
-            isOverrun ? (
+            pastCap ? (
+              /* Past the cap the digits stop meaning anything, so the screen
+                 says the thing in words instead. Same sentence as the
+                 standalone Stage Timer (shared/overrunMessage.ts): a
+                 preacher glancing between two screens must not be told two
+                 different things. */
+              <>
+                <div
+                  className="timer-screen-digits"
+                  style={{ color: '#ef4444', textShadow: '0 0 35px rgba(239, 68, 68, 0.6)', fontSize: 'clamp(2.5rem, 11vw, 14vw)' }}
+                >
+                  {OVERRUN_HEADLINE}
+                </div>
+                <div className="timer-screen-overtime-label">
+                  {overrunSubline(ms)}
+                </div>
+              </>
+            ) : isOverrun ? (
               <>
                 {targetDisplay && (
                   <div className="timer-screen-target-top">

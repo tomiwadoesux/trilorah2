@@ -3,6 +3,8 @@ import { Panel } from '../parts';
 import { Expandable } from './expand';
 import { formatTimerDisplay } from '../../../../shared/timerDisplay';
 import { getTimerColor } from '../../../../shared/timerColor';
+import { OVERRUN_CAP_MS } from '../../../../shared/timerBounds';
+import { OVERRUN_HEADLINE, overrunSubline } from '../../../../shared/overrunMessage';
 import { PauseIcon, PlayIcon, ResetIcon, TrashIcon } from '../../../ui';
 
 interface Snapshot {
@@ -17,6 +19,8 @@ interface Snapshot {
   extraSec?: number;
   inExtension?: boolean;
   phaseTotalMs?: number;
+  /** Ten minutes past zero: the clock holds at the cap and says so. */
+  pastCap?: boolean;
 }
 
 /** The face the tile shows with no timer running, and what DELETE returns to. */
@@ -51,6 +55,9 @@ function faceMs(t: Snapshot, takenAt: number): number {
   const next = t.remainingMs - drift;
   const grace = Math.max(0, t.extraSec ?? 0) * 1000;
   if (!t.inExtension && grace > 0 && next < 0) return 0;
+  /* And it stops where the store stops (shared/timerBounds): the booth's
+     tile and the preacher's wall must not disagree about how far over he is. */
+  if (next < -OVERRUN_CAP_MS) return -OVERRUN_CAP_MS;
   return next;
 }
 
@@ -150,6 +157,8 @@ function ScreenFace({
   target,
   color,
   over,
+  pastCap = false,
+  cappedMs,
   extraLabel,
   idle,
   stateLabel,
@@ -171,6 +180,10 @@ function ScreenFace({
   target: string | null;
   color: string;
   over: boolean;
+  /** Ten minutes over: the number gives way to the sentence. */
+  pastCap?: boolean;
+  /** How far over the sentence reports, in ms (negative). */
+  cappedMs?: number;
   extraLabel: string | null;
   /** No timer yet: the caption reads as standby. */
   idle: boolean;
@@ -269,7 +282,7 @@ function ScreenFace({
 
         {/* Centre: the number. */}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-          {over && target && (
+          {over && target && !pastCap && (
             <div
               className="font-bold uppercase tabular-nums"
               style={{ fontFamily: SCREEN_MONO, fontSize: 'max(9px, 3.8cqw)', letterSpacing: '0.1em', color: 'rgb(255 255 255 / 0.45)', marginBottom: '1.5cqh' }}
@@ -297,7 +310,9 @@ function ScreenFace({
               className="block font-black tabular-nums"
               style={{
                 fontFamily: TIMER_FONT,
-                fontSize: 'min(18cqw, 34cqh)',
+                /* Past the cap the face carries a sentence, not six digits,
+                   so it reads at its own size. */
+                fontSize: pastCap && !editing ? 'min(10cqw, 19cqh)' : 'min(18cqw, 34cqh)',
                 lineHeight: 0.9,
                 letterSpacing: '0.04em',
                 color: over ? RED : color,
@@ -312,7 +327,10 @@ function ScreenFace({
                 textDecorationColor: 'rgb(255 255 255 / 0.3)',
               }}
             >
-              {display}
+              {/* Editing always shows the digits being typed — the clock is
+                  this card's duration field, and a sentence cannot be typed
+                  into. */}
+              {pastCap && !editing ? OVERRUN_HEADLINE : display}
             </span>
           </div>
           {over ? (
@@ -329,7 +347,7 @@ function ScreenFace({
                 marginTop: '2.5cqh',
               }}
             >
-              overtime exceeded
+              {pastCap && !editing ? overrunSubline(cappedMs) : 'overtime exceeded'}
             </div>
           ) : idle ? (
             <div
@@ -645,6 +663,13 @@ export function TimersTile({ className }: { className?: string }) {
       (activeTimer.overrunning ||
         (activeTimer.kind === 'countdown' && !activeTimer.inExtension && !activeTimer.extraSec && faceMsNow < 0))
   );
+  /* Ten minutes over and the clock has stopped counting (shared/timerBounds):
+     the store says so, and the extrapolated value may tip it over between
+     broadcasts. Never while a draft is on the boxes — that is a number the
+     operator is typing, not a clock that ran out. */
+  const facePastCap = Boolean(
+    !showingDraft && faceOver && activeTimer && (activeTimer.pastCap || faceMsNow <= -OVERRUN_CAP_MS)
+  );
   /* The screen's own colours: green at rest, through amber to red as the
      phase runs out (getTimerColor, the one the HDMI timer uses). A draft
      that has not started reads in the screen's standby green. */
@@ -744,6 +769,8 @@ export function TimersTile({ className }: { className?: string }) {
       target={faceTarget}
       color={faceColor}
       over={faceOver}
+      pastCap={facePastCap}
+      cappedMs={faceMsNow}
       extraLabel={extraBadge}
       idle={!activeTimer}
       stateLabel={activeTimer?.state ?? null}

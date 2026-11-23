@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { OVERRUN_HEADLINE, overrunSubline } from '../../shared/overrunMessage'
 
 /*
  * The stage clock's face — the same screen the main app's HDMI timer output
@@ -27,6 +28,8 @@ export function Face({
   target,
   color,
   over,
+  pastCap = false,
+  cappedMs,
   extraLabel,
   idle,
   stateLabel,
@@ -48,6 +51,10 @@ export function Face({
   target: string | null
   color: string
   over: boolean
+  /** Ten minutes over: the number gives way to the sentence. */
+  pastCap?: boolean
+  /** How far over the sentence reports, in ms (negative). Defaults to the cap. */
+  cappedMs?: number
   extraLabel: string | null
   /** No timer yet: the caption reads as standby. */
   idle: boolean
@@ -113,7 +120,7 @@ export function Face({
 
         {/* Centre: the number. */}
         <div style={{ display: 'flex', minHeight: 0, flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          {over && target && (
+          {over && target && !pastCap && (
             <div
               style={{
                 fontFamily: SCREEN_MONO, fontWeight: 700, textTransform: 'uppercase', fontVariantNumeric: 'tabular-nums',
@@ -123,6 +130,39 @@ export function Face({
               target: {target}
             </div>
           )}
+          {/*
+            Ten minutes over, and the clock stops counting.
+            
+            Up to here the face has been counting up in the red — -0:01,
+            -0:02 — which is the useful thing while it is still a number a
+            preacher can act on. Past the cap the digits stop meaning
+            anything, so they give way to the sentence: the time is up, and
+            by how much. Said in words because that is what someone glancing
+            up from a pulpit reads in one look.
+          */}
+          {pastCap ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2cqh' }}>
+              <span
+                style={{
+                  display: 'block', fontFamily: TIMER_FONT, fontWeight: 900,
+                  fontSize: 'min(11cqw, 21cqh)', lineHeight: 0.95, letterSpacing: '0.04em',
+                  color: RED, textShadow: `0 0 1.8cqw ${RED}99`,
+                }}
+              >
+                {OVERRUN_HEADLINE}
+              </span>
+              <span
+                style={{
+                  display: 'block', fontFamily: SCREEN_MONO, fontWeight: 700, textTransform: 'uppercase',
+                  fontSize: 'max(10px, 4.4cqw)', letterSpacing: '0.18em',
+                  color: RED, background: 'rgb(239 68 68 / 0.15)', border: '1px solid rgb(239 68 68 / 0.4)',
+                  borderRadius: 999, padding: '0.8cqh 3cqw',
+                }}
+              >
+                {overrunSubline(cappedMs)}
+              </span>
+            </div>
+          ) : (
           <div
             ref={digitsRef}
             role={editable ? 'group' : undefined}
@@ -200,7 +240,8 @@ export function Face({
               </span>
             )}
           </div>
-          {over ? (
+          )}
+          {pastCap ? null : over ? (
             <div
               style={{
                 fontWeight: 800, textTransform: 'uppercase', fontSize: 'max(8px, 2.2cqw)', letterSpacing: '0.25em',
