@@ -179,7 +179,17 @@ function closeTimerScreen(): void {
 /* The clock itself: the main app's TimerStore, run locally.            */
 /* ------------------------------------------------------------------ */
 
-const timers = new TimerStore((snapshots) => broadcast('on-timers', snapshots))
+/*
+ * TRI_TIME_SCALE runs the clock faster than real time, so the states that
+ * only appear after many minutes — the ten-minute overrun cap above all —
+ * can be reached and looked at in a few seconds. Dev only: an installed
+ * copy never sets it, and the store's clock is Date.now as usual.
+ */
+const timeScale = Number(process.env.TRI_TIME_SCALE) || 1
+const startedAt = Date.now()
+const clock = timeScale === 1 ? Date.now : () => startedAt + (Date.now() - startedAt) * timeScale
+
+const timers = new TimerStore((snapshots) => broadcast('on-timers', snapshots), clock)
 
 /* ------------------------------------------------------------------ */
 /* The link to Trilorah on this network (shared/stageLink.ts).          */
