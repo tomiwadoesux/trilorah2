@@ -28,7 +28,7 @@ import {
 } from './emitters'
 import { ControlDispatcher, type ControlHost } from './control/dispatcher'
 import { startControlServer, type ControlServer } from './control/socketServer'
-import { switchableHost } from '../controller/recipes/targets'
+import { OWN_TARGET, switchableHost } from '../controller/recipes/targets'
 import { searchSongsLive, tailWords } from './songs/liveSearch'
 import { loadRecipes, taughtRecipesDir } from '../controller/recipes/store'
 import { findInspectorBinary, spawnInspector, watchClicks } from '../controller/recipes/inspect'
@@ -4688,16 +4688,23 @@ app.whenReady().then(() => {
         detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
       }),
     })
+    // Each inspector call on Windows starts a PowerShell and walks a window tree: 5–50 s on an
+    // ordinary church laptop (measured 2026-11-27). Fifteen seconds read as "did not answer".
+    const inspectorBudgetMs = process.platform === 'win32' ? 90_000 : 15_000
+    const sharedInspector = inspectorBinary ? spawnInspector(inspectorBinary, inspectorBudgetMs) : null
     const targetHost = switchableHost({
       own: controlHost,
-      inspector: inspectorBinary ? spawnInspector(inspectorBinary) : null,
+      inspector: sharedInspector,
       recipes: () => loadRecipes({ shippedDir, taughtDir }),
       direct: () => [...proPresenter.list(), ...openLp.list()],
-      onProblem: (target, ability, problem) => publishServiceNotice({
-        id: 'app-target', severity: 'warning', target: 'audio',
-        title: `${target.replace(/^app:/, '')} did not ${ability === 'show' ? 'go live' : ability}`,
-        detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
-      }),
+      onProblem: (target, ability, problem) => {
+        console.warn(`⚠️ ${target} did not ${ability}: ${problem}`)
+        publishServiceNotice({
+          id: 'app-target', severity: 'warning', target: 'audio',
+          title: `${target.replace(/^app:/, '')} did not ${ability === 'show' ? 'go live' : ability}`,
+          detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
+        })
+      },
       onVerified: (target, ok, broken) => publishServiceNotice({
         id: 'app-target', severity: ok ? 'info' : 'warning', target: 'audio', ...(ok ? { status: 'resolved' as const } : {}),
         title: ok ? `${target.replace(/^app:/, '')} is ready` : `${target.replace(/^app:/, '')} has changed since it was taught`,
@@ -4712,7 +4719,7 @@ app.whenReady().then(() => {
      * the operator's click (skippable), save and verify the recipe. Only the
      * operator and console windows may ask; the inspector does the seeing.
      */
-    const inspector = inspectorBinary ? spawnInspector(inspectorBinary) : null
+    const inspector = sharedInspector
     const fromOurWindows = (event: Electron.IpcMainInvokeEvent) =>
       event.sender === mainWindow?.webContents || event.sender === consoleWindow?.webContents
     let teachingWatch: { cancel: () => void } | null = null
@@ -4773,10 +4780,28 @@ app.whenReady().then(() => {
       const report = inspector ? await verifyRecipe(recipe, inspector) : { ok: false, checked: 0, broken: [] }
       return { ok: true, file, verified: report.ok, broken: report.broken.map((b) => ({ ability: b.ability, label: b.label, problem: b.problem })) }
     })
+    /*
+     * A detection stages in Trilorah's own preview; when the screen is pointed
+     * at another app, that app must be told too, or the operator's go-live
+     * finds nothing staged there (seen at the first EasyWorship rehearsal,
+     * 2026-11-27). The words go to the target's own search; nothing goes live.
+     * Guarded against the loop an API host would make by staging back here.
+     */
+    let forwardingPreview = false
+    const referenceWords = (v: ControlVerse) =>
+      v.chapter ? `${v.book} ${v.chapter}:${v.verse}${v.endVerse && v.endVerse !== v.verse ? `-${v.endVerse}` : ''}` : v.book
+    const forwardPreviewToTarget = (verse: ControlVerse | null) => {
+      if (!verse || forwardingPreview) return
+      if ((targetHost.target?.() ?? OWN_TARGET) === OWN_TARGET) return
+      const there = targetHost.preview()
+      if (there && there.book === verse.book && there.chapter === verse.chapter && there.verse === verse.verse) return
+      forwardingPreview = true
+      try { targetHost.stageScripture(referenceWords(verse), verse.version || undefined) } finally { forwardingPreview = false }
+    }
     // The engine's own announcements, in the control stream too.
     setEmitterTap((channel, payload) => {
       if (channel === 'on-transcript-line') { hearLine(payload); dispatcher.event('transcript', payload) }
-      else if (channel === 'on-verse-preview') dispatcher.event('preview', asVerse(payload))
+      else if (channel === 'on-verse-preview') { const verse = asVerse(payload); forwardPreviewToTarget(verse); dispatcher.event('preview', verse) }
       else if (channel === 'on-verse-detected') dispatcher.event('live', asVerse(payload))
       else if (channel === 'on-verse-auto-dismiss') dispatcher.event('cleared', null)
       else if (channel === 'on-asr-status') dispatcher.event('asr', payload)

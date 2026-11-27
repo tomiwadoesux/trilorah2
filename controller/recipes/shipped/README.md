@@ -24,7 +24,34 @@ ProPresenter and OpenLP need no recipe: both have an API, and
 ordinary laptop and its tree went dark for minutes at a time; its API on port
 4316 answered in milliseconds.)
 
-Still to record: MediaShout, Proclaim, Presenter (WorshipTools), ZionWorx, Pewbeam, PowerPoint.
+Still to record: PowerPoint.
+
+## Rehearsed with a spoken sermon (2026-11-27)
+
+A practice sermon was spoken through the speakers while Trilorah listened and
+EasyWorship, ProPresenter and MediaShout were the target in turn; takes, next
+and clear came from the CLI. What it taught us, and what changed:
+
+- Detections never reached the target app before: a preview staged by speech
+  went to Trilorah's own wall only, so a take put nothing in the app. The main
+  process now forwards every preview to the target host (its own search runs),
+  and takes go where the preview went.
+- Two detections and a take in quick succession interleaved their clicks in
+  MediaShout (the Fire press landed while the Bibles panel was still being
+  typed into, and the host called it live). The recipe host now runs one
+  ability at a time, in the order asked, and a reference staged over one whose
+  search has not started yet replaces it — only the latest is typed.
+- On an ordinary PC each inspector call costs 20–45 s, so a verse through a
+  clicked app is on screen two to three minutes after the take; the API routes
+  (ProPresenter, OpenLP) answer in seconds. A persistent inspector process is
+  the next step for the click recipes.
+- KJV text carries `{supplied}` and `{lemma: note}` braces; ProPresenter was
+  shown them raw. The message now gets the plain wall text
+  (`shared/scriptureText.ts`).
+- Local Whisper on that PC was too slow for live speech and misheard
+  references ("John 360"), so the passage matcher staged verses the preacher
+  never named; the controller did the right thing with them, but the speech
+  side needs a smaller model or Deepgram there.
 
 A taught recipe for the same app in Trilorah's data folder wins over the
 shipped one — the church's own screen beats our guess about it.

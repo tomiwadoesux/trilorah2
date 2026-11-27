@@ -70,3 +70,46 @@ describe('a recipe as a control host', () => {
     expect(onProblem).toHaveBeenCalledWith('findVerse', 'EasyWorship was never taught where verses are searched — re-teach it')
   })
 })
+
+describe('one thing at a time in the app', () => {
+  const slow = (calls: string[][], ms = 5): Inspector => ({
+    run: (args) => new Promise((r) => { calls.push(args); setTimeout(() => r({ ok: true }), ms) }),
+  })
+  const settle = () => new Promise((r) => setTimeout(r, 60))
+
+  it('a take waits for the search before it, instead of going live between its steps', async () => {
+    const calls: string[][] = []
+    const host = recipeHost({ recipe, inspector: slow(calls), own })
+    host.stageScripture('John 3:16')
+    host.take('remote')
+    host.clearLive()
+    await settle()
+    expect(calls.map((c) => c[0])).toEqual(['type', 'press', 'press'])
+    expect(calls[1][4]).toBe('name:Go Live')
+    expect(host.live()).toBeNull()
+  })
+
+  it('of references staged before the app could type the first, only the last is searched', async () => {
+    const calls: string[][] = []
+    const host = recipeHost({ recipe, inspector: slow(calls), own })
+    host.stageScripture('John 3:1-3')
+    host.stageScripture('Romans 8:28')
+    host.stageScripture('Psalm 23:1')
+    host.take('remote')
+    await settle()
+    const typed = calls.filter((c) => c[0] === 'type').map((c) => c[6])
+    expect(typed).toEqual(['Psalm 23:1'])
+    expect(host.live()?.book).toBe('Psalm 23:1')
+  })
+
+  it('a failed search leaves nothing to take', async () => {
+    const calls: string[][] = []
+    const inspector: Inspector = { async run(args) { calls.push(args); return args[0] === 'type' ? { ok: false, error: 'no Search box' } : { ok: true } } }
+    const host = recipeHost({ recipe, inspector, own, onProblem: () => undefined })
+    host.stageScripture('John 3:16')
+    host.take('remote')
+    await settle()
+    expect(calls.map((c) => c[0])).toEqual(['type'])
+    expect(host.live()).toBeNull()
+  })
+})

@@ -39,7 +39,7 @@ function ownHost() {
   const state = { preview: null as any, takes: 0 }
   const own: ControlHost = {
     listening: () => false, startListening: () => null, stopListening: () => undefined,
-    stageScripture: (ref, version) => (state.preview = ref === 'Nowhere 9:9' ? null : { book: 'John', chapter: 3, verse: 16, version: version ?? 'WEB', text: 'For God so loved the world…' }),
+    stageScripture: (ref, version) => (state.preview = ref === 'Nowhere 9:9' ? null : { book: 'John', chapter: 3, verse: 16, version: version ?? 'WEB', text: '{For} God so loved the world {kosmos: Gr. order}' }),
     take: () => { state.takes++; return state.preview },
     clearLive: () => undefined, next: () => undefined, previous: () => undefined,
     setScreen: () => true, toggleScreen: () => undefined, screen: () => 'live', preview: () => state.preview, live: () => null, openConsole: () => undefined,
@@ -76,6 +76,7 @@ describe('ProPresenter host', () => {
     expect(host.stageScripture('Nowhere 9:9')).toBeNull()
     const staged = host.stageScripture('John 3:16', 'WEB')
     expect(staged?.text).toContain('loved')
+    // the staged copy keeps bible.db's braces; what ProPresenter is sent below is the wall's plain text
     expect(host.preview()).toEqual(staged)
 
     expect(host.take('operator')).toEqual(staged)
@@ -85,7 +86,7 @@ describe('ProPresenter host', () => {
     const created = pro.calls.find((c) => c.method === 'POST' && c.path === '/v1/messages')
     expect(created?.body).toMatchObject({ id: { name: SCRIPTURE_MESSAGE_NAME }, message: '{reference}\n{text}', theme: { uuid: 't-scr' } })
     const shown = pro.calls.find((c) => c.path === '/v1/message/m-1/trigger')
-    expect(shown?.body).toEqual([{ name: 'reference', text: { text: 'John 3:16 (WEB)' } }, { name: 'text', text: { text: 'For God so loved the world…' } }])
+    expect(shown?.body).toEqual([{ name: 'reference', text: { text: 'John 3:16 (WEB)' } }, { name: 'text', text: { text: 'For God so loved the world' } }])
     expect(host.live()).toEqual(staged)
     expect(problems).toEqual([])
 

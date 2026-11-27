@@ -35,6 +35,17 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
   let live: ControlVerse | null = null
   const asVerse = (reference: string): ControlVerse => ({ book: reference, chapter: 0, verse: 0, version: recipe.app.name, text: '' })
 
+  // One ability at a time. The inspector is a process per step, so two
+  // abilities started together would take turns step by step - the take's
+  // "go live" landing between a search's typing and its Enter. Everything the
+  // host is asked to do joins one line and runs in the order it was asked.
+  let line: Promise<unknown> = Promise.resolve()
+  const after = <T>(work: () => Promise<T>): Promise<T> => {
+    const next = line.then(work, work)
+    line = next.catch(() => undefined)
+    return next
+  }
+
   /** Runs one ability; returns its problem, if any, having told whoever listens. */
   async function run(ability: 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous', vars: { query?: string } = {}): Promise<string | null> {
     const result = await perform(recipe, ability, inspector, vars)
@@ -42,6 +53,20 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
     const problem = result.failed?.problem ?? `${recipe.app.name} did not ${ability}`
     opts.onProblem?.(ability, problem)
     return problem
+  }
+
+  // A search is slow in a clicked app (a panel, typing, Enter), and the
+  // preacher moves on: when a newer reference is staged before an older one's
+  // search has started, the older search is skipped - only what is staged
+  // now is worth typing. A search already under way finishes.
+  let searchFor: ControlVerse | null = null
+  const search = (ability: 'findVerse' | 'findSong', what: ControlVerse) => {
+    searchFor = what
+    void after(async () => {
+      if (searchFor !== what) return
+      const problem = await run(ability, { query: what.book })
+      if (problem && staged === what) staged = null
+    })
   }
 
   // ControlHost is synchronous; the inspector is a process. The dispatcher's
@@ -59,13 +84,18 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
         return null
       }
       staged = asVerse(reference)
-      void run('findVerse', { query: reference }).then((problem) => { if (problem) staged = null })
+      search('findVerse', staged)
       return staged
     },
     take: () => {
       if (!staged) return null
       const taking = staged
-      void run('show').then((problem) => { if (!problem) live = taking })
+      void after(async () => {
+        // Its search failed meanwhile: nothing of ours is selected to show.
+        if (staged === null) return
+        const problem = await run('show')
+        if (!problem) live = taking
+      })
       return taking
     },
     stageSong: (title) => {
@@ -73,12 +103,12 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
       // search is the kind of wrong-screen moment teaching exists to prevent.
       if (!recipe.abilities.findSong) return { error: `${recipe.app.name} was never taught where songs are searched — re-teach it and answer the song question` }
       staged = asVerse(title)
-      void run('findSong', { query: title }).then((problem) => { if (problem) staged = null })
+      search('findSong', staged)
       return { staged }
     },
-    clearLive: () => { void run('clear').then((problem) => { if (!problem) live = null }) },
-    next: () => { void run('next') },
-    previous: () => { void run('previous') },
+    clearLive: () => { void after(async () => { if (!(await run('clear'))) live = null }) },
+    next: () => { void after(() => run('next')) },
+    previous: () => { void after(() => run('previous')) },
     setScreen: (state) => own.setScreen(state),
     toggleScreen: (state) => own.toggleScreen(state),
     screen: () => own.screen(),

@@ -1,5 +1,6 @@
 import type { ControlHost } from '../../electron/control/dispatcher'
 import type { ControlVerse } from '../../shared/control/schema'
+import { verseToText } from '../../shared/scriptureText'
 import { pickThemeSlide, type ProClient, type ProId } from './client'
 
 /**
@@ -97,7 +98,8 @@ export function proPresenterHost(opts: ProPresenterHostOptions): ControlHost {
     const uuid = await scriptureMessage()
     await client.triggerMessage(uuid, [
       { name: 'reference', text: { text: referenceLine(v) } },
-      { name: 'text', text: { text: v.text } },
+      // The wall's plain text: KJV's {supplied} words kept, its {lemma: note} apparatus dropped.
+      { name: 'text', text: { text: verseToText(v.text) } },
     ])
   }
 
