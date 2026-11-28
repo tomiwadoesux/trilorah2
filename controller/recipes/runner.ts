@@ -91,6 +91,9 @@ export async function verify(recipe: Recipe, inspect: Inspector): Promise<Verify
   const broken: StepOutcome[] = []
   let checked = 0
   for (const [ability, steps] of Object.entries(recipe.abilities) as [Ability, RecipeStep[]][]) {
+    // A put-back control exists only after a take (EasyWorship's Go Back appears once
+    // something went live from its library): nothing to look for at sound check.
+    if (ability === 'restore') continue
     const enroute = steps.filter((s) => s.enroute)
     if (enroute.length === 0) {
       for (const [index, step] of steps.entries()) {

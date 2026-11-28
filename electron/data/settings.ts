@@ -189,6 +189,8 @@ export const defaults = {
   // options: one slide per verse or the whole range together, inline verse
   // numbers, and where the reference line appears across the slides.
   breakOnVerse: false,
+  // Where the pop-up console was left: it floats over the presentation app, so its place matters.
+  consoleWindowBounds: null as { x: number; y: number; width: number; height: number } | null,
   showVerseNumbers: false,
   referenceMode: 'each' as 'each' | 'last' | 'first' | 'none',
   showTranslation: true,

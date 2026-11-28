@@ -273,6 +273,7 @@ import { CatchSignalOverlay } from './output/catchSignalOverlay'
 import { isCatchSignal, type SignalAnswer } from '../shared/catchSignal'
 import { describeOutputs } from './output/outputsStatus'
 import { formatLiveContent, type LiveContent } from '../shared/liveContent'
+import type { WordTiming } from '../shared/wordTimings'
 import { buildQrCard } from '../shared/qrCard'
 import { searchBible } from './data/bibleSearch'
 import { emitEngineEvent } from './emitters'
@@ -488,6 +489,24 @@ let controlDispatcher: ControlDispatcher | null = null
 let controlServer: ControlServer | null = null
 let consoleWindow: BrowserWindow | null = null
 
+/*
+ * The screen pointed at another app (trilorah target). Two things kept for it here:
+ *  - followTarget: spoken references are typed into the app as they are heard. Off at
+ *    every start, by the owner's choice (2026-11-28): nothing is typed into someone
+ *    else's software until the operator says so; until then a take stages and shows in
+ *    one go. Quotes, named passages and stories are never typed ahead - the operator
+ *    confirms those with the take.
+ *  - mirrorToTarget: an operator's press in Trilorah's own windows (the catch card's
+ *    live, the phone, the main window's clear) reaches the app too. Without it the main
+ *    window drove only Trilorah's wall while the console drove the app.
+ * Both are wired once the target host exists (app.whenReady).
+ */
+let followTarget = false
+let mirrorToTarget: ((what: 'take' | 'clear' | 'next' | 'previous') => void) | null = null
+
+/** What Trilorah's verse pushed off the wall, for Put back: a song or slide, or the reading before it. */
+let displaced: { content: LiveContent } | { verse: NonNullable<VerseDelivery['live']> } | null = null
+
 /** The pop-up console: the command layer as buttons, in its own small window. */
 function createConsoleWindow(): void {
   if (consoleWindow && !consoleWindow.isDestroyed()) {
@@ -495,13 +514,22 @@ function createConsoleWindow(): void {
     consoleWindow.focus()
     return
   }
+  // Where it was left last time, when that place is still on a screen.
+  const kept = getSetting('consoleWindowBounds')
+  const onAScreen = !!kept && electronScreen.getAllDisplays().some((d) =>
+    kept.x >= d.bounds.x - 40 && kept.y >= d.bounds.y - 40 && kept.x < d.bounds.x + d.bounds.width && kept.y < d.bounds.y + d.bounds.height)
   consoleWindow = new BrowserWindow({
-    width: 440,
-    height: 720,
-    minWidth: 380,
-    minHeight: 560,
+    ...(onAScreen ? kept! : { width: 400, height: 780 }),
+    minWidth: 340,
+    minHeight: 480,
     title: 'Trilorah Console',
     backgroundColor: '#010806',
+    // A small window that floats over the presentation app and stays where it is dragged:
+    // no title bar (the console draws its own handle), on top of everything, never full screen.
+    frame: false,
+    alwaysOnTop: true,
+    fullscreenable: false,
+    maximizable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -510,6 +538,14 @@ function createConsoleWindow(): void {
   })
   if (isDev) consoleWindow.loadURL('http://localhost:5173/console.html')
   else consoleWindow.loadFile(path.join(__dirname, '../dist/console.html'))
+  consoleWindow.setAlwaysOnTop(true, 'floating')
+  let keep: NodeJS.Timeout | null = null
+  const remember = () => {
+    if (keep) clearTimeout(keep)
+    keep = setTimeout(() => { const w = consoleWindow; if (w && !w.isDestroyed()) setSetting('consoleWindowBounds', w.getBounds()) }, 400)
+  }
+  consoleWindow.on('moved', remember)
+  consoleWindow.on('resized', remember)
   consoleWindow.on('closed', () => { consoleWindow = null })
 }
 
@@ -920,6 +956,10 @@ const voiceCallbacks: VoiceCommandCallbacks = {
   },
   onCommand: (event) => {
     emitVoiceCommand(event)
+    // "Next verse" said to a screen pointed at another app steps that app's slide. Both
+    // roads a spoken step can take (the command set's, the session's) end here.
+    if (event.kind === 'navigate-next') mirrorToTarget?.('next')
+    else if (event.kind === 'navigate-previous') mirrorToTarget?.('previous')
     const pid = activePreacherId()
     if (pid) commandLog?.record(pid, event)
   }
@@ -938,6 +978,7 @@ function noteOperatorReversal(kind: 'display-dismiss' | 'display-hold' | 'naviga
 
 function dismissLiveVerse(): void {
   verseDelivery.clearLive()
+  mirrorToTarget?.('clear')
   displayTimingManager.onVerseCleared()
   emitVerseAutoDismiss()
   broadcastState()
@@ -945,8 +986,11 @@ function dismissLiveVerse(): void {
 
 /** Promote a preview only from an explicit operator or remote action. */
 function pushPreviewToLive(via: VersePushSource): void {
+  const wasLive = verseDelivery.live
   const liveVerse = verseDelivery.promote(via)
   if (!liveVerse) return
+  if (currentLiveContent) displaced = { content: currentLiveContent }
+  else if (wasLive && (wasLive.book !== liveVerse.book || wasLive.chapter !== liveVerse.chapter || wasLive.verse !== liveVerse.verse)) displaced = { verse: wasLive }
   console.log(
     `🔴 Pushing to LIVE (${via}):`,
     `${currentPreviewData.book} ${currentPreviewData.chapter}:${currentPreviewData.verse}`
@@ -954,6 +998,7 @@ function pushPreviewToLive(via: VersePushSource): void {
   currentLiveContent = null
   screen.onContentPushed()
   emitVerseDetected(liveVerse)
+  mirrorToTarget?.('take')
   // Only an operator's press teaches the finder what is being preached.
   if (!via.startsWith('auto') && currentPreviewData.book && currentPreviewData.chapter) allusionFinder.sermon.noteLive(currentPreviewData.book, currentPreviewData.chapter)
   // Explicit Go live is held until the operator clears or replaces it.
@@ -1429,7 +1474,7 @@ const session = new ScriptureSession((display: any) => {
   const operatorPush = operatorStaging
   const detection = verseDelivery.stage({
     ...preview,
-    ...(operatorPush ? {} : { confidence: lastResolverConfidence }),
+    ...(operatorPush ? ({ operator: true } as Record<string, unknown>) : { confidence: lastResolverConfidence }),
     ...(pendingRecognition ? { recognition: pendingRecognition, source: pendingRecognition.source } : {}),
     // The session moved on by itself: still a catch, but not a reference named.
     ...(display.stepped ? { stepped: true } : {}),
@@ -1559,30 +1604,12 @@ function stageVerseReference(reference: string, requested?: string): boolean {
   }
 }
 
-function startASR(deviceLabel?: string) {
-  if (training.active) { emitASRStatus('Finish voice training before starting a service.'); return }
-  if (isListening) return
-  resetSpokenSearch()
-  withdrawProvisionalRecognition()
-  getQuoteMatcher().reset()
-  resetStoryMemory()
-  suggestionTracker.reset()
-  lastNamedPassage = null
-  /* The practice sermon stands in for a microphone, and is not a service. */
-  activeASR = deviceLabel === PRACTICE_SERMON_DEVICE ? practiceSermonProvider : resolveASRProvider(getSetting('asrProvider'))
-  setRehearsal(activeASR.id === 'practice')
-  console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
-  // Both of these BEFORE start(), never after. A provider that cannot run at
-  // all — no Deepgram key, or no whisper binary, which is every Windows PC —
-  // reports its error synchronously, from inside start(). Setting the status
-  // and the guard afterwards overwrote that error with "Connecting..." and
-  // re-armed the guard the error handler had just released: the pill sat on
-  // "connecting" forever and the button went dead.
-  isListening = true
-  emitASRStatus('Connecting...')
-  activeASR.start(
-    // onText callback
-    (rawText, isFinal, display, wordTimings) => {
+/*
+ * Everything heard goes through here: the speech provider's words, and words fed in by
+ * text (the console's and the CLI's `hear`) to rehearse without a microphone or to
+ * prove what a sentence does. Nothing below can tell the two apart - that is the point.
+ */
+function onHeard(rawText: string, isFinal: boolean, display?: string, wordTimings?: WordTiming[] | null): void {
       // Per-preacher vocabulary fixes proper nouns before anything reads the text.
       lastRawHeardText = rawText
       let text = rawText
@@ -1671,7 +1698,31 @@ function startASR(deviceLabel?: string) {
         }
         handleASRText(text, false)
       }
-    },
+}
+
+function startASR(deviceLabel?: string) {
+  if (training.active) { emitASRStatus('Finish voice training before starting a service.'); return }
+  if (isListening) return
+  resetSpokenSearch()
+  withdrawProvisionalRecognition()
+  getQuoteMatcher().reset()
+  resetStoryMemory()
+  suggestionTracker.reset()
+  lastNamedPassage = null
+  /* The practice sermon stands in for a microphone, and is not a service. */
+  activeASR = deviceLabel === PRACTICE_SERMON_DEVICE ? practiceSermonProvider : resolveASRProvider(getSetting('asrProvider'))
+  setRehearsal(activeASR.id === 'practice')
+  console.log(`🎤 Starting ASR (${activeASR.id})...`, deviceLabel ? `(device: ${deviceLabel})` : '(default device)')
+  // Both of these BEFORE start(), never after. A provider that cannot run at
+  // all — no Deepgram key, or no whisper binary, which is every Windows PC —
+  // reports its error synchronously, from inside start(). Setting the status
+  // and the guard afterwards overwrote that error with "Connecting..." and
+  // re-armed the guard the error handler had just released: the pill sat on
+  // "connecting" forever and the button went dead.
+  isListening = true
+  emitASRStatus('Connecting...')
+  activeASR.start(
+    onHeard,
     // onError callback
     (error) => {
       console.error('❌ ASR error:', error)
@@ -2273,6 +2324,7 @@ ipcMain.on('open-output', (_event, outputId) => {
 
 ipcMain.handle('screen-state-set', (_event, state: string) => {
   if (isScreenState(state)) screen.set(state)
+  if (state === 'clear') mirrorToTarget?.('clear')
   return screen.get()
 })
 ipcMain.handle('screen-state-get', () => screen.get())
@@ -2944,14 +2996,19 @@ ipcMain.handle('request-mic-permission', async () => {
  */
 let currentLiveContent: LiveContent | null = null
 
-ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
-  if (!content || typeof content !== 'object' || (content.kind !== 'song' && content.kind !== 'slide')) return { success: false }
+/** A song or slide onto the wall: the Songs tab's push, and Put back after a verse replaced it. */
+function putLiveContent(content: LiveContent): void {
   content = formatLiveContent(content)
   currentLiveContent = content
   verseDelivery.clearLive()
   console.log(`🎵 Live: ${content.kind === 'song' ? `${content.title} — ${content.label}` : content.title}`)
   screen.onContentPushed()
   broadcastToWindows('on-live-content', content)
+}
+
+ipcMain.handle('push-live-content', (_event, content: LiveContent) => {
+  if (!content || typeof content !== 'object' || (content.kind !== 'song' && content.kind !== 'slide')) return { success: false }
+  putLiveContent(content)
   return { success: true }
 })
 
@@ -4638,6 +4695,8 @@ app.whenReady().then(() => {
         return null
       },
       stopListening: () => stopASR(),
+      // Words by text, through the same door as the microphone's. Works without listening.
+      hear: (text, final) => { onHeard(text.toLowerCase(), final, text, null) },
       stageScripture: (reference, requested) => {
         // Staged like a typed reference: it shows as a catch, it does not go live.
         if (!stageVerseReference(reference, requested)) return null
@@ -4654,6 +4713,17 @@ app.whenReady().then(() => {
       },
       next: () => { session.exitReadingMode(); session.advance() },
       previous: () => { session.exitReadingMode(); session.goBack() },
+      restore: () => {
+        const back = displaced
+        if (!back) return 'no verse of Trilorah\'s has replaced anything yet'
+        displaced = null
+        if ('content' in back) { putLiveContent(back.content); return null }
+        const v = back.verse
+        const reference = `${v.book} ${v.chapter}:${v.verse}${v.endVerse && v.endVerse !== v.verse ? `-${v.endVerse}` : ''}`
+        if (!stageOperatorPush(() => stageVerseReference(reference, v.version))) return `could not bring back ${reference}`
+        pushPreviewToLive('operator')
+        return null
+      },
       setScreen: (state) => screen.set(state as any),
       toggleScreen: (state) => { screen.toggle(state) },
       screen: () => screen.get(),
@@ -4731,8 +4801,32 @@ app.whenReady().then(() => {
         detail: ok ? 'Every control it was taught is where it was left.' : `${broken.join('; ')}. Teach that step again at sound check.`,
       }),
     })
-    const dispatcher = new ControlDispatcher(targetHost)
+    const appTargeted = () => (targetHost.target?.() ?? OWN_TARGET) !== OWN_TARGET
+    const wordsFor = (v: ControlVerse) =>
+      v.chapter ? `${v.book} ${v.chapter}:${v.verse}${v.endVerse && v.endVerse !== v.verse ? `-${v.endVerse}` : ''}` : v.book
+    /** Trilorah's own catch, staged in the app first when the app has nothing of ours staged. */
+    const stageOwnPreviewThere = () => {
+      const mine = controlHost.preview()
+      if (!mine) return
+      const there = targetHost.preview()
+      if (there && there.book === mine.book && there.chapter === mine.chapter && there.verse === mine.verse) return
+      targetHost.stageScripture(wordsFor(mine), mine.version || undefined)
+    }
+    const commandHost: ControlHost = {
+      ...targetHost,
+      // With follow off nothing was typed into the app yet: the take stages it there, then shows.
+      take: (via) => { if (appTargeted()) stageOwnPreviewThere(); return targetHost.take(via) },
+      follow: (on) => { if (on !== undefined) followTarget = on; return followTarget },
+    }
+    const dispatcher = new ControlDispatcher(commandHost)
     controlDispatcher = dispatcher
+    mirrorToTarget = (what) => {
+      if (!appTargeted()) return
+      if (what === 'take') { stageOwnPreviewThere(); targetHost.take('operator') }
+      else if (what === 'clear') targetHost.clearLive()
+      else if (what === 'next') targetHost.next()
+      else targetHost.previous()
+    }
 
     /*
      * Teaching, for the console's guided flow: which apps are open, watch for
@@ -4810,9 +4904,15 @@ app.whenReady().then(() => {
     let forwardingPreview = false
     const referenceWords = (v: ControlVerse) =>
       v.chapter ? `${v.book} ${v.chapter}:${v.verse}${v.endVerse && v.endVerse !== v.verse ? `-${v.endVerse}` : ''}` : v.book
-    const forwardPreviewToTarget = (verse: ControlVerse | null) => {
+    const forwardPreviewToTarget = (verse: ControlVerse | null, heard: { source?: string; operator?: boolean; stepped?: boolean } | null) => {
       if (!verse || forwardingPreview) return
-      if ((targetHost.target?.() ?? OWN_TARGET) === OWN_TARGET) return
+      if (!appTargeted()) return
+      // The operator's own staging (typed, a card pressed) was deliberate: it goes through.
+      // A spoken reference goes through while follow is on. A quote, a named passage, a
+      // story, or the session stepping by itself never does ahead of the take.
+      const deliberate = heard?.operator === true
+      const spoken = !heard?.source && !heard?.operator && !heard?.stepped
+      if (!deliberate && !(followTarget && spoken)) return
       const there = targetHost.preview()
       if (there && there.book === verse.book && there.chapter === verse.chapter && there.verse === verse.verse) return
       forwardingPreview = true
@@ -4821,7 +4921,7 @@ app.whenReady().then(() => {
     // The engine's own announcements, in the control stream too.
     setEmitterTap((channel, payload) => {
       if (channel === 'on-transcript-line') { hearLine(payload); dispatcher.event('transcript', payload) }
-      else if (channel === 'on-verse-preview') { const verse = asVerse(payload); forwardPreviewToTarget(verse); dispatcher.event('preview', verse) }
+      else if (channel === 'on-verse-preview') { const verse = asVerse(payload); forwardPreviewToTarget(verse, payload as { source?: string; operator?: boolean; stepped?: boolean } | null); dispatcher.event('preview', verse) }
       else if (channel === 'on-verse-detected') dispatcher.event('live', asVerse(payload))
       else if (channel === 'on-verse-auto-dismiss') dispatcher.event('cleared', null)
       else if (channel === 'on-asr-status') dispatcher.event('asr', payload)

@@ -51,6 +51,21 @@ describe('recipe runner', () => {
     expect(calls[0]).toEqual(['type', 'com.example.slides', 'path:0/3', 'role:AXTextField', 'name:search', '--text', 'John 3:16', '--submit'])
   })
 
+  it('verify leaves the put-back control alone: it is only there after a take', async () => {
+    const taught = parseRecipe({
+      format: 1, platform: 'windows', app: { id: 'EasyWorship.exe', name: 'EasyWorship' },
+      abilities: {
+        show: [{ role: 'Pane', name: 'Go Live', action: { do: 'press' } }],
+        restore: [{ role: 'Pane', class: 'TsdSpeedButton', name: 'Go Back', action: { do: 'press', via: 'message' } }],
+      },
+      taught: { by: 'trilorah', at: '2026-11-28T00:00:00Z' },
+    })!
+    const { inspector, calls } = fake({})
+    const report = await verify(taught, inspector)
+    expect(report.ok).toBe(true)
+    expect(calls.some((c) => c.includes('name:Go Back'))).toBe(false)
+  })
+
   it('perform hands a step to the control as messages when the recipe says so', async () => {
     // Nothing is clicked on screen: the step names the pane the control is in and which of the pair it is.
     const quiet = parseRecipe({

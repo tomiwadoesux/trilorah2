@@ -91,7 +91,7 @@ export interface RecipeStep extends ControlCues {
  * places (EasyWorship: Scriptures vs Songs) — one taught box must never have
  * the other's words typed into it.
  */
-export type Ability = 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous'
+export type Ability = 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous' | 'restore'
 
 export interface Recipe {
   format: typeof RECIPE_FORMAT
@@ -172,7 +172,7 @@ export function parseRecipe(raw: unknown): Recipe | null {
   // 'find' is the old single search, from before verses and songs were taught
   // apart; an old recipe's one box was taught on "a song or verse", so it
   // serves as both until the church re-teaches.
-  for (const key of ['findVerse', 'findSong', 'find', 'show', 'clear', 'next', 'previous'] as const) {
+  for (const key of ['findVerse', 'findSong', 'find', 'show', 'clear', 'next', 'previous', 'restore'] as const) {
     const steps = abilitiesRaw[key]
     if (steps === undefined) continue
     if (!Array.isArray(steps) || steps.length === 0) return null

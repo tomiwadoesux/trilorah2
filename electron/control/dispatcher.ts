@@ -48,6 +48,12 @@ export interface ControlHost {
   searchSongs?(words?: string): { heard: string; matches: ControlSongMatch[] }
   /** Stage a song by title on the current target; the error says why not. */
   stageSong?(title: string): { staged: ControlVerse } | { error: string }
+  /** Put back what Trilorah's verse replaced. Null when done; otherwise why not. */
+  restore?(): string | null
+  /** Whether spoken references are typed into the target as heard; with an argument, sets it. */
+  follow?(on?: boolean): boolean
+  /** Words fed in as if the preacher said them (final, or a partial still growing). */
+  hear?(text: string, final: boolean): void
 }
 
 export type ControlVia = 'console' | 'socket' | 'remote'
@@ -72,6 +78,7 @@ export class ControlDispatcher {
       preview: this.host.preview(),
       live: this.host.live(),
       screen: this.host.screen(),
+      ...(this.host.follow ? { follow: this.host.follow() } : {}),
     }
   }
 
@@ -131,6 +138,19 @@ export class ControlDispatcher {
         return this.done(op)
       case 'live.previous':
         this.host.previous()
+        return this.done(op)
+      case 'live.restore': {
+        if (!this.host.restore) return this.fail(op, 'this screen cannot put back what was on before')
+        const problem = this.host.restore()
+        return problem ? this.fail(op, problem) : this.done(op)
+      }
+      case 'target.follow':
+        if (!this.host.follow) return this.fail(op, 'this screen has no app to follow into')
+        this.host.follow(command.on)
+        return this.done(op)
+      case 'transcript.hear':
+        if (!this.host.hear) return this.fail(op, 'this engine cannot be spoken to by text')
+        this.host.hear(command.text, command.final !== false)
         return this.done(op)
       case 'screen.set':
         return this.host.setScreen(command.state) ? this.done(op) : this.fail(op, `the wall cannot show "${command.state}" right now`)

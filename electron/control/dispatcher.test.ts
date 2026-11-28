@@ -13,6 +13,9 @@ function fakeHost() {
     takes: [] as string[],
     refuseListen: null as string | null,
     consoleOpened: false,
+    restored: 0,
+    follow: false,
+    heard: [] as [string, boolean][],
   }
   const host: ControlHost = {
     listening: () => state.listening,
@@ -35,6 +38,9 @@ function fakeHost() {
     preview: () => state.preview,
     live: () => state.live,
     openConsole: () => { state.consoleOpened = true },
+    restore: () => (state.live ? ((state.restored += 1), (state.live = null), null) : 'nothing of ours is up'),
+    follow: (on) => { if (on !== undefined) state.follow = on; return state.follow },
+    hear: (text, final) => { state.heard.push([text, final]) },
   }
   return { host, state }
 }
@@ -49,6 +55,39 @@ describe('ControlDispatcher', () => {
       expect(r.staged?.book).toBe('John')
       expect(r.snapshot.preview?.book).toBe('John')
     }
+  })
+
+  it('put back and follow are commands, and follow shows in the snapshot', () => {
+    const { host, state } = fakeHost()
+    const d = new ControlDispatcher(host)
+    expect(d.snapshot().follow).toBe(false)
+    const on = d.execute({ kind: 'target.follow', on: true }, 'console')
+    expect(on.ok && on.snapshot.follow).toBe(true)
+    // Nothing is up: the host's reason comes back, not a polite "done".
+    const early = d.execute({ kind: 'live.restore' }, 'console')
+    expect(early.ok).toBe(false)
+    if (!early.ok) expect(early.error).toBe('nothing of ours is up')
+    d.execute({ kind: 'live.take', reference: 'John 3:16' }, 'console')
+    const back = d.execute({ kind: 'live.restore' }, 'console')
+    expect(back.ok).toBe(true)
+    expect(state.restored).toBe(1)
+    expect(d.snapshot().live).toBeNull()
+    // A host without the ability says so instead of pretending.
+    const { host: plain } = fakeHost()
+    delete plain.restore; delete plain.follow
+    const bare = new ControlDispatcher(plain)
+    expect(bare.execute({ kind: 'live.restore' }, 'console').ok).toBe(false)
+    expect(bare.execute({ kind: 'target.follow', on: true }, 'console').ok).toBe(false)
+    expect('follow' in bare.snapshot()).toBe(false)
+  })
+
+  it('words fed in by text reach the host as final, or as a partial when said so', () => {
+    const { host, state } = fakeHost()
+    const d = new ControlDispatcher(host)
+    expect(d.execute({ kind: 'transcript.hear', text: 'for god so loved the world' }, 'socket').ok).toBe(true)
+    expect(d.execute({ kind: 'transcript.hear', text: 'for god so', final: false }, 'socket').ok).toBe(true)
+    expect(state.heard).toEqual([['for god so loved the world', true], ['for god so', false]])
+    expect(d.execute({ kind: 'transcript.hear', text: '' }, 'socket').ok).toBe(false)
   })
 
   it('refuses honestly when nothing is staged to take', () => {

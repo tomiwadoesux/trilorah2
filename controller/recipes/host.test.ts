@@ -127,6 +127,37 @@ describe('the words typed into the app', () => {
   })
 })
 
+describe('put back', () => {
+  const quick = (calls: string[][]): Inspector => ({ run: async (args) => { calls.push(args); return { ok: true } } })
+  const settle = () => new Promise((r) => setTimeout(r, 20))
+
+  it('presses the taught put-back control and no longer counts our verse as live', async () => {
+    const calls: string[][] = []
+    const taught = parseRecipe({
+      format: 1, platform: 'windows', app: { id: 'EasyWorship.exe', name: 'EasyWorship' },
+      abilities: {
+        findVerse: [{ path: '0/2', role: 'Edit', name: 'Search', action: { do: 'type', text: '$query' } }],
+        show: [{ role: 'Pane', name: 'Go Live', action: { do: 'press' } }],
+        restore: [{ role: 'Pane', class: 'TsdSpeedButton', name: 'Go Back', action: { do: 'press', via: 'message' } }],
+      },
+      taught: { by: 'trilorah', at: '2026-11-28T00:00:00Z' },
+    })!
+    const host = recipeHost({ recipe: taught, inspector: quick(calls), own })
+    host.stageScripture('John 3:16'); host.take('remote')
+    await settle()
+    expect(host.live()?.book).toBe('John 3:16')
+    expect(host.restore!()).toBeNull()
+    await settle()
+    expect(calls[calls.length - 1]).toEqual(['press', 'EasyWorship.exe', 'role:Pane', 'class:TsdSpeedButton', 'name:Go Back', '--action', 'message'])
+    expect(host.live()).toBeNull()
+  })
+
+  it('says so when the app was never taught one', () => {
+    const host = recipeHost({ recipe, inspector: quick([]), own })
+    expect(host.restore!()).toMatch(/not taught how to put back/)
+  })
+})
+
 describe('a Clear that stays on', () => {
   const quick = (calls: string[][]): Inspector => ({ run: async (args) => { calls.push(args); return { ok: true } } })
   const settle = () => new Promise((r) => setTimeout(r, 20))

@@ -1,7 +1,7 @@
 import type { ControlHost } from '../../electron/control/dispatcher'
 import type { ControlVerse } from '../../shared/control/schema'
 import { perform, type Inspector } from './runner'
-import type { Recipe } from './schema'
+import type { Ability, Recipe } from './schema'
 
 /**
  * A recipe as a ControlHost: the bridge that lets the same commands the CLI,
@@ -63,7 +63,7 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
   }
 
   /** Runs one ability; returns its problem, if any, having told whoever listens. */
-  async function run(ability: 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous', vars: { query?: string } = {}): Promise<string | null> {
+  async function run(ability: Ability, vars: { query?: string } = {}): Promise<string | null> {
     const started = Date.now()
     const result = await perform(recipe, ability, inspector, vars)
     if (result.ok) { opts.onDid?.(ability, Date.now() - started); return null }
@@ -137,6 +137,13 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
     },
     next: () => { void after(() => run('next')) },
     previous: () => { void after(() => run('previous')) },
+    // Put back what was on before Trilorah's verse. What that is, the app knows and Trilorah
+    // does not, so afterwards nothing of ours counts as live.
+    restore: () => {
+      if (!recipe.abilities.restore) return `${recipe.app.name} was not taught how to put back what was on before`
+      void after(async () => { if (!(await run('restore'))) live = null })
+      return null
+    },
     setScreen: (state) => own.setScreen(state),
     toggleScreen: (state) => own.toggleScreen(state),
     screen: () => own.screen(),

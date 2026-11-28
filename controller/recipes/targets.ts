@@ -65,12 +65,16 @@ export function switchableHost(opts: SwitchableOptions): ControlHost {
     clearLive: () => current.clearLive(),
     next: () => current.next(),
     previous: () => current.previous(),
+    // A ternary, not ??: the app host answers null when it did it.
+    restore: () => (current.restore ? current.restore() : 'this screen cannot put back what was on before'),
     setScreen: (state) => own.setScreen(state),
     toggleScreen: (state) => own.toggleScreen(state),
     screen: () => own.screen(),
     preview: () => current.preview(),
     live: () => current.live(),
     openConsole: () => own.openConsole(),
+    // Words by text go to the brain, whichever screen the commands move.
+    hear: (text, final) => own.hear?.(text, final),
     // Searching is listening — the brain's. Staging the found song is the target's.
     searchSongs: (words) => own.searchSongs?.(words) ?? { heard: words ?? '', matches: [] },
     stageSong: (title) => current.stageSong?.(title) ?? { error: 'this screen cannot stage songs by command' },

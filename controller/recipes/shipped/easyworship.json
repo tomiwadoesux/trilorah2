@@ -22,8 +22,11 @@
     ],
     "previous": [
       { "role": "Pane", "class": "TsdImageButton", "within": "TFrame_LivePreview", "which": "leftmost", "label": "the previous-slide arrow under Live (grey on the first slide)", "action": { "do": "press", "via": "message", "patience": 400 } }
+    ],
+    "restore": [
+      { "role": "Pane", "class": "TsdSpeedButton", "name": "Go Back", "label": "the Go Back button above Live (there only after something went live from the library; it puts the previous item back)", "action": { "do": "press", "via": "message", "patience": 400 } }
     ]
   },
   "clearStaysOn": true,
-  "taught": { "by": "trilorah", "at": "2026-11-27T22:30:00.000Z" }
+  "taught": { "by": "trilorah", "at": "2026-11-28T00:00:00.000Z" }
 }

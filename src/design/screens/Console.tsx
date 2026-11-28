@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { EngineProvider } from './engine';
+import { ProjectorProvider } from './projector';
+import { RunProvider } from './run';
+import { ScriptureSearch } from './ScriptureCatches';
+import { ScriptureTools } from './ScriptureTools';
+import { CatchesPane } from './CatchesPane';
 import type { ControlCommand, ControlResult, ControlSnapshot, ControlTarget, ControlVerse } from '../../../shared/control/schema';
 import { RECIPE_FORMAT, type Ability, type Recipe } from '../../../controller/recipes/schema';
 import { QUESTIONS, stepsFromTrail, type WatchRecord } from '../../../controller/recipes/teach';
@@ -111,6 +117,7 @@ const QUESTION_TITLE: Record<Ability, string> = {
   clear: 'How do you take it off?',
   next: 'Next',
   previous: 'Previous',
+  restore: 'Put back what was on before',
 };
 
 const SKIP_WORDS: Record<Ability, string> = {
@@ -120,6 +127,7 @@ const SKIP_WORDS: Record<Ability, string> = {
   clear: 'skip — no clear here',
   next: 'skip — no next here',
   previous: 'skip — no previous here',
+  restore: 'skip — no put back here',
 };
 
 /** What a recorded click gets called in the flow: "the Go Live button". */
@@ -452,6 +460,10 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   const [partial, setPartial] = useState('');
   const [log, setLog] = useState<LogRow[]>([]);
   const [prompt, setPrompt] = useState('');
+  const [songOpen, setSongOpen] = useState(false);
+  const [songTitle, setSongTitle] = useState('');
+  const snapRef = useRef<ControlSnapshot | null>(null);
+  useEffect(() => { snapRef.current = snap; }, [snap]);
   const [history, setHistory] = useState<string[]>([]);
   const historyAt = useRef(-1);
   const rowId = useRef(0);
@@ -506,6 +518,32 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   }, []);
 
   useEffect(() => { logEnd.current?.scrollIntoView({ block: 'end' }); }, [log]);
+
+  /*
+   * The pop-up's two-tap spacebar (owner, 2026-11-28): twice within half a second takes
+   * the staged catch live; twice again while something of ours is live clears it. Only
+   * in this window, and never while a text box has focus, so typing a reference or a
+   * song title is undisturbed. A single space is swallowed on purpose: a focused button
+   * must not fire on the first tap.
+   */
+  useEffect(() => {
+    if (variant !== 'popup') return;
+    let last = 0;
+    const onSpace = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now - last > 500) { last = now; return; }
+      last = 0;
+      const live = snapRef.current?.live;
+      say('in', live ? '› space ×2 · clear' : '› space ×2 · go live');
+      void run(live ? { kind: 'live.clear' } : { kind: 'live.take' });
+    };
+    window.addEventListener('keydown', onSpace);
+    return () => window.removeEventListener('keydown', onSpace);
+  }, [variant, run, say]);
 
   /** Whose screen the buttons move. Choosing an app verifies it; the list shows the answer once it lands. */
   const refreshTargets = useCallback(async () => {
@@ -586,74 +624,150 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   );
 
   if (variant === 'popup') {
-    const bigButton = (label: string, command: ControlCommand, tone: 'go' | 'ash' = 'ash', grow = 1) => (
+    /*
+     * The floating console (owner, 2026-11-28): a narrow column that stays on top of the
+     * presentation app and goes wherever it is dragged. Top to bottom - what is live, the
+     * big take, clear and put back, prev and next, a reference box, a song box, then the
+     * same catches card the main window shows (search, auto advance, saved, the catches),
+     * and the last thing heard. No title bar: the header row is the handle.
+     */
+    const noDrag = { WebkitAppRegion: 'no-drag' } as CSSProperties;
+    const appName = targets.find((t) => t.id === snap?.target)?.name ?? snap?.target ?? null;
+    const onApp = !!snap && snap.target !== 'trilorah';
+    const liveRef = refOf(snap?.live);
+    const press = (label: string, command: ControlCommand, opts: { tone?: 'go' | 'ash'; title?: string } = {}) => (
       <button
         type="button"
-        onClick={() => void run(command)}
+        title={opts.title}
+        onClick={() => { say('in', `› ${label}`); void run(command); }}
         style={{
-          // The big one stays big but never balloons; the cards take the spare room.
-          flex: tone === 'go' ? '0 0 auto' : grow, font: 'inherit', fontSize: tone === 'go' ? 15 : 12, letterSpacing: '0.1em', textTransform: 'uppercase',
-          cursor: 'pointer', padding: tone === 'go' ? '18px 12px' : '12px 10px', borderRadius: 8,
-          color: tone === 'go' ? CANVAS : INK, background: tone === 'go' ? ACCENT : PANEL,
-          border: `1px solid ${tone === 'go' ? ACCENT : LINE}`, fontWeight: tone === 'go' ? 700 : 400,
+          ...noDrag, flex: opts.tone === 'go' ? '0 0 auto' : 1, minWidth: 0, font: 'inherit', fontSize: opts.tone === 'go' ? 16 : 13, letterSpacing: '0.1em', textTransform: 'uppercase',
+          cursor: 'pointer', padding: opts.tone === 'go' ? '18px 12px' : '11px 10px', borderRadius: 8,
+          color: opts.tone === 'go' ? CANVAS : INK, background: opts.tone === 'go' ? ACCENT : PANEL,
+          border: `1px solid ${opts.tone === 'go' ? ACCENT : LINE}`, fontWeight: opts.tone === 'go' ? 700 : 400,
         }}
       >{label}</button>
     );
+    const small = (label: string, onClick: () => void, title?: string, ariaLabel?: string) => (
+      <button type="button" onClick={onClick} title={title} aria-label={ariaLabel}
+        style={{ ...noDrag, font: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', color: INK, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, padding: '0 12px' }}
+      >{label}</button>
+    );
+    const field = (f: { value: string; onChange: (v: string) => void; onEnter: (take: boolean) => void; placeholder: string; label: string; autoFocus?: boolean; inputRef?: RefObject<HTMLInputElement | null> }) => (
+      <input
+        ref={f.inputRef}
+        aria-label={f.label}
+        value={f.value}
+        autoFocus={f.autoFocus}
+        spellCheck={false}
+        placeholder={f.placeholder}
+        onChange={(e) => f.onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); f.onEnter(e.ctrlKey || e.metaKey); }
+          else if (e.key === 'Escape') { f.onChange(''); (e.target as HTMLInputElement).blur(); }
+        }}
+        style={{ ...noDrag, flex: 1, minWidth: 0, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, color: INK, font: 'inherit', fontSize: 13, padding: '10px 12px' }}
+      />
+    );
+    // Enter stages the typed reference as a catch; Ctrl/⌘+Enter takes it. Typing never goes live on its own.
+    const stageTyped = (take: boolean) => {
+      const reference = prompt.trim();
+      if (!reference) { if (take) void run({ kind: 'live.take' }); return; }
+      say('in', `› ${take ? 'take' : 'stage'} ${reference}`);
+      void run(take ? { kind: 'live.take', reference } : { kind: 'scripture.stage', reference }).then(() => setPrompt(''));
+    };
+    // A song by title lands on the current target (a taught app types it into its own search); the take is a separate press.
+    const stageSong = () => {
+      const title = songTitle.trim();
+      if (!title) return;
+      say('in', `› song ${title}`);
+      void run({ kind: 'song.stage', title }).then((r) => { if (r?.ok) { setSongTitle(''); setSongOpen(false); } });
+    };
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100vh', padding: 14, background: CANVAS, color: INK, fontFamily: 'var(--font-mono)', fontSize: 12, boxSizing: 'border-box', overflow: 'hidden' }}>
-        <header style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100vh', padding: '0 10px 10px', background: CANVAS, color: INK, fontFamily: 'var(--font-mono)', fontSize: 12, boxSizing: 'border-box', overflow: 'hidden' }}>
+        <header style={{ WebkitAppRegion: 'drag', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 2px 2px', userSelect: 'none' } as CSSProperties}>
           <span style={{ letterSpacing: '0.18em', fontSize: 11, color: ACCENT }}>TRILORAH</span>
-          <span role="status" aria-live="polite" style={{ color: snap?.listening ? ACCENT : FAINT }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
-          <span style={{ marginLeft: 'auto', color: DIM }}>wall · {snap?.screen ?? '—'}</span>
+          <span role="status" aria-live="polite" style={{ color: snap?.listening ? ACCENT : FAINT, fontSize: 11 }}>{snap?.listening ? '● listening' : '○ not listening'}</span>
+          <span style={{ marginLeft: 'auto', color: DIM, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{onApp ? appName : 'wall'} · {snap?.screen ?? '—'}</span>
+          <button
+            type="button" aria-label="Close the console" title="Close this window (Trilorah keeps running)" onClick={() => window.close()}
+            style={{ ...noDrag, font: 'inherit', fontSize: 14, color: DIM, background: 'transparent', border: `1px solid ${LINE}`, borderRadius: 6, width: 26, height: 22, cursor: 'pointer', lineHeight: 1, padding: 0 }}
+          >×</button>
         </header>
-        {screenPicker}
+        <div style={noDrag}>{screenPicker}</div>
 
         {teachPanel ?? (
           <>
-        {pane('live', snap?.live ?? null, true)}
-        {pane('preview', snap?.preview ?? null, false)}
+            {/* What is up, in one line; the catches below say what is staged. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px', fontSize: 11, minHeight: 22 }}>
+              <span style={{ letterSpacing: '0.14em', color: liveRef ? ACCENT : FAINT, textTransform: 'uppercase', flexShrink: 0 }}>live{liveRef ? ' ●' : ''}</span>
+              <span style={{ color: liveRef ? INK : FAINT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {liveRef ? `${liveRef}${snap?.live?.version ? ` (${snap.live.version})` : ''}` : 'nothing of ours is up'}
+              </span>
+              {onApp && (
+                <button
+                  type="button"
+                  aria-pressed={!!snap?.follow}
+                  title={`On: spoken references are typed into ${appName} as they are heard (quotes never). Off: nothing is typed there until you take.`}
+                  onClick={() => { const on = !snap?.follow; say('in', `› follow ${on ? 'on' : 'off'}`); void run({ kind: 'target.follow', on }); }}
+                  style={{
+                    ...noDrag, marginLeft: 'auto', flexShrink: 0, font: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', padding: '3px 9px', borderRadius: 999,
+                    color: snap?.follow ? CANVAS : DIM, background: snap?.follow ? ACCENT : 'transparent', border: `1px solid ${snap?.follow ? ACCENT : LINE}`,
+                  }}
+                >follow {snap?.follow ? 'on' : 'off'}</button>
+              )}
+            </div>
 
-        {/* The verse box: type it, press the button. No commands to know. */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            ref={input}
-            className="trilorah-console-prompt"
-            aria-label="Scripture reference to stage"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (prompt.trim()) void run({ kind: 'scripture.stage', reference: prompt.trim() }).then(() => setPrompt('')); } }}
-            placeholder="type a verse — John 3:16"
-            spellCheck={false}
-            style={{ flex: 1, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, color: INK, font: 'inherit', fontSize: 13, padding: '10px 12px' }}
-          />
-          <button
-            type="button"
-            onClick={() => { if (prompt.trim()) void run({ kind: 'scripture.stage', reference: prompt.trim() }).then(() => setPrompt('')); }}
-            style={{ font: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', color: INK, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 8, padding: '0 16px' }}
-          >stage</button>
-        </div>
+            {press('go live', { kind: 'live.take' }, { tone: 'go', title: 'Tap space twice to do this' })}
+            <div style={{ display: 'flex', gap: 8 }}>
+              {press('clear', { kind: 'live.clear' }, { title: 'Take our verse off (space twice while it is live)' })}
+              {press('put back', { kind: 'live.restore' }, { title: 'Bring back what was on before our verse: the song, the slide, the previous reading' })}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {press('‹ prev', { kind: 'live.previous' })}
+              {press('next ›', { kind: 'live.next' })}
+            </div>
 
-        {bigButton('go live', { kind: 'live.take' }, 'go')}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {bigButton('♪ song', { kind: 'song.search' })}
-          {bigButton('clear', { kind: 'live.clear' })}
-          {bigButton('black', { kind: 'screen.set', state: 'black' })}
-          {bigButton('logo', { kind: 'screen.set', state: 'logo' })}
-          {bigButton('wall', { kind: 'screen.set', state: 'live' })}
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {bigButton('‹ prev', { kind: 'live.previous' })}
-          {bigButton(snap?.listening ? 'stop listening' : 'start listening', { kind: snap?.listening ? 'listen.stop' : 'listen.start' }, 'ash', 2)}
-          {bigButton('next ›', { kind: 'live.next' })}
-        </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {field({ inputRef: input, value: prompt, onChange: setPrompt, onEnter: stageTyped, placeholder: 'reference — John 3:16', label: 'Scripture reference to stage' })}
+              {small('stage', () => stageTyped(false), 'Stage it as a catch (Enter). Ctrl+Enter takes it.')}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {songOpen ? (
+                <>
+                  {field({ value: songTitle, onChange: setSongTitle, onEnter: () => stageSong(), placeholder: 'song title — Amazing Grace', label: 'Song title to stage', autoFocus: true })}
+                  {small('stage', stageSong, onApp ? `Type it into ${appName}'s song search` : undefined)}
+                  {small('×', () => { setSongOpen(false); setSongTitle(''); }, undefined, 'Close the song box')}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSongOpen(true)}
+                  title={onApp ? `Stage a song by title in ${appName}` : "Songs for Trilorah's own wall come from the Songs tab"}
+                  style={{ ...noDrag, flex: 1, font: 'inherit', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', padding: '11px 10px', borderRadius: 8, color: INK, background: PANEL, border: `1px solid ${LINE}` }}
+                >♪ song</button>
+              )}
+            </div>
 
-        {/* What just happened, and the last thing heard. */}
-        <div role="log" aria-label="Recent console activity" aria-live="polite" style={{ marginTop: 'auto', minHeight: 44, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2 }}>
-          {(partial || heard.length > 0) && <div style={{ color: FAINT, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>heard · {partial || heard[heard.length - 1]}</div>}
-          {log.slice(-2).map((row) => (
-            <div key={row.id} style={{ fontSize: 11, color: row.kind === 'err' ? '#F0A8A0' : row.kind === 'in' ? DIM : FAINT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.text}</div>
-          ))}
-        </div>
+            {/* The catches, as the main window shows them: search, auto advance, saved, each catch with its own live. */}
+            <div style={{ ...noDrag, flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${LINE}`, paddingTop: 8 }}>
+              <EngineProvider>
+                <ProjectorProvider>
+                  <RunProvider>
+                    <ScriptureSearch />
+                    <ScriptureTools><CatchesPane /></ScriptureTools>
+                  </RunProvider>
+                </ProjectorProvider>
+              </EngineProvider>
+            </div>
+
+            {/* The last thing heard, and the last thing that happened. */}
+            <div role="log" aria-label="Recent console activity" aria-live="polite" style={{ minHeight: 30, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 2 }}>
+              {(partial || heard.length > 0) && <div style={{ color: FAINT, fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>heard · {partial || heard[heard.length - 1]}</div>}
+              {log.slice(-2).map((row) => (
+                <div key={row.id} style={{ fontSize: 11, color: row.kind === 'err' ? '#F0A8A0' : row.kind === 'in' ? DIM : FAINT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.text}</div>
+              ))}
+            </div>
           </>
         )}
       </div>

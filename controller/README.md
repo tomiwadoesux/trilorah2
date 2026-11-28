@@ -111,6 +111,28 @@ pressing anything, and re-taught one step at a time when an update moves things.
   draw their controls inside one window (EasyWorship 8 is reported to be
   FireMonkey; untested here) — so UI Automation stays the default and
   `via: 'message'` is a per-step choice in the recipe.
+- The floating console and the follow switch (2026-11-28). The pop-up console
+  (`trilorah console`, the tray, the main window's "pop out") is now a narrow
+  column that stays on top of the presentation app and goes where it is
+  dragged, with no title bar; its place is remembered. Top to bottom: what is
+  live, the big take, clear and put back, previous and next, a reference box,
+  a song box, then the same catches card the main window shows. Two taps of
+  the spacebar take the staged catch live; two more while it is live clear it
+  (only in that window, never while a text box has focus).
+  With the screen pointed at another app, nothing heard is typed into it until
+  the operator turns **follow** on (off at every start): with it on, spoken
+  references go in as they are heard, quotes, named passages and stories never
+  do - a take stages them there first, then shows. The operator's own presses in
+  Trilorah's windows (a catch card's live, the phone, "take that down", "next
+  verse") reach the app as well. **Put back** (`live.restore`) returns what
+  Trilorah's verse replaced: a song or the previous reading on Trilorah's own
+  wall; in EasyWorship its Go Back button (the `restore` ability, which verify
+  leaves alone because the button exists only after a take).
+  `trilorah hear "words"` feeds a sentence in through the same door as the
+  microphone's words, so any of this is provable without speaking: the
+  rehearsal that evening showed a quote staging John 3:16 and reaching
+  EasyWorship on the take, "next verse" stepping EasyWorship's slide, "take
+  that down" pressing its Clear.
 - `recipes/`: the recipe format, the runner (verify without acting; perform and
   stop at the first failure), the four-question teacher, and the spawn-based
   inspector that picks the right tool per platform. `cli/teach.ts` runs the

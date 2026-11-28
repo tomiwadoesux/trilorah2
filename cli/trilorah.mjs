@@ -193,6 +193,9 @@ const HELP = `trilorah — remote control for the running Trilorah app
   trilorah scripture "John 3:16"      stage a verse in the preview
   trilorah take ["John 3:16"]        put the preview (or this verse) on the wall
   trilorah next | prev                step the live reading
+  trilorah putback                    put back what was on before Trilorah's verse
+  trilorah follow on|off              type spoken references into the target app as they are heard
+  trilorah hear "words…" [--partial] feed words in as if the preacher said them (a rehearsal with no microphone)
   trilorah clear | black | logo       the wall: background, black, or the logo
   trilorah wall                       bring the wall back to live
   trilorah console                    open the pop-up console (buttons, no typing)
@@ -232,6 +235,16 @@ function main() {
       return runCommand({ kind: "live.previous" }, { json });
     case "clear":
       return runCommand({ kind: "live.clear" }, { json });
+    case "hear": {
+      if (!rest.length) return die('what was said? e.g. trilorah hear "for god so loved the world"');
+      return runCommand({ kind: "transcript.hear", text: rest.join(" "), ...(args.includes("--partial") ? { final: false } : {}) }, { json });
+    }
+    case "putback":
+    case "restore":
+      return runCommand({ kind: "live.restore" }, { json });
+    case "follow":
+      if (rest[0] !== "on" && rest[0] !== "off") return die("follow on|off — type spoken references into the target app as they are heard");
+      return runCommand({ kind: "target.follow", on: rest[0] === "on" }, { json });
     case "black":
     case "logo":
       return runCommand({ kind: "screen.set", state: verb }, { json });

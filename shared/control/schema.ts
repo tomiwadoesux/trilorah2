@@ -50,6 +50,16 @@ export type ControlCommand =
   | { kind: 'song.search'; words?: string }
   /** Stage a song by title on the current target — a taught app types it into its search. */
   | { kind: 'song.stage'; title: string }
+  /** Put back what Trilorah's verse replaced: the song, the slide, or the reading before it. */
+  | { kind: 'live.restore' }
+  /** Type spoken references into the target app as they are heard. Off at every start; quotes never. */
+  | { kind: 'target.follow'; on: boolean }
+  /**
+   * Words fed in as if the preacher said them, through the same path the microphone's
+   * words take: a rehearsal without a microphone, and the way a question like "does a
+   * quote reach EasyWorship?" is answered with evidence. `final: false` is a partial.
+   */
+  | { kind: 'transcript.hear'; text: string; final?: boolean }
 
 /** One song the words heard could be, ranked. */
 export interface ControlSongMatch {
@@ -82,6 +92,8 @@ export interface ControlSnapshot {
   preview: ControlVerse | null
   live: ControlVerse | null
   screen: string
+  /** Spoken references are typed into the target app as they are heard (see target.follow). */
+  follow?: boolean
 }
 
 export type ControlResult =
@@ -111,7 +123,12 @@ export function parseControlCommand(raw: unknown): ControlCommand | null {
     case 'live.previous':
     case 'console.open':
     case 'target.list':
+    case 'live.restore':
       return { kind: m.kind }
+    case 'target.follow':
+      return typeof m.on === 'boolean' ? { kind: 'target.follow', on: m.on } : null
+    case 'transcript.hear':
+      return str(m.text, 2000) ? { kind: 'transcript.hear', text: m.text, ...(m.final === false ? { final: false } : {}) } : null
     case 'target.set':
       return str(m.id, 200) ? { kind: 'target.set', id: m.id } : null
     case 'listen.start':
