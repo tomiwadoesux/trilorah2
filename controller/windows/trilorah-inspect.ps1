@@ -482,13 +482,8 @@ function OpenDialog($procId) {
   Wire
   $main = HandleOf $roots[0]
   if ($main -eq [IntPtr]::Zero -or [W.X]::IsWindowEnabled($main)) { return $null }
-  foreach ($r in $roots) {
-    $h = HandleOf $r
-    if ($h -eq $main -or $h -eq [IntPtr]::Zero) { continue }
-    if (-not [W.X]::IsWindowVisible($h) -or -not [W.X]::IsWindowEnabled($h)) { continue }
-    $name = try { [string]$r.Current.Name } catch { '' }
-    if ($name) { return $name }
-  }
+  $open = [W.X]::OpenWindows([int]$procId, $main)
+  if ($open.Count -gt 0) { return [string]$open[0] }
   return 'a window'
 }
 
@@ -532,6 +527,24 @@ function Wire {
 [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
 [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
 [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr h);
+public delegate bool EnumProc(IntPtr h, IntPtr l);
+[DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
+// The app's other top-level windows that are shown and taking input right now - the
+// dialog over a disabled main window. UI Automation does not list an owned window
+// (EasyWorship's Song Editor) among the desktop's children, so Windows is asked directly.
+public static System.Collections.Generic.List<string> OpenWindows(int pid, IntPtr main) {
+  var found = new System.Collections.Generic.List<string>();
+  EnumWindows((h, l) => {
+    uint p; GetWindowThreadProcessId(h, out p);
+    if (p != pid || h == main || !IsWindowVisible(h) || !IsWindowEnabled(h)) return true;
+    var sb = new System.Text.StringBuilder(256); GetWindowTextW(h, sb, 256);
+    if (sb.Length > 0) found.Add(sb.ToString());
+    return true;
+  }, IntPtr.Zero);
+  return found;
+}
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern short VkKeyScan(char c);
 [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 '@

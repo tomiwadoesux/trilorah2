@@ -4,7 +4,7 @@ import { Fragment, StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { fetchVerseParts, formatRef, sameRef } from './lib/verse';
 import { outputRestore } from './lib/outputRestore';
-import { buildVerseSlides, PAGE_WORDS, splitVerseNumbers, type VerseSlide } from '../shared/verseDisplay';
+import { buildVerseSlides, PAGE_VERSES, PAGE_WORDS, splitVerseNumbers, type VerseSlide } from '../shared/verseDisplay';
 import { useFitText } from './lib/useFitText';
 import { useBackgroundCrossfade } from './lib/useBackgroundCrossfade';
 import { formatTimerDisplay } from '../shared/timerDisplay';
@@ -338,6 +338,7 @@ function OutputSurface() {
             /* A long range together is pages of whole verses, the same
                pages the operator's preview shows (engine.tsx SLIDE_RULES). */
             maxWordsPerSlide: PAGE_WORDS,
+            maxVersesPerSlide: PAGE_VERSES,
             secondary:
               secondaryVerses.length > 0
                 ? { version: secondaryVersion, verses: secondaryVerses }

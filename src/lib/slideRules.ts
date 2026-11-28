@@ -1,4 +1,4 @@
-import { PAGE_WORDS } from '../../shared/verseDisplay';
+import { PAGE_VERSES, PAGE_WORDS } from '../../shared/verseDisplay';
 
 /*
  * How a reading becomes slides.
@@ -22,6 +22,9 @@ export const SLIDE_RULES = {
   /* A range together is pages of whole verses past this, so it can be read
      on a TV — the same number the wall pages by (src/output.tsx). */
   maxWordsPerSlide: PAGE_WORDS,
+  /* And never more than three verses to a page, however short: Psalm 23:1-6 is two
+     pages, not one wall of six (owner, 2026-11-28). */
+  maxVersesPerSlide: PAGE_VERSES,
 };
 
 /** Keep short ranges together; longer readings use pages of whole verses.

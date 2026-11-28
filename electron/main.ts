@@ -4799,7 +4799,7 @@ app.whenReady().then(() => {
       // made into that window. The room is told, in the main window's notices and in the
       // console, and told again when the window closes or the hold is given up.
       onHeld: (target, ability, window, waiting) => {
-        const app = target.replace(/^app:/, '')
+        const app = target.replace(/^app:/, '').replace(/\.exe$/i, '')
         const doing = ability === 'show' ? 'go live' : ability === 'findVerse' || ability === 'findSong' ? 'search' : ability
         const text = waiting ? `waiting for ${app}'s "${window}" window to close before the ${doing}` : `${app}'s "${window}" window closed`
         console.log(`⏳ ${text}`)

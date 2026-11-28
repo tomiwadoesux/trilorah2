@@ -435,6 +435,18 @@ describe('pages of a long reading', () => {
     expect(slides[1].reference).toContain(':5-8')
   })
 
+  it('never more than three verses to a page, however short they are', () => {
+    const six = Array.from({ length: 6 }, (_, i) => verse(i + 1, 8))
+    expect(pageVerses(six, PAGE_WORDS)).toHaveLength(1)
+    expect(pageVerses(six, PAGE_WORDS, 3).map((p) => p.map((v) => v.verse))).toEqual([[1, 2, 3], [4, 5, 6]])
+    // Five short verses: two pages, neither over three.
+    expect(pageVerses(six.slice(0, 5), PAGE_WORDS, 3).every((p) => p.length <= 3)).toBe(true)
+    expect(pageVerses(six.slice(0, 5), PAGE_WORDS, 3)).toHaveLength(2)
+    const slides = buildVerseSlides(REF, six, opts({ showVerseNumbers: true, maxWordsPerSlide: PAGE_WORDS, maxVersesPerSlide: 3 }))
+    expect(slides.map((s) => [s.verseStart, s.verseEnd])).toEqual([[1, 3], [4, 6]])
+    expect(slides[0].lines[0].text.endsWith(CONTINUES)).toBe(true)
+  })
+
   it('never cuts a verse, even one longer than a page', () => {
     const pages = pageVerses([verse(1, 30), verse(2, 120), verse(3, 30)], PAGE_WORDS)
     expect(pages.map((p) => p.map((v) => v.verse))).toEqual([[1], [2], [3]])

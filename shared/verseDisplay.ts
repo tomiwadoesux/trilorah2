@@ -63,6 +63,12 @@ export interface VerseDisplayOptions {
    * page but the last ending in CONTINUES — see pageVerses.
    */
   maxWordsPerSlide?: number
+  /**
+   * When a range is shown together: at most this many verses to a slide, however short
+   * they are (owner, 2026-11-28: "maximum of 3 verses per screen"). Pages still break
+   * earlier when the words run out.
+   */
+  maxVersesPerSlide?: number
 }
 
 /**
@@ -74,6 +80,9 @@ export interface VerseDisplayOptions {
  * theme. Genesis 3:3-5 is 71 words: one slide.
  */
 export const PAGE_WORDS = 80
+
+/** The most verses one page of a reading carries, whatever their length. */
+export const PAGE_VERSES = 3
 
 /** The end of every page of a reading but the last: there is more. */
 export const CONTINUES = ' …'
@@ -214,19 +223,23 @@ const wordsIn = (text: string) => text.trim().split(/\s+/).filter(Boolean).lengt
  * three full pages and a verse on its own. A verse longer than `max` is a
  * page by itself; it is never cut.
  */
-export function pageVerses(verses: VerseText[], max: number): VerseText[][] {
+export function pageVerses(verses: VerseText[], max: number, maxVerses = 0): VerseText[][] {
   const counts = verses.map((v) => wordsIn(v.text))
   const total = counts.reduce((a, b) => a + b, 0)
-  if (!(max > 0) || total <= max) return [verses]
-  const target = total / Math.ceil(total / max)
+  const byWords = max > 0 && total > max
+  const byCount = maxVerses > 0 && verses.length > maxVerses
+  if (!byWords && !byCount) return [verses]
+  // Even pages: as many as the words or the verse cap need, whichever asks for more.
+  const wanted = Math.max(byWords ? Math.ceil(total / max) : 1, byCount ? Math.ceil(verses.length / maxVerses) : 1)
+  const target = total / wanted
   const pages: VerseText[][] = []
   let page: VerseText[] = []
   let words = 0
   verses.forEach((verse, i) => {
     const w = counts[i]
-    const over = words + w > max
+    const over = (max > 0 && words + w > max) || (maxVerses > 0 && page.length >= maxVerses)
     const further = Math.abs(words + w - target) > Math.abs(words - target)
-    if (page.length && (over || (words >= target * 0.75 && further))) {
+    if (page.length && (over || (byWords && words >= target * 0.75 && further))) {
       pages.push(page)
       page = []
       words = 0
@@ -263,7 +276,9 @@ export function buildVerseSlides(
     // The whole reading together, numbers on every verse so the reader can
     // still find their place in it — on one slide while it can be read from
     // the back, otherwise on pages of whole verses (pageVerses).
-    const pages = options.maxWordsPerSlide ? pageVerses(verses, options.maxWordsPerSlide) : [verses]
+    const pages = options.maxWordsPerSlide || options.maxVersesPerSlide
+      ? pageVerses(verses, options.maxWordsPerSlide ?? 0, options.maxVersesPerSlide ?? 0)
+      : [verses]
     pages.forEach((page, i) => {
       chunks.push({
         text: compose(page, options.showVerseNumbers) + (i < pages.length - 1 ? CONTINUES : ''),

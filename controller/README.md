@@ -133,6 +133,22 @@ pressing anything, and re-taught one step at a time when an update moves things.
   rehearsal that evening showed a quote staging John 3:16 and reaching
   EasyWorship on the take, "next verse" stepping EasyWorship's slide, "take
   that down" pressing its Clear.
+- A window open over the app (2026-11-28). Edit Song, Options, a file picker:
+  a modal window disables the app's main window and every control in it, and
+  a press used to wait its patience out and then say "disabled" - true and
+  useless. The inspector now names the window at once (`busy`, with its
+  title, read through Windows itself: UI Automation does not list an owned
+  window among the desktop's children). The recipe host holds the ability,
+  tries again every 2 s, and lets it go in when the window closes within 45 s
+  (the owner's choice); after that it drops it and says so. Nothing of
+  Trilorah's presses anything in that window. The console shows "waiting for
+  EasyWorship's Song Editor window" while it holds; the main window gets a
+  notice. Proven on EasyWorship's Song Editor.
+- Pages of three (2026-11-28). A range shown together on Trilorah's wall is
+  paged by words (80) and now also by count: never more than three verses to
+  a page, however short (`PAGE_VERSES`, shared/verseDisplay.ts). Psalm
+  23:1-6 is two pages; next and previous step them. EasyWorship pages its own
+  slides and is left to it.
 - `recipes/`: the recipe format, the runner (verify without acting; perform and
   stop at the first failure), the four-question teacher, and the spawn-based
   inspector that picks the right tool per platform. `cli/teach.ts` runs the
