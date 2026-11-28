@@ -59,6 +59,12 @@ export default function MicClient() {
   const [lines, setLines] = useState<string[]>([]);
   const [partial, setPartial] = useState("");
   const [verse, setVerse] = useState<{ ref: string; live: boolean } | null>(null);
+  /* A video or song off this phone, played right here so the call is never
+     left. While it plays, its sound goes down the call instead of the
+     microphone — straight from the file, not through the air. */
+  const [media, setMedia] = useState<{ name: string } | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [mediaNote, setMediaNote] = useState("");
 
   const phoneId = useRef("");
   const channel = useRef<RealtimeChannel | null>(null);
@@ -71,6 +77,12 @@ export default function MicClient() {
      them on the laptop. */
   const words = useRef<RTCDataChannel | null>(null);
   const beat = useRef<number | undefined>(undefined);
+  /* The call's one audio sender: the microphone, or the player while it plays. */
+  const sender = useRef<RTCRtpSender | null>(null);
+  const player = useRef<HTMLVideoElement | null>(null);
+  const mixer = useRef<{ ctx: AudioContext; dest: MediaStreamAudioDestinationNode } | null>(null);
+  const fileUrl = useRef<string | null>(null);
+  const playingRef = useRef(false);
   const wake = useRef<{ release: () => Promise<void> } | null>(null);
   const meter = useRef<{ ctx: AudioContext; timer: number } | null>(null);
   const expiry = useRef<number | undefined>(undefined);
@@ -103,10 +115,23 @@ export default function MicClient() {
     setLevel(0);
   };
 
+  const closePlayer = useCallback(() => {
+    playingRef.current = false;
+    setPlaying(false);
+    setMedia(null);
+    setMediaNote("");
+    const v = player.current;
+    if (v) { v.pause(); v.removeAttribute("src"); try { v.load(); } catch { /* mid-unmount */ } }
+    if (fileUrl.current) { URL.revokeObjectURL(fileUrl.current); fileUrl.current = null; }
+    if (mixer.current) { void mixer.current.ctx.close().catch(() => undefined); mixer.current = null; }
+  }, []);
+
   const hangUp = useCallback(async (next: Stage, say = "") => {
     window.clearTimeout(expiry.current);
     window.clearInterval(beat.current);
     words.current = null;
+    sender.current = null;
+    closePlayer();
     stopMeter();
     local.current?.getTracks().forEach((t) => { t.onended = null; t.onmute = null; t.onunmute = null; t.stop(); });
     local.current = null;
@@ -119,7 +144,7 @@ export default function MicClient() {
     if (channel.current) { await supabase.removeChannel(channel.current).catch(() => undefined); channel.current = null; }
     setNote(say);
     setStage(next);
-  }, [supabase]);
+  }, [supabase, closePlayer]);
 
   const startMeter = (s: MediaStream) => {
     try {
@@ -163,12 +188,16 @@ export default function MicClient() {
         void send({ kind: "bye", from: "phone", reason: "a call or another app took this phone's microphone" }).catch(() => undefined);
         void hangUp("failed", "A call or another app took the microphone. When it's over, tap try again.");
       };
-      t.onmute = () => { if (local.current === stream) sendState("interrupted"); };
-      t.onunmute = () => { if (local.current === stream) sendState("resumed"); };
+      // While the player is the source, the mic going quiet is not news.
+      t.onmute = () => { if (local.current === stream && !playingRef.current) sendState("interrupted"); };
+      t.onunmute = () => { if (local.current === stream && !playingRef.current) sendState("resumed"); };
     });
     const peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
     pc.current = peer;
-    stream.getTracks().forEach((t) => peer.addTrack(t, stream));
+    stream.getTracks().forEach((t) => {
+      const s = peer.addTrack(t, stream);
+      if (t.kind === "audio") sender.current = s;
+    });
     // The words come back down the same call. Opened here so the offer
     // carries it; the laptop only has to listen.
     const channel = peer.createDataChannel("words", { ordered: true });
@@ -281,6 +310,54 @@ export default function MicClient() {
     setMuted(next);
   };
 
+  /** A file off this phone, into the player. Chosen on a tap, so the audio
+      graph may be built (and resumed — iOS) right here. */
+  const pickMedia = (file: File) => {
+    const v = player.current;
+    if (!v) return;
+    if (!mixer.current) {
+      try {
+        const ctx = new AudioContext();
+        const src = ctx.createMediaElementSource(v);
+        const dest = ctx.createMediaStreamDestination();
+        src.connect(dest); // what the laptop hears
+        src.connect(ctx.destination); // what this phone plays out loud
+        mixer.current = { ctx, dest };
+      } catch {
+        setMediaNote("This browser cannot send a video's sound down the call. Play it near the phone instead.");
+        return;
+      }
+    }
+    void mixer.current.ctx.resume().catch(() => undefined);
+    if (fileUrl.current) URL.revokeObjectURL(fileUrl.current);
+    fileUrl.current = URL.createObjectURL(file);
+    v.src = fileUrl.current;
+    setMedia({ name: file.name });
+    setMediaNote("");
+  };
+
+  /** Play: the file's sound goes down the call; the microphone waits. */
+  const mediaStarted = () => {
+    void mixer.current?.ctx.resume().catch(() => undefined);
+    const track = mixer.current?.dest.stream.getAudioTracks()[0];
+    if (track) void sender.current?.replaceTrack(track).catch(() => undefined);
+    playingRef.current = true;
+    setPlaying(true);
+    stopMeter();
+    if (mixer.current) startMeter(mixer.current.dest.stream);
+  };
+
+  /** Pause or the end: the microphone is the source again. */
+  const mediaStopped = () => {
+    if (!playingRef.current) return;
+    playingRef.current = false;
+    setPlaying(false);
+    const track = local.current?.getAudioTracks()[0] ?? null;
+    void sender.current?.replaceTrack(track).catch(() => undefined);
+    stopMeter();
+    if (local.current) startMeter(local.current);
+  };
+
   // Leaving the page is leaving the call; the laptop should hear so.
   useEffect(() => {
     const leave = () => { if (channel.current) void send({ kind: "bye", from: "phone", reason: "the page was closed" }); };
@@ -308,7 +385,7 @@ export default function MicClient() {
     : stage === "ready" ? "Be the microphone"
     : stage === "pending" ? "Waiting for the laptop…"
     : stage === "connecting" ? "Connecting…"
-    : live ? (muted ? "Muted" : "You're the microphone")
+    : live ? (playing ? "Playing to the laptop" : muted ? "Muted" : "You're the microphone")
     : stage === "declined" ? "The laptop said no"
     : stage === "expired" ? "That code has expired"
     : stage === "ended" ? "Disconnected"
@@ -318,11 +395,11 @@ export default function MicClient() {
     : stage === "ready" ? (secure ? "Your voice goes straight to the laptop over the church Wi‑Fi. Stay on this screen while you speak." : "This browser cannot open the microphone here. Open the link in Safari or Chrome.")
     : stage === "pending" ? "Someone at the laptop has to press let it in."
     : stage === "connecting" ? "Opening the microphone and finding the laptop…"
-    : live ? `Sending to ${laptop}. Keep this screen on.`
+    : live ? (playing ? `${laptop} hears what's playing, not the microphone. Pause to speak again.` : `Sending to ${laptop}. Keep this screen on.`)
     : note;
 
   return (
-    <main className="mic-shell" data-stage={stage} data-muted={muted || undefined}>
+    <main className="mic-shell" data-stage={stage} data-muted={(muted && !playing) || undefined}>
       <header className="mic-top">
         <svg className="mic-mark" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="currentColor" fillRule="evenodd" d="M12 2C19.4 2 22 4.6 22 12S19.4 22 12 22 2 19.4 2 12 4.6 2 12 2ZM7.15 7.58H16.85V10.37H13.41V17.29H10.59V10.37H7.15Z" />
@@ -332,7 +409,7 @@ export default function MicClient() {
       </header>
 
       <section className="mic-stage">
-        <div className="mic-orb" style={{ "--level": live && !muted ? level / 100 : 0 } as React.CSSProperties} aria-hidden="true">
+        <div className="mic-orb" style={{ "--level": live && (playing || !muted) ? level / 100 : 0 } as React.CSSProperties} aria-hidden="true">
           <span className="mic-ring" />
           <span className="mic-ring mic-ring-2" />
           <span className="mic-core">
@@ -351,6 +428,22 @@ export default function MicClient() {
             </div>
           </div>
         )}
+        {live && (
+          <div className={`mic-player${media || mediaNote ? "" : " is-empty"}`}>
+            <video
+              ref={player}
+              playsInline
+              controls
+              preload="metadata"
+              style={media ? undefined : { display: "none" }}
+              onPlay={mediaStarted}
+              onPause={mediaStopped}
+              onEnded={mediaStopped}
+            />
+            {media && <p className="mic-player-name">{playing ? "playing" : "ready"} · {media.name}</p>}
+            {mediaNote && <p className="mic-player-note">{mediaNote}</p>}
+          </div>
+        )}
       </section>
 
       <footer className="mic-foot">
@@ -367,10 +460,20 @@ export default function MicClient() {
           <button type="button" className="mic-btn ash" onClick={() => void disconnect()}>cancel</button>
         )}
         {live && (
-          <div className="mic-row">
-            <button type="button" className={`mic-btn ${muted ? "caution" : "ash"}`} onClick={toggleMute} aria-pressed={muted}>{muted ? "unmute" : "mute"}</button>
-            <button type="button" className="mic-btn danger" onClick={() => void disconnect()}>disconnect</button>
-          </div>
+          <>
+            <label className="mic-btn ash mic-pick">
+              {media ? "play something else" : "play a video or song"}
+              <input
+                type="file"
+                accept="video/*,audio/*"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) pickMedia(f); e.target.value = ""; }}
+              />
+            </label>
+            <div className="mic-row">
+              <button type="button" className={`mic-btn ${muted ? "caution" : "ash"}`} onClick={toggleMute} aria-pressed={muted}>{muted ? "unmute" : "mute"}</button>
+              <button type="button" className="mic-btn danger" onClick={() => void disconnect()}>disconnect</button>
+            </div>
+          </>
         )}
         {(stage === "declined" || stage === "expired" || stage === "ended" || stage === "failed") && valid && (
           <button type="button" className="mic-btn go" onClick={() => void connect()}>try again</button>

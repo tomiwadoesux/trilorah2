@@ -264,7 +264,8 @@
         "Scan code",
         "Phone connect to the laptop",
         "Desktop let it in / not this one",
-        "Phone mute / unmute"
+        "Phone mute / unmute",
+        "Phone play a video or song"
       ],
       "preconditions": [
         "Desktop phone-mic API",
@@ -291,7 +292,8 @@
         "Phone microphone is different from phone remote control",
         "Connected does not mean selected as listening source",
         "Expiry/declined/ended/error states require explicit retry handling",
-        "No actual phone/network/microphone check performed"
+        "No actual phone/network/microphone check performed",
+        "The mic page can play a video or song file from the phone; while it plays, the laptop hears the file instead of the microphone, and pausing hands back to the microphone"
       ],
       "status": "wired",
       "sources": [
@@ -317,7 +319,7 @@
         },
         {
           "path": "web/src/app/mic/MicClient.tsx",
-          "symbol": "Stage; connect; toggleMute; disconnect"
+          "symbol": "Stage; connect; toggleMute; pickMedia; disconnect"
         }
       ],
       "runtimeTested": false,
@@ -336,7 +338,8 @@
         "phone microphone",
         "iphone as mic",
         "wireless mic",
-        "phone over wifi"
+        "phone over wifi",
+        "play a video from my phone"
       ],
       "lesson": [
         {
