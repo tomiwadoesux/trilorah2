@@ -22,7 +22,12 @@ export interface InspectResult {
 }
 
 export interface Inspector {
-  run(args: string[]): Promise<InspectResult>
+  /**
+   * One call to the platform tool. `background` marks a look that can wait - a
+   * verification's finds - so that a press or a type for the service goes ahead
+   * of it when the tool answers one request at a time.
+   */
+  run(args: string[], opts?: { background?: boolean }): Promise<InspectResult>
 }
 
 export interface StepOutcome {
@@ -56,9 +61,9 @@ function aims(step: RecipeStep): boolean {
   return step.action.do === 'press' || step.action.do === 'type'
 }
 
-async function lookUp(step: RecipeStep, recipe: Recipe, inspect: Inspector): Promise<string | null> {
+async function lookUp(step: RecipeStep, recipe: Recipe, inspect: Inspector, background = false): Promise<string | null> {
   if (aims(step)) {
-    const r = await inspect.run(['find', recipe.app.id, ...selectorWords(step)])
+    const r = await inspect.run(['find', recipe.app.id, ...selectorWords(step)], { background })
     if (!r.ok) return r.error ?? 'the inspector could not look'
     if (r.count === 0) return 'no control matches any more'
     if ((r.count ?? 0) > 1) return `${r.count} controls match — the recipe needs more cues`
@@ -66,7 +71,7 @@ async function lookUp(step: RecipeStep, recipe: Recipe, inspect: Inspector): Pro
   }
   if (step.action.do === 'menu') {
     const last = step.action.path.split('>').pop()?.trim() ?? ''
-    const r = await inspect.run(['find', recipe.app.id, 'role:AXMenuItem', `name:${last}`])
+    const r = await inspect.run(['find', recipe.app.id, 'role:AXMenuItem', `name:${last}`], { background })
     if (!r.ok) return r.error ?? 'the inspector could not look'
     if (r.count === 0) return `no menu item called "${last}" any more`
     return null
@@ -90,17 +95,17 @@ export async function verify(recipe: Recipe, inspect: Inspector): Promise<Verify
     if (enroute.length === 0) {
       for (const [index, step] of steps.entries()) {
         checked++
-        const problem = await lookUp(step, recipe, inspect)
+        const problem = await lookUp(step, recipe, inspect, true)
         if (problem) broken.push({ ability, index, ok: false, label: step.label, problem })
       }
       continue
     }
     const target = steps[steps.length - 1]
     checked++
-    const targetProblem = await lookUp(target, recipe, inspect)
+    const targetProblem = await lookUp(target, recipe, inspect, true)
     if (!targetProblem) continue
     checked++
-    const doorProblem = await lookUp(enroute[0], recipe, inspect)
+    const doorProblem = await lookUp(enroute[0], recipe, inspect, true)
     if (doorProblem) {
       broken.push({ ability, index: steps.length - 1, ok: false, label: target.label, problem: `${targetProblem}; and the way there is gone too (${enroute[0].label ?? 'its first click'}: ${doorProblem})` })
     }

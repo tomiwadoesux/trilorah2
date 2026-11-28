@@ -32,6 +32,9 @@ import { OWN_TARGET, switchableHost } from '../controller/recipes/targets'
 import { searchSongsLive, tailWords } from './songs/liveSearch'
 import { loadRecipes, taughtRecipesDir } from '../controller/recipes/store'
 import { findInspectorBinary, spawnInspector, watchClicks } from '../controller/recipes/inspect'
+
+/** The session's inspector server (Windows), stopped with the app. */
+let inspectorToStop: { stop?: () => void } | null = null
 import { parseRecipe } from '../controller/recipes/schema'
 import { verify as verifyRecipe } from '../controller/recipes/runner'
 import { proPresenterTarget } from '../controller/propresenter/target'
@@ -1519,6 +1522,19 @@ const session = new ScriptureSession((display: any) => {
   }
   broadcastState()
 })
+
+/** The reference as Trilorah's Bible names it ("Psalms 23:1-3"), or null when it has no such passage. */
+function canonicalReference(reference: string, requested?: string): string | null {
+  if (!db) return null
+  try {
+    const version = requested ? resolveVersion(requested) : activeVersion()
+    const readable = versionForCatch(reference, version)
+    const p = readVersePreview(bibleFor(readable)!, reference, readable)
+    if (!p) return null
+    const range = p.endVerse && p.endVerse !== p.verse ? `-${p.endVerse}` : ''
+    return `${p.book} ${p.chapter}:${p.verse}${range}`
+  } catch { return null }
+}
 
 function stageVerseReference(reference: string, requested?: string): boolean {
   if (!db) return false
@@ -4688,15 +4704,19 @@ app.whenReady().then(() => {
         detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
       }),
     })
-    // Each inspector call on Windows starts a PowerShell and walks a window tree: 5–50 s on an
-    // ordinary church laptop (measured 2026-11-27). Fifteen seconds read as "did not answer".
-    const inspectorBudgetMs = process.platform === 'win32' ? 90_000 : 15_000
+    // On Windows the inspector is one PowerShell kept alive for the session (its start is
+    // five seconds, paid once); a request is a second or two inside a big app, so a budget
+    // of thirty is a stuck app, not a slow one.
+    const inspectorBudgetMs = process.platform === 'win32' ? 30_000 : 15_000
     const sharedInspector = inspectorBinary ? spawnInspector(inspectorBinary, inspectorBudgetMs) : null
+    inspectorToStop = sharedInspector
     const targetHost = switchableHost({
       own: controlHost,
       inspector: sharedInspector,
       recipes: () => loadRecipes({ shippedDir, taughtDir }),
       direct: () => [...proPresenter.list(), ...openLp.list()],
+      words: canonicalReference,
+      onDid: (target, ability, ms) => console.log(`🎛️ ${target} did ${ability} in ${(ms / 1000).toFixed(1)} s`),
       onProblem: (target, ability, problem) => {
         console.warn(`⚠️ ${target} did not ${ability}: ${problem}`)
         publishServiceNotice({
@@ -4907,6 +4927,9 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', () => {
+  // The inspector is a child PowerShell; Windows would leave it running after us.
+  inspectorToStop?.stop?.()
+  inspectorToStop = null
   closeNetworkSound()
   stopStageLink()
   mobileServer?.stop()

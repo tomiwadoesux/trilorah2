@@ -37,6 +37,9 @@ export interface SwitchableOptions {
   /** Null when this computer has no inspector for its platform. */
   inspector: Inspector | null
   onProblem?: (target: string, ability: string, problem: string) => void
+  onDid?: (target: string, ability: string, ms: number) => void
+  /** Trilorah's own words for a reference, typed into the app instead of the preacher's or operator's (see recipeHost). */
+  words?: (reference: string, version?: string) => string | null
   /** Called when a verification finishes, so a client can refresh what it shows. */
   onVerified?: (target: string, ok: boolean, broken: string[]) => void
 }
@@ -108,14 +111,23 @@ export function switchableHost(opts: SwitchableOptions): ControlHost {
       if (!opts.inspector) return `this computer has no inspector for ${loaded.recipe.platform} apps`
       const inspector = opts.inspector
       currentId = loaded.id
+      // The service comes first: while the host is performing an ability, verification's
+      // looks wait, so a verse on its way to the screen never queues behind a check.
+      let busy = false
+      const idleWaiters: (() => void)[] = []
+      const whenIdle = () => (busy ? new Promise<void>((resolve) => idleWaiters.push(resolve)) : Promise.resolve())
       current = recipeHost({
         recipe: loaded.recipe,
         inspector,
         own,
         onProblem: (ability, problem) => opts.onProblem?.(loaded.id, ability, problem),
+        onDid: (ability, ms) => opts.onDid?.(loaded.id, ability, ms),
+        words: opts.words,
+        onBusy: (b) => { busy = b; if (!b) for (const wake of idleWaiters.splice(0)) wake() },
       })
+      const patient: Inspector = { run: (args, o) => whenIdle().then(() => inspector.run(args, { ...o, background: true })) }
       // Verify straight away, without pressing; the list shows the answer when it lands.
-      void verify(loaded.recipe, inspector).then((report) => {
+      void verify(loaded.recipe, patient).then((report) => {
         verified.set(loaded.id, report.ok)
         opts.onVerified?.(loaded.id, report.ok, report.broken.map((b) => `${b.ability}: ${b.label ?? 'step ' + b.index} — ${b.problem}`))
       }).catch(() => { verified.set(loaded.id, false) })

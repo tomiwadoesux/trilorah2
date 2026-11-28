@@ -28,7 +28,21 @@
 #>
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Argv)
 
+# A command's refusal, carried as an exception: the one-shot run prints it and exits with
+# its code; the server (`serve`) answers the one request with it and keeps going.
+class InspectFailure : System.Exception {
+  [object]$Body; [int]$Code
+  InspectFailure($body, $code) : base('inspect failure') { $this.Body = $body; $this.Code = $code }
+}
+
 $ErrorActionPreference = 'Stop'
+$script:serving = $false
+# Where a request's milliseconds went (app lookup, roots, search, the press itself…): the
+# server sends it back with each answer, and Trilorah prints it for a slow call.
+$script:trace = [ordered]@{}
+function Spent([string]$what, [Diagnostics.Stopwatch]$clock) {
+  $script:trace[$what] = [int]$script:trace[$what] + [int]$clock.ElapsedMilliseconds
+}
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Windows.Forms
 # UI Automation reports physical pixels; without this, a scaled display (125 %, 200 %) makes
 # Windows hand this process shrunken coordinates, and every fallback click lands short.
@@ -39,25 +53,30 @@ try {
 
 # ---------------------------------------------------------------- output
 
-function Emit($obj) { $obj | ConvertTo-Json -Depth 8 -Compress:$false; }
+function Emit($obj) {
+  if ($script:serving) { [Console]::Out.WriteLine(($obj | ConvertTo-Json -Depth 8 -Compress)) }
+  else { $obj | ConvertTo-Json -Depth 8 -Compress:$false }
+}
 function Fail($message, $extra = @{}, $code = 1) {
   $body = [ordered]@{ ok = $false; error = $message }
   foreach ($k in $extra.Keys) { $body[$k] = $extra[$k] }
-  Emit $body
-  exit $code
+  throw [InspectFailure]::new($body, $code)
 }
 
 # ---------------------------------------------------------------- arguments
 
 $positional = @(); $flags = @{}; $switches = @{}
-$valued = @('depth', 'action', 'text', 'limit', 'children', 'seconds', 'count', 'at')
-for ($i = 0; $i -lt $Argv.Count; $i++) {
-  $a = $Argv[$i]
-  if ($a -like '--*') {
-    $key = $a.Substring(2)
-    if ($valued -contains $key -and $i + 1 -lt $Argv.Count) { $flags[$key] = $Argv[$i + 1]; $i++; continue }
-    $switches[$key] = $true
-  } else { $positional += $a }
+$valued = @('depth', 'action', 'text', 'limit', 'children', 'seconds', 'count', 'at', 'patience', 'pace')
+function ParseArgs([string[]]$words) {
+  $script:positional = @(); $script:flags = @{}; $script:switches = @{}
+  for ($i = 0; $i -lt $words.Count; $i++) {
+    $a = $words[$i]
+    if ($a -like '--*') {
+      $key = $a.Substring(2)
+      if ($valued -contains $key -and $i + 1 -lt $words.Count) { $script:flags[$key] = $words[$i + 1]; $i++; continue }
+      $script:switches[$key] = $true
+    } else { $script:positional += $a }
+  }
 }
 function IntFlag($key, $fallback) { if ($flags.ContainsKey($key)) { [int]$flags[$key] } else { $fallback } }
 
@@ -66,11 +85,28 @@ function IntFlag($key, $fallback) { if ($flags.ContainsKey($key)) { [int]$flags[
 $AE = [System.Windows.Automation.AutomationElement]
 $Walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
 
+# Every property and pattern a node is described from, asked for together: with a cache
+# request each element costs one round trip into the app instead of a dozen (a dozen
+# across six thousand elements was most of a 30-second search in MediaShout).
+$Cache = New-Object System.Windows.Automation.CacheRequest
+foreach ($prop in @($AE::NameProperty, $AE::HelpTextProperty, $AE::AutomationIdProperty, $AE::ClassNameProperty,
+    $AE::ControlTypeProperty, $AE::BoundingRectangleProperty, $AE::IsEnabledProperty, $AE::HasKeyboardFocusProperty,
+    $AE::ProcessIdProperty, $AE::NativeWindowHandleProperty, $AE::IsOffscreenProperty,
+    [System.Windows.Automation.ValuePattern]::ValueProperty)) { $Cache.Add($prop) }
+foreach ($pat in @([System.Windows.Automation.InvokePattern]::Pattern, [System.Windows.Automation.TogglePattern]::Pattern,
+    [System.Windows.Automation.SelectionItemPattern]::Pattern, [System.Windows.Automation.ExpandCollapsePattern]::Pattern,
+    [System.Windows.Automation.ValuePattern]::Pattern)) { $Cache.Add($pat) }
+$Cache.TreeFilter = [System.Windows.Automation.Automation]::ControlViewCondition
+
+# One call for all of an element's children (the control view, like the walker), not one
+# per sibling: a path such as 0/5/9/17 is three calls, where sibling by sibling it was
+# forty, each a trip into an app that may be busy drawing.
 function Children($el) {
-  $out = @()
-  $c = $Walker.GetFirstChild($el)
-  while ($c -ne $null) { $out += $c; $c = $Walker.GetNextSibling($c) }
-  return ,$out
+  $active = $Cache.Activate()
+  try { $kids = $el.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition) } finally { $active.Dispose() }
+  $out = New-Object System.Collections.ArrayList
+  foreach ($k in $kids) { $null = $out.Add($k) }
+  return ,$out.ToArray()
 }
 
 function Patterns($el) {
@@ -79,12 +115,14 @@ function Patterns($el) {
   return ,$names
 }
 
-function Describe($el, $path, $depth) {
-  $cur = $el.Current
-  $node = [ordered]@{
-    path = $path; depth = $depth
-    role = ($cur.ControlType.ProgrammaticName -replace '^ControlType\.', '')
-  }
+function Describe($el, $path, $depth, $live = $false) {
+  # Cached properties when the element came through $Cache (one fetch for all of them);
+  # live ones otherwise (the element under the pointer in `watch`), or when asked, to
+  # check a remembered element against what it is now.
+  $cur = $null; $cached = $false
+  if ($live) { $cur = $el.Current } else { try { $cur = $el.Cached; $null = $cur.ControlType; $cached = $true } catch { $cur = $el.Current } }
+  $node = [ordered]@{ depth = $depth; role = ($cur.ControlType.ProgrammaticName -replace '^ControlType\.', '') }
+  if ($path -ne $null) { $node.path = $path }
   if ($cur.Name) { $node.title = $cur.Name }
   if ($cur.HelpText) { $node.help = $cur.HelpText }
   if ($cur.AutomationId) { $node.id = $cur.AutomationId }
@@ -96,12 +134,23 @@ function Describe($el, $path, $depth) {
   if ($cur.HasKeyboardFocus) { $node.focused = $true }
   try {
     $vp = $null
-    if ($el.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) {
+    if ($cached) {
+      if ($el.TryGetCachedPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) { $v = $vp.Cached.Value; if ($v) { $node.value = [string]$v } }
+    } elseif ($el.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp)) {
       $v = $vp.Current.Value; if ($v) { $node.value = [string]$v }
     }
   } catch {}
   $acts = @()
-  foreach ($p in (Patterns $el)) {
+  $supported = if ($cached) {
+    $names = @(); $q = $null
+    foreach ($pair in @(@('Invoke', [System.Windows.Automation.InvokePattern]::Pattern), @('Toggle', [System.Windows.Automation.TogglePattern]::Pattern),
+        @('SelectionItem', [System.Windows.Automation.SelectionItemPattern]::Pattern), @('ExpandCollapse', [System.Windows.Automation.ExpandCollapsePattern]::Pattern),
+        @('Value', [System.Windows.Automation.ValuePattern]::Pattern))) {
+      if ($el.TryGetCachedPattern($pair[1], [ref]$q)) { $names += $pair[0] }
+    }
+    $names
+  } else { Patterns $el }
+  foreach ($p in $supported) {
     switch ($p) {
       'Invoke' { $acts += 'press' }
       'Toggle' { $acts += 'press' }
@@ -125,8 +174,13 @@ $rowContainers = @('List', 'DataGrid', 'Tree', 'Table')
 
 # The app's "root": every top-level window belonging to the process, in z-order.
 function AppRoots($procId) {
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  try { return (AppRootsNow $procId) } finally { Spent 'roots' $clock }
+}
+function AppRootsNow($procId) {
   $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ProcessIdProperty, [int]$procId)
-  $found = $AE::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)
+  $active = $Cache.Activate()
+  try { $found = $AE::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $cond) } finally { $active.Dispose() }
   # The app's main window is always root 0, whatever is stacked above it (a full-screen
   # output, a notification): a path recorded as 0/… must mean the same window on Sunday.
   $main = [long](Get-Process -Id $procId -ErrorAction SilentlyContinue).MainWindowHandle
@@ -156,6 +210,10 @@ function Walk($procId, $maxDepth, $maxNodes, $maxChildren, $maxRows, $compact, [
 }
 
 function Resolve($procId, $path) {
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  try { return (ResolveNow $procId $path) } finally { Spent 'path' $clock }
+}
+function ResolveNow($procId, $path) {
   $parts = $path -split '/'
   $roots = AppRoots $procId
   $idx = [int]$parts[0]
@@ -196,7 +254,25 @@ function RunningApps() {
   return ,$out
 }
 
+$script:knownApps = @{}
 function FindApp($query) {
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  try { return (FindAppCached $query) } finally { Spent 'app' $clock }
+}
+function FindAppCached($query) {
+  # The server answers many requests about one app: once found, the app is remembered for as
+  # long as that process is alive and still called the same thing.
+  $known = $script:knownApps[$query]
+  if ($known) {
+    $alive = Get-Process -Id $known.pid -ErrorAction SilentlyContinue
+    if ($alive -and $alive.ProcessName -eq $known.name) { return $known }
+    $script:knownApps.Remove($query)
+  }
+  $app = FindAppNow $query
+  $script:knownApps[$query] = $app
+  return $app
+}
+function FindAppNow($query) {
   $apps = RunningApps
   if ($query -match '^\d+$') { $byPid = $apps | Where-Object { $_.pid -eq [int]$query }; if ($byPid) { return $byPid } }
   $q = $query.ToLower()
@@ -237,15 +313,84 @@ function Matches($s, $n) {
   return $true
 }
 
+function Combine($conds) {
+  if ($conds.Count -eq 0) { return [System.Windows.Automation.Condition]::TrueCondition }
+  if ($conds.Count -eq 1) { return $conds[0] }
+  return New-Object System.Windows.Automation.AndCondition([System.Windows.Automation.Condition[]]$conds)
+}
+
+# The app searches itself: UI Automation's FindAll runs inside the app with the cues as a
+# condition and the cache request for the rest, one round trip, where a walk from here
+# was one round trip per property per element. An exact name is tried first (the
+# tie-break a press makes anyway); only when nothing is called exactly that does the
+# search widen to the old "contains" over name, help and id.
+function Search($procId, $s) {
+  $ignoreCase = [System.Windows.Automation.PropertyConditionFlags]::IgnoreCase
+  $conds = @()
+  if ($s.role) {
+    $ct = [System.Windows.Automation.ControlType]::($s.role -replace '^(?i)ax', '')
+    if ($ct) { $conds += New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $ct) }
+  }
+  if ($s.id) { $conds += New-Object System.Windows.Automation.PropertyCondition($AE::AutomationIdProperty, $s.id) }
+  if ($s.class) { $conds += New-Object System.Windows.Automation.PropertyCondition($AE::ClassNameProperty, $s.class, $ignoreCase) }
+  $roots = AppRoots $procId
+  $hits = New-Object System.Collections.ArrayList
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  $active = $Cache.Activate()
+  try {
+    if ($s.name) {
+      # The words may be the control's name, its help text (MediaShout's toolbar) or its id.
+      $called = New-Object System.Windows.Automation.OrCondition([System.Windows.Automation.Condition[]]@(
+        (New-Object System.Windows.Automation.PropertyCondition($AE::NameProperty, $s.name, $ignoreCase)),
+        (New-Object System.Windows.Automation.PropertyCondition($AE::HelpTextProperty, $s.name, $ignoreCase)),
+        (New-Object System.Windows.Automation.PropertyCondition($AE::AutomationIdProperty, $s.name, $ignoreCase))))
+      $exact = Combine ($conds + $called)
+      foreach ($r in $roots) { foreach ($e in $r.FindAll([System.Windows.Automation.TreeScope]::Subtree, $exact)) { $null = $hits.Add($e) } }
+    }
+    if ($hits.Count -eq 0) {
+      $wide = Combine $conds
+      foreach ($r in $roots) { foreach ($e in $r.FindAll([System.Windows.Automation.TreeScope]::Subtree, $wide)) { $null = $hits.Add($e) } }
+    }
+  } finally { $active.Dispose(); Spent 'find' $clock }
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  $found = New-Object System.Collections.ArrayList
+  foreach ($e in $hits) { $n = Describe $e $null 0; if (Matches $s $n) { $null = $found.Add($n) } }
+  Spent "describe$($hits.Count)" $clock
+  return ,$found
+}
+
+$script:knownElements = @{}
 function Collect($procId, $s, $all) {
   if ($s.path) {
     $el = Resolve $procId $s.path
-    if (-not $el) { return ,@() }
-    $node = Describe $el $s.path (($s.path -split '/').Count - 1)
-    if (Matches $s $node) { return ,@($node) } else { return ,@() }
+    if ($el) {
+      $node = Describe $el $s.path (($s.path -split '/').Count - 1)
+      if (Matches $s $node) { return ,@($node) }
+    }
+    # The path is where the control was; its id, name or class is what it is. A tree that
+    # has shifted (a list that loaded, a panel that grew) moves the path, not the control,
+    # so when the path no longer holds, the other cues are searched for on their own.
+    if (-not ($s.id -or $s.name -or $s.class)) { return ,@() }
+    $loose = @{}; foreach ($k in $s.Keys) { if ($k -ne 'path') { $loose[$k] = $s[$k] } }
+    $s = $loose
   }
-  $found = New-Object System.Collections.ArrayList
-  $null = Walk $procId 14 6000 200 25 (-not $all) { param($n) if (Matches $s $n) { $null = $found.Add($n) } }
+  # A search through a big app costs a second or two even inside it. The same button is
+  # pressed every service - Fire, Next, Stop - so the control a selector resolved to is
+  # kept, and the next request only checks it is still there and still answers to the
+  # cues (a gone element throws; a renamed one no longer matches); either way a fresh
+  # search follows.
+  $key = "$procId|" + (($s.Keys | Sort-Object | ForEach-Object { "$_=$($s[$_])" }) -join '|')
+  $known = $script:knownElements[$key]
+  if ($known) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $still = $null
+    try { $still = Describe $known $null 0 $true } catch { $still = $null }
+    Spent 'known' $clock
+    if ($still -and (Matches $s $still)) { return ,@($still) }
+    $script:knownElements.Remove($key)
+  }
+  $found = Search $procId $s
+  if ($found.Count -eq 1) { $script:knownElements[$key] = $found[0]._el }
   $q = if ($s.name) { $s.name.ToLower() } else { $null }
   $sorted = $found | Sort-Object -Property @{ Expression = { if ($q -and ([string]$_.title).ToLower() -eq $q) { 0 } else { 1 } } }, @{ Expression = { if ($_.actions -contains 'press') { 0 } else { 1 } } }
   return ,@($sorted)
@@ -267,6 +412,34 @@ function Pick($found, $first, $what) {
     Fail "$($found.Count) elements match $what — add role:/path: to say which, or --first" @{ matches = @($found | Select-Object -First 20 | ForEach-Object { Strip $_ }) }
   }
   return $found[0]
+}
+
+# The control a press or a type is aimed at, waited for: an app that is still opening a
+# panel has not drawn the button yet, or has it greyed until its list loads (MediaShout
+# enables Insert Bible a few seconds after Enter). A fast inspector arrives before that,
+# so a missing or disabled control is looked for again every quarter second, up to
+# --patience ms (5 s unless said otherwise), and only then refused. More than one match
+# is refused at once: time does not make a selector less ambiguous.
+function Aim($procId, $words, $first, $all) {
+  $sel = ParseSelector $words
+  $what = ($words -join ' ')
+  $deadline = (Get-Date).AddMilliseconds((IntFlag 'patience' 5000))
+  while ($true) {
+    $found = Collect $procId $sel $all
+    $target = $null; $why = $null
+    if ($found.Count -eq 0) { $why = 'missing' }
+    else {
+      $target = Pick $found $first $what
+      if (-not $target.enabled) { $why = 'disabled' }
+    }
+    $script:trace['tries'] = [int]$script:trace['tries'] + 1
+    if (-not $why) { return $target }
+    if ((Get-Date) -ge $deadline) {
+      if ($why -eq 'missing') { Fail "nothing matches $what" }
+      Fail "`"$($target.title)`" is disabled right now" @{ element = (Strip $target) }
+    }
+    Start-Sleep -Milliseconds 250
+  }
 }
 
 function PressElement($el, $at = $null, $action = $null) {
@@ -317,22 +490,28 @@ function ClickCentre($el, $at = $null) {
 }
 
 function Activate($procId) {
-  Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);' -Name F -Namespace W -ErrorAction SilentlyContinue
+  $clock = [Diagnostics.Stopwatch]::StartNew()
+  try { ActivateNow $procId } finally { Spent 'activate' $clock }
+}
+function ActivateNow($procId) {
+  if (-not ('W.F' -as [type])) { Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);' -Name F -Namespace W -ErrorAction SilentlyContinue }
   $h = (Get-Process -Id $procId).MainWindowHandle
   if ($h -ne 0) { [void][W.F]::SetForegroundWindow($h) }
 }
 
 # ---------------------------------------------------------------- commands
 
-if ($positional.Count -eq 0) { Fail 'usage: trilorah-inspect check|apps|see|find|press|type|menu|focus|key|watch …' @{} 2 }
+function Dispatch([string[]]$words) {
+ParseArgs $words
+if ($positional.Count -eq 0) { Fail 'usage: trilorah-inspect check|apps|see|find|press|type|menu|focus|key|watch|serve …' @{} 2 }
 $command = $positional[0]
 
 switch ($command) {
   'check' {
     $elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    Emit ([ordered]@{ ok = $true; trusted = $true; elevated = $elevated; note = 'UI Automation needs no permission on Windows; an app run "as administrator" is only visible if this is too' })
+    return ([ordered]@{ ok = $true; trusted = $true; elevated = $elevated; note = 'UI Automation needs no permission on Windows; an app run "as administrator" is only visible if this is too' })
   }
-  'apps' { Emit ([ordered]@{ ok = $true; apps = (RunningApps) }) }
+  'apps' { return ([ordered]@{ ok = $true; apps = (RunningApps) }) }
   'see' {
     if ($positional.Count -lt 2) { Fail 'see which app?' @{} 2 }
     $app = FindApp $positional[1]
@@ -340,17 +519,18 @@ switch ($command) {
     $nodes = New-Object System.Collections.ArrayList
     $trunc = Walk $app.pid (IntFlag 'depth' 14) (IntFlag 'limit' 6000) (IntFlag 'children' 200) 25 (-not $all) { param($n) if ($all -or (Interesting $n)) { $null = $nodes.Add($n) } }
     if ($switches.ContainsKey('pretty')) {
-      Write-Output "$($app.name) (pid $($app.pid)) — $($nodes.Count) elements$(if ($trunc) { ', truncated' })"
+      [Console]::Out.WriteLine("$($app.name) (pid $($app.pid)) — $($nodes.Count) elements$(if ($trunc) { ', truncated' })")
       foreach ($n in $nodes) {
         $line = ('  ' * $n.depth) + $n.role
         if ($n.title) { $line += "  `"$($n.title)`"" }
         if ($n.value -and $n.value -ne $n.title) { $line += "  = " + ([string]$n.value).Substring(0, [Math]::Min(60, ([string]$n.value).Length)) }
         if (-not $n.enabled) { $line += '  (disabled)' }
         if ($n.actions -contains 'press') { $line += '  [press]' }
-        Write-Output ($line + "   ·" + $n.path)
+        [Console]::Out.WriteLine($line + "   ·" + $n.path)
       }
+      return $null
     } else {
-      Emit ([ordered]@{ ok = $true; app = $app; truncated = $trunc; count = $nodes.Count; elements = @($nodes | ForEach-Object { Strip $_ }) })
+      return ([ordered]@{ ok = $true; app = $app; truncated = $trunc; count = $nodes.Count; elements = @($nodes | ForEach-Object { Strip $_ }) })
     }
   }
   'find' {
@@ -360,34 +540,35 @@ switch ($command) {
     $m = Collect $app.pid $sel $switches.ContainsKey('all')
     # The same tie-break a press makes: one control called exactly the name asked for counts as the one match.
     if ($m.Count -gt 1 -and $sel.name) { $exact = @($m | Where-Object { ([string]$_.title).ToLower() -eq $sel.name.ToLower() }); if ($exact.Count -eq 1) { $m = $exact } }
-    Emit ([ordered]@{ ok = $true; count = $m.Count; matches = @($m | Select-Object -First 50 | ForEach-Object { Strip $_ }) })
+    return ([ordered]@{ ok = $true; count = $m.Count; matches = @($m | Select-Object -First 50 | ForEach-Object { Strip $_ }) })
   }
   'press' {
     if ($positional.Count -lt 3) { Fail 'press <app> <selector…>' @{} 2 }
     $app = FindApp $positional[1]
-    $what = ($positional[2..($positional.Count - 1)] -join ' ')
-    $target = Pick (Collect $app.pid (ParseSelector $positional[2..($positional.Count - 1)]) $switches.ContainsKey('all')) $switches.ContainsKey('first') $what
-    if (-not $target.enabled) { Fail "`"$($target.title)`" is disabled right now" @{ element = (Strip $target) } }
+    $target = Aim $app.pid $positional[2..($positional.Count - 1)] $switches.ContainsKey('first') $switches.ContainsKey('all')
     $at = if ($flags.ContainsKey('at') -and @('left', 'right') -contains $flags['at']) { $flags['at'] } else { $null }
     # Bring the app forward first: a click that also has to wake a background window is
     # spent on the waking in some drawn controls (EasyWorship's live arrows), and does nothing else.
     Activate $app.pid; Start-Sleep -Milliseconds 150
+    $clock = [Diagnostics.Stopwatch]::StartNew()
     $how = PressElement $target._el $at $flags['action']
+    Spent 'press' $clock
     if (-not $how) {
       $why = if ($flags['action']) { 'it has no "' + $flags['action'] + '" action' } else { 'no action and not on screen' }
       Fail "could not press `"$($target.title)`" — $why" @{ element = (Strip $target) }
     }
-    Emit ([ordered]@{ ok = $true; action = $how; element = (Strip $target) })
+    return ([ordered]@{ ok = $true; action = $how; element = (Strip $target) })
   }
   'type' {
     if ($positional.Count -lt 3 -or -not $flags.ContainsKey('text')) { Fail 'type <app> <selector…> --text "…" [--submit]' @{} 2 }
     $app = FindApp $positional[1]
     $what = ($positional[2..($positional.Count - 1)] -join ' ')
-    $target = Pick (Collect $app.pid (ParseSelector $positional[2..($positional.Count - 1)]) $switches.ContainsKey('all')) $switches.ContainsKey('first') $what
+    $target = Aim $app.pid $positional[2..($positional.Count - 1)] $switches.ContainsKey('first') $switches.ContainsKey('all')
     $how = 'value'
     $vp = $null
     try { $target._el.SetFocus() } catch {}
-    if ($target._el.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp) -and -not $vp.Current.IsReadOnly) {
+    # --keys: type it as a person would even where the box could be set in one go.
+    if (-not $switches.ContainsKey('keys') -and $target._el.TryGetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern, [ref]$vp) -and -not $vp.Current.IsReadOnly) {
       $vp.SetValue($flags['text'])
     } else {
       Activate $app.pid; Start-Sleep -Milliseconds 150
@@ -403,14 +584,34 @@ switch ($command) {
       # burst of "Psalm 23:1" into "Psalm 1:1".
       [System.Windows.Forms.SendKeys]::SendWait('{HOME}+{END}')
       Start-Sleep -Milliseconds 60
+      $pace = IntFlag 'pace' 45
       foreach ($ch in $flags['text'].ToCharArray()) {
         [System.Windows.Forms.SendKeys]::SendWait(([string]$ch -replace '([+^%~(){}\[\]])', '{$1}'))
-        Start-Sleep -Milliseconds 45
+        Start-Sleep -Milliseconds $pace
       }
       $how = 'keys'
     }
-    if ($switches.ContainsKey('submit')) { Activate $app.pid; Start-Sleep -Milliseconds 50; [System.Windows.Forms.SendKeys]::SendWait('{ENTER}') }
-    Emit ([ordered]@{ ok = $true; typed = $flags['text']; how = $how; element = (Strip $target) })
+    if ($switches.ContainsKey('submit')) {
+      # A box set in one go still parses what it was given on its own clock (MediaShout's
+      # reference box turns "Psalm" into "Psalms" and only then listens for Enter; an Enter
+      # 300 ms after the value was lost, one 2 s after it was heard). So wait for the value
+      # to settle - unchanged across two reads, after at least 750 ms - before Enter, two
+      # seconds at most. (The one-shot run had this pause by accident, compiling its P/Invoke.)
+      if ($how -eq 'value') {
+        $clock = [Diagnostics.Stopwatch]::StartNew()
+        $t0 = Get-Date; $last = $null
+        do {
+          Start-Sleep -Milliseconds 150
+          $now = try { $vp.Current.Value } catch { $null }
+          $waited = ((Get-Date) - $t0).TotalMilliseconds
+          $settled = ($now -eq $last) -and ($waited -ge 750)
+          $last = $now
+        } until ($settled -or $waited -ge 2000)
+        Spent 'settle' $clock
+      }
+      Activate $app.pid; Start-Sleep -Milliseconds 120; [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
+    }
+    return ([ordered]@{ ok = $true; typed = $flags['text']; how = $how; element = (Strip $target) })
   }
   'menu' {
     if ($positional.Count -lt 3) { Fail 'menu <app> "File>Open"' @{} 2 }
@@ -435,12 +636,12 @@ switch ($command) {
     }
     if (-not $current.Current.IsEnabled) { Fail "`"$($trail -join ' > ')`" is disabled right now" }
     $how = PressElement $current
-    Emit ([ordered]@{ ok = [bool]$how; pressed = $trail })
+    return ([ordered]@{ ok = [bool]$how; pressed = $trail })
   }
   'focus' {
     if ($positional.Count -lt 2) { Fail 'focus <app>' @{} 2 }
     $app = FindApp $positional[1]; Activate $app.pid
-    Emit ([ordered]@{ ok = $true; app = $app.name })
+    return ([ordered]@{ ok = $true; app = $app.name })
   }
   'key' {
     if ($positional.Count -lt 3) { Fail 'key <app> <keys>  e.g. ctrl+enter, f5, escape' @{} 2 }
@@ -451,7 +652,7 @@ switch ($command) {
     $named = @{ enter = '{ENTER}'; return = '{ENTER}'; tab = '{TAB}'; space = ' '; delete = '{DEL}'; backspace = '{BS}'; escape = '{ESC}'; esc = '{ESC}'; left = '{LEFT}'; right = '{RIGHT}'; up = '{UP}'; down = '{DOWN}'; home = '{HOME}'; end = '{END}'; pageup = '{PGUP}'; pagedown = '{PGDN}' }
     $k = if ($named.ContainsKey($keyName)) { $named[$keyName] } elseif ($keyName -match '^f(\d+)$') { "{F$($Matches[1])}" } else { $keyName }
     [System.Windows.Forms.SendKeys]::SendWait("$mods$k")
-    Emit ([ordered]@{ ok = $true; keys = $positional[2]; app = $app.name })
+    return ([ordered]@{ ok = $true; keys = $positional[2]; app = $app.name })
   }
   'watch' {
     if ($positional.Count -lt 2) { Fail 'watch <app> [--count N] [--seconds N]' @{} 2 }
@@ -509,5 +710,69 @@ switch ($command) {
     Emit ([ordered]@{ ok = ($recorded.Count -ge $want); wanted = $want; recorded = $recorded; note = $(if ($recorded.Count -ge $want) { 'recorded' } else { "time ran out before $want click(s) landed in $($app.name)" }) })
     exit $(if ($recorded.Count -ge $want) { 0 } else { 1 })
   }
-  default { Fail "unknown command `"$command`" — check|apps|see|find|press|type|menu|focus|key|watch" @{} 2 }
+  default { Fail "unknown command `"$command`" — check|apps|see|find|press|type|menu|focus|key|watch|serve" @{} 2 }
+}
+}
+
+# ---------------------------------------------------------------- running
+
+# `serve`: stay up and answer requests, one JSON line in ({"id":…,"args":[…]}), one out
+# ({"id":…,"result":{…}}). Starting PowerShell and loading UI Automation costs five or
+# six seconds on an ordinary PC; Trilorah pays that once per session instead of per click.
+function Serve() {
+  $script:serving = $true
+  # Spawned by an app, this process may inherit a lower priority or Windows' "efficiency
+  # mode" (power throttling). Ask for normal speed and a little priority - it costs nothing
+  # and this is the hand on the church's screen.
+  try {
+    [Diagnostics.Process]::GetCurrentProcess().PriorityClass = 'AboveNormal'
+    if (-not ('W.P' -as [type])) {
+      Add-Type -Name P -Namespace W -MemberDefinition @'
+[StructLayout(LayoutKind.Sequential)] public struct PPTS { public uint Version; public uint ControlMask; public uint StateMask; }
+[DllImport("kernel32.dll", SetLastError = true)] public static extern bool SetProcessInformation(IntPtr h, int cls, ref PPTS s, int size);
+[DllImport("kernel32.dll")] public static extern IntPtr GetCurrentProcess();
+public static bool FullSpeed() {
+  PPTS s = new PPTS(); s.Version = 1; s.ControlMask = 1; s.StateMask = 0;
+  return SetProcessInformation(GetCurrentProcess(), 4, ref s, Marshal.SizeOf(typeof(PPTS)));
+}
+'@
+    }
+    [void][W.P]::FullSpeed()
+  } catch {}
+  [Console]::OutputEncoding = [Text.Encoding]::UTF8
+  $in = New-Object IO.StreamReader([Console]::OpenStandardInput(), [Text.Encoding]::UTF8)
+  Emit ([ordered]@{ ok = $true; serving = $true })
+  while ($true) {
+    $line = $in.ReadLine()
+    if ($line -eq $null) { break }
+    if (-not $line.Trim()) { continue }
+    $req = $null
+    try { $req = ConvertFrom-Json $line } catch { Emit ([ordered]@{ ok = $false; error = 'not a request' }); continue }
+    $words = @(); if ($req.args) { $words = @($req.args | ForEach-Object { [string]$_ }) }
+    $answer = $null
+    $script:trace = [ordered]@{}
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    if ($words.Count -gt 0 -and @('serve', 'watch') -contains $words[0]) {
+      $answer = [ordered]@{ ok = $false; error = "$($words[0]) runs as its own process, not inside the server" }
+    } else {
+      try { $answer = Dispatch $words }
+      catch [InspectFailure] { $answer = $_.Exception.Body }
+      catch { $answer = [ordered]@{ ok = $false; error = "the inspector hit an error: $($_.Exception.Message)" } }
+    }
+    if ($answer -eq $null) { $answer = [ordered]@{ ok = $true } }
+    Emit ([ordered]@{ id = $req.id; ms = [int]$clock.ElapsedMilliseconds; trace = $script:trace; result = $answer })
+  }
+}
+
+if ($Argv.Count -ge 1 -and $Argv[0] -eq 'serve') { Serve; exit 0 }
+try {
+  $out = Dispatch $Argv
+  if ($out -ne $null) { Emit $out }
+  exit 0
+} catch [InspectFailure] {
+  Emit $_.Exception.Body
+  exit $_.Exception.Code
+} catch {
+  Emit ([ordered]@{ ok = $false; error = "the inspector hit an error: $($_.Exception.Message)" })
+  exit 1
 }

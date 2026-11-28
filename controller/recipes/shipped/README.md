@@ -41,10 +41,18 @@ and clear came from the CLI. What it taught us, and what changed:
   typed into, and the host called it live). The recipe host now runs one
   ability at a time, in the order asked, and a reference staged over one whose
   search has not started yet replaces it — only the latest is typed.
-- On an ordinary PC each inspector call costs 20–45 s, so a verse through a
-  clicked app is on screen two to three minutes after the take; the API routes
-  (ProPresenter, OpenLP) answer in seconds. A persistent inspector process is
-  the next step for the click recipes.
+- On an ordinary PC each inspector call cost 20–45 s that morning, so a verse
+  through a clicked app reached the screen two to three minutes after the take.
+  That afternoon the Windows inspector became a server kept alive for the
+  session, searching inside the app with one call and remembering the controls
+  it found (`controller/README.md`); the recipe host runs one ability at a time,
+  verification waits while an ability runs, a press waits a few seconds for a
+  control that is not there or not enabled yet instead of failing, and the app
+  is given Trilorah's own words for the reference ("Psalms 23:1", not the
+  "Psalm 23:1" that MediaShout's box offers to complete and spends the Enter
+  on). Measured against MediaShout afterwards: a spoken or typed reference is
+  staged in the app 13–16 s later (its waits and panel included), and the take
+  is on the wall in 0.3–1.2 s, clear in 0.3–0.6 s.
 - KJV text carries `{supplied}` and `{lemma: note}` braces; ProPresenter was
   shown them raw. The message now gets the plain wall text
   (`shared/scriptureText.ts`).

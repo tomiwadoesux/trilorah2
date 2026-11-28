@@ -70,8 +70,22 @@ pressing anything, and re-taught one step at a time when an update moves things.
   one character at a time (EasyWorship's reference box parses as it goes), and
   two selector words were added — `class:` (the window class, the steady cue in
   Delphi apps whose names are the text they show) and `--at left|right` /
-  `--action toggle|select|expand|click`. Each call starts a PowerShell, so a
-  call costs seconds, not milliseconds.
+  `--action toggle|select|expand|click`. Run as `serve`, it stays up and
+  answers requests over stdin, one JSON line each — PowerShell and UI Automation
+  take five seconds to load, paid once per session, not per click. A search
+  runs inside the app (FindAll with the cues as a condition and a cache
+  request for the rest: one round trip instead of one per property per
+  element), exact name, help or id first and the old "contains" only when
+  nothing is called exactly that; a control found once is remembered and only
+  checked, not searched for, the next time. Measured in MediaShout on
+  2026-11-27: a first find one to two seconds, a repeat under a tenth; the
+  same calls were 20–45 s before. A press or a type waits up to `--patience`
+  ms (5 s) for a control that is not there or not enabled yet - an app still
+  opening its panel - and only then refuses; a value set in one go gets a
+  moment to settle before Enter. Trilorah's side (`recipes/inspect.ts`) keeps
+  one request in flight, sends the service's calls ahead of a verification's
+  looks, logs any call over four seconds with where its time went, and starts
+  the server again if it dies or stops answering.
 - `recipes/`: the recipe format, the runner (verify without acting; perform and
   stop at the first failure), the four-question teacher, and the spawn-based
   inspector that picks the right tool per platform. `cli/teach.ts` runs the

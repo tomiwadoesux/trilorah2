@@ -113,3 +113,16 @@ describe('one thing at a time in the app', () => {
     expect(host.live()).toBeNull()
   })
 })
+
+describe('the words typed into the app', () => {
+  it("are Trilorah's own for the reference; only an unknown one is typed as it came", async () => {
+    const calls: string[][] = []
+    const inspector: Inspector = { async run(args) { calls.push(args); return { ok: true } } }
+    const host = recipeHost({ recipe, inspector, own, words: (r) => (r === 'Psalm 23:1' ? 'Psalms 23:1' : null) })
+    expect(host.stageScripture('Psalm 23:1')?.book).toBe('Psalms 23:1')
+    await new Promise((r) => setTimeout(r, 10))
+    host.stageScripture('Nonsense 9:9')
+    await new Promise((r) => setTimeout(r, 10))
+    expect(calls.filter((c) => c[0] === 'type').map((c) => c[6])).toEqual(['Psalms 23:1', 'Nonsense 9:9'])
+  })
+})

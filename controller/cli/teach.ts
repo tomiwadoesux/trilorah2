@@ -61,6 +61,7 @@ async function main() {
   fs.mkdirSync(path.dirname(out), { recursive: true })
   fs.writeFileSync(out, JSON.stringify(result.recipe, null, 2))
   console.error(`\nwrote ${out}`)
+  inspect.stop?.()
   process.exit(report.ok ? 0 : 1)
 }
 

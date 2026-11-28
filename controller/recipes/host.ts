@@ -27,6 +27,17 @@ export interface RecipeHostOptions {
   own: ControlHost
   /** What happens when a step fails, for a notice; the command still fails. */
   onProblem?: (ability: string, problem: string) => void
+  /** What an ability took when it worked, for a log line: the time the room feels. */
+  onDid?: (ability: string, ms: number) => void
+  /**
+   * The reference in Trilorah's own words - "Psalms 23:1" for a typed "Psalm 23:1",
+   * "John 3:16-17" for a range - or null when Trilorah's Bible has no such passage. The
+   * app's search box gets the canonical words: MediaShout's offers "Psalms" as a
+   * completion for "Psalm" and spends the Enter on accepting it, searching nothing.
+   */
+  words?: (reference: string, version?: string) => string | null
+  /** True while an ability is being performed in the app, false when the line is empty again: verification yields to it. */
+  onBusy?: (busy: boolean) => void
 }
 
 export function recipeHost(opts: RecipeHostOptions): ControlHost {
@@ -40,16 +51,20 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
   // "go live" landing between a search's typing and its Enter. Everything the
   // host is asked to do joins one line and runs in the order it was asked.
   let line: Promise<unknown> = Promise.resolve()
+  let queued = 0
   const after = <T>(work: () => Promise<T>): Promise<T> => {
-    const next = line.then(work, work)
+    if (queued++ === 0) opts.onBusy?.(true)
+    const done = async () => { try { return await work() } finally { if (--queued === 0) opts.onBusy?.(false) } }
+    const next = line.then(done, done)
     line = next.catch(() => undefined)
     return next
   }
 
   /** Runs one ability; returns its problem, if any, having told whoever listens. */
   async function run(ability: 'findVerse' | 'findSong' | 'show' | 'clear' | 'next' | 'previous', vars: { query?: string } = {}): Promise<string | null> {
+    const started = Date.now()
     const result = await perform(recipe, ability, inspector, vars)
-    if (result.ok) return null
+    if (result.ok) { opts.onDid?.(ability, Date.now() - started); return null }
     const problem = result.failed?.problem ?? `${recipe.app.name} did not ${ability}`
     opts.onProblem?.(ability, problem)
     return problem
@@ -78,12 +93,12 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
     listening: () => own.listening(),
     startListening: (device) => own.startListening(device),
     stopListening: () => own.stopListening(),
-    stageScripture: (reference) => {
+    stageScripture: (reference, version) => {
       if (!recipe.abilities.findVerse) {
         opts.onProblem?.('findVerse', `${recipe.app.name} was never taught where verses are searched — re-teach it`)
         return null
       }
-      staged = asVerse(reference)
+      staged = asVerse(opts.words?.(reference, version) ?? reference)
       search('findVerse', staged)
       return staged
     },
