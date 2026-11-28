@@ -818,6 +818,8 @@ interface WindowApi extends Partial<TriPackageApi> {
    * adds it. The UI also tracks status optimistically from start/stop.
    */
   onAsrStatus?(callback: (status: ASRStatus) => void): Unsubscribe;
+  /** The console's line about the target app: a press held while it has a dialog open, and the all-clear. */
+  onControlNote?(callback: (note: { text: string; holding: string | null }) => void): Unsubscribe;
 
   /* Outputs, alerts, keyword search — 2026-09-08 (BUILD-MAP 2.10–2.13) */
   setScreenState?(state: ScreenState): Promise<ScreenState>;

@@ -462,6 +462,8 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
   const [prompt, setPrompt] = useState('');
   const [songOpen, setSongOpen] = useState(false);
   const [songTitle, setSongTitle] = useState('');
+  // "waiting for EasyWorship's Edit Song window to close": shown while a press is held.
+  const [holding, setHolding] = useState<string | null>(null);
   const snapRef = useRef<ControlSnapshot | null>(null);
   useEffect(() => { snapRef.current = snap; }, [snap]);
   const [history, setHistory] = useState<string[]>([]);
@@ -511,6 +513,7 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
       api.onVersePreview?.(() => void run({ kind: 'status' }, { quiet: true })),
       api.onVerseDetected?.(() => void run({ kind: 'status' }, { quiet: true })),
       api.onAsrStatus?.(() => void run({ kind: 'status' }, { quiet: true })),
+      api.onControlNote?.((note) => { say('note', note.text); setHolding(note.holding); }),
     ].filter(Boolean) as Array<() => void>;
     return () => offs.forEach((off) => off());
     // run is stable enough for a mount effect; re-subscribing on every render would double events.
@@ -718,6 +721,9 @@ export default function ConsoleView({ variant = 'workspace' }: { variant?: 'work
               )}
             </div>
 
+            {holding && (
+              <div role="status" style={{ fontSize: 11, color: ACCENT, padding: '4px 8px', border: `1px solid ${ACCENT}`, borderRadius: 6, background: 'rgba(228,216,122,0.08)' }}>⏳ {holding}</div>
+            )}
             {press('go live', { kind: 'live.take' }, { tone: 'go', title: 'Tap space twice to do this' })}
             <div style={{ display: 'flex', gap: 8 }}>
               {press('clear', { kind: 'live.clear' }, { title: 'Take our verse off (space twice while it is live)' })}

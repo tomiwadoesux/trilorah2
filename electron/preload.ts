@@ -374,6 +374,13 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('on-asr-status', subscription)
     return () => ipcRenderer.removeListener('on-asr-status', subscription)
   },
+  // A line for the console about the app the screen is pointed at: a press held while
+  // that app has a dialog open, and the all-clear when it closes.
+  onControlNote: (callback: (note: { text: string; holding: string | null }) => void) => {
+    const subscription = (_event: IpcRendererEvent, note: { text: string; holding: string | null }) => callback(note)
+    ipcRenderer.on('on-control-note', subscription)
+    return () => ipcRenderer.removeListener('on-control-note', subscription)
+  },
 
   // Multilingual + configurable phrases
   getAvailableLanguages: () => invokeObserved('get-available-languages'),

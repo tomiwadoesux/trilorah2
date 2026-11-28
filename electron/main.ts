@@ -4795,6 +4795,21 @@ app.whenReady().then(() => {
           detail: `${problem}. Trilorah is still listening; nothing changed on that screen.`,
         })
       },
+      // The app has a window open over itself (Edit Song, Options): the press is held, not
+      // made into that window. The room is told, in the main window's notices and in the
+      // console, and told again when the window closes or the hold is given up.
+      onHeld: (target, ability, window, waiting) => {
+        const app = target.replace(/^app:/, '')
+        const doing = ability === 'show' ? 'go live' : ability === 'findVerse' || ability === 'findSong' ? 'search' : ability
+        const text = waiting ? `waiting for ${app}'s "${window}" window to close before the ${doing}` : `${app}'s "${window}" window closed`
+        console.log(`⏳ ${text}`)
+        publishServiceNotice({
+          id: 'app-target-held', severity: 'info', target: 'audio', ...(waiting ? {} : { status: 'resolved' as const }),
+          title: waiting ? `Waiting for ${app}` : `${app} is free again`,
+          detail: waiting ? `${app} has its "${window}" window open. Nothing is pressed in it; the ${doing} goes in when that window closes (within 45 s).` : `The ${doing} went ahead.`,
+        })
+        broadcastToWindows('on-control-note', { text, holding: waiting ? text : null })
+      },
       onVerified: (target, ok, broken) => publishServiceNotice({
         id: 'app-target', severity: ok ? 'info' : 'warning', target: 'audio', ...(ok ? { status: 'resolved' as const } : {}),
         title: ok ? `${target.replace(/^app:/, '')} is ready` : `${target.replace(/^app:/, '')} has changed since it was taught`,

@@ -42,6 +42,8 @@ export interface SwitchableOptions {
   words?: (reference: string, version?: string) => string | null
   /** Called when a verification finishes, so a client can refresh what it shows. */
   onVerified?: (target: string, ok: boolean, broken: string[]) => void
+  /** An ability is held because the app has a window open over itself (see recipeHost). */
+  onHeld?: (target: string, ability: string, window: string, waiting: boolean) => void
 }
 
 export const OWN_TARGET = 'trilorah'
@@ -126,6 +128,7 @@ export function switchableHost(opts: SwitchableOptions): ControlHost {
         own,
         onProblem: (ability, problem) => opts.onProblem?.(loaded.id, ability, problem),
         onDid: (ability, ms) => opts.onDid?.(loaded.id, ability, ms),
+        onHeld: (ability, window, waiting) => opts.onHeld?.(loaded.id, ability, window, waiting),
         words: opts.words,
         onBusy: (b) => { busy = b; if (!b) for (const wake of idleWaiters.splice(0)) wake() },
       })

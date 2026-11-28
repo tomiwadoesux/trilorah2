@@ -38,6 +38,16 @@ export interface RecipeHostOptions {
   words?: (reference: string, version?: string) => string | null
   /** True while an ability is being performed in the app, false when the line is empty again: verification yields to it. */
   onBusy?: (busy: boolean) => void
+  /**
+   * The app has a window open over itself (Edit Song, Options) and the ability is being
+   * held for it to close: `waiting` true when the hold begins, false when it ends -
+   * done, or given up. Nothing of Trilorah's ever presses anything in that window.
+   */
+  onHeld?: (ability: string, window: string, waiting: boolean) => void
+  /** How long a held ability waits for the window to close before it is dropped (45 s unless said: the owner's choice, 2026-11-28). */
+  holdMs?: number
+  /** How often the held ability is tried again (2 s unless said). */
+  holdPollMs?: number
 }
 
 export function recipeHost(opts: RecipeHostOptions): ControlHost {
@@ -65,11 +75,32 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
   /** Runs one ability; returns its problem, if any, having told whoever listens. */
   async function run(ability: Ability, vars: { query?: string } = {}): Promise<string | null> {
     const started = Date.now()
-    const result = await perform(recipe, ability, inspector, vars)
-    if (result.ok) { opts.onDid?.(ability, Date.now() - started); return null }
-    const problem = result.failed?.problem ?? `${recipe.app.name} did not ${ability}`
-    opts.onProblem?.(ability, problem)
-    return problem
+    const giveUpAt = started + (opts.holdMs ?? 45_000)
+    let held: string | null = null
+    for (;;) {
+      const result = await perform(recipe, ability, inspector, vars)
+      if (result.ok) {
+        if (held) opts.onHeld?.(ability, held, false)
+        opts.onDid?.(ability, Date.now() - started)
+        return null
+      }
+      const failed = result.failed
+      // A window is open over the app - the operator is in it. The ability is held, not
+      // pressed into that window, and tried again when the window has gone; within the
+      // grace the close is enough for the verse to go in.
+      if (failed?.busy && Date.now() < giveUpAt) {
+        const window = failed.window ?? 'a window'
+        if (held !== window) { held = window; opts.onHeld?.(ability, window, true) }
+        await new Promise((resolve) => setTimeout(resolve, opts.holdPollMs ?? 2000))
+        continue
+      }
+      if (held) opts.onHeld?.(ability, held, false)
+      const problem = failed?.busy
+        ? `${recipe.app.name} still had "${failed.window ?? 'a window'}" open after ${Math.round((Date.now() - started) / 1000)} s, so the ${ability} was dropped`
+        : (failed?.problem ?? `${recipe.app.name} did not ${ability}`)
+      opts.onProblem?.(ability, problem)
+      return problem
+    }
   }
 
   // A search is slow in a clicked app (a panel, typing, Enter), and the

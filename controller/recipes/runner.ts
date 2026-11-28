@@ -37,6 +37,10 @@ export interface StepOutcome {
   /** The operator's words for the control, when the recipe has them. */
   label?: string
   problem?: string
+  /** The app has a window open over itself (a dialog the operator is in); the step was not tried. */
+  busy?: boolean
+  /** That window's title, when the inspector could read it. */
+  window?: string
 }
 
 export interface VerifyReport {
@@ -116,7 +120,17 @@ export async function verify(recipe: Recipe, inspect: Inspector): Promise<Verify
   return { ok: broken.length === 0, checked, broken }
 }
 
-async function act(step: RecipeStep, recipe: Recipe, inspect: Inspector, vars: { query?: string; reference?: string }): Promise<string | null> {
+type Refusal = { problem: string; busy?: boolean; window?: string }
+
+/** A failed inspector answer as a refusal: the words, and whether a dialog is what stopped it. */
+function refused(r: { ok: boolean; error?: string; busy?: unknown; window?: unknown }, fallback: string): Refusal {
+  return {
+    problem: r.error ?? fallback,
+    ...(r.busy === true ? { busy: true, ...(typeof r.window === 'string' ? { window: r.window } : {}) } : {}),
+  }
+}
+
+async function act(step: RecipeStep, recipe: Recipe, inspect: Inspector, vars: { query?: string; reference?: string }): Promise<Refusal | null> {
   const app = recipe.app.id
   switch (step.action.do) {
     case 'press': {
@@ -125,22 +139,22 @@ async function act(step: RecipeStep, recipe: Recipe, inspect: Inspector, vars: {
       if (step.action.via) args.push('--action', step.action.via)
       if (step.action.patience !== undefined) args.push('--patience', String(step.action.patience))
       const r = await inspect.run(args)
-      return r.ok ? null : (r.error ?? 'the press failed')
+      return r.ok ? null : refused(r, 'the press failed')
     }
     case 'type': {
       const args = ['type', app, ...selectorWords(step), '--text', fillText(step.action.text, vars)]
       if (step.action.submit) args.push('--submit')
       if (step.action.via === 'message') args.push('--message')
       const r = await inspect.run(args)
-      return r.ok ? null : (r.error ?? 'typing failed')
+      return r.ok ? null : refused(r, 'typing failed')
     }
     case 'menu': {
       const r = await inspect.run(['menu', app, step.action.path])
-      return r.ok ? null : (r.error ?? 'the menu press failed')
+      return r.ok ? null : refused(r, 'the menu press failed')
     }
     case 'key': {
       const r = await inspect.run(['key', app, step.action.keys])
-      return r.ok ? null : (r.error ?? 'the key press failed')
+      return r.ok ? null : refused(r, 'the key press failed')
     }
     case 'wait': {
       const ms = step.action.ms
@@ -169,8 +183,8 @@ export async function perform(
   }
   for (const step of run) {
     const index = steps.indexOf(step)
-    const problem = await act(step, recipe, inspect, vars)
-    if (problem) return { ok: false, ability, done: run.indexOf(step), failed: { ability, index, ok: false, label: step.label, problem } }
+    const refusal = await act(step, recipe, inspect, vars)
+    if (refusal) return { ok: false, ability, done: run.indexOf(step), failed: { ability, index, ok: false, label: step.label, ...refusal } }
   }
   return { ok: true, ability, done: run.length }
 }

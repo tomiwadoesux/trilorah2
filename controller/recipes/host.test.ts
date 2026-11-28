@@ -158,6 +158,52 @@ describe('put back', () => {
   })
 })
 
+describe('a window open over the app', () => {
+  const settle = (ms = 40) => new Promise((r) => setTimeout(r, ms))
+  /** An inspector whose app has "Edit Song" open for the first N presses. */
+  const dialogFor = (presses: number, calls: string[][]): Inspector => ({
+    run: async (args) => {
+      calls.push(args)
+      if (args[0] === 'press' && presses-- > 0) return { ok: false, error: 'a window is open over the app: "Edit Song"', busy: true, window: 'Edit Song' }
+      return { ok: true }
+    },
+  })
+
+  it('holds the take while the window is open and goes ahead once it closes', async () => {
+    const calls: string[][] = []
+    const held: [string, string, boolean][] = []
+    const host = recipeHost({ recipe, inspector: dialogFor(2, calls), own, holdPollMs: 5, holdMs: 500, onHeld: (a, w, waiting) => held.push([a, w, waiting]) })
+    host.stageScripture('John 3:16'); host.take('remote')
+    await settle()
+    expect(calls.filter((c) => c[0] === 'press').length).toBe(3)
+    expect(held).toEqual([['show', 'Edit Song', true], ['show', 'Edit Song', false]])
+    expect(host.live()?.book).toBe('John 3:16')
+  })
+
+  it('gives up after the grace and says so, pressing nothing in that window', async () => {
+    const calls: string[][] = []
+    const problems: string[] = []
+    const held: boolean[] = []
+    const host = recipeHost({ recipe, inspector: dialogFor(99, calls), own, holdPollMs: 5, holdMs: 30, onProblem: (_a, p) => problems.push(p), onHeld: (_a, _w, waiting) => held.push(waiting) })
+    host.stageScripture('John 3:16'); host.take('remote')
+    await settle(120)
+    expect(held).toEqual([true, false])
+    expect(problems[0]).toMatch(/still had "Edit Song" open after \d+ s, so the show was dropped/)
+    expect(host.live()).toBeNull()
+  })
+
+  it('an ordinary refusal is not held', async () => {
+    const calls: string[][] = []
+    const problems: string[] = []
+    const inspector: Inspector = { run: async (args) => { calls.push(args); return args[0] === 'press' ? { ok: false, error: '"Go Live" is disabled right now' } : { ok: true } } }
+    const host = recipeHost({ recipe, inspector, own, holdPollMs: 5, onProblem: (_a, p) => problems.push(p) })
+    host.stageScripture('John 3:16'); host.take('remote')
+    await settle()
+    expect(calls.filter((c) => c[0] === 'press').length).toBe(1)
+    expect(problems).toEqual(['"Go Live" is disabled right now'])
+  })
+})
+
 describe('a Clear that stays on', () => {
   const quick = (calls: string[][]): Inspector => ({ run: async (args) => { calls.push(args); return { ok: true } } })
   const settle = () => new Promise((r) => setTimeout(r, 20))

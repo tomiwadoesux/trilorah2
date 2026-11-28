@@ -471,6 +471,27 @@ function Pick($found, $first, $what) {
 # so a missing or disabled control is looked for again every quarter second, up to
 # --patience ms (5 s unless said otherwise), and only then refused. More than one match
 # is refused at once: time does not make a selector less ambiguous.
+# The window the app has open over its main one, when it has: an Options dialog, Edit Song,
+# a file picker. A modal window disables the main window, and every control in it with it,
+# so a press would wait its patience out and then say "disabled" - which is true and
+# useless. The operator is working in that window; nothing of ours may press anything in
+# it, and the press that was asked for is held until the window closes (recipes/host.ts).
+function OpenDialog($procId) {
+  $roots = AppRoots $procId
+  if ($roots.Count -lt 1) { return $null }
+  Wire
+  $main = HandleOf $roots[0]
+  if ($main -eq [IntPtr]::Zero -or [W.X]::IsWindowEnabled($main)) { return $null }
+  foreach ($r in $roots) {
+    $h = HandleOf $r
+    if ($h -eq $main -or $h -eq [IntPtr]::Zero) { continue }
+    if (-not [W.X]::IsWindowVisible($h) -or -not [W.X]::IsWindowEnabled($h)) { continue }
+    $name = try { [string]$r.Current.Name } catch { '' }
+    if ($name) { return $name }
+  }
+  return 'a window'
+}
+
 function Aim($procId, $words, $first, $all) {
   $sel = ParseSelector $words
   $what = ($words -join ' ')
@@ -485,6 +506,9 @@ function Aim($procId, $words, $first, $all) {
     }
     $script:trace['tries'] = [int]$script:trace['tries'] + 1
     if (-not $why) { return $target }
+    # Greyed because a window is open over the app: say which, at once, instead of waiting.
+    $dialog = OpenDialog $procId
+    if ($dialog) { Fail "a window is open over the app: `"$dialog`"" @{ busy = $true; window = $dialog } }
     if ((Get-Date) -ge $deadline) {
       if ($why -eq 'missing') { Fail "nothing matches $what" }
       $called = if ($target.title) { '"' + $target.title + '"' } else { 'the control (' + $target.class + ')' }
@@ -507,6 +531,7 @@ function Wire {
 [DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", CharSet = CharSet.Unicode)] public static extern IntPtr GetText(IntPtr h, uint m, IntPtr w, System.Text.StringBuilder l, uint f, uint t, out IntPtr r);
 [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
 [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr h);
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern short VkKeyScan(char c);
 [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 '@
