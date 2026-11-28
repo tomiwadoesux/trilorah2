@@ -34,9 +34,18 @@ export type StepAction =
    * `via: 'click'`: a real click even though the control offers an
    * accessibility action — MediaShout's toolbar says "pressed" to Invoke and
    * opens nothing; only a click opens its Bibles panel.
+   * `via: 'message'` (Windows): the click or the keys are handed to the
+   * control's own window as messages. The pointer does not move, the app is
+   * not brought forward, and the operator keeps the mouse and the keyboard.
+   * Every control in a Delphi app (EasyWorship) is a window of its own, so
+   * this is how that app is driven - including its previous/next arrows,
+   * which ignore a synthetic pointer but answer a posted click in 0.2 s.
+   * `patience`: how long (ms) a missing or greyed control is waited for
+   * before the press is refused; 5 s unless said. A next arrow that is grey
+   * because there is no next slide should say so at once, not after 5 s.
    */
-  | { do: 'press'; at?: 'left' | 'right'; via?: 'click' }
-  | { do: 'type'; text: '$query' | '$reference' | string; submit?: boolean }
+  | { do: 'press'; at?: 'left' | 'right'; via?: 'click' | 'message'; patience?: number }
+  | { do: 'type'; text: '$query' | '$reference' | string; submit?: boolean; via?: 'message' }
   | { do: 'menu'; path: string }
   | { do: 'key'; keys: string }
   | { do: 'wait'; ms: number }
@@ -53,6 +62,14 @@ export interface ControlCues {
    * launch, so the class is the cue that tells the Songs tab from the SONGS heading.
    */
   class?: string
+  /**
+   * Windows only: look only inside the pane of this window class. EasyWorship
+   * has the same two arrows under Preview and under Live; `within:
+   * TFrame_LivePreview` says which pair.
+   */
+  within?: string
+  /** Of several controls that answer to the same cues, the one that sits there (the right-hand arrow). */
+  which?: 'leftmost' | 'rightmost' | 'topmost' | 'bottommost'
   /** Shown to the person re-teaching a broken step: "the button that used to say Go Live". */
   label?: string
 }
@@ -87,6 +104,12 @@ export interface Recipe {
     version?: string
   }
   abilities: Partial<Record<Ability, RecipeStep[]>>
+  /**
+   * The app's Clear is a switch that stays on: what is sent live while it is on
+   * stays hidden (EasyWorship). After Trilorah has cleared, its next show presses
+   * Clear once more so the verse is seen.
+   */
+  clearStaysOn?: boolean
   taught: {
     by: 'trilorah' | 'operator'
     at: string
@@ -99,8 +122,13 @@ function parseAction(raw: unknown): StepAction | null {
   if (!raw || typeof raw !== 'object') return null
   const a = raw as Record<string, unknown>
   switch (a.do) {
-    case 'press': return { do: 'press', ...(a.at === 'left' || a.at === 'right' ? { at: a.at } : {}), ...(a.via === 'click' ? { via: 'click' as const } : {}) }
-    case 'type': return str(a.text, 2000) ? { do: 'type', text: a.text, ...(a.submit === true ? { submit: true } : {}) } : null
+    case 'press': return {
+      do: 'press',
+      ...(a.at === 'left' || a.at === 'right' ? { at: a.at } : {}),
+      ...(a.via === 'click' || a.via === 'message' ? { via: a.via } : {}),
+      ...(typeof a.patience === 'number' && a.patience >= 0 && a.patience <= 10_000 ? { patience: a.patience } : {}),
+    }
+    case 'type': return str(a.text, 2000) ? { do: 'type', text: a.text, ...(a.submit === true ? { submit: true } : {}), ...(a.via === 'message' ? { via: 'message' as const } : {}) } : null
     case 'menu': return str(a.path) ? { do: 'menu', path: a.path } : null
     case 'key': return str(a.keys, 40) ? { do: 'key', keys: a.keys } : null
     case 'wait': return typeof a.ms === 'number' && a.ms >= 0 && a.ms <= 10_000 ? { do: 'wait', ms: a.ms } : null
@@ -119,10 +147,14 @@ function parseStep(raw: unknown): RecipeStep | null {
   if (str(s.name)) step.name = s.name
   if (str(s.id)) step.id = s.id
   if (str(s.class, 120)) step.class = s.class
+  if (str(s.within, 120)) step.within = s.within
+  if (s.which === 'leftmost' || s.which === 'rightmost' || s.which === 'topmost' || s.which === 'bottommost') step.which = s.which
   if (str(s.label)) step.label = s.label
   if (s.enroute === true) step.enroute = true
-  // A press or type needs something to aim at; menu, key and wait do not.
-  if ((action.do === 'press' || action.do === 'type') && !step.path && !step.name && !step.id) return null
+  // A press or type needs something to aim at; menu, key and wait do not. A class inside
+  // a named pane is aim enough: EasyWorship's arrows have no name, id or steady path.
+  const aimed = step.path || step.name || step.id || (step.class && step.within)
+  if ((action.do === 'press' || action.do === 'type') && !aimed) return null
   return step
 }
 
@@ -160,6 +192,7 @@ export function parseRecipe(raw: unknown): Recipe | null {
     platform: r.platform,
     app: { id: app.id, name: app.name, ...(str(app.version, 60) ? { version: app.version } : {}) },
     abilities,
+    ...(r.clearStaysOn === true ? { clearStaysOn: true } : {}),
     taught: {
       by: taught?.by === 'operator' ? 'operator' : 'trilorah',
       at: str(taught?.at, 40) ? (taught!.at as string) : new Date(0).toISOString(),
@@ -187,6 +220,8 @@ export function selectorWords(cues: ControlCues): string[] {
   if (cues.role) words.push(`role:${cues.role}`)
   if (cues.id) words.push(`id:${cues.id}`)
   if (cues.class) words.push(`class:${cues.class}`)
+  if (cues.within) words.push(`within:${cues.within}`)
+  if (cues.which) words.push(`which:${cues.which}`)
   if (cues.name) words.push(`name:${cues.name}`)
   return words
 }

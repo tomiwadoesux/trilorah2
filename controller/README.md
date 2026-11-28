@@ -86,6 +86,31 @@ pressing anything, and re-taught one step at a time when an update moves things.
   one request in flight, sends the service's calls ahead of a verification's
   looks, logs any call over four seconds with where its time went, and starts
   the server again if it dies or stops answering.
+- The message door (2026-11-27, evening). Windows hands every click and key to a
+  window as a message, and a control that is a window of its own can be given
+  those messages directly: `press … --action message` posts the click to the
+  control, `type … --message` sends it the keys (Home, then key-down and
+  character per letter, one key-up). The pointer does not move, the app is not
+  brought forward, the operator keeps mouse and keyboard, and the wait that is
+  left is the app's own. Every control in EasyWorship (Delphi) is such a
+  window, so its whole recipe uses it: a verse is in Preview 0.7–1.6 s after it
+  is asked for (EasyWorship's lookup), Go Live in 0.2–0.3 s, next and previous
+  in 0.2 s — and the live arrows, which ignored a synthetic pointer entirely,
+  answer. Two cues came with it: `within:<class>` (only inside that pane: the
+  arrows under Live, not the same pair under Preview) and
+  `which:leftmost|rightmost|topmost|bottommost` (of several identical
+  controls, the one that sits there). A remembered control must now also be
+  visible: a tab switched away keeps its controls alive and hidden, UI
+  Automation still calls them on screen, and a verse typed into the hidden
+  Songs box went nowhere until the window itself was asked.
+  EasyWorship's own Remote protocol (TCP, mDNS `_ezwremote._tcp`, paired and
+  unlocked by the operator) was read up on and set aside: it steps through
+  what is already live or scheduled but has no command to search the library,
+  and it needs setting up in EasyWorship; the message door needs nothing.
+  Not every app has windows to post to — WPF, Electron and FireMonkey apps
+  draw their controls inside one window (EasyWorship 8 is reported to be
+  FireMonkey; untested here) — so UI Automation stays the default and
+  `via: 'message'` is a per-step choice in the recipe.
 - `recipes/`: the recipe format, the runner (verify without acting; perform and
   stop at the first failure), the four-question teacher, and the spawn-based
   inspector that picks the right tool per platform. `cli/teach.ts` runs the

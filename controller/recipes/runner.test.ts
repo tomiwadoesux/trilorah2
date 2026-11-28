@@ -51,6 +51,26 @@ describe('recipe runner', () => {
     expect(calls[0]).toEqual(['type', 'com.example.slides', 'path:0/3', 'role:AXTextField', 'name:search', '--text', 'John 3:16', '--submit'])
   })
 
+  it('perform hands a step to the control as messages when the recipe says so', async () => {
+    // Nothing is clicked on screen: the step names the pane the control is in and which of the pair it is.
+    const quiet = parseRecipe({
+      format: 1, platform: 'windows', app: { id: 'EasyWorship.exe', name: 'EasyWorship' },
+      abilities: {
+        show: [{ role: 'Pane', class: 'TsdSpeedButton', name: 'Go Live', action: { do: 'press', via: 'message' } }],
+        next: [{ role: 'Pane', class: 'TsdImageButton', within: 'TFrame_LivePreview', which: 'rightmost', action: { do: 'press', via: 'message' } }],
+        findVerse: [{ role: 'Pane', class: 'TsdCustomIncEdit', within: 'TFrame_SearchLocateBar', action: { do: 'type', text: '$query', via: 'message' } }],
+      },
+      taught: { by: 'trilorah', at: '2026-11-27T00:00:00Z' },
+    })!
+    const { inspector, calls } = fake({})
+    expect((await perform(quiet, 'next', inspector)).ok).toBe(true)
+    expect(calls[0]).toEqual(['press', 'EasyWorship.exe', 'role:Pane', 'class:TsdImageButton', 'within:TFrame_LivePreview', 'which:rightmost', '--action', 'message'])
+    await perform(quiet, 'findVerse', inspector, { query: 'John 3:16' })
+    expect(calls[1]).toEqual(['type', 'EasyWorship.exe', 'role:Pane', 'class:TsdCustomIncEdit', 'within:TFrame_SearchLocateBar', '--text', 'John 3:16', '--message'])
+    // A class alone, with no pane to look in, is still not something to aim at.
+    expect(parseRecipe({ format: 1, platform: 'windows', app: { id: 'a.exe', name: 'A' }, abilities: { show: [{ role: 'Pane', class: 'TsdImageButton', action: { do: 'press' } }] }, taught: { by: 't', at: '2026-11-27T00:00:00Z' } })).toBeNull()
+  })
+
   it('perform asks for the side of a control when the step names one', async () => {
     const arrows = parseRecipe({
       format: 1, platform: 'windows', app: { id: 'EasyWorship.exe', name: 'EasyWorship' },

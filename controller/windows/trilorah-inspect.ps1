@@ -14,8 +14,8 @@
    apps                                     top-level windows: name, exe, pid
    see <app> [--all] [--pretty] [--depth N]
    find <app> <selector…>
-   press <app> <selector…> [--first] [--at left|right] [--action toggle|select|expand|click]
-   type <app> <selector…> --text "…" [--submit]
+   press <app> <selector…> [--first] [--at left|right] [--action toggle|select|expand|click|message]
+   type <app> <selector…> --text "…" [--submit] [--keys] [--message]
    menu <app> "File>Open"
    focus <app>
    key <app> <keys>                         e.g. f5, ctrl+enter, escape
@@ -24,7 +24,16 @@
  Selectors as on the Mac: name:<text> (Name/HelpText contains, case-insensitive),
  role:Button (control type), id:<AutomationId>, path:0/3/2 (index path from
  the app's top window list), class:<window class> (Windows only: TsdSpeedButton,
- Edit…), bare word = name:. An ambiguous press is an error unless --first.
+ Edit…), within:<window class> (only inside the pane of that class: the arrows in
+ TFrame_LivePreview, not the same arrows under Preview), which:leftmost|rightmost|
+ topmost|bottommost (of several identical controls, the one that sits there),
+ bare word = name:. An ambiguous press is an error unless --first.
+
+ --action message / --message: the press or the typing is handed to the control's own
+ window as messages (a click posted to it, keys sent to it) instead of being performed
+ with the pointer and the keyboard. Nothing moves on screen, the app is not brought
+ forward, and whoever is at the computer keeps their mouse and their typing. It needs a
+ control that is a window of its own, which is every control in a Delphi app (EasyWorship).
 #>
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Argv)
 
@@ -287,9 +296,9 @@ function FindAppNow($query) {
 # ---------------------------------------------------------------- selectors
 
 function ParseSelector($words) {
-  $s = @{ name = $null; role = $null; path = $null; id = $null; value = $null; class = $null }
+  $s = @{ name = $null; role = $null; path = $null; id = $null; value = $null; class = $null; within = $null; which = $null }
   foreach ($w in $words) {
-    if ($w -match '^(name|role|path|id|value|class):(.*)$') {
+    if ($w -match '^(name|role|path|id|value|class|within|which):(.*)$') {
       $k = $Matches[1]; $v = $Matches[2]
       if ($k -eq 'name') { $s.name = if ($s.name) { "$($s.name) $v" } else { $v } } else { $s[$k] = $v }
     } else { $s.name = if ($s.name) { "$($s.name) $w" } else { $w } }
@@ -336,6 +345,13 @@ function Search($procId, $s) {
   $roots = AppRoots $procId
   $hits = New-Object System.Collections.ArrayList
   $clock = [Diagnostics.Stopwatch]::StartNew()
+  if ($s.within) {
+    # Only inside the pane of that class: the search starts from it instead of from the app.
+    $inside = New-Object System.Windows.Automation.PropertyCondition($AE::ClassNameProperty, $s.within, $ignoreCase)
+    $panes = @()
+    foreach ($r in $roots) { foreach ($e in $r.FindAll([System.Windows.Automation.TreeScope]::Subtree, $inside)) { $panes += $e } }
+    $roots = $panes
+  }
   $active = $Cache.Activate()
   try {
     if ($s.name) {
@@ -380,17 +396,52 @@ function Collect($procId, $s, $all) {
   # cues (a gone element throws; a renamed one no longer matches); either way a fresh
   # search follows.
   $key = "$procId|" + (($s.Keys | Sort-Object | ForEach-Object { "$_=$($s[$_])" }) -join '|')
-  $known = $script:knownElements[$key]
-  if ($known) {
+  # Several controls can answer to one set of cues in turn - EasyWorship's Songs box and its
+  # Scriptures box are the same class in the same kind of pane, one showing and one hidden,
+  # depending on the tab. Each one found is kept, and the one that is showing now is the
+  # answer; a tab change then costs a check, not a search.
+  $kept = $script:knownElements[$key]
+  if ($kept) {
     $clock = [Diagnostics.Stopwatch]::StartNew()
-    $still = $null
-    try { $still = Describe $known $null 0 $true } catch { $still = $null }
+    $showing = @(); $alive = New-Object System.Collections.ArrayList
+    foreach ($known in @($kept)) {
+      $still = $null
+      try { $still = Describe $known $null 0 $true } catch { $still = $null }
+      if (-not $still) { continue }   # gone: forgotten
+      $null = $alive.Add($known)
+      # Still there is not enough: a tab that was switched away keeps its controls alive and
+      # hidden, and a verse typed into the hidden one goes nowhere. UI Automation still calls
+      # such a control on screen and gives it a rectangle, so its window is asked directly.
+      $seen = $true
+      try {
+        $h = HandleOf $known
+        if ($h -ne [IntPtr]::Zero) { Wire; $seen = [W.X]::IsWindowVisible($h) }
+        elseif ($known.Current.IsOffscreen -or -not $still.rect) { $seen = $false }
+      } catch { $seen = $false }
+      if ($seen -and (Matches $s $still)) { $showing += $still }
+    }
     Spent 'known' $clock
-    if ($still -and (Matches $s $still)) { return ,@($still) }
-    $script:knownElements.Remove($key)
+    if ($showing.Count -eq 1) { $script:knownElements[$key] = $alive; return ,@($showing[0]) }
+    # None showing: look afresh, keeping the hidden ones for when their tab comes back.
+    # Two showing at once: the cues have become ambiguous, and only a fresh search may say so.
+    if ($showing.Count -gt 1 -or $alive.Count -eq 0) { $script:knownElements.Remove($key) } else { $script:knownElements[$key] = $alive }
   }
   $found = Search $procId $s
-  if ($found.Count -eq 1) { $script:knownElements[$key] = $found[0]._el }
+  if ($s.which -and $found.Count -gt 1) {
+    # Several controls answer to the same cues and differ only in where they sit
+    # (EasyWorship's previous and next arrows): the one on that side is meant.
+    $axis = if (@('topmost', 'bottommost') -contains $s.which) { 1 } else { 0 }
+    $placed = @($found | Where-Object { $_.rect } | Sort-Object -Property @{ Expression = { $_.rect[$axis] } })
+    if ($placed.Count -gt 0) {
+      $one = if (@('rightmost', 'bottommost') -contains $s.which) { $placed[$placed.Count - 1] } else { $placed[0] }
+      $found = New-Object System.Collections.ArrayList; $null = $found.Add($one)
+    }
+  }
+  if ($found.Count -eq 1) {
+    $list = $script:knownElements[$key]
+    if (-not $list) { $list = New-Object System.Collections.ArrayList; $script:knownElements[$key] = $list }
+    if ($list.Count -lt 4) { $null = $list.Add($found[0]._el) }
+  }
   $q = if ($s.name) { $s.name.ToLower() } else { $null }
   $sorted = $found | Sort-Object -Property @{ Expression = { if ($q -and ([string]$_.title).ToLower() -eq $q) { 0 } else { 1 } } }, @{ Expression = { if ($_.actions -contains 'press') { 0 } else { 1 } } }
   return ,@($sorted)
@@ -436,14 +487,103 @@ function Aim($procId, $words, $first, $all) {
     if (-not $why) { return $target }
     if ((Get-Date) -ge $deadline) {
       if ($why -eq 'missing') { Fail "nothing matches $what" }
-      Fail "`"$($target.title)`" is disabled right now" @{ element = (Strip $target) }
+      $called = if ($target.title) { '"' + $target.title + '"' } else { 'the control (' + $target.class + ')' }
+      Fail "$called is disabled right now" @{ element = (Strip $target) }
     }
     Start-Sleep -Milliseconds 250
   }
 }
 
+# ---------------------------------------------------------------- the control's own window
+# Windows hands every click and key to a window as a message. A control that is a window
+# of its own (all of them, in a Delphi app) can be given those messages directly: the
+# pointer stays where the operator left it and the app stays behind whatever is in front.
+
+function Wire {
+  if ('W.X' -as [type]) { return }
+  Add-Type -Name X -Namespace W -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+[DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW")] public static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, IntPtr l, uint f, uint t, out IntPtr r);
+[DllImport("user32.dll", EntryPoint = "SendMessageTimeoutW", CharSet = CharSet.Unicode)] public static extern IntPtr GetText(IntPtr h, uint m, IntPtr w, System.Text.StringBuilder l, uint f, uint t, out IntPtr r);
+[DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
+[DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+[DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern short VkKeyScan(char c);
+[StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+'@
+}
+
+# The window behind an element; zero when it is drawn inside another control's window.
+function HandleOf($el) {
+  $h = 0
+  try { $h = $el.Cached.NativeWindowHandle } catch { try { $h = $el.Current.NativeWindowHandle } catch { $h = 0 } }
+  return [IntPtr][long]$h
+}
+
+# One message, waited for: the app has finished with it when this returns (3 s at most).
+function Tell([IntPtr]$h, [uint32]$msg, [long]$w, [long]$l) {
+  $r = [IntPtr]::Zero
+  [void][W.X]::SendMessageTimeout($h, $msg, [IntPtr]$w, [IntPtr]$l, 2, 3000, [ref]$r)
+}
+
+# A click, posted to the control the way the mouse driver's own would arrive (a move onto
+# it, down, up), then an empty message asked twice. An app answers a sent message before it
+# reads its posted ones, so the first answer says it is listening and the second, a moment
+# later, comes only once it is back from handling the click - the press that follows does
+# not overrun this one, and the time reported is the time the app took.
+function MessagePress($el, $at = $null) {
+  $h = HandleOf $el
+  if ($h -eq [IntPtr]::Zero) { return $null }
+  Wire
+  $rc = New-Object 'W.X+RECT'
+  if (-not [W.X]::GetClientRect($h, [ref]$rc) -or $rc.R -le 0 -or $rc.B -le 0) { return $null }
+  $frac = switch ($at) { 'left' { 0.25 } 'right' { 0.75 } default { 0.5 } }
+  $x = [int][Math]::Floor($rc.R * $frac); $y = [int][Math]::Floor($rc.B / 2)
+  $pt = [IntPtr][long](($y -shl 16) -bor ($x -band 0xFFFF))
+  [void][W.X]::PostMessage($h, 0x0200, [IntPtr]::Zero, $pt)
+  [void][W.X]::PostMessage($h, 0x0201, [IntPtr]1, $pt)
+  [void][W.X]::PostMessage($h, 0x0202, [IntPtr]::Zero, $pt)
+  Tell $h 0 0 0
+  Start-Sleep -Milliseconds 20
+  Tell $h 0 0 0
+  return 'Message'
+}
+
+# Typing, sent to the box as the keys a keyboard would produce: Home (and select-all, for
+# boxes that know it) so the old words are replaced, then key-down and character for each
+# letter, one key-up at the end. Each is waited for, so the box is never typed at faster
+# than it parses - EasyWorship's reference box completes the book and steps from book to
+# chapter to verse as the characters arrive, and shows the passage in Preview on the key-up.
+# Returns what the box reads afterwards.
+function MessageType($el, [string]$text, $submit) {
+  $h = HandleOf $el
+  if ($h -eq [IntPtr]::Zero) { return $null }
+  Wire
+  $KEYDOWN = 0x0100; $KEYUP = 0x0101; $CHAR = 0x0102; $released = 3221225473
+  Tell $h $KEYDOWN 0x24 1; Tell $h $KEYUP 0x24 $released
+  Tell $h 0x00B1 0 -1
+  $vk = 0
+  foreach ($ch in $text.ToCharArray()) {
+    $vk = [int]([W.X]::VkKeyScan($ch)) -band 0xFF
+    Tell $h $KEYDOWN $vk 1
+    Tell $h $CHAR ([int][char]$ch) 1
+  }
+  if ($vk) { Tell $h $KEYUP $vk $released }
+  if ($submit) {
+    # Posted, not sent: the app's own loop turns the key-down into the Enter character.
+    [void][W.X]::PostMessage($h, $KEYDOWN, [IntPtr]0x0D, [IntPtr]1)
+    [void][W.X]::PostMessage($h, $KEYUP, [IntPtr]0x0D, [IntPtr][long]$released)
+    Start-Sleep -Milliseconds 20
+    Tell $h 0 0 0
+  }
+  $sb = New-Object System.Text.StringBuilder 1024
+  $r = [IntPtr]::Zero
+  [void][W.X]::GetText($h, 0x000D, [IntPtr]1024, $sb, 2, 1000, [ref]$r)
+  return $sb.ToString()
+}
+
 function PressElement($el, $at = $null, $action = $null) {
   $p = $null
+  if ($action -eq 'message') { return (MessagePress $el $at) }
   # A part of the control was asked for ("the right half"): only a real click can mean that.
   if ($at) { return (ClickCentre $el $at) }
   # --action toggle|select|expand|click: one particular pattern, for a checkable list item
@@ -549,12 +689,12 @@ switch ($command) {
     $at = if ($flags.ContainsKey('at') -and @('left', 'right') -contains $flags['at']) { $flags['at'] } else { $null }
     # Bring the app forward first: a click that also has to wake a background window is
     # spent on the waking in some drawn controls (EasyWorship's live arrows), and does nothing else.
-    Activate $app.pid; Start-Sleep -Milliseconds 150
+    if ($flags['action'] -ne 'message') { Activate $app.pid; Start-Sleep -Milliseconds 150 }
     $clock = [Diagnostics.Stopwatch]::StartNew()
     $how = PressElement $target._el $at $flags['action']
     Spent 'press' $clock
     if (-not $how) {
-      $why = if ($flags['action']) { 'it has no "' + $flags['action'] + '" action' } else { 'no action and not on screen' }
+      $why = if ($flags['action'] -eq 'message') { 'it is not a window of its own, so it cannot be sent a message' } elseif ($flags['action']) { 'it has no "' + $flags['action'] + '" action' } else { 'no action and not on screen' }
       Fail "could not press `"$($target.title)`" — $why" @{ element = (Strip $target) }
     }
     return ([ordered]@{ ok = $true; action = $how; element = (Strip $target) })
@@ -564,6 +704,13 @@ switch ($command) {
     $app = FindApp $positional[1]
     $what = ($positional[2..($positional.Count - 1)] -join ' ')
     $target = Aim $app.pid $positional[2..($positional.Count - 1)] $switches.ContainsKey('first') $switches.ContainsKey('all')
+    if ($switches.ContainsKey('message')) {
+      $clock = [Diagnostics.Stopwatch]::StartNew()
+      $reads = MessageType $target._el $flags['text'] $switches.ContainsKey('submit')
+      Spent 'type' $clock
+      if ($reads -eq $null) { Fail ('could not type into "' + $what + '" - it is not a window of its own, so it cannot be sent keys') @{ element = (Strip $target) } }
+      return ([ordered]@{ ok = $true; typed = $flags['text']; how = 'message'; reads = $reads; element = (Strip $target) })
+    }
     $how = 'value'
     $vp = $null
     try { $target._el.SetFocus() } catch {}
@@ -721,6 +868,8 @@ switch ($command) {
 # six seconds on an ordinary PC; Trilorah pays that once per session instead of per click.
 function Serve() {
   $script:serving = $true
+  # Compile the message door now (a second, once) so the first verse of the service does not pay for it.
+  try { Wire } catch {}
   # Spawned by an app, this process may inherit a lower priority or Windows' "efficiency
   # mode" (power throttling). Ask for normal speed and a little priority - it costs nothing
   # and this is the hand on the church's screen.

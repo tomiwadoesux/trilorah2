@@ -126,3 +126,36 @@ describe('the words typed into the app', () => {
     expect(calls.filter((c) => c[0] === 'type').map((c) => c[6])).toEqual(['Psalms 23:1', 'Nonsense 9:9'])
   })
 })
+
+describe('a Clear that stays on', () => {
+  const quick = (calls: string[][]): Inspector => ({ run: async (args) => { calls.push(args); return { ok: true } } })
+  const settle = () => new Promise((r) => setTimeout(r, 20))
+  const names = (calls: string[][]) => calls.map((c) => c.find((w) => w.startsWith('name:')) ?? c[0])
+
+  it('is lifted after the next show, so the verse sent live is seen', async () => {
+    const calls: string[][] = []
+    const host = recipeHost({ recipe: { ...recipe, clearStaysOn: true }, inspector: quick(calls), own })
+    host.stageScripture('John 3:16'); host.take('remote'); host.clearLive()
+    // A second clear must not press the switch again: that would bring the slide back.
+    host.clearLive()
+    await settle()
+    host.stageScripture('Romans 8:28'); host.take('remote')
+    await settle()
+    expect(names(calls)).toEqual(['name:Search', 'name:Go Live', 'name:Clear', 'name:Search', 'name:Go Live', 'name:Clear'])
+    expect(host.live()?.book).toBe('Romans 8:28')
+    // Lifted once: the take after that leaves Clear alone.
+    host.stageScripture('Psalm 23:1'); host.take('remote')
+    await settle()
+    expect(names(calls).slice(6)).toEqual(['name:Search', 'name:Go Live'])
+  })
+
+  it('is left alone in an app whose Clear is not a switch', async () => {
+    const calls: string[][] = []
+    const host = recipeHost({ recipe, inspector: quick(calls), own })
+    host.stageScripture('John 3:16'); host.take('remote'); host.clearLive()
+    await settle()
+    host.stageScripture('Romans 8:28'); host.take('remote')
+    await settle()
+    expect(names(calls)).toEqual(['name:Search', 'name:Go Live', 'name:Clear', 'name:Search', 'name:Go Live'])
+  })
+})

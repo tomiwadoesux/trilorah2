@@ -10,7 +10,7 @@ Recorded at the owner's Windows PC on 2026-11-23, each verified with
 
 | File | App | Abilities | Notes |
 | --- | --- | --- | --- |
-| `easyworship.json` | EasyWorship 7.4.2.12 | findVerse, findSong, show, clear | No next/previous: its live arrows are a drawn panel that ignores synthetic clicks (a real mouse works). Enter in its scripture box would send the verse live, so the recipe types without Enter — Preview updates as you type. Candidate fix: its Remote TCP protocol (`nextSlide`/`prevSlide`, mDNS `ezwremote`, paired once in EW). |
+| `easyworship.json` | EasyWorship 7.4.2.12 | findVerse, findSong, show, clear, next, previous | Driven by messages to its controls' own windows (`via: "message"`): no pointer, no bringing it forward. Enter in its scripture box would send the verse live, so the recipe types without Enter — Preview shows the passage on the last key-up. The next/previous arrows under Live have no name or steady path; they are `class: TsdImageButton` `within: TFrame_LivePreview`, `which: rightmost` / `leftmost`, and grey (refused in 0.4 s) when there is no such slide. Its Clear is a switch that stays on and hides whatever is sent live after it, so the recipe says `clearStaysOn` and Trilorah lifts it after its next show. If the operator lifts Clear by hand in between, that next show would switch it back on — Trilorah cannot read the switch. |
 | `zionworx.json` | ZionWorx 4.1.1 | findSong, show, clear, next, previous | Its controls carry no names, so every step is a path + window class. Show is "add to playlist and present immediately", so the song search only filters the list (no separate preview). Next/previous exist only while something is presented, so verify reports them missing on an idle ZionWorx. No findVerse: the Bibles tab is not exposed to UI Automation. The curtain (clear) could not be watched working on a PC with no screen display. |
 | `pewbeam.json` | Pewbeam 2.8.3 | findVerse, show, clear | A web-style app with good accessibility names. Typing a reference and Enter previews the verse; Escape then Enter puts it on the output; CLEAR takes it off (that button's name flips to "Show scripture again" while clear, so verify reports it missing then). No next/previous: its own API and OSC list `next`/`prev` as "still being wired through", and its Previous/Next buttons step the queue, not the chapter. No findSong: the Songs tab was not exposed to UI Automation on this PC. Its HTTP API (port 8080: /api/status, /api/health, /api/control) reports state but cannot pick a verse. |
 | `mediashout.json` | MediaShout 7.7.1 | findVerse, show, clear, next, previous | A verse goes through its Bibles panel: open it (a real click — the toolbar button answers an accessibility press and opens nothing), type the reference, Insert Bible (adds the verse to the script as the selected cue), close the panel; show is Fire selected page. Each verse therefore adds a cue to the script. No findSong yet: its Lyrics panel closed itself when Enter was pressed in the song search, before Insert Lyrics could be read. MediaShout froze outright once on the sample script; a new blank script behaved. The trial's Activation Wizard appears on every launch. |
@@ -60,6 +60,17 @@ and clear came from the CLI. What it taught us, and what changed:
   references ("John 360"), so the passage matcher staged verses the preacher
   never named; the controller did the right thing with them, but the speech
   side needs a smaller model or Deepgram there.
+
+- That evening EasyWorship was moved off the pointer altogether. Its controls
+  are windows of their own, and a click or key handed to the window directly is
+  taken as the real thing: staged in Preview 1.6 s after the command (4.9 s the
+  first time, while the inspector finds the box), live 0.2–0.3 s after the
+  take, next and previous 0.2 s each, with the operator's mouse and the window
+  in front left alone. Next and previous had never worked before. The run also
+  showed two faults: the inspector had remembered the Songs search box and went
+  on typing verses into it after the tab changed (hidden, but alive), and a
+  verse taken after a clear stayed hidden behind EasyWorship's Clear switch.
+  Both are fixed and in the tests.
 
 A taught recipe for the same app in Trilorah's data folder wins over the
 shipped one — the church's own screen beats our guess about it.

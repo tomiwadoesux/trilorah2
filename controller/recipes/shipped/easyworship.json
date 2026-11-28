@@ -4,19 +4,26 @@
   "app": { "id": "EasyWorship.exe", "name": "EasyWorship", "version": "7.4.2.12" },
   "abilities": {
     "findVerse": [
-      { "role": "Pane", "class": "TsdImageButton", "name": "Scriptures", "label": "the Scriptures tab", "action": { "do": "press" } },
-      { "path": "0/1/0/1/0/1/0/0/2/0/0/0/0/0/0", "role": "Pane", "class": "TsdCustomIncEdit", "label": "the verse search box (it shows the result in Preview as you type; Enter would send it live, so none is pressed)", "action": { "do": "type", "text": "$query" } }
+      { "role": "Pane", "class": "TsdImageButton", "name": "Scriptures", "label": "the Scriptures tab", "action": { "do": "press", "via": "message" } },
+      { "role": "Pane", "class": "TsdCustomIncEdit", "within": "TFrame_SearchLocateBar", "label": "the verse search box (it shows the passage in Preview as it is typed; Enter would send it live, so none is pressed)", "action": { "do": "type", "text": "$query", "via": "message" } }
     ],
     "findSong": [
-      { "role": "Pane", "class": "TsdImageButton", "name": "Songs", "label": "the Songs tab", "action": { "do": "press" } },
-      { "path": "0/1/0/1/0/1/0/0/2/0/0/0/0/0/0", "role": "Pane", "class": "TsdCustomIncEdit", "label": "the song search box (the first match shows in Preview as you type)", "action": { "do": "type", "text": "$query" } }
+      { "role": "Pane", "class": "TsdImageButton", "name": "Songs", "label": "the Songs tab", "action": { "do": "press", "via": "message" } },
+      { "role": "Pane", "class": "TsdCustomIncEdit", "within": "TFrame_SearchLocateBar", "label": "the song search box (the first match shows in Preview as it is typed)", "action": { "do": "type", "text": "$query", "via": "message" } }
     ],
     "show": [
-      { "role": "Pane", "class": "TsdSpeedButton", "name": "Go Live", "label": "the Go Live button", "action": { "do": "press" } }
+      { "role": "Pane", "class": "TsdSpeedButton", "name": "Go Live", "label": "the Go Live button", "action": { "do": "press", "via": "message" } }
     ],
     "clear": [
-      { "role": "Pane", "class": "TsdSpeedButton", "name": "Clear", "label": "the Clear button", "action": { "do": "press" } }
+      { "role": "Pane", "class": "TsdSpeedButton", "name": "Clear", "label": "the Clear button", "action": { "do": "press", "via": "message" } }
+    ],
+    "next": [
+      { "role": "Pane", "class": "TsdImageButton", "within": "TFrame_LivePreview", "which": "rightmost", "label": "the next-slide arrow under Live (grey on the last slide)", "action": { "do": "press", "via": "message", "patience": 400 } }
+    ],
+    "previous": [
+      { "role": "Pane", "class": "TsdImageButton", "within": "TFrame_LivePreview", "which": "leftmost", "label": "the previous-slide arrow under Live (grey on the first slide)", "action": { "do": "press", "via": "message", "patience": 400 } }
     ]
   },
-  "taught": { "by": "trilorah", "at": "2026-11-23T06:45:00.000Z" }
+  "clearStaysOn": true,
+  "taught": { "by": "trilorah", "at": "2026-11-27T22:30:00.000Z" }
 }

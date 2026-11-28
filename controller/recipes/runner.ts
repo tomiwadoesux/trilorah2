@@ -119,13 +119,15 @@ async function act(step: RecipeStep, recipe: Recipe, inspect: Inspector, vars: {
     case 'press': {
       const args = ['press', app, ...selectorWords(step)]
       if (step.action.at) args.push('--at', step.action.at)
-      if (step.action.via === 'click') args.push('--action', 'click')
+      if (step.action.via) args.push('--action', step.action.via)
+      if (step.action.patience !== undefined) args.push('--patience', String(step.action.patience))
       const r = await inspect.run(args)
       return r.ok ? null : (r.error ?? 'the press failed')
     }
     case 'type': {
       const args = ['type', app, ...selectorWords(step), '--text', fillText(step.action.text, vars)]
       if (step.action.submit) args.push('--submit')
+      if (step.action.via === 'message') args.push('--message')
       const r = await inspect.run(args)
       return r.ok ? null : (r.error ?? 'typing failed')
     }

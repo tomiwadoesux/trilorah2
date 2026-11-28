@@ -44,6 +44,8 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
   const { recipe, inspector, own } = opts
   let staged: ControlVerse | null = null
   let live: ControlVerse | null = null
+  // Trilorah pressed a Clear that stays on (recipe.clearStaysOn): the next show must lift it.
+  let cleared = false
   const asVerse = (reference: string): ControlVerse => ({ book: reference, chapter: 0, verse: 0, version: recipe.app.name, text: '' })
 
   // One ability at a time. The inspector is a process per step, so two
@@ -109,7 +111,10 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
         // Its search failed meanwhile: nothing of ours is selected to show.
         if (staged === null) return
         const problem = await run('show')
-        if (!problem) live = taking
+        if (problem) return
+        live = taking
+        // After the show, not before: lifting Clear first would flash the old slide.
+        if (cleared && !(await run('clear'))) cleared = false
       })
       return taking
     },
@@ -121,7 +126,15 @@ export function recipeHost(opts: RecipeHostOptions): ControlHost {
       search('findSong', staged)
       return { staged }
     },
-    clearLive: () => { void after(async () => { if (!(await run('clear'))) live = null }) },
+    clearLive: () => {
+      void after(async () => {
+        // Already cleared by us and the switch is still on: a second press would bring the slide back.
+        if (cleared) { live = null; return }
+        if (await run('clear')) return
+        live = null
+        if (recipe.clearStaysOn) cleared = true
+      })
+    },
     next: () => { void after(() => run('next')) },
     previous: () => { void after(() => run('previous')) },
     setScreen: (state) => own.setScreen(state),
